@@ -57,15 +57,20 @@ key-decisions:
   - "package.json type:module — Vinxi is ESM-only; commonjs type prevents config loading"
   - "Removed OpenAPI/MapOpenApi from Program.cs — YAGNI for dev scaffold, add when needed"
   - "WeatherForecast boilerplate removed — keeps solution clean from day one"
+  - "createApp (not defineConfig) is the correct Vinxi 0.5.x API — defineConfig is not exported"
+  - "vinxi dev --port 5173 --host CLI flags used — port from app.config.ts alone is not respected"
+  - "index.html added as SPA entry point to avoid SSR document-not-defined error at startup"
 
 patterns-established:
   - "DDD: Domain has zero deps; Application → Domain; Infrastructure → Domain+Application; API → all three"
   - "Dockerfile: explicit per-project COPY for .csproj files ensures layer cache hits on restore"
   - "Vinxi: app.config.ts with usePolling: true + host:0.0.0.0 is the required pattern for Windows Docker HMR"
+  - "Vinxi 0.5.x: use createApp (not defineConfig) and pass --port / --host via CLI, not config"
+  - "SPA: index.html must exist as entry point; without it Vinxi falls back to SSR and crashes in Node"
 
 requirements-completed: [INFRA-01, INFRA-04]
 
-duration: 4min
+duration: ~60min (including 3 post-scaffold deviation fixes and human-verify checkpoint)
 completed: "2026-04-01"
 ---
 
@@ -75,11 +80,11 @@ completed: "2026-04-01"
 
 ## Performance
 
-- **Duration:** ~4 min
+- **Duration:** ~60 min (including 3 post-scaffold fixes and human-verify checkpoint)
 - **Started:** 2026-04-01T18:22:15Z
-- **Completed:** 2026-04-01T18:27:10Z
-- **Tasks:** 2 of 3 auto tasks complete (Task 3 = human-verify checkpoint)
-- **Files modified:** 14
+- **Completed:** 2026-04-01T18:28:22Z (checkpoint approved)
+- **Tasks:** 3 of 3 complete (2 auto + 1 human-verify, checkpoint approved by user)
+- **Files modified:** 15 (14 scaffolded + frontend/index.html added as deviation)
 
 ## Accomplishments
 
@@ -88,6 +93,7 @@ completed: "2026-04-01"
 - Vinxi SPA frontend configured with `usePolling: true` and `host: 0.0.0.0` for reliable HMR inside Docker on Windows
 - Both Dockerfiles ready: `mcr.microsoft.com/dotnet/sdk:10.0` with `dotnet watch`, `node:22-alpine` with `npm run dev`
 - `dotnet build Onboarding.sln` passes with 0 errors
+- All five services confirmed healthy by user via `docker compose up --wait`; Keycloak realm `onboarding` accessible via Admin API; stack idempotent across restart
 
 ## Task Commits
 
@@ -95,6 +101,10 @@ Each task was committed atomically:
 
 1. **Task 1: .NET 10 solution scaffold** - `8abe7d4` (feat)
 2. **Task 2: Vinxi SPA frontend scaffold** - `10291e2` (feat)
+3. **Deviation fix: defineConfig → createApp** - `4343a3b` (fix)
+4. **Deviation fix: vinxi dev --port 5173 --host** - `befdb19` (fix)
+5. **Deviation fix: index.html SPA entry point** - `86efa45` (fix)
+6. **Task 3: Human checkpoint** - approved by user ("approved")
 
 ## Files Created/Modified
 
@@ -113,6 +123,7 @@ Each task was committed atomically:
 - `frontend/tsconfig.json` - react-jsx, ESNext, bundler resolution
 - `frontend/Dockerfile` - node:22-alpine, npm run dev
 - `frontend/.dockerignore` - excludes node_modules, dist, .vinxi, .env*
+- `frontend/index.html` - SPA shell entry point (added as deviation; required to prevent SSR crash)
 
 ## Decisions Made
 
@@ -120,6 +131,9 @@ Each task was committed atomically:
 - **`type: "module"` in package.json**: Vinxi is ESM-only. The default `npm init -y` sets `commonjs` which prevents Vinxi from loading its config. Changed to `"module"`.
 - **Removed generated boilerplate**: WeatherForecast.cs, WeatherForecastController.cs, Onboarding.API.http deleted to keep the solution clean from day one.
 - **No OpenAPI in Program.cs**: `AddOpenApi` and `MapOpenApi` removed — YAGNI for this scaffold phase.
+- **`createApp` not `defineConfig`**: Vinxi 0.5.x exports `createApp`; `defineConfig` does not exist in this version.
+- **CLI port flags**: Port passed via `vinxi dev --port 5173 --host` — vite.server config values are not picked up from `app.config.ts` at runtime.
+- **`index.html` SPA shell**: Required by Vinxi to serve the client router without triggering SSR mode in Node.
 
 ## Deviations from Plan
 
@@ -143,12 +157,38 @@ Each task was committed atomically:
 
 ---
 
-**Total deviations:** 2 auto-fixed (1 blocking, 1 bug)
-**Impact on plan:** Both fixes necessary for Docker build and Vinxi runtime. No scope creep.
+**3. [Rule 1 - Bug] Vinxi ignores port from app.config.ts in Docker context**
+- **Found during:** Task 2 post-scaffold (frontend port not binding to 5173)
+- **Issue:** Port 5173 set in `app.config.ts` vite.server config was not respected inside Docker; container bound on a different port.
+- **Fix:** Changed Dockerfile CMD to `vinxi dev --port 5173 --host` to pass port explicitly via CLI.
+- **Files modified:** `frontend/Dockerfile`
+- **Verification:** `curl http://localhost:5173/` returned 200.
+- **Committed in:** `befdb19`
+
+**4. [Rule 1 - Bug] SSR crash: "document is not defined" at startup**
+- **Found during:** Task 2 post-scaffold (frontend crashing after port fix)
+- **Issue:** Without an `index.html` entry point, Vinxi attempted SSR of `client.tsx`, which references browser globals unavailable in Node.
+- **Fix:** Created `frontend/index.html` as minimal SPA shell (`<div id="root">`) for Vinxi to serve.
+- **Files modified:** `frontend/index.html` (created)
+- **Verification:** Frontend loaded at `http://localhost:5173/` returning HTML with "Onboarding" heading.
+- **Committed in:** `86efa45`
+
+**5. [Rule 1 - Bug] Vinxi `defineConfig` is not exported in 0.5.x**
+- **Found during:** Task 2 post-scaffold (container crash on startup)
+- **Issue:** The plan specified `import { defineConfig } from "vinxi"` but Vinxi 0.5.x exports `createApp`. Container crashed with import error.
+- **Fix:** Rewrote `app.config.ts` to use `import { createApp } from "vinxi"` with equivalent router config.
+- **Files modified:** `frontend/app.config.ts`
+- **Verification:** Frontend container started without import error.
+- **Committed in:** `4343a3b`
+
+---
+
+**Total deviations:** 4 auto-fixed (1 blocking, 3 bug)
+**Impact on plan:** All fixes necessary for Docker build and Vinxi runtime. The three Vinxi fixes were cascading — each revealed only after the previous was resolved. No scope creep.
 
 ## Issues Encountered
 
-None beyond the deviations documented above.
+The Vinxi scaffold in the plan used the `defineConfig` API which does not exist in Vinxi 0.5.x. Three cascading issues required resolution before the container ran cleanly: wrong import name → container crash, port from config not picked up → wrong port bound, missing `index.html` → SSR fallback crash. All were diagnosed and fixed sequentially without human intervention.
 
 ## Known Stubs
 
@@ -157,10 +197,11 @@ None beyond the deviations documented above.
 
 ## Next Phase Readiness
 
-- Full five-service stack ready for `docker compose up --wait` verification (Task 3 checkpoint)
-- After checkpoint passes, Phase 01 infrastructure is complete
-- Phase 02 (domain models) can add entities to `Onboarding.Domain` project
-- Phase 05+ can add controllers to `Onboarding.API`
+- Full five-service stack verified healthy by user — Phase 01 infrastructure is complete
+- Phase 02 (Keycloak Security Hardening) prerequisites met: realm exists, stack boots cleanly
+- Phase 03 (Backend Domain Layer) can add entities to `Onboarding.Domain` project
+- Phase 07 (Frontend Foundation) can build on the Vinxi scaffold in `frontend/`
+- No blockers for Phase 02 start
 
 ---
 *Phase: 01-infrastructure*

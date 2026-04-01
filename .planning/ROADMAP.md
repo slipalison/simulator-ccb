@@ -6,7 +6,7 @@ This roadmap builds a secure PF/PJ client onboarding system from infrastructure 
 
 ## Phases
 
-- [ ] **Phase 1: Infrastructure** - Docker Compose with dual PostgreSQL, Keycloak realm configured and running
+- [x] **Phase 1: Infrastructure** - Docker Compose with dual PostgreSQL, Keycloak realm configured and running (completed 2026-04-01)
 - [ ] **Phase 2: Keycloak Security Hardening** - Keycloak hardened against all documented attack surfaces
 - [ ] **Phase 3: Backend Domain Layer** - DDD domain model with value objects, aggregate, and full test coverage
 - [ ] **Phase 4: Observability** - Serilog + OpenTelemetry wired across all services with correlation ID propagation
@@ -149,7 +149,7 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure | 2/3 | In Progress|  |
+| 1. Infrastructure | 3/3 | Complete   | 2026-04-01 |
 | 2. Keycloak Security Hardening | 0/TBD | Not started | - |
 | 3. Backend Domain Layer | 0/TBD | Not started | - |
 | 4. Observability | 0/TBD | Not started | - |

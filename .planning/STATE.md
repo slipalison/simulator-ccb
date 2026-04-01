@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: "Checkpoint: 01-infrastructure 01-03-PLAN.md Task 3 — awaiting docker compose up --wait verification"
-last_updated: "2026-04-01T18:28:22.345Z"
+stopped_at: Completed 01-infrastructure 01-03-PLAN.md — all tasks verified
+last_updated: "2026-04-01T18:57:26.958Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 10
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-infrastructure P01 | 2 | 3 tasks | 7 files |
 | Phase 01-infrastructure P02 | 8 | 2 tasks | 1 files |
 | Phase 01-infrastructure P03 | 4 | 2 tasks | 14 files |
+| Phase 01-infrastructure P03 | 60 | 3 tasks | 15 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,9 @@ Recent decisions affecting current work:
 - [Phase 01-infrastructure]: Realm import is idempotent — Keycloak skips re-import if realm already exists in keycloak_db volume
 - [Phase 01-infrastructure]: Used classic .sln format (--format sln) — .NET 10 defaults to .slnx but Dockerfile COPY requires Onboarding.sln
 - [Phase 01-infrastructure]: package.json type:module required for Vinxi — ESM-only framework; commonjs prevents config loading
+- [Phase 01-infrastructure]: createApp (not defineConfig) is the correct Vinxi 0.5.x API — defineConfig is not exported
+- [Phase 01-infrastructure]: vinxi dev --port 5173 --host CLI flags used — port from app.config.ts alone is not respected at runtime
+- [Phase 01-infrastructure]: index.html added as SPA entry point — required to prevent Vinxi SSR fallback crash (document is not defined)
 
 ### Pending Todos
 
@@ -86,6 +90,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T18:28:22.342Z
-Stopped at: Checkpoint: 01-infrastructure 01-03-PLAN.md Task 3 — awaiting docker compose up --wait verification
+Last session: 2026-04-01T18:57:26.955Z
+Stopped at: Completed 01-infrastructure 01-03-PLAN.md — all tasks verified
 Resume file: None

@@ -1,6 +1,6 @@
-import { defineConfig } from "vinxi";
+import { createApp } from "vinxi";
 
-export default defineConfig({
+export default createApp({
   routers: [
     {
       name: "public",

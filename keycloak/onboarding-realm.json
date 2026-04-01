@@ -1,0 +1,73 @@
+{
+  "realm": "onboarding",
+  "enabled": true,
+  "displayName": "Onboarding",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "rememberMe": false,
+  "sslRequired": "external",
+
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "failureFactor": 5,
+  "waitIncrementSeconds": 30,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+
+  "passwordPolicy": "length(8) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1)",
+
+  "accessTokenLifespan": 300,
+  "ssoSessionMaxLifespan": 28800,
+  "ssoSessionIdleTimeout": 1800,
+
+  "clients": [
+    {
+      "clientId": "onboarding-app",
+      "name": "Onboarding App (Public)",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "redirectUris": [
+        "http://localhost:5173/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "protocol": "openid-connect",
+      "defaultClientScopes": ["openid", "profile", "email"],
+      "optionalClientScopes": []
+    },
+    {
+      "clientId": "onboarding-api-admin",
+      "name": "Onboarding API Admin (Confidential)",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "secret": "dev-admin-secret",
+      "redirectUris": [],
+      "webOrigins": [],
+      "protocol": "openid-connect",
+      "defaultClientScopes": ["openid"],
+      "optionalClientScopes": []
+    }
+  ],
+
+  "clientScopeMappings": {
+    "realm-management": [
+      {
+        "client": "onboarding-api-admin",
+        "roles": ["manage-users", "view-users"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+.env
+**/bin/
+**/obj/
+**/node_modules/
+**/.DS_Store
+*.user
+.vs/
+frontend/dist/
+frontend/.vinxi/

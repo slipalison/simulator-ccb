@@ -1,0 +1,13 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/Onboarding.API/Onboarding.API.csproj" />
+    <Project Path="src/Onboarding.Application/Onboarding.Application.csproj" />
+    <Project Path="src/Onboarding.Domain/Onboarding.Domain.csproj" />
+    <Project Path="src/Onboarding.Infrastructure/Onboarding.Infrastructure.csproj" />
+  </Folder>
+</Solution>

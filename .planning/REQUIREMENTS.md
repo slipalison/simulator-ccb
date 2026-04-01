@@ -9,10 +9,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Infraestrutura
 
-- [ ] **INFRA-01**: Docker Compose orquestra todos os serviços (API, frontend, PostgreSQL x2, Keycloak)
-- [ ] **INFRA-02**: PostgreSQL dedicado para dados da aplicação (app_db)
-- [ ] **INFRA-03**: PostgreSQL dedicado para Keycloak (keycloak_db) — isolado do app_db
-- [ ] **INFRA-04**: Healthchecks em todos os serviços com depends_on condition: service_healthy
+- [x] **INFRA-01**: Docker Compose orquestra todos os serviços (API, frontend, PostgreSQL x2, Keycloak)
+- [x] **INFRA-02**: PostgreSQL dedicado para dados da aplicação (app_db)
+- [x] **INFRA-03**: PostgreSQL dedicado para Keycloak (keycloak_db) — isolado do app_db
+- [x] **INFRA-04**: Healthchecks em todos os serviços com depends_on condition: service_healthy
 - [ ] **INFRA-05**: Keycloak realm "onboarding" configurado com clients, policies e roles
 
 ### Segurança
@@ -131,10 +131,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | Phase 1 | Pending |
-| INFRA-02 | Phase 1 | Pending |
-| INFRA-03 | Phase 1 | Pending |
-| INFRA-04 | Phase 1 | Pending |
+| INFRA-01 | Phase 1 | Complete |
+| INFRA-02 | Phase 1 | Complete |
+| INFRA-03 | Phase 1 | Complete |
+| INFRA-04 | Phase 1 | Complete |
 | INFRA-05 | Phase 1 | Pending |
 | SEC-01 | Phase 2 | Pending |
 | SEC-02 | Phase 2 | Pending |

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Roadmap created — all 46 v1 requirements mapped to 10 phases. Ready to plan Phase 1.
-last_updated: "2026-04-01T14:56:47.870Z"
-last_activity: 2026-04-01 -- Phase 01 execution started
+stopped_at: Completed 01-infrastructure 01-01-PLAN.md
+last_updated: "2026-04-01T18:13:39.106Z"
+last_activity: 2026-04-01
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 ## Current Position
 
 Phase: 01 (infrastructure) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 01
-Last activity: 2026-04-01 -- Phase 01 execution started
+Plan: 2 of 3
+Status: Ready to execute
+Last activity: 2026-04-01
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -52,6 +52,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: -
 
 *Updated after each plan completion*
+| Phase 01-infrastructure P01 | 2 | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -63,6 +64,10 @@ Recent decisions affecting current work:
 - Roadmap: ROPC grant chosen over Auth Code + PKCE — conscious tradeoff, revisit if security requirements increase
 - Roadmap: Registration flow persists to app_db FIRST, then creates Keycloak user — rollback strategy needed if Keycloak call fails
 - Roadmap: Two separate PostgreSQL containers (app_db + keycloak_db) — strict isolation
+- [Phase 01-infrastructure]: KC_BOOTSTRAP_ADMIN_USERNAME used (not deprecated KEYCLOAK_ADMIN) — Keycloak 26.x silently ignores the old variable name
+- [Phase 01-infrastructure]: Keycloak healthcheck targets port 9000 via /dev/tcp (no curl in Keycloak 26.x image)
+- [Phase 01-infrastructure]: keycloak_db has no host port binding — strictly internal Docker network only
+- [Phase 01-infrastructure]: All host port bindings use 127.0.0.1 loopback prefix — prevents 0.0.0.0 exposure
 
 ### Pending Todos
 
@@ -75,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01
-Stopped at: Roadmap created — all 46 v1 requirements mapped to 10 phases. Ready to plan Phase 1.
+Last session: 2026-04-01T18:13:39.103Z
+Stopped at: Completed 01-infrastructure 01-01-PLAN.md
 Resume file: None

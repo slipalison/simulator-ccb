@@ -10,7 +10,7 @@ export default createApp({
     {
       name: "client",
       type: "spa",
-      handler: "./src/client.tsx",
+      handler: "./index.html",
       vite: {
         server: {
           host: "0.0.0.0",

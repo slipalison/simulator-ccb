@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 01-infrastructure 01-01-PLAN.md
-last_updated: "2026-04-01T18:13:39.106Z"
+stopped_at: Completed 01-infrastructure 01-02-PLAN.md
+last_updated: "2026-04-01T18:21:04.978Z"
 last_activity: 2026-04-01
 progress:
   total_phases: 10
   completed_phases: 0
   total_plans: 3
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 ## Current Position
 
 Phase: 01 (infrastructure) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-04-01
 
@@ -53,6 +53,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01-infrastructure P01 | 2 | 3 tasks | 7 files |
+| Phase 01-infrastructure P02 | 8 | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,8 @@ Recent decisions affecting current work:
 - [Phase 01-infrastructure]: Keycloak healthcheck targets port 9000 via /dev/tcp (no curl in Keycloak 26.x image)
 - [Phase 01-infrastructure]: keycloak_db has no host port binding — strictly internal Docker network only
 - [Phase 01-infrastructure]: All host port bindings use 127.0.0.1 loopback prefix — prevents 0.0.0.0 exposure
+- [Phase 01-infrastructure]: clientScopeMappings used (not scopeMappings) for service account role binding in realm JSON — confirmed correct Keycloak import format
+- [Phase 01-infrastructure]: Realm import is idempotent — Keycloak skips re-import if realm already exists in keycloak_db volume
 
 ### Pending Todos
 
@@ -80,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T18:13:39.103Z
-Stopped at: Completed 01-infrastructure 01-01-PLAN.md
+Last session: 2026-04-01T18:21:04.975Z
+Stopped at: Completed 01-infrastructure 01-02-PLAN.md
 Resume file: None

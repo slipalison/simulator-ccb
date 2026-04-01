@@ -149,7 +149,7 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure | 0/3 | Not started | - |
+| 1. Infrastructure | 2/3 | In Progress|  |
 | 2. Keycloak Security Hardening | 0/TBD | Not started | - |
 | 3. Backend Domain Layer | 0/TBD | Not started | - |
 | 4. Observability | 0/TBD | Not started | - |

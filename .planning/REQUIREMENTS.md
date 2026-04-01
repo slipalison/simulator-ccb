@@ -13,7 +13,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **INFRA-02**: PostgreSQL dedicado para dados da aplicação (app_db)
 - [x] **INFRA-03**: PostgreSQL dedicado para Keycloak (keycloak_db) — isolado do app_db
 - [x] **INFRA-04**: Healthchecks em todos os serviços com depends_on condition: service_healthy
-- [ ] **INFRA-05**: Keycloak realm "onboarding" configurado com clients, policies e roles
+- [x] **INFRA-05**: Keycloak realm "onboarding" configurado com clients, policies e roles
 
 ### Segurança
 
@@ -135,7 +135,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-02 | Phase 1 | Complete |
 | INFRA-03 | Phase 1 | Complete |
 | INFRA-04 | Phase 1 | Complete |
-| INFRA-05 | Phase 1 | Pending |
+| INFRA-05 | Phase 1 | Complete |
 | SEC-01 | Phase 2 | Pending |
 | SEC-02 | Phase 2 | Pending |
 | SEC-03 | Phase 2 | Pending |

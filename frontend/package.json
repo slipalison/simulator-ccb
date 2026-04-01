@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "vinxi dev",
+    "dev": "vinxi dev --port 5173 --host",
     "build": "vinxi build",
     "start": "vinxi start"
   },

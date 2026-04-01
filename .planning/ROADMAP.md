@@ -28,7 +28,11 @@ This roadmap builds a secure PF/PJ client onboarding system from infrastructure 
   2. Healthchecks pass for every service and dependent services wait for healthy upstream before starting
   3. app_db and keycloak_db are separate containers with no shared volumes or network namespaces
   4. Keycloak realm "onboarding" exists with the required clients, policies, and roles after first boot
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 01-PLAN-01.md — Repo skeleton, compose.yaml with dual PostgreSQL, secret management
+- [ ] 01-PLAN-02.md — Keycloak realm JSON with clients, brute force, password policy
+- [ ] 01-PLAN-03.md — .NET solution scaffold, Vinxi frontend, full stack smoke test
 
 ### Phase 2: Keycloak Security Hardening
 **Goal**: Keycloak is hardened against all documented attack surfaces before any user data flows through it
@@ -145,7 +149,7 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure | 0/TBD | Not started | - |
+| 1. Infrastructure | 0/3 | Not started | - |
 | 2. Keycloak Security Hardening | 0/TBD | Not started | - |
 | 3. Backend Domain Layer | 0/TBD | Not started | - |
 | 4. Observability | 0/TBD | Not started | - |

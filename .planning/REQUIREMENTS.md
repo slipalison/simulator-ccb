@@ -60,7 +60,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **BACK-03**: Client aggregate com factory methods (RegisterPessoaFisica, RegisterPessoaJuridica)
 - [ ] **BACK-04**: TDD — testes unitários no domain, integração nos endpoints
 - [ ] **BACK-05**: Controllers ASP.NET Core (sem Minimal API)
-- [ ] **BACK-06**: CQRS via MediatR (commands para escrita, queries para leitura)
+- [ ] **BACK-06**: CQRS manual via DI (commands/handlers injetados diretamente, sem MediatR)
 
 ### Observabilidade
 
@@ -131,59 +131,59 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INFRA-01 | - | Pending |
-| INFRA-02 | - | Pending |
-| INFRA-03 | - | Pending |
-| INFRA-04 | - | Pending |
-| INFRA-05 | - | Pending |
-| SEC-01 | - | Pending |
-| SEC-02 | - | Pending |
-| SEC-03 | - | Pending |
-| SEC-04 | - | Pending |
-| SEC-05 | - | Pending |
-| SEC-06 | - | Pending |
-| SEC-07 | - | Pending |
-| SEC-08 | - | Pending |
-| SEC-09 | - | Pending |
-| SEC-10 | - | Pending |
-| REG-01 | - | Pending |
-| REG-02 | - | Pending |
-| REG-03 | - | Pending |
-| REG-04 | - | Pending |
-| REG-05 | - | Pending |
-| REG-06 | - | Pending |
-| REG-07 | - | Pending |
-| REG-08 | - | Pending |
-| REG-09 | - | Pending |
-| AUTH-01 | - | Pending |
-| AUTH-02 | - | Pending |
-| AUTH-03 | - | Pending |
-| AUTH-04 | - | Pending |
-| PROF-01 | - | Pending |
-| PROF-02 | - | Pending |
-| PROF-03 | - | Pending |
-| BACK-01 | - | Pending |
-| BACK-02 | - | Pending |
-| BACK-03 | - | Pending |
-| BACK-04 | - | Pending |
-| BACK-05 | - | Pending |
-| BACK-06 | - | Pending |
-| OBS-01 | - | Pending |
-| OBS-02 | - | Pending |
-| OBS-03 | - | Pending |
-| OBS-04 | - | Pending |
-| OBS-05 | - | Pending |
-| FRONT-01 | - | Pending |
-| FRONT-02 | - | Pending |
-| FRONT-03 | - | Pending |
-| FRONT-04 | - | Pending |
-| FRONT-05 | - | Pending |
+| INFRA-01 | Phase 1 | Pending |
+| INFRA-02 | Phase 1 | Pending |
+| INFRA-03 | Phase 1 | Pending |
+| INFRA-04 | Phase 1 | Pending |
+| INFRA-05 | Phase 1 | Pending |
+| SEC-01 | Phase 2 | Pending |
+| SEC-02 | Phase 2 | Pending |
+| SEC-03 | Phase 2 | Pending |
+| SEC-04 | Phase 2 | Pending |
+| SEC-05 | Phase 2 | Pending |
+| SEC-06 | Phase 2 | Pending |
+| SEC-07 | Phase 2 | Pending |
+| SEC-08 | Phase 5 | Pending |
+| SEC-09 | Phase 4 | Pending |
+| SEC-10 | Phase 9 | Pending |
+| REG-01 | Phase 8 | Pending |
+| REG-02 | Phase 8 | Pending |
+| REG-03 | Phase 5 | Pending |
+| REG-04 | Phase 5 | Pending |
+| REG-05 | Phase 5 | Pending |
+| REG-06 | Phase 5 | Pending |
+| REG-07 | Phase 8 | Pending |
+| REG-08 | Phase 5 | Pending |
+| REG-09 | Phase 8 | Pending |
+| AUTH-01 | Phase 9 | Pending |
+| AUTH-02 | Phase 6 | Pending |
+| AUTH-03 | Phase 6 | Pending |
+| AUTH-04 | Phase 6 | Pending |
+| PROF-01 | Phase 10 | Pending |
+| PROF-02 | Phase 10 | Pending |
+| PROF-03 | Phase 10 | Pending |
+| BACK-01 | Phase 3 | Pending |
+| BACK-02 | Phase 3 | Pending |
+| BACK-03 | Phase 3 | Pending |
+| BACK-04 | Phase 3 | Pending |
+| BACK-05 | Phase 5 | Pending |
+| BACK-06 | Phase 3 | Pending |
+| OBS-01 | Phase 4 | Pending |
+| OBS-02 | Phase 4 | Pending |
+| OBS-03 | Phase 4 | Pending |
+| OBS-04 | Phase 4 | Pending |
+| OBS-05 | Phase 4 | Pending |
+| FRONT-01 | Phase 7 | Pending |
+| FRONT-02 | Phase 7 | Pending |
+| FRONT-03 | Phase 7 | Pending |
+| FRONT-04 | Phase 7 | Pending |
+| FRONT-05 | Phase 7 | Pending |
 
 **Coverage:**
 - v1 requirements: 46 total
-- Mapped to phases: 0
-- Unmapped: 46 (will be mapped during roadmap creation)
+- Mapped to phases: 46
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-01*
-*Last updated: 2026-04-01 after initial definition*
+*Last updated: 2026-04-01 after roadmap creation*

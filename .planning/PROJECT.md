@@ -88,6 +88,7 @@ O login usa tela custom no React autenticando via Keycloak (Resource Owner Passw
 | Formulário de cadastro custom | Cadastro via Admin API do Keycloak — maior controle do fluxo | — Pending |
 | Sem validação de email no v1 | Simplificar fluxo inicial — cadastrou, já pode logar | — Pending |
 | Atomic Design no frontend | Facilitar mudanças futuras de layout com componentes reutilizáveis | — Pending |
+| Sem MediatR — CQRS manual via DI | MediatR não é mais open source (licença comercial). Handlers injetados direto via DI nativo do .NET | ✓ Good |
 
 ## Evolution
 

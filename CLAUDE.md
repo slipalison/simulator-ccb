@@ -40,10 +40,13 @@ Sistema de onboarding para cadastro de clientes Pessoa Física (PF) e Pessoa Jur
 | Validation | FluentValidation | 11.x | Command/DTO validation in Application layer. | HIGH |
 | CQRS | Manual DI | - | Command/query handlers injected via built-in DI. No third-party mediator. | HIGH |
 | Testing | xUnit | 2.9.x | Standard .NET test framework. User wants TDD. | HIGH |
-| Test assertions | FluentAssertions | 7.x | Readable test assertions. | HIGH |
+| Test assertions | Shouldly | 4.x | Readable test assertions. MIT license — fully open source. | HIGH |
 | Integration tests | Microsoft.AspNetCore.Mvc.Testing | 10.0 | WebApplicationFactory for API integration tests. | HIGH |
 | Test containers | Testcontainers | 4.x | Spin up PostgreSQL + Keycloak in integration tests. | HIGH |
 | Mocking | NSubstitute | 5.x | Mocking for unit tests. Simpler than Moq. | HIGH |
+### License Rule
+**All libraries must be open source (Apache 2.0, MIT, or equivalent permissive license).** Before adding any NuGet package, verify its license. Reject any package that is proprietary, source-available-only, or has moved to a commercial model.
+
 ### What NOT to Use
 | Package | Why Avoid |
 |---------|-----------|
@@ -53,6 +56,8 @@ Sistema de onboarding para cadastro de clientes Pessoa Física (PF) e Pessoa Jur
 | IdentityServer/Duende IdentityServer | Keycloak IS the identity provider. Don't add another. |
 | ASP.NET Core Identity | Keycloak manages users. Don't mix identity systems. |
 | MediatR | No longer open source (commercial license). Use manual DI for CQRS. |
+| FluentAssertions | v8+ moved to commercial license (Xceed). Use Shouldly (MIT) instead. |
+| MassTransit | Out of scope — message bus não é necessário neste projeto. |
 ## Frontend — React + Vinxi
 | Component | Package | Version | Rationale | Confidence |
 |-----------|---------|---------|-----------|------------|

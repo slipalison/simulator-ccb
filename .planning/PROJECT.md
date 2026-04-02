@@ -13,6 +13,9 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 ### Validated
 
 - [x] Keycloak hardened contra vulnerabilidades conhecidas (SSRF, open redirect, brute force, etc.) — Validated in Phase 02: keycloak-security-hardening
+- [x] Domain layer com value objects Cpf, Cnpj, Email, PhoneNumber e aggregate Client com factory methods PF/PJ — Validated in Phase 03: backend-domain-layer
+- [x] CQRS application layer — ICommandHandler/IQueryHandler, RegisterClientCommand + handler, DI wiring manual (sem MediatR) — Validated in Phase 03: backend-domain-layer
+- [x] Backend com TDD, DDD, SOLID, sem Minimal API (parcial — domain + application layers) — Validated in Phase 03: backend-domain-layer
 
 ### Active
 
@@ -108,4 +111,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-02 after Phase 02 completion — Keycloak security hardening verified (SEC-01 to SEC-07 all passing)*
+*Last updated: 2026-04-02 after Phase 03 completion — Domain layer (38 testes TDD) e application CQRS layer implementados (BACK-01 a BACK-04, BACK-06 verified)*

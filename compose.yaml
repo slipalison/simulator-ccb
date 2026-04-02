@@ -45,6 +45,7 @@ services:
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME: http://localhost:8180
+      KC_SPI_LOGIN_PROTOCOL__OPENID_CONNECT__REQUEST_URI_ENABLED: "false"
     volumes:
       - ./keycloak/onboarding-realm.json:/opt/keycloak/data/import/onboarding-realm.json:ro
     ports:

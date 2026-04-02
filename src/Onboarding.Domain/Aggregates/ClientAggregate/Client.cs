@@ -17,13 +17,15 @@ public sealed class Client : Entity<Guid>
     public Cnpj? Cnpj { get; private set; }
     public string? RazaoSocial { get; private set; }
 
-    // Private constructor: prevents external construction; EF Core uses parameterless constructor
-    private Client() { }
-
-    // EF Core entry point — required to allow EF Core to instantiate this entity
-    // without invoking factory methods. Without this, EF Core cannot materialize
-    // Client instances from the database.
-    protected Client(bool _) { }
+    // Protected parameterless constructor: used by EF Core to materialize entities
+    // from the database without invoking factory methods. External code must use
+    // the static factory methods (RegisterPessoaFisica / RegisterPessoaJuridica)
+    // which enforce all domain invariants.
+    // CS0628: Warning suppressed — protected constructor in sealed class is an
+    // intentional EF Core convention pattern required for entity materialization.
+#pragma warning disable CS0628
+    protected Client() { }
+#pragma warning restore CS0628
 
     public static Client RegisterPessoaFisica(
         string nome,

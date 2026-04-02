@@ -28,6 +28,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Onboarding.Domain\Onboarding.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Onboarding.Application\Onboarding.Application.csproj" />
   </ItemGroup>
 
 </Project>

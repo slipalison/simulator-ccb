@@ -60,7 +60,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **BACK-03**: Client aggregate com factory methods (RegisterPessoaFisica, RegisterPessoaJuridica)
 - [x] **BACK-04**: TDD — testes unitários no domain, integração nos endpoints
 - [ ] **BACK-05**: Controllers ASP.NET Core (sem Minimal API)
-- [ ] **BACK-06**: CQRS manual via DI (commands/handlers injetados diretamente, sem MediatR)
+- [x] **BACK-06**: CQRS manual via DI (commands/handlers injetados diretamente, sem MediatR)
 
 ### Observabilidade
 
@@ -167,7 +167,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BACK-03 | Phase 3 | Complete |
 | BACK-04 | Phase 3 | Complete |
 | BACK-05 | Phase 5 | Pending |
-| BACK-06 | Phase 3 | Pending |
+| BACK-06 | Phase 3 | Complete |
 | OBS-01 | Phase 4 | Pending |
 | OBS-02 | Phase 4 | Pending |
 | OBS-03 | Phase 4 | Pending |

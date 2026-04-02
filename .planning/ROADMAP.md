@@ -61,7 +61,7 @@ Plans:
 **Plans**: 2 plans
 Plans:
 - [x] 03-01-PLAN.md — Test project scaffold, domain value objects (Cpf, Cnpj, Email, PhoneNumber), Client aggregate (TDD RED→GREEN)
-- [ ] 03-02-PLAN.md — CQRS interfaces, RegisterClientCommand, handler, DI wiring (TDD RED→GREEN)
+- [x] 03-02-PLAN.md — CQRS interfaces, RegisterClientCommand, handler, DI wiring (TDD RED→GREEN)
 
 ### Phase 4: Observability
 **Goal**: Every request flowing through the system produces structured logs, distributed traces, and metrics with full correlation

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-stopped_at: Completed 03-backend-domain-layer 03-01-PLAN.md — 33 domain tests green, zero-dependency domain layer
-last_updated: "2026-04-02T21:16:33.972Z"
+status: verifying
+stopped_at: Completed 03-backend-domain-layer 03-02-PLAN.md — 38 tests green, Application CQRS layer with manual DI handler
+last_updated: "2026-04-02T21:21:10.231Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 10
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 6
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -27,7 +27,7 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 
 Phase: 03 (backend-domain-layer) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-02
 
 Progress: [░░░░░░░░░░] 0%
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-infrastructure P03 | 60 | 3 tasks | 15 files |
 | Phase 02-keycloak-security-hardening P01 | 6 | 3 tasks | 4 files |
 | Phase 03-backend-domain-layer P01 | 4 | 2 tasks | 16 files |
+| Phase 03-backend-domain-layer P02 | 2 | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,8 @@ Recent decisions affecting current work:
 - [Phase 03-backend-domain-layer]: Alphanumeric CNPJ (July 2026): ASCII-48 algorithm is backward-compatible; true alphanumeric test deferred until Receita Federal publishes verified samples
 - [Phase 03-backend-domain-layer]: protected Client() for EF Core materialization — CS0628 warning suppressed with pragma; intentional Pitfall 3 pattern
 - [Phase 03-backend-domain-layer]: No Password property on Client aggregate — auth credentials belong entirely to Keycloak
+- [Phase 03-backend-domain-layer]: No MediatR — ICommandHandler<TCommand,TResult> interface used directly for CQRS; handlers injected via built-in .NET DI (MediatR is commercial)
+- [Phase 03-backend-domain-layer]: Password in RegisterClientCommand but absent from Client aggregate — Phase 5 handler will forward to IKeycloakUserService.CreateUserAsync
 
 ### Pending Todos
 
@@ -98,6 +101,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T21:16:33.969Z
-Stopped at: Completed 03-backend-domain-layer 03-01-PLAN.md — 33 domain tests green, zero-dependency domain layer
+Last session: 2026-04-02T21:21:10.228Z
+Stopped at: Completed 03-backend-domain-layer 03-02-PLAN.md — 38 tests green, Application CQRS layer with manual DI handler
 Resume file: None

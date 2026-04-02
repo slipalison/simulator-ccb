@@ -17,13 +17,13 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Segurança
 
-- [ ] **SEC-01**: Keycloak brute force protection habilitado (max 5 falhas, 30s wait, escalating)
-- [ ] **SEC-02**: Password policy no Keycloak (min 8 chars, uppercase, lowercase, digit, special)
-- [ ] **SEC-03**: Redirect URIs exatas registradas nos clients Keycloak (sem wildcards)
-- [ ] **SEC-04**: SSRF protection — disable request_uri no Keycloak
-- [ ] **SEC-05**: Admin console Keycloak restrita (bind 127.0.0.1 em dev, bloqueada em prod)
-- [ ] **SEC-06**: HTTPS enforcement configurado no Keycloak (HTTP apenas em dev local)
-- [ ] **SEC-07**: Service account com least privilege (manage-users only) para Admin API
+- [x] **SEC-01**: Keycloak brute force protection habilitado (max 5 falhas, 30s wait, escalating)
+- [x] **SEC-02**: Password policy no Keycloak (min 8 chars, uppercase, lowercase, digit, special)
+- [x] **SEC-03**: Redirect URIs exatas registradas nos clients Keycloak (sem wildcards)
+- [x] **SEC-04**: SSRF protection — disable request_uri no Keycloak
+- [x] **SEC-05**: Admin console Keycloak restrita (bind 127.0.0.1 em dev, bloqueada em prod)
+- [x] **SEC-06**: HTTPS enforcement configurado no Keycloak (HTTP apenas em dev local)
+- [x] **SEC-07**: Service account com least privilege (manage-users only) para Admin API
 - [ ] **SEC-08**: Erros genéricos em todas as respostas de autenticação (sem information leakage)
 - [ ] **SEC-09**: Log masking para dados sensíveis (senhas, tokens, secrets não aparecem nos logs)
 - [ ] **SEC-10**: JWT armazenado em memória no frontend (nunca localStorage/sessionStorage)
@@ -136,13 +136,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-03 | Phase 1 | Complete |
 | INFRA-04 | Phase 1 | Complete |
 | INFRA-05 | Phase 1 | Complete |
-| SEC-01 | Phase 2 | Pending |
-| SEC-02 | Phase 2 | Pending |
-| SEC-03 | Phase 2 | Pending |
-| SEC-04 | Phase 2 | Pending |
-| SEC-05 | Phase 2 | Pending |
-| SEC-06 | Phase 2 | Pending |
-| SEC-07 | Phase 2 | Pending |
+| SEC-01 | Phase 2 | Complete |
+| SEC-02 | Phase 2 | Complete |
+| SEC-03 | Phase 2 | Complete |
+| SEC-04 | Phase 2 | Complete |
+| SEC-05 | Phase 2 | Complete |
+| SEC-06 | Phase 2 | Complete |
+| SEC-07 | Phase 2 | Complete |
 | SEC-08 | Phase 5 | Pending |
 | SEC-09 | Phase 4 | Pending |
 | SEC-10 | Phase 9 | Pending |

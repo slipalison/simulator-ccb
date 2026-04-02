@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-stopped_at: Completed 01-infrastructure 01-03-PLAN.md — all tasks verified
-last_updated: "2026-04-01T18:57:26.958Z"
-last_activity: 2026-04-01
+stopped_at: Completed 02-keycloak-security-hardening 02-01-PLAN.md — all 6 hardening checks verified
+last_updated: "2026-04-02T12:14:55.864Z"
+last_activity: 2026-04-02
 progress:
   total_phases: 10
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
   percent: 0
 ---
 
@@ -28,7 +28,7 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 Phase: 01 (infrastructure) — EXECUTING
 Plan: 3 of 3
 Status: Phase complete — ready for verification
-Last activity: 2026-04-01
+Last activity: 2026-04-02
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-infrastructure P02 | 8 | 2 tasks | 1 files |
 | Phase 01-infrastructure P03 | 4 | 2 tasks | 14 files |
 | Phase 01-infrastructure P03 | 60 | 3 tasks | 15 files |
+| Phase 02-keycloak-security-hardening P01 | 6 | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,9 @@ Recent decisions affecting current work:
 - [Phase 01-infrastructure]: createApp (not defineConfig) is the correct Vinxi 0.5.x API — defineConfig is not exported
 - [Phase 01-infrastructure]: vinxi dev --port 5173 --host CLI flags used — port from app.config.ts alone is not respected at runtime
 - [Phase 01-infrastructure]: index.html added as SPA entry point — required to prevent Vinxi SSR fallback crash (document is not defined)
+- [Phase 02-keycloak-security-hardening]: SEC-03 wildcard check excludes Keycloak built-in system clients (account, account-console, security-admin-console) which always have wildcard redirect URIs by design
+- [Phase 02-keycloak-security-hardening]: KC_SPI_LOGIN_PROTOCOL__OPENID_CONNECT__REQUEST_URI_ENABLED=false silently accepted by Keycloak 26.1 (no unrecognized-key warning) — feature appears disabled at code level in Keycloak 26.x
+- [Phase 02-keycloak-security-hardening]: clientPolicies and clientProfiles imported cleanly from realm JSON on first boot — no Admin API PATCH fallback required
 
 ### Pending Todos
 
@@ -90,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-01T18:57:26.955Z
-Stopped at: Completed 01-infrastructure 01-03-PLAN.md — all tasks verified
+Last session: 2026-04-02T12:14:55.861Z
+Stopped at: Completed 02-keycloak-security-hardening 02-01-PLAN.md — all 6 hardening checks verified
 Resume file: None

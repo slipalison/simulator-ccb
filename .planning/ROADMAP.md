@@ -7,7 +7,7 @@ This roadmap builds a secure PF/PJ client onboarding system from infrastructure 
 ## Phases
 
 - [x] **Phase 1: Infrastructure** - Docker Compose with dual PostgreSQL, Keycloak realm configured and running (completed 2026-04-01)
-- [ ] **Phase 2: Keycloak Security Hardening** - Keycloak hardened against all documented attack surfaces
+- [x] **Phase 2: Keycloak Security Hardening** - Keycloak hardened against all documented attack surfaces (completed 2026-04-02)
 - [ ] **Phase 3: Backend Domain Layer** - DDD domain model with value objects, aggregate, and full test coverage
 - [ ] **Phase 4: Observability** - Serilog + OpenTelemetry wired across all services with correlation ID propagation
 - [ ] **Phase 5: Registration API** - Backend endpoints for PF/PJ registration with full validation and Keycloak user creation
@@ -46,7 +46,7 @@ Plans:
   5. The service account used for Admin API access holds only the `manage-users` role and no broader permissions
 **Plans**: 1 plan
 Plans:
-- [ ] 02-01-PLAN.md — Acceptance test suite, realm JSON hardening (exact redirectUri + clientPolicies), request_uri SPI flag, clean-boot verification
+- [x] 02-01-PLAN.md — Acceptance test suite, realm JSON hardening (exact redirectUri + clientPolicies), request_uri SPI flag, clean-boot verification
 
 ### Phase 3: Backend Domain Layer
 **Goal**: The core business rules live in a rich, fully-tested domain model that has no dependency on infrastructure
@@ -152,7 +152,7 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Infrastructure | 3/3 | Complete   | 2026-04-01 |
-| 2. Keycloak Security Hardening | 0/1 | Not started | - |
+| 2. Keycloak Security Hardening | 1/1 | Complete   | 2026-04-02 |
 | 3. Backend Domain Layer | 0/TBD | Not started | - |
 | 4. Observability | 0/TBD | Not started | - |
 | 5. Registration API | 0/TBD | Not started | - |

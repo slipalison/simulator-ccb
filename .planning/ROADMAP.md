@@ -44,7 +44,9 @@ Plans:
   3. Keycloak admin console is inaccessible from any IP except 127.0.0.1 in the dev environment
   4. The `request_uri` parameter is disabled and no redirect URI accepts wildcards — only exact URIs registered
   5. The service account used for Admin API access holds only the `manage-users` role and no broader permissions
-**Plans**: TBD
+**Plans**: 1 plan
+Plans:
+- [ ] 02-01-PLAN.md — Acceptance test suite, realm JSON hardening (exact redirectUri + clientPolicies), request_uri SPI flag, clean-boot verification
 
 ### Phase 3: Backend Domain Layer
 **Goal**: The core business rules live in a rich, fully-tested domain model that has no dependency on infrastructure
@@ -150,7 +152,7 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Infrastructure | 3/3 | Complete   | 2026-04-01 |
-| 2. Keycloak Security Hardening | 0/TBD | Not started | - |
+| 2. Keycloak Security Hardening | 0/1 | Not started | - |
 | 3. Backend Domain Layer | 0/TBD | Not started | - |
 | 4. Observability | 0/TBD | Not started | - |
 | 5. Registration API | 0/TBD | Not started | - |

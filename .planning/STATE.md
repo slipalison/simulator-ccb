@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 02-keycloak-security-hardening 02-01-PLAN.md — all 6 hardening checks verified
-last_updated: "2026-04-02T12:19:41.755Z"
+status: executing
+stopped_at: Completed 03-backend-domain-layer 03-01-PLAN.md — 33 domain tests green, zero-dependency domain layer
+last_updated: "2026-04-02T21:16:33.972Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 10
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
   percent: 0
 ---
 
@@ -21,13 +21,13 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** Phase 01 — infrastructure
+**Current focus:** Phase 03 — backend-domain-layer
 
 ## Current Position
 
-Phase: 3
-Plan: Not started
-Status: Phase complete — ready for verification
+Phase: 03 (backend-domain-layer) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
 Last activity: 2026-04-02
 
 Progress: [░░░░░░░░░░] 0%
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01-infrastructure P03 | 4 | 2 tasks | 14 files |
 | Phase 01-infrastructure P03 | 60 | 3 tasks | 15 files |
 | Phase 02-keycloak-security-hardening P01 | 6 | 3 tasks | 4 files |
+| Phase 03-backend-domain-layer P01 | 4 | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,9 @@ Recent decisions affecting current work:
 - [Phase 02-keycloak-security-hardening]: SEC-03 wildcard check excludes Keycloak built-in system clients (account, account-console, security-admin-console) which always have wildcard redirect URIs by design
 - [Phase 02-keycloak-security-hardening]: KC_SPI_LOGIN_PROTOCOL__OPENID_CONNECT__REQUEST_URI_ENABLED=false silently accepted by Keycloak 26.1 (no unrecognized-key warning) — feature appears disabled at code level in Keycloak 26.x
 - [Phase 02-keycloak-security-hardening]: clientPolicies and clientProfiles imported cleanly from realm JSON on first boot — no Admin API PATCH fallback required
+- [Phase 03-backend-domain-layer]: Alphanumeric CNPJ (July 2026): ASCII-48 algorithm is backward-compatible; true alphanumeric test deferred until Receita Federal publishes verified samples
+- [Phase 03-backend-domain-layer]: protected Client() for EF Core materialization — CS0628 warning suppressed with pragma; intentional Pitfall 3 pattern
+- [Phase 03-backend-domain-layer]: No Password property on Client aggregate — auth credentials belong entirely to Keycloak
 
 ### Pending Todos
 
@@ -94,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T12:14:55.861Z
-Stopped at: Completed 02-keycloak-security-hardening 02-01-PLAN.md — all 6 hardening checks verified
+Last session: 2026-04-02T21:16:33.969Z
+Stopped at: Completed 03-backend-domain-layer 03-01-PLAN.md — 33 domain tests green, zero-dependency domain layer
 Resume file: None

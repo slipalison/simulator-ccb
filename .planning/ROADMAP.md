@@ -60,7 +60,7 @@ Plans:
   5. DDD layer boundaries are enforced: Domain references nothing outside itself; Application references only Domain
 **Plans**: 2 plans
 Plans:
-- [ ] 03-01-PLAN.md — Test project scaffold, domain value objects (Cpf, Cnpj, Email, PhoneNumber), Client aggregate (TDD RED→GREEN)
+- [x] 03-01-PLAN.md — Test project scaffold, domain value objects (Cpf, Cnpj, Email, PhoneNumber), Client aggregate (TDD RED→GREEN)
 - [ ] 03-02-PLAN.md — CQRS interfaces, RegisterClientCommand, handler, DI wiring (TDD RED→GREEN)
 
 ### Phase 4: Observability
@@ -156,7 +156,7 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 |-------|----------------|--------|-----------|
 | 1. Infrastructure | 3/3 | Complete   | 2026-04-01 |
 | 2. Keycloak Security Hardening | 1/1 | Complete   | 2026-04-02 |
-| 3. Backend Domain Layer | 0/2 | Not started | - |
+| 3. Backend Domain Layer | 1/2 | In Progress|  |
 | 4. Observability | 0/TBD | Not started | - |
 | 5. Registration API | 0/TBD | Not started | - |
 | 6. Authentication API | 0/TBD | Not started | - |

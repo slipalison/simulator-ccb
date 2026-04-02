@@ -55,10 +55,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Backend Design
 
-- [ ] **BACK-01**: Arquitetura DDD — Domain, Application, Infrastructure, API layers
-- [ ] **BACK-02**: Value objects: CPF, CNPJ, Email, Phone com auto-validação
-- [ ] **BACK-03**: Client aggregate com factory methods (RegisterPessoaFisica, RegisterPessoaJuridica)
-- [ ] **BACK-04**: TDD — testes unitários no domain, integração nos endpoints
+- [x] **BACK-01**: Arquitetura DDD — Domain, Application, Infrastructure, API layers
+- [x] **BACK-02**: Value objects: CPF, CNPJ, Email, Phone com auto-validação
+- [x] **BACK-03**: Client aggregate com factory methods (RegisterPessoaFisica, RegisterPessoaJuridica)
+- [x] **BACK-04**: TDD — testes unitários no domain, integração nos endpoints
 - [ ] **BACK-05**: Controllers ASP.NET Core (sem Minimal API)
 - [ ] **BACK-06**: CQRS manual via DI (commands/handlers injetados diretamente, sem MediatR)
 
@@ -162,10 +162,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PROF-01 | Phase 10 | Pending |
 | PROF-02 | Phase 10 | Pending |
 | PROF-03 | Phase 10 | Pending |
-| BACK-01 | Phase 3 | Pending |
-| BACK-02 | Phase 3 | Pending |
-| BACK-03 | Phase 3 | Pending |
-| BACK-04 | Phase 3 | Pending |
+| BACK-01 | Phase 3 | Complete |
+| BACK-02 | Phase 3 | Complete |
+| BACK-03 | Phase 3 | Complete |
+| BACK-04 | Phase 3 | Complete |
 | BACK-05 | Phase 5 | Pending |
 | BACK-06 | Phase 3 | Pending |
 | OBS-01 | Phase 4 | Pending |

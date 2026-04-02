@@ -12,7 +12,7 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 ### Validated
 
-(None yet — ship to validate)
+- [x] Keycloak hardened contra vulnerabilidades conhecidas (SSRF, open redirect, brute force, etc.) — Validated in Phase 02: keycloak-security-hardening
 
 ### Active
 
@@ -22,7 +22,7 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 - [ ] Tela de login custom com autenticação via Keycloak
 - [ ] Redirecionamento pós-cadastro para tela de login
 - [ ] Tela de perfil com dados cadastrais (read-only) após primeiro login
-- [ ] Keycloak hardened contra vulnerabilidades conhecidas (SSRF, open redirect, brute force, etc.)
+- [ ] Keycloak hardened contra vulnerabilidades conhecidas (SSRF, open redirect, brute force, etc.) — validated above
 - [ ] Docker Compose com toda a infraestrutura (API, frontend, PostgreSQL, Keycloak)
 - [ ] Backend com TDD, DDD, SOLID, sem Minimal API
 - [ ] Serilog + OpenTelemetry para logs, traces e metrics
@@ -108,4 +108,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-01 after initialization*
+*Last updated: 2026-04-02 after Phase 02 completion — Keycloak security hardening verified (SEC-01 to SEC-07 all passing)*

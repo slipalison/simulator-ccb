@@ -10,4 +10,7 @@
     <Project Path="src/Onboarding.Domain/Onboarding.Domain.csproj" />
     <Project Path="src/Onboarding.Infrastructure/Onboarding.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Onboarding.Domain.Tests/Onboarding.Domain.Tests.csproj" />
+  </Folder>
 </Solution>

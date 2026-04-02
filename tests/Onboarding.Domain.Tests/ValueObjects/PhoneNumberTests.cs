@@ -6,14 +6,14 @@ namespace Onboarding.Domain.Tests.ValueObjects;
 public class PhoneNumberTests
 {
     [Theory]
-    [InlineData("+55 (11) 99999-8888")]
-    [InlineData("11999998888")]
-    public void Create_ValidPhone_ReturnsInstance(string raw)
+    [InlineData("+55 (11) 99999-8888", "5511999998888")]
+    [InlineData("11999998888", "11999998888")]
+    public void Create_ValidPhone_ReturnsInstance(string raw, string expectedDigits)
     {
         var phone = PhoneNumber.Create(raw);
 
         phone.ShouldNotBeNull();
-        phone.Value.ShouldBe("11999998888");
+        phone.Value.ShouldBe(expectedDigits);
     }
 
     [Theory]

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: verifying
-stopped_at: Completed 03-backend-domain-layer 03-02-PLAN.md — 38 tests green, Application CQRS layer with manual DI handler
-last_updated: "2026-04-02T21:24:46.627Z"
-last_activity: 2026-04-02
+status: executing
+stopped_at: Completed 04-observability 04-00-PLAN.md — test scaffold with 16 failing stubs
+last_updated: "2026-04-03T20:27:00.371Z"
+last_activity: 2026-04-03
 progress:
   total_phases: 10
   completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 10
+  completed_plans: 7
   percent: 0
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** Phase 03 — backend-domain-layer
+**Current focus:** Phase 04 — observability
 
 ## Current Position
 
-Phase: 4
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-02
+Phase: 04 (observability) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-04-03
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02-keycloak-security-hardening P01 | 6 | 3 tasks | 4 files |
 | Phase 03-backend-domain-layer P01 | 4 | 2 tasks | 16 files |
 | Phase 03-backend-domain-layer P02 | 2 | 2 tasks | 10 files |
+| Phase 04-observability P00 | 2 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,8 @@ Recent decisions affecting current work:
 - [Phase 03-backend-domain-layer]: No Password property on Client aggregate — auth credentials belong entirely to Keycloak
 - [Phase 03-backend-domain-layer]: No MediatR — ICommandHandler<TCommand,TResult> interface used directly for CQRS; handlers injected via built-in .NET DI (MediatR is commercial)
 - [Phase 03-backend-domain-layer]: Password in RegisterClientCommand but absent from Client aggregate — Phase 5 handler will forward to IKeycloakUserService.CreateUserAsync
+- [Phase 04-observability]: xUnit 2.9.3 has no Assert.Fail — use true.ShouldBeFalse(message) as RED stub pattern
+- [Phase 04-observability]: Single Onboarding.API.Tests project covers all observability test categories (Observability, Security, HealthCheck)
 
 ### Pending Todos
 
@@ -101,6 +104,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-02T21:21:10.228Z
-Stopped at: Completed 03-backend-domain-layer 03-02-PLAN.md — 38 tests green, Application CQRS layer with manual DI handler
+Last session: 2026-04-03T20:27:00.368Z
+Stopped at: Completed 04-observability 04-00-PLAN.md — test scaffold with 16 failing stubs
 Resume file: None

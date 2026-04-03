@@ -25,7 +25,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **SEC-06**: HTTPS enforcement configurado no Keycloak (HTTP apenas em dev local)
 - [x] **SEC-07**: Service account com least privilege (manage-users only) para Admin API
 - [ ] **SEC-08**: Erros genéricos em todas as respostas de autenticação (sem information leakage)
-- [ ] **SEC-09**: Log masking para dados sensíveis (senhas, tokens, secrets não aparecem nos logs)
+- [x] **SEC-09**: Log masking para dados sensíveis (senhas, tokens, secrets não aparecem nos logs)
 - [ ] **SEC-10**: JWT armazenado em memória no frontend (nunca localStorage/sessionStorage)
 
 ### Cadastro
@@ -64,11 +64,11 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Observabilidade
 
-- [ ] **OBS-01**: Serilog structured logging (JSON) com TraceId/SpanId automáticos
+- [x] **OBS-01**: Serilog structured logging (JSON) com TraceId/SpanId automáticos
 - [ ] **OBS-02**: OpenTelemetry traces instrumentando ASP.NET Core, HttpClient, EF Core
 - [ ] **OBS-03**: OpenTelemetry metrics (runtime + ASP.NET Core)
-- [ ] **OBS-04**: Correlation ID propagado em chamadas ao Keycloak Admin API
-- [ ] **OBS-05**: Health check endpoints (/healthz) para API e Keycloak
+- [x] **OBS-04**: Correlation ID propagado em chamadas ao Keycloak Admin API
+- [x] **OBS-05**: Health check endpoints (/healthz) para API e Keycloak
 
 ### Frontend Design
 
@@ -144,7 +144,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-06 | Phase 2 | Complete |
 | SEC-07 | Phase 2 | Complete |
 | SEC-08 | Phase 5 | Pending |
-| SEC-09 | Phase 4 | Pending |
+| SEC-09 | Phase 4 | Complete |
 | SEC-10 | Phase 9 | Pending |
 | REG-01 | Phase 8 | Pending |
 | REG-02 | Phase 8 | Pending |
@@ -168,11 +168,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BACK-04 | Phase 3 | Complete |
 | BACK-05 | Phase 5 | Pending |
 | BACK-06 | Phase 3 | Complete |
-| OBS-01 | Phase 4 | Pending |
+| OBS-01 | Phase 4 | Complete |
 | OBS-02 | Phase 4 | Pending |
 | OBS-03 | Phase 4 | Pending |
-| OBS-04 | Phase 4 | Pending |
-| OBS-05 | Phase 4 | Pending |
+| OBS-04 | Phase 4 | Complete |
+| OBS-05 | Phase 4 | Complete |
 | FRONT-01 | Phase 7 | Pending |
 | FRONT-02 | Phase 7 | Pending |
 | FRONT-03 | Phase 7 | Pending |

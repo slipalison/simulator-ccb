@@ -73,12 +73,16 @@ services:
       Keycloak__AdminClientSecret: ${KC_ADMIN_CLIENT_SECRET}
       Keycloak__RealmUrl: http://keycloak:8080/realms/onboarding
       Keycloak__ValidIssuer: http://localhost:8180/realms/onboarding
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4317
+      OTEL_SERVICE_NAME: onboarding-api
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:
       app_db:
         condition: service_healthy
       keycloak:
+        condition: service_healthy
+      alloy:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/healthz || exit 1"]
@@ -102,9 +106,109 @@ services:
       api:
         condition: service_healthy
 
+  # ── Observability Stack (Phase 4) ─────────────────────────────────────────
+
+  alloy:
+    image: grafana/alloy:latest
+    volumes:
+      - ./infra/alloy/config.alloy:/etc/alloy/config.alloy:ro
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
+    ports:
+      - "127.0.0.1:12345:12345"   # Alloy UI (optional, useful for debugging)
+      - "127.0.0.1:4317:4317"     # OTLP gRPC (exposed for direct testing outside compose)
+      - "127.0.0.1:4318:4318"     # OTLP HTTP
+    depends_on:
+      loki:
+        condition: service_started
+      tempo:
+        condition: service_started
+      mimir:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:12345/-/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  loki:
+    image: grafana/loki:3
+    volumes:
+      - ./infra/loki/loki-config.yaml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    ports:
+      - "127.0.0.1:3100:3100"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3100/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  tempo:
+    image: grafana/tempo:latest
+    volumes:
+      - ./infra/tempo/tempo.yaml:/etc/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    command: ["-config.file=/etc/tempo.yaml"]
+    ports:
+      - "127.0.0.1:3200:3200"   # Tempo HTTP API (Grafana datasource)
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3200/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  mimir:
+    image: grafana/mimir:latest
+    volumes:
+      - ./infra/mimir/mimir.yaml:/etc/mimir/mimir.yaml:ro
+      - mimir_data:/data
+    command: ["--config.file=/etc/mimir/mimir.yaml"]
+    ports:
+      - "127.0.0.1:9009:9009"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9009/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./infra/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - grafana_data:/var/lib/grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    ports:
+      - "127.0.0.1:3000:3000"   # D-09: Grafana UI
+    depends_on:
+      loki:
+        condition: service_started
+      tempo:
+        condition: service_started
+      mimir:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
 volumes:
   app_data:
   keycloak_data:
+  loki_data:
+  tempo_data:
+  mimir_data:
+  grafana_data:
 
 networks:
   default:

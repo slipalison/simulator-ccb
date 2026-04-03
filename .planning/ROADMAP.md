@@ -73,7 +73,12 @@ Plans:
   3. Runtime and ASP.NET Core metrics are exported via OpenTelemetry
   4. A Correlation ID is injected into every outbound call to the Keycloak Admin API and appears in the corresponding log entries
   5. Passwords, tokens, and secrets never appear in any log output — masked at the sink level
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 04-00-PLAN.md — Test scaffold: Onboarding.API.Tests project with stub tests for observability behaviors
+- [ ] 04-01-PLAN.md — Serilog + OpenTelemetry SDK wiring in Program.cs, SensitiveDataDestructuringPolicy (SEC-09)
+- [ ] 04-02-PLAN.md — Health check endpoints /healthz/live and /healthz/ready, compose.yaml healthcheck fix
+- [ ] 04-03-PLAN.md — Grafana LGTM stack (Alloy, Loki, Tempo, Mimir, Grafana) in compose.yaml
 
 ### Phase 5: Registration API
 **Goal**: Clients can be registered via the API with full server-side validation, duplicate detection, persistence, and Keycloak user creation

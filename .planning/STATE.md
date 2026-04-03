@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Completed 04-observability 04-00-PLAN.md — test scaffold with 16 failing stubs
-last_updated: "2026-04-03T20:27:00.371Z"
+stopped_at: Completed 04-observability 04-01-PLAN.md — Serilog + OTel SDK wired, SensitiveDataDestructuringPolicy GREEN
+last_updated: "2026-04-03T20:34:39.602Z"
 last_activity: 2026-04-03
 progress:
   total_phases: 10
   completed_phases: 3
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 ## Current Position
 
 Phase: 04 (observability) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-04-03
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03-backend-domain-layer P01 | 4 | 2 tasks | 16 files |
 | Phase 03-backend-domain-layer P02 | 2 | 2 tasks | 10 files |
 | Phase 04-observability P00 | 2 | 2 tasks | 5 files |
+| Phase 04-observability P01 | 5 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,9 @@ Recent decisions affecting current work:
 - [Phase 03-backend-domain-layer]: Password in RegisterClientCommand but absent from Client aggregate — Phase 5 handler will forward to IKeycloakUserService.CreateUserAsync
 - [Phase 04-observability]: xUnit 2.9.3 has no Assert.Fail — use true.ShouldBeFalse(message) as RED stub pattern
 - [Phase 04-observability]: Single Onboarding.API.Tests project covers all observability test categories (Observability, Security, HealthCheck)
+- [Phase 04-observability]: Bootstrap logger pattern used in Program.cs — Log.Logger configured before builder.Build() to capture startup exceptions before DI is ready
+- [Phase 04-observability]: SensitiveDataDestructuringPolicy.MaskEmail() is public (not internal) — allows direct test assertion without InternalsVisibleTo
+- [Phase 04-observability]: OTel using directives must be explicit in Program.cs — using OpenTelemetry.Trace, OpenTelemetry.Metrics, Serilog.Enrichers.Span not in global usings
 
 ### Pending Todos
 
@@ -104,6 +108,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-03T20:27:00.368Z
-Stopped at: Completed 04-observability 04-00-PLAN.md — test scaffold with 16 failing stubs
+Last session: 2026-04-03T20:34:39.599Z
+Stopped at: Completed 04-observability 04-01-PLAN.md — Serilog + OTel SDK wired, SensitiveDataDestructuringPolicy GREEN
 Resume file: None

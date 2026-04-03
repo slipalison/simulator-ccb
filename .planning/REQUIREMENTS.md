@@ -65,8 +65,8 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Observabilidade
 
 - [x] **OBS-01**: Serilog structured logging (JSON) com TraceId/SpanId automáticos
-- [ ] **OBS-02**: OpenTelemetry traces instrumentando ASP.NET Core, HttpClient, EF Core
-- [ ] **OBS-03**: OpenTelemetry metrics (runtime + ASP.NET Core)
+- [x] **OBS-02**: OpenTelemetry traces instrumentando ASP.NET Core, HttpClient, EF Core
+- [x] **OBS-03**: OpenTelemetry metrics (runtime + ASP.NET Core)
 - [x] **OBS-04**: Correlation ID propagado em chamadas ao Keycloak Admin API
 - [x] **OBS-05**: Health check endpoints (/healthz) para API e Keycloak
 
@@ -169,8 +169,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | BACK-05 | Phase 5 | Pending |
 | BACK-06 | Phase 3 | Complete |
 | OBS-01 | Phase 4 | Complete |
-| OBS-02 | Phase 4 | Pending |
-| OBS-03 | Phase 4 | Pending |
+| OBS-02 | Phase 4 | Complete |
+| OBS-03 | Phase 4 | Complete |
 | OBS-04 | Phase 4 | Complete |
 | OBS-05 | Phase 4 | Complete |
 | FRONT-01 | Phase 7 | Pending |

@@ -76,7 +76,7 @@ Plans:
 **Plans**: 4 plans
 Plans:
 - [x] 04-00-PLAN.md — Test scaffold: Onboarding.API.Tests project with stub tests for observability behaviors
-- [ ] 04-01-PLAN.md — Serilog + OpenTelemetry SDK wiring in Program.cs, SensitiveDataDestructuringPolicy (SEC-09)
+- [x] 04-01-PLAN.md — Serilog + OpenTelemetry SDK wiring in Program.cs, SensitiveDataDestructuringPolicy (SEC-09)
 - [ ] 04-02-PLAN.md — Health check endpoints /healthz/live and /healthz/ready, compose.yaml healthcheck fix
 - [ ] 04-03-PLAN.md — Grafana LGTM stack (Alloy, Loki, Tempo, Mimir, Grafana) in compose.yaml
 
@@ -162,7 +162,7 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 | 1. Infrastructure | 3/3 | Complete   | 2026-04-01 |
 | 2. Keycloak Security Hardening | 1/1 | Complete   | 2026-04-02 |
 | 3. Backend Domain Layer | 1/2 | In Progress|  |
-| 4. Observability | 1/4 | In Progress|  |
+| 4. Observability | 2/4 | In Progress|  |
 | 5. Registration API | 0/TBD | Not started | - |
 | 6. Authentication API | 0/TBD | Not started | - |
 | 7. Frontend Foundation | 0/TBD | Not started | - |

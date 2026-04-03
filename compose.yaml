@@ -83,9 +83,9 @@ services:
       keycloak:
         condition: service_healthy
       alloy:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/healthz || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/healthz/live || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -147,7 +147,7 @@ services:
       start_period: 30s
 
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.7.2
     volumes:
       - ./infra/tempo/tempo.yaml:/etc/tempo.yaml:ro
       - tempo_data:/var/tempo
@@ -166,7 +166,7 @@ services:
     volumes:
       - ./infra/mimir/mimir.yaml:/etc/mimir/mimir.yaml:ro
       - mimir_data:/data
-    command: ["--config.file=/etc/mimir/mimir.yaml"]
+    command: ["--config.file=/etc/mimir/mimir.yaml", "-target=all"]
     ports:
       - "127.0.0.1:9009:9009"
     healthcheck:

@@ -1,19 +1,30 @@
 # infra/mimir/mimir.yaml — minimal single-process dev config
 multitenancy_enabled: false
+target: all
+
+server:
+  http_listen_port: 9009
+  grpc_listen_port: 9095
+  log_level: warn
+
 blocks_storage:
   backend: filesystem
   filesystem:
     dir: /data/blocks
-  bucket_store:
-    sync_dir: /data/tsdb-sync
   tsdb:
     dir: /data/tsdb
+
+ingester:
+  ring:
+    replication_factor: 1
+
+store_gateway:
+  sharding_ring:
+    replication_factor: 1
+
 compactor:
-  data_dir: /data/data-compactor
-ruler_storage:
-  backend: filesystem
-  filesystem:
-    dir: /data/rules
+  data_dir: /data/compactor
+
 common:
   storage:
     backend: filesystem

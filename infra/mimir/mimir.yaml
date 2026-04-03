@@ -1,0 +1,21 @@
+# infra/mimir/mimir.yaml — minimal single-process dev config
+multitenancy_enabled: false
+blocks_storage:
+  backend: filesystem
+  filesystem:
+    dir: /data/blocks
+  bucket_store:
+    sync_dir: /data/tsdb-sync
+  tsdb:
+    dir: /data/tsdb
+compactor:
+  data_dir: /data/data-compactor
+ruler_storage:
+  backend: filesystem
+  filesystem:
+    dir: /data/rules
+common:
+  storage:
+    backend: filesystem
+    filesystem:
+      dir: /data/blocks

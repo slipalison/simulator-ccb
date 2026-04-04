@@ -1,3 +1,55 @@
+# Configuração local — NUNCA commitar
+.env
+
+# Projetos gerados pelos agents (preserve apenas .gitkeep)
+projects/*
+!projects/.gitkeep
+
+# Build artifacts .NET
+**/bin/
+**/obj/
+
+# Dependências Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# IDE e editores
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Logs
+*.log
+logs/
+
+# Docker overrides locais
+docker-compose.override.yml
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Certificados e secrets
+*.pem
+*.key
+*.crt
+*.pfx
+passwords.env
+
+# Zitadel setup (gerados automaticamente)
+scripts/.zitadel-pat
+scripts/.zitadel-setup-done
+
+
 .env
 **/bin/
 **/obj/

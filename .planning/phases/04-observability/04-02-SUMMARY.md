@@ -150,6 +150,15 @@ None — all health checks are wired to real implementations for production. Tes
 - All future API plans inherit health check endpoints automatically — no per-endpoint setup needed
 - `/healthz/live` serves as Docker Compose healthcheck, unblocking dependent services (frontend)
 
+## Self-Check: PASSED
+
+- `src/Onboarding.API/Onboarding.API.csproj` — contains AspNetCore.HealthChecks.NpgSql 9.0.0 and AspNetCore.HealthChecks.Uris 9.0.0
+- `src/Onboarding.API/Program.cs` — contains AddHealthChecks(), MapHealthChecks(/healthz/live), MapHealthChecks(/healthz/ready), Predicate=_=>false, WriteDetailedJson
+- `compose.yaml` — api service healthcheck uses /healthz/live
+- Commit `4dd8ef8` — exists in git log
+- `dotnet test tests/Onboarding.API.Tests/ --filter "Category=HealthCheck"` — 5/5 PASS
+- `dotnet build src/Onboarding.API/Onboarding.API.csproj` — exits 0
+
 ---
 *Phase: 04-observability*
 *Completed: 2026-04-03*

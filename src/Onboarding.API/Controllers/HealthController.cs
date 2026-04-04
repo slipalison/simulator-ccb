@@ -6,6 +6,6 @@ namespace Onboarding.API.Controllers;
 [Route("[controller]")]
 public class HealthController : ControllerBase
 {
-    [HttpGet("/healthz")]
+    [HttpGet("/healthz2")]
     public IActionResult Get() => Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
 }

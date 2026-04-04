@@ -23,6 +23,7 @@ public class CnpjTests
     // officially published by Receita Federal with verified sample values.
     [Theory]
     [InlineData("11.222.333/0001-81")]
+    [InlineData("XJ.15M.ED4/63DH-74")]
     public void Create_ValidAlphanumericCnpj_ReturnsInstance(string raw)
     {
         // Using a numeric CNPJ to test the ASCII-48 code path (numeric chars

@@ -169,6 +169,17 @@ None — no external service configuration required. Domain layer is pure C#.
 - Entity<TId> base class available for any future domain aggregates
 - No blockers for Plan 03-02
 
+## Self-Check: PASSED
+
+- FOUND: tests/Onboarding.Domain.Tests/Onboarding.Domain.Tests.csproj
+- FOUND: src/Onboarding.Domain/Common/Entity.cs
+- FOUND: src/Onboarding.Domain/ValueObjects/Cpf.cs
+- FOUND: src/Onboarding.Domain/Aggregates/ClientAggregate/Client.cs
+- FOUND: src/Onboarding.Domain/Repositories/IClientRepository.cs
+- FOUND: .planning/phases/03-backend-domain-layer/03-01-SUMMARY.md
+- Commits verified: 0e76f42 (RED), 4fc23da (GREEN), 1fea780 (fix), d71985b (docs)
+- Tests: 33/33 passed, 0 failed, 0 skipped
+
 ---
 *Phase: 03-backend-domain-layer*
 *Completed: 2026-04-02*

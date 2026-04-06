@@ -91,7 +91,12 @@ Plans:
   4. Submitting an invalid CPF or CNPJ (bad check digit) returns a 422 with a descriptive error — no information about existing users is leaked
   5. Submitting the same request twice with the same idempotency key produces exactly one record — the second call returns the cached 201 response
   6. All authentication-related error responses use generic messages that do not reveal whether a user exists
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [x] 05-01-PLAN.md — Wave 0 TDD stubs (20 RED stubs across 4 test files for all Phase 5 requirements)
+- [ ] 05-02-PLAN.md — Infrastructure layer: AppDbContext + ClientRepository + KeycloakUserService + AddInfrastructure()
+- [ ] 05-03-PLAN.md — Handler (duplicate check + Keycloak integration + compensation) + RegistrationController + FluentValidation + Program.cs wiring
+- [ ] 05-04-PLAN.md — IdempotencyFilter + all 20 stubs GREEN + RegistrationIntegrationTests with Testcontainers
 
 ### Phase 6: Authentication API
 **Goal**: The backend can issue JWT tokens, protect routes, and silently refresh expiring access tokens
@@ -163,7 +168,7 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 | 2. Keycloak Security Hardening | 1/1 | Complete   | 2026-04-02 |
 | 3. Backend Domain Layer | 1/2 | In Progress|  |
 | 4. Observability | 2/4 | In Progress|  |
-| 5. Registration API | 0/TBD | Not started | - |
+| 5. Registration API | 1/4 | In Progress | - |
 | 6. Authentication API | 0/TBD | Not started | - |
 | 7. Frontend Foundation | 0/TBD | Not started | - |
 | 8. Registration UI | 0/TBD | Not started | - |

@@ -121,8 +121,12 @@ Plans:
   2. The component directory is structured into atoms, molecules, organisms, templates, and pages with at least one example component at each level
   3. TanStack Router routes are type-safe — navigating to an unknown path shows a typed 404 component
   4. A form built with React Hook Form + Zod shows inline validation errors when a field fails schema validation before submission
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 4 plans
+Plans:
+- [ ] 07-00-PLAN.md — TDD stubs RED: vitest config, 4 arquivos de stubs para todos os critérios da phase
+- [ ] 07-01-PLAN.md — Scaffold Vinxi SPA: @vitejs/plugin-react + Tailwind v4 + shadcn/ui init + alias @/*
+- [ ] 07-02-PLAN.md — Atomic Design (6 componentes) + TanStack Router com notFoundComponent
+- [ ] 07-03-PLAN.md — ExampleForm com RHF + Zod + erros inline; todos os stubs GREEN
 
 ### Phase 8: Registration UI
 **Goal**: Users can complete PF or PJ registration through the frontend, see client-side validation feedback, and land on the login screen after submitting
@@ -174,7 +178,7 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 | 4. Observability | 4/4 | Complete   | 2026-04-03 |
 | 5. Registration API | 4/4 | Complete   | 2026-04-05 |
 | 6. Authentication API | 3/3 | Complete   | 2026-04-06 |
-| 7. Frontend Foundation | 0/TBD | Not started | - |
+| 7. Frontend Foundation | 0/4 | Not started | - |
 | 8. Registration UI | 0/TBD | Not started | - |
 | 9. Login UI | 0/TBD | Not started | - |
 | 10. Profile UI | 0/TBD | Not started | - |

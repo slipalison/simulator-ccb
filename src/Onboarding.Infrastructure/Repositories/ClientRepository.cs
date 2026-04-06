@@ -50,4 +50,14 @@ public sealed class ClientRepository : IClientRepository
             await _db.SaveChangesAsync(ct);
         }
     }
+
+    public async Task<Client?> GetByEmailAsync(string email, CancellationToken ct = default)
+    {
+        // Normalize to lowercase to match Email value object behavior (same as ExistsByEmailAsync).
+        // Email.Create() calls ToLowerInvariant() internally — explicit here for clarity.
+        var normalized = email.ToLowerInvariant();
+        var emailVo = Email.Create(normalized);
+        return await _db.Clients
+            .FirstOrDefaultAsync(c => c.Email == emailVo, ct);
+    }
 }

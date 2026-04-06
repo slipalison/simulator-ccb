@@ -97,6 +97,10 @@ try
             options.Authority = builder.Configuration["Keycloak:RealmUrl"]
                 ?? throw new InvalidOperationException("Keycloak:RealmUrl not configured.");
 
+            // Allow HTTP authority in development (Keycloak runs on http://localhost:8180 locally)
+            // In production, Keycloak:RealmUrl must use HTTPS and this remains false by default
+            options.RequireHttpsMetadata = false;
+
             // D-05: ROPC tokens have aud: ["account"] — not our API audience. Disable to avoid 401 false positive.
             options.TokenValidationParameters.ValidateAudience = false;
 

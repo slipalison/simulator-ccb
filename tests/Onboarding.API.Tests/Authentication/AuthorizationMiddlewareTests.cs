@@ -1,11 +1,11 @@
+using Microsoft.AspNetCore.Mvc.Testing;
 using Shouldly;
 using System.Net;
 
 namespace Onboarding.API.Tests.Authentication;
 
 /// <summary>
-/// RED stubs for AUTH-02: [Authorize] returns 401 without Bearer token.
-/// Test name matches VALIDATION.md task 06-01-02: AuthorizationMiddlewareTests.
+/// GREEN tests for AUTH-02: [Authorize] middleware returns 401 without Bearer token.
 /// </summary>
 [Collection(WebAppFactoryCollection.Name)]
 public class AuthorizationMiddlewareTests : IAsyncLifetime
@@ -16,7 +16,10 @@ public class AuthorizationMiddlewareTests : IAsyncLifetime
     public Task InitializeAsync()
     {
         _factory = new AuthTestApiFactory();
-        _client = _factory.CreateClient();
+        _client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
         return Task.CompletedTask;
     }
 
@@ -31,8 +34,9 @@ public class AuthorizationMiddlewareTests : IAsyncLifetime
     [Trait("Category", "Unit")]
     public async Task GetClientsMe_WithoutToken_Returns401()
     {
-        // RED stub — implement when GET /api/clients/me exists with [Authorize] in Plan 03
-        true.ShouldBeFalse("RED stub — not implemented yet");
-        await Task.CompletedTask;
+        // D-03: [Authorize] on GET /api/clients/me — no Bearer = 401
+        var response = await _client!.GetAsync("/api/clients/me");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 }

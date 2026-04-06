@@ -2,6 +2,8 @@ using System.Reflection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Onboarding.API.Observability;
+using Onboarding.Application;
+using Onboarding.Infrastructure;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -81,6 +83,15 @@ try
             failureStatus: HealthStatus.Degraded,
             tags: ["ready"])
         .AddCheck("memory", () => HealthCheckResult.Healthy("memory ok"), ["ready"]);
+
+    // IDistributedCache — used by IdempotencyFilter (Plan 04) and Duende CC token cache
+    builder.Services.AddDistributedMemoryCache();
+
+    // Application layer — handlers, validators
+    builder.Services.AddApplication();
+
+    // Infrastructure layer — DbContext, ClientRepository, KeycloakUserService, KC Admin HTTP client
+    builder.Services.AddInfrastructure(builder.Configuration);
 
     builder.Services.AddControllers();
 

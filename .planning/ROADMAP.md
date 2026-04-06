@@ -8,9 +8,9 @@ This roadmap builds a secure PF/PJ client onboarding system from infrastructure 
 
 - [x] **Phase 1: Infrastructure** - Docker Compose with dual PostgreSQL, Keycloak realm configured and running (completed 2026-04-01)
 - [x] **Phase 2: Keycloak Security Hardening** - Keycloak hardened against all documented attack surfaces (completed 2026-04-02)
-- [ ] **Phase 3: Backend Domain Layer** - DDD domain model with value objects, aggregate, and full test coverage
+- [x] **Phase 3: Backend Domain Layer** - DDD domain model with value objects, aggregate, and full test coverage
 - [ ] **Phase 4: Observability** - Serilog + OpenTelemetry wired across all services with correlation ID propagation
-- [ ] **Phase 5: Registration API** - Backend endpoints for PF/PJ registration with full validation and Keycloak user creation
+- [x] **Phase 5: Registration API** - Backend endpoints for PF/PJ registration with full validation and Keycloak user creation
 - [x] **Phase 6: Authentication API** - JWT issuance, token refresh, and protected route enforcement in the backend
 - [ ] **Phase 7: Frontend Foundation** - Vinxi SPA scaffold with Atomic Design structure, routing, and form primitives
 - [ ] **Phase 8: Registration UI** - PF/PJ registration forms integrated with the API, including client-side validation and post-registration redirect
@@ -170,10 +170,10 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 |-------|----------------|--------|-----------|
 | 1. Infrastructure | 3/3 | Complete   | 2026-04-01 |
 | 2. Keycloak Security Hardening | 1/1 | Complete   | 2026-04-02 |
-| 3. Backend Domain Layer | 1/2 | In Progress|  |
+| 3. Backend Domain Layer | 2/2 | Complete   | 2026-04-02 |
 | 4. Observability | 2/4 | In Progress|  |
-| 5. Registration API | 1/4 | In Progress | - |
-| 6. Authentication API | 0/3 | Not started | - |
+| 5. Registration API | 4/4 | Complete   | 2026-04-05 |
+| 6. Authentication API | 3/3 | Complete   | 2026-04-06 |
 | 7. Frontend Foundation | 0/TBD | Not started | - |
 | 8. Registration UI | 0/TBD | Not started | - |
 | 9. Login UI | 0/TBD | Not started | - |

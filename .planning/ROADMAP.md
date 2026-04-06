@@ -94,9 +94,9 @@ Plans:
 **Plans**: 4 plans
 Plans:
 - [x] 05-01-PLAN.md — Wave 0 TDD stubs (20 RED stubs across 4 test files for all Phase 5 requirements)
-- [ ] 05-02-PLAN.md — Infrastructure layer: AppDbContext + ClientRepository + KeycloakUserService + AddInfrastructure()
-- [ ] 05-03-PLAN.md — Handler (duplicate check + Keycloak integration + compensation) + RegistrationController + FluentValidation + Program.cs wiring
-- [ ] 05-04-PLAN.md — IdempotencyFilter + all 20 stubs GREEN + RegistrationIntegrationTests with Testcontainers
+- [x] 05-02-PLAN.md — Infrastructure layer: AppDbContext + ClientRepository + KeycloakUserService + AddInfrastructure()
+- [x] 05-03-PLAN.md — Handler (duplicate check + Keycloak integration + compensation) + RegistrationController + FluentValidation + Program.cs wiring
+- [x] 05-04-PLAN.md — IdempotencyFilter + all 20 stubs GREEN + RegistrationIntegrationTests with Testcontainers
 
 ### Phase 6: Authentication API
 **Goal**: The backend can issue JWT tokens, protect routes, and silently refresh expiring access tokens

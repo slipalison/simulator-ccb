@@ -105,4 +105,42 @@ public class RegisterClientCommandHandlerTests
     {
         typeof(Client).GetProperty("Password").ShouldBeNull();
     }
+
+    // Phase 5 stubs — handler must check duplicates and call IKeycloakUserService
+
+    // REG-05: duplicate CPF → DuplicateClientException before AddAsync
+    [Fact]
+    public async Task HandleAsync_DuplicateCpf_ThrowsDuplicateClientExceptionWithoutPersisting()
+    {
+        // Stub — handler does not yet call IKeycloakUserService or check duplicates (Plan 03)
+        true.ShouldBeFalse("not yet implemented — Phase 5 Plan 03 (REG-05 duplicate CPF)");
+        await Task.CompletedTask;
+    }
+
+    // REG-05: duplicate email → DuplicateClientException before AddAsync
+    [Fact]
+    public async Task HandleAsync_DuplicateEmail_ThrowsDuplicateClientExceptionWithoutPersisting()
+    {
+        // Stub — handler duplicate email check (Plan 03)
+        true.ShouldBeFalse("not yet implemented — Phase 5 Plan 03 (REG-05 duplicate email)");
+        await Task.CompletedTask;
+    }
+
+    // REG-06: Keycloak failure → DeleteAsync called (compensation), RegistrationFailedException thrown
+    [Fact]
+    public async Task HandleAsync_KeycloakFails_CompensatesWithDeleteAndThrowsRegistrationFailedException()
+    {
+        // Stub — handler compensation path: requires IKeycloakUserService + IClientRepository.DeleteAsync (Plan 03)
+        true.ShouldBeFalse("not yet implemented — Phase 5 Plan 03 (REG-06 compensation)");
+        await Task.CompletedTask;
+    }
+
+    // REG-06: successful path → IKeycloakUserService.CreateUserAsync called with correct email
+    [Fact]
+    public async Task HandleAsync_PessoaFisica_CallsKeycloakCreateUser()
+    {
+        // Stub — handler must call IKeycloakUserService (Plan 03)
+        true.ShouldBeFalse("not yet implemented — Phase 5 Plan 03 (REG-06 Keycloak call)");
+        await Task.CompletedTask;
+    }
 }

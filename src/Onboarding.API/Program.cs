@@ -1,4 +1,5 @@
 using System.Reflection;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Onboarding.API.Observability;
@@ -87,6 +88,25 @@ try
     // IDistributedCache — used by IdempotencyFilter (Plan 04) and Duende CC token cache
     builder.Services.AddDistributedMemoryCache();
 
+    // Authentication — JWT Bearer with Keycloak OIDC auto-discovery (D-04)
+    // Authority reads /.well-known/openid-configuration lazily on first request
+    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            // D-04: Auto-discovery via OIDC metadata endpoint
+            options.Authority = builder.Configuration["Keycloak:RealmUrl"]
+                ?? throw new InvalidOperationException("Keycloak:RealmUrl not configured.");
+
+            // D-05: ROPC tokens have aud: ["account"] — not our API audience. Disable to avoid 401 false positive.
+            options.TokenValidationParameters.ValidateAudience = false;
+
+            // D-04: Preserve Keycloak claim names as-is (e.g. "email" stays "email", not XML namespace URI)
+            // Without this, User.FindFirst("email") returns null — Pitfall 2 from RESEARCH.md
+            options.MapInboundClaims = false;
+        });
+
+    builder.Services.AddAuthorization();
+
     // Application layer — handlers, validators
     builder.Services.AddApplication();
 
@@ -98,6 +118,8 @@ try
     var app = builder.Build();
 
     app.UseSerilogRequestLogging();     // D-05: per-request log with method/path/status/duration
+    app.UseAuthentication();   // D-04: populate HttpContext.User — MUST come before UseAuthorization
+    app.UseAuthorization();    // D-06: enforce [Authorize] attributes — MUST come after UseAuthentication
 
     // Liveness: process is alive — no dependency checks (D-26: used by Docker Compose healthcheck)
     app.MapHealthChecks("/healthz/live", new HealthCheckOptions

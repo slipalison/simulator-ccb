@@ -56,6 +56,15 @@ public static class InfrastructureServiceExtensions
 
         services.AddScoped<IKeycloakUserService, KeycloakUserService>();
 
+        // Keycloak token endpoint — ROPC/refresh calls (D-11, D-12)
+        // Named client without auth handler — ROPC calls do not carry outbound Bearer token
+        services.AddHttpClient("keycloak-token", client =>
+        {
+            // [Claude's Discretion] 10 second timeout — balances UX and network reliability
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+        services.AddScoped<IKeycloakTokenService, KeycloakTokenService>();
+
         return services;
     }
 }

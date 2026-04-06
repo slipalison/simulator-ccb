@@ -11,7 +11,7 @@ This roadmap builds a secure PF/PJ client onboarding system from infrastructure 
 - [ ] **Phase 3: Backend Domain Layer** - DDD domain model with value objects, aggregate, and full test coverage
 - [ ] **Phase 4: Observability** - Serilog + OpenTelemetry wired across all services with correlation ID propagation
 - [ ] **Phase 5: Registration API** - Backend endpoints for PF/PJ registration with full validation and Keycloak user creation
-- [ ] **Phase 6: Authentication API** - JWT issuance, token refresh, and protected route enforcement in the backend
+- [x] **Phase 6: Authentication API** - JWT issuance, token refresh, and protected route enforcement in the backend
 - [ ] **Phase 7: Frontend Foundation** - Vinxi SPA scaffold with Atomic Design structure, routing, and form primitives
 - [ ] **Phase 8: Registration UI** - PF/PJ registration forms integrated with the API, including client-side validation and post-registration redirect
 - [ ] **Phase 9: Login UI** - Custom login screen with ROPC token exchange and in-memory JWT storage
@@ -108,9 +108,9 @@ Plans:
   3. When the access token is near expiry the backend (or frontend token logic) uses the refresh token to obtain a new access token without re-prompting the user
 **Plans**: 3 plans
 Plans:
-- [ ] 06-01-PLAN.md — Wave 0 TDD stubs RED: FakeJwtTokenHelper, AuthTestApiFactory, 12 stubs para AUTH-02/03/04
-- [ ] 06-02-PLAN.md — Contratos: IKeycloakTokenService, TokenResponse, GetByEmailAsync, AddJwtBearer em Program.cs
-- [ ] 06-03-PLAN.md — Implementação: KeycloakTokenService, AuthController, ClientsController, handlers CQRS, stubs GREEN
+- [x] 06-01-PLAN.md — Wave 0 TDD stubs RED: FakeJwtTokenHelper, AuthTestApiFactory, 12 stubs para AUTH-02/03/04
+- [x] 06-02-PLAN.md — Contratos: IKeycloakTokenService, TokenResponse, GetByEmailAsync, AddJwtBearer em Program.cs
+- [x] 06-03-PLAN.md — Implementação: KeycloakTokenService, AuthController, ClientsController, handlers CQRS, stubs GREEN
 
 ### Phase 7: Frontend Foundation
 **Goal**: The frontend application boots in SPA mode with a working Atomic Design component tree, type-safe routing, and form infrastructure

@@ -90,6 +90,7 @@ internal sealed class UnhealthyApiFactory : WebApplicationFactory<Program>
 }
 
 [Trait("Category", "HealthCheck")]
+[Collection(WebAppFactoryCollection.Name)]
 public class HealthCheckEndpointTests : IDisposable
 {
     private readonly HealthyApiFactory _healthyFactory = new();

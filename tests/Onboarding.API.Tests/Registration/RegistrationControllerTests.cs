@@ -67,6 +67,7 @@ internal sealed class RegistrationTestApiFactory : WebApplicationFactory<Program
 /// Integration tests for RegistrationController (Phase 5 Plans 02/03).
 /// WebApplicationFactory spins up the real API with TestServer — infrastructure replaced by mocks.
 /// </summary>
+[Collection(WebAppFactoryCollection.Name)]
 public class RegistrationControllerTests : IAsyncLifetime
 {
     private RegistrationTestApiFactory? _factory;
@@ -219,21 +220,44 @@ public class RegistrationControllerTests : IAsyncLifetime
         ((int)response.StatusCode).ShouldNotBe(404);
     }
 
-    // REG-08: Idempotency key → second call returns cached 201
+    // REG-08: Idempotency key → segunda chamada retorna 201 cacheado
     [Fact]
     public async Task PostPf_SameIdempotencyKey_SecondCallReturnsCached201()
     {
-        // Stub — IdempotencyFilter (Plan 04)
-        true.ShouldBeFalse("not yet implemented — Phase 5 Plan 04 (REG-08)");
-        await Task.CompletedTask;
+        var idempotencyKey = Guid.NewGuid().ToString();
+
+        // Primeira chamada
+        var request1 = new HttpRequestMessage(HttpMethod.Post, "/api/registration")
+        {
+            Content = JsonContent.Create(ValidPfPayload),
+            Headers = { { "Idempotency-Key", idempotencyKey } }
+        };
+        var response1 = await _client!.SendAsync(request1);
+        response1.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        // Segunda chamada com o mesmo Idempotency-Key — deve retornar 201 do cache
+        _factory!.RepositoryMock.ClearReceivedCalls();
+        var request2 = new HttpRequestMessage(HttpMethod.Post, "/api/registration")
+        {
+            Content = JsonContent.Create(ValidPfPayload),
+            Headers = { { "Idempotency-Key", idempotencyKey } }
+        };
+        var response2 = await _client!.SendAsync(request2);
+        response2.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        // AddAsync NÃO deve ter sido chamado na segunda requisição (servida do cache)
+        await _factory.RepositoryMock
+            .DidNotReceive()
+            .AddAsync(Arg.Any<Domain.Aggregates.ClientAggregate.Client>(),
+                      Arg.Any<CancellationToken>());
     }
 
-    // REG-08: Missing idempotency key → request proceeds normally
+    // REG-08: Sem Idempotency-Key header → request prossegue normalmente
     [Fact]
     public async Task PostPf_NoIdempotencyKey_ProceedsNormally()
     {
-        // Stub — IdempotencyFilter (Plan 04)
-        true.ShouldBeFalse("not yet implemented — Phase 5 Plan 04 (REG-08)");
-        await Task.CompletedTask;
+        // Sem header Idempotency-Key → filter deve deixar passar (key é opcional)
+        var response = await _client!.PostAsJsonAsync("/api/registration", ValidPfPayload);
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
     }
 }

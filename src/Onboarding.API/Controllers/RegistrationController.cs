@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using Onboarding.API.Filters;
 using Onboarding.Application.Clients.Commands;
 using Onboarding.Application.Common;
 using Onboarding.Domain.Exceptions;
@@ -30,6 +31,7 @@ public sealed class RegistrationController : ControllerBase
     }
 
     [HttpPost]
+    [Idempotent]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]

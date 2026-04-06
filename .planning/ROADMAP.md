@@ -106,7 +106,11 @@ Plans:
   1. A valid login credential pair exchanges for an access token and a refresh token returned in the API response
   2. Calling GET /api/clients/me without a Bearer token returns 401 and redirects to login
   3. When the access token is near expiry the backend (or frontend token logic) uses the refresh token to obtain a new access token without re-prompting the user
-**Plans**: TBD
+**Plans**: 3 plans
+Plans:
+- [ ] 06-01-PLAN.md — Wave 0 TDD stubs RED: FakeJwtTokenHelper, AuthTestApiFactory, 12 stubs para AUTH-02/03/04
+- [ ] 06-02-PLAN.md — Contratos: IKeycloakTokenService, TokenResponse, GetByEmailAsync, AddJwtBearer em Program.cs
+- [ ] 06-03-PLAN.md — Implementação: KeycloakTokenService, AuthController, ClientsController, handlers CQRS, stubs GREEN
 
 ### Phase 7: Frontend Foundation
 **Goal**: The frontend application boots in SPA mode with a working Atomic Design component tree, type-safe routing, and form infrastructure
@@ -169,7 +173,7 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 | 3. Backend Domain Layer | 1/2 | In Progress|  |
 | 4. Observability | 2/4 | In Progress|  |
 | 5. Registration API | 1/4 | In Progress | - |
-| 6. Authentication API | 0/TBD | Not started | - |
+| 6. Authentication API | 0/3 | Not started | - |
 | 7. Frontend Foundation | 0/TBD | Not started | - |
 | 8. Registration UI | 0/TBD | Not started | - |
 | 9. Login UI | 0/TBD | Not started | - |

@@ -40,6 +40,9 @@ internal sealed class HealthyApiFactory : WebApplicationFactory<Program>
             "Host=localhost;Port=5432;Database=test;Username=test;Password=test");
         builder.UseSetting("Keycloak:RealmUrl",
             "http://localhost:8180/realms/onboarding");
+        builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180");
+        builder.UseSetting("Keycloak:AdminClientId", "test-admin-client");
+        builder.UseSetting("Keycloak:AdminClientSecret", "test-admin-secret");
 
         // ConfigureTestServices runs AFTER Program.cs registers services — removes real checks, adds stubs
         builder.ConfigureTestServices(services =>
@@ -71,6 +74,9 @@ internal sealed class UnhealthyApiFactory : WebApplicationFactory<Program>
             "Host=localhost;Port=5432;Database=test;Username=test;Password=test");
         builder.UseSetting("Keycloak:RealmUrl",
             "http://localhost:8180/realms/onboarding");
+        builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180");
+        builder.UseSetting("Keycloak:AdminClientId", "test-admin-client");
+        builder.UseSetting("Keycloak:AdminClientSecret", "test-admin-secret");
 
         builder.ConfigureTestServices(services =>
         {

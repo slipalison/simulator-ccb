@@ -9,7 +9,7 @@ This roadmap builds a secure PF/PJ client onboarding system from infrastructure 
 - [x] **Phase 1: Infrastructure** - Docker Compose with dual PostgreSQL, Keycloak realm configured and running (completed 2026-04-01)
 - [x] **Phase 2: Keycloak Security Hardening** - Keycloak hardened against all documented attack surfaces (completed 2026-04-02)
 - [x] **Phase 3: Backend Domain Layer** - DDD domain model with value objects, aggregate, and full test coverage
-- [ ] **Phase 4: Observability** - Serilog + OpenTelemetry wired across all services with correlation ID propagation
+- [x] **Phase 4: Observability** - Serilog + OpenTelemetry wired across all services with correlation ID propagation
 - [x] **Phase 5: Registration API** - Backend endpoints for PF/PJ registration with full validation and Keycloak user creation
 - [x] **Phase 6: Authentication API** - JWT issuance, token refresh, and protected route enforcement in the backend
 - [ ] **Phase 7: Frontend Foundation** - Vinxi SPA scaffold with Atomic Design structure, routing, and form primitives
@@ -77,8 +77,8 @@ Plans:
 Plans:
 - [x] 04-00-PLAN.md — Test scaffold: Onboarding.API.Tests project with stub tests for observability behaviors
 - [x] 04-01-PLAN.md — Serilog + OpenTelemetry SDK wiring in Program.cs, SensitiveDataDestructuringPolicy (SEC-09)
-- [ ] 04-02-PLAN.md — Health check endpoints /healthz/live and /healthz/ready, compose.yaml healthcheck fix
-- [ ] 04-03-PLAN.md — Grafana LGTM stack (Alloy, Loki, Tempo, Mimir, Grafana) in compose.yaml
+- [x] 04-02-PLAN.md — Health check endpoints /healthz/live and /healthz/ready, compose.yaml healthcheck fix
+- [x] 04-03-PLAN.md — Grafana LGTM stack (Alloy, Loki, Tempo, Mimir, Grafana) in compose.yaml
 
 ### Phase 5: Registration API
 **Goal**: Clients can be registered via the API with full server-side validation, duplicate detection, persistence, and Keycloak user creation
@@ -171,7 +171,7 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 | 1. Infrastructure | 3/3 | Complete   | 2026-04-01 |
 | 2. Keycloak Security Hardening | 1/1 | Complete   | 2026-04-02 |
 | 3. Backend Domain Layer | 2/2 | Complete   | 2026-04-02 |
-| 4. Observability | 2/4 | In Progress|  |
+| 4. Observability | 4/4 | Complete   | 2026-04-03 |
 | 5. Registration API | 4/4 | Complete   | 2026-04-05 |
 | 6. Authentication API | 3/3 | Complete   | 2026-04-06 |
 | 7. Frontend Foundation | 0/TBD | Not started | - |

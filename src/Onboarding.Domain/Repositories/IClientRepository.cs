@@ -9,4 +9,6 @@ public interface IClientRepository
     Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default);
     Task<bool> ExistsByCpfAsync(string cpf, CancellationToken ct = default);
     Task<bool> ExistsByCnpjAsync(string cnpj, CancellationToken ct = default);
+    // Added Phase 5: compensation step — delete row if Keycloak user creation fails (REG-06)
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
 }

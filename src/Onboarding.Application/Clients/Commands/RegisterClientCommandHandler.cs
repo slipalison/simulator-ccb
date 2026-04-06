@@ -74,9 +74,10 @@ public sealed class RegisterClientCommandHandler
     }
 
     /// <summary>
-    /// Returns true for exceptions that indicate a Keycloak infrastructure failure.
+    /// Returns true for exceptions that indicate a Keycloak infrastructure failure or
+    /// unexpected error. We compensate (delete DB row) for any error after DB persist.
     /// Does NOT catch ArgumentException (which would be a programming error).
     /// </summary>
     private static bool IsTransientKeycloakError(Exception ex) =>
-        ex is HttpRequestException or TaskCanceledException or InvalidOperationException;
+        ex is not ArgumentException;
 }

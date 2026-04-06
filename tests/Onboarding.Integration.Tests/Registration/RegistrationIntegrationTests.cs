@@ -19,6 +19,10 @@ public class RegistrationIntegrationTests : IAsyncLifetime
 {
     private readonly KeycloakContainer _keycloak = new KeycloakBuilder()
         .WithImage("quay.io/keycloak/keycloak:26.1")
+        .WithResourceMapping(
+            new FileInfo(Path.Combine(AppContext.BaseDirectory, "../../../../../keycloak/onboarding-realm.json")),
+            "/opt/keycloak/data/import/")
+        .WithCommand("--import-realm")
         .Build();
 
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
@@ -46,7 +50,7 @@ public class RegistrationIntegrationTests : IAsyncLifetime
                 // The realm "onboarding" must exist in the container for these tests to pass.
                 // For Phase 5 scope, these tests verify the integration wiring compiles and
                 // containers start — full end-to-end requires the realm import (future work).
-                b.UseSetting("Keycloak:AdminClientSecret", "test-secret");
+                b.UseSetting("Keycloak:AdminClientSecret", "dev-admin-secret");
                 b.UseSetting("Keycloak:Realm", "onboarding");
             });
 

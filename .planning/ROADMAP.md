@@ -12,7 +12,7 @@ This roadmap builds a secure PF/PJ client onboarding system from infrastructure 
 - [x] **Phase 4: Observability** - Serilog + OpenTelemetry wired across all services with correlation ID propagation
 - [x] **Phase 5: Registration API** - Backend endpoints for PF/PJ registration with full validation and Keycloak user creation
 - [x] **Phase 6: Authentication API** - JWT issuance, token refresh, and protected route enforcement in the backend
-- [ ] **Phase 7: Frontend Foundation** - Vinxi SPA scaffold with Atomic Design structure, routing, and form primitives
+- [x] **Phase 7: Frontend Foundation** - Vinxi SPA scaffold with Atomic Design structure, routing, and form primitives (completed 2026-04-07)
 - [ ] **Phase 8: Registration UI** - PF/PJ registration forms integrated with the API, including client-side validation and post-registration redirect
 - [ ] **Phase 9: Login UI** - Custom login screen with ROPC token exchange and in-memory JWT storage
 - [ ] **Phase 10: Profile UI** - Read-only profile screen displaying PF/PJ data via authenticated API call
@@ -123,10 +123,10 @@ Plans:
   4. A form built with React Hook Form + Zod shows inline validation errors when a field fails schema validation before submission
 **Plans**: 4 plans
 Plans:
-- [ ] 07-00-PLAN.md — TDD stubs RED: vitest config, 4 arquivos de stubs para todos os critérios da phase
-- [ ] 07-01-PLAN.md — Scaffold Vinxi SPA: @vitejs/plugin-react + Tailwind v4 + shadcn/ui init + alias @/*
-- [ ] 07-02-PLAN.md — Atomic Design (6 componentes) + TanStack Router com notFoundComponent
-- [ ] 07-03-PLAN.md — ExampleForm com RHF + Zod + erros inline; todos os stubs GREEN
+- [x] 07-00-PLAN.md — TDD stubs RED: vitest config, 4 arquivos de stubs para todos os critérios da phase
+- [x] 07-01-PLAN.md — Scaffold Vinxi SPA: @vitejs/plugin-react + Tailwind v4 + shadcn/ui init + alias @/*
+- [x] 07-02-PLAN.md — Atomic Design (6 componentes) + TanStack Router com notFoundComponent
+- [x] 07-03-PLAN.md — ExampleForm com RHF + Zod + erros inline; todos os stubs GREEN
 
 ### Phase 8: Registration UI
 **Goal**: Users can complete PF or PJ registration through the frontend, see client-side validation feedback, and land on the login screen after submitting
@@ -178,7 +178,7 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 | 4. Observability | 4/4 | Complete   | 2026-04-03 |
 | 5. Registration API | 4/4 | Complete   | 2026-04-05 |
 | 6. Authentication API | 3/3 | Complete   | 2026-04-06 |
-| 7. Frontend Foundation | 0/4 | Not started | - |
+| 7. Frontend Foundation | 4/4 | Complete   | 2026-04-07 |
 | 8. Registration UI | 0/TBD | Not started | - |
 | 9. Login UI | 0/TBD | Not started | - |
 | 10. Profile UI | 0/TBD | Not started | - |

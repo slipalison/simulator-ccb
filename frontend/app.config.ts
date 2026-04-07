@@ -11,6 +11,13 @@ export default createApp({
       dir: "./public",
     },
     {
+      name: "api-proxy",
+      type: "http",
+      handler: "./server.ts",
+      target: "server",
+      base: "/api",
+    },
+    {
       name: "client",
       type: "spa",
       handler: "./index.html",
@@ -20,12 +27,6 @@ export default createApp({
           port: 5173,
           hmr: { host: "localhost", port: 5173, clientPort: 5173 },
           watch: { usePolling: true, interval: 1000 },
-          proxy: {
-            "/api": {
-              target: "http://api:8080",
-              changeOrigin: true,
-            },
-          },
         },
       },
       plugins: () => [tsconfigPaths(), react(), tailwindcss()],

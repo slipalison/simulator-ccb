@@ -126,17 +126,18 @@ try
     app.UseAuthorization();    // D-06: enforce [Authorize] attributes — MUST come after UseAuthentication
 
     // Liveness: process is alive — no dependency checks (D-26: used by Docker Compose healthcheck)
+    // AllowAnonymous: health endpoints must bypass UseAuthorization middleware — they are infrastructure
     app.MapHealthChecks("/healthz/live", new HealthCheckOptions
     {
         Predicate = _ => false   // No checks run — always 200 if process is alive
-    });
+    }).AllowAnonymous();
 
     // Readiness: all dependencies must be healthy (D-22, D-25: JSON response)
     app.MapHealthChecks("/healthz/ready", new HealthCheckOptions
     {
         Predicate = check => check.Tags.Contains("ready"),
         ResponseWriter = WriteDetailedJson
-    });
+    }).AllowAnonymous();
 
     app.MapControllers();
 

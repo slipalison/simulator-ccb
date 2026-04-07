@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { HomePage } from "@/components/pages/HomePage";
 import { NotFoundPage } from "@/components/pages/NotFoundPage";
+import { RegistrationPage } from "@/components/pages/RegistrationPage";
 
 // Root route com notFoundComponent para roteamento type-safe de 404
 // NOTA: NotFoundRoute (classe) está depreciada — usar notFoundComponent no rootRoute
@@ -21,8 +22,15 @@ const indexRoute = createRoute({
   component: HomePage,
 });
 
+// Rota de registro: /registration
+const registrationRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/registration",
+  component: RegistrationPage,
+});
+
 // Árvore de rotas
-const routeTree = rootRoute.addChildren([indexRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, registrationRoute]);
 
 // Instância do router
 export const router = createRouter({ routeTree });

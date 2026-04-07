@@ -1,9 +1,13 @@
-// Criterio de sucesso 1: docker compose up + root URL carrega sem erros
-// Substituir em 07-03 por um teste de render real do componente raiz
-import { describe, it } from 'vitest'
+import { describe, it, expect } from "vitest";
+import { render } from "@testing-library/react";
+import { RouterProvider } from "@tanstack/react-router";
+import { router } from "@/router";
 
-describe('App smoke test', () => {
-  it('renders root without throwing', () => {
-    throw new Error('not implemented: app smoke test — implementar em 07-03')
-  })
-})
+describe("FRONT-02: App SPA smoke test", () => {
+  it("renderiza o componente raiz sem lançar exceção", () => {
+    // Usar RouterProvider com o router configurado
+    expect(() =>
+      render(<RouterProvider router={router} />)
+    ).not.toThrow();
+  });
+});

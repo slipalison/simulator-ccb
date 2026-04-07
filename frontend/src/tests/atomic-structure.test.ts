@@ -1,25 +1,29 @@
-// Criterio de sucesso 2: estrutura Atomic Design com um componente em cada nivel
-// Substituir em 07-03 por imports reais dos componentes criados em 07-02
-import { describe, it } from 'vitest'
+import { describe, it, expect } from "vitest";
+import { existsSync } from "fs";
+import path from "path";
 
-describe('Atomic Design structure', () => {
-  it('has an atom component (AppButton)', () => {
-    throw new Error('not implemented: atom — implementar em 07-02 e verificar em 07-03')
-  })
+const srcComponents = path.resolve(__dirname, "../components");
 
-  it('has a molecule component (LabeledField)', () => {
-    throw new Error('not implemented: molecule — implementar em 07-02 e verificar em 07-03')
-  })
+describe("FRONT-01: Atomic Design structure", () => {
+  it("has an atom component (AppButton)", () => {
+    expect(existsSync(path.join(srcComponents, "atoms/AppButton.tsx"))).toBe(true);
+  });
 
-  it('has an organism component (ExampleForm)', () => {
-    throw new Error('not implemented: organism — implementar em 07-02/03 e verificar em 07-03')
-  })
+  it("has a molecule component (LabeledField)", () => {
+    expect(existsSync(path.join(srcComponents, "molecules/LabeledField.tsx"))).toBe(true);
+  });
 
-  it('has a template component (PageLayout)', () => {
-    throw new Error('not implemented: template — implementar em 07-02 e verificar em 07-03')
-  })
+  it("has an organism component (ExampleForm)", () => {
+    expect(existsSync(path.join(srcComponents, "organisms/ExampleForm.tsx"))).toBe(true);
+  });
 
-  it('has a page component (HomePage or NotFoundPage)', () => {
-    throw new Error('not implemented: page — implementar em 07-02 e verificar em 07-03')
-  })
-})
+  it("has a template component (PageLayout)", () => {
+    expect(existsSync(path.join(srcComponents, "templates/PageLayout.tsx"))).toBe(true);
+  });
+
+  it("has a page component (HomePage or NotFoundPage)", () => {
+    const hasHome = existsSync(path.join(srcComponents, "pages/HomePage.tsx"));
+    const hasNotFound = existsSync(path.join(srcComponents, "pages/NotFoundPage.tsx"));
+    expect(hasHome || hasNotFound).toBe(true);
+  });
+});

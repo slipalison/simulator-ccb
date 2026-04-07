@@ -103,9 +103,6 @@ services:
       VITE_KEYCLOAK_CLIENT_ID: onboarding-app
     ports:
       - "127.0.0.1:5173:5173"
-    depends_on:
-      api:
-        condition: service_healthy
 
   # ── Observability Stack (Phase 4) ─────────────────────────────────────────
 

@@ -24,21 +24,21 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **SEC-05**: Admin console Keycloak restrita (bind 127.0.0.1 em dev, bloqueada em prod)
 - [x] **SEC-06**: HTTPS enforcement configurado no Keycloak (HTTP apenas em dev local)
 - [x] **SEC-07**: Service account com least privilege (manage-users only) para Admin API
-- [ ] **SEC-08**: Erros genéricos em todas as respostas de autenticação (sem information leakage)
+- [x] **SEC-08**: Erros genéricos em todas as respostas de autenticação (sem information leakage)
 - [x] **SEC-09**: Log masking para dados sensíveis (senhas, tokens, secrets não aparecem nos logs)
 - [ ] **SEC-10**: JWT armazenado em memória no frontend (nunca localStorage/sessionStorage)
 
 ### Cadastro
 
-- [ ] **REG-01**: Formulário de cadastro PF com campos: nome, CPF, email, telefone, senha
-- [ ] **REG-02**: Formulário de cadastro PJ com campos: razão social, CNPJ, email, telefone, senha
+- [x] **REG-01**: Formulário de cadastro PF com campos: nome, CPF, email, telefone, senha
+- [x] **REG-02**: Formulário de cadastro PJ com campos: razão social, CNPJ, email, telefone, senha
 - [ ] **REG-03**: Validação server-side de CPF (algoritmo módulo 11)
 - [ ] **REG-04**: Validação server-side de CNPJ (check-digit + formato alfanumérico 2026)
 - [ ] **REG-05**: Detecção de duplicatas — CPF/CNPJ/email únicos antes de criar user
 - [ ] **REG-06**: Criação de user no Keycloak via Admin API após persistência no app_db
-- [ ] **REG-07**: Redirecionamento pós-cadastro para tela de login
+- [x] **REG-07**: Redirecionamento pós-cadastro para tela de login
 - [ ] **REG-08**: Idempotência no endpoint de registro (chave de idempotência para evitar double-submit)
-- [ ] **REG-09**: Validação client-side espelha server-side (UX convenience, não segurança)
+- [x] **REG-09**: Validação client-side espelha server-side (UX convenience, não segurança)
 
 ### Autenticação
 
@@ -143,18 +143,18 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-05 | Phase 2 | Complete |
 | SEC-06 | Phase 2 | Complete |
 | SEC-07 | Phase 2 | Complete |
-| SEC-08 | Phase 5 | Pending |
+| SEC-08 | Phase 5 | Complete |
 | SEC-09 | Phase 4 | Complete |
 | SEC-10 | Phase 9 | Pending |
-| REG-01 | Phase 8 | Pending |
-| REG-02 | Phase 8 | Pending |
+| REG-01 | Phase 8 | Complete |
+| REG-02 | Phase 8 | Complete |
 | REG-03 | Phase 5 | Pending |
 | REG-04 | Phase 5 | Pending |
 | REG-05 | Phase 5 | Pending |
 | REG-06 | Phase 5 | Pending |
-| REG-07 | Phase 8 | Pending |
+| REG-07 | Phase 8 | Complete |
 | REG-08 | Phase 5 | Pending |
-| REG-09 | Phase 8 | Pending |
+| REG-09 | Phase 8 | Complete |
 | AUTH-01 | Phase 9 | Pending |
 | AUTH-02 | Phase 6 | Pending |
 | AUTH-03 | Phase 6 | Pending |

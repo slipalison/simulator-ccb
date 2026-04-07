@@ -13,7 +13,7 @@ This roadmap builds a secure PF/PJ client onboarding system from infrastructure 
 - [x] **Phase 5: Registration API** - Backend endpoints for PF/PJ registration with full validation and Keycloak user creation
 - [x] **Phase 6: Authentication API** - JWT issuance, token refresh, and protected route enforcement in the backend
 - [x] **Phase 7: Frontend Foundation** - Vinxi SPA scaffold with Atomic Design structure, routing, and form primitives (completed 2026-04-07)
-- [ ] **Phase 8: Registration UI** - PF/PJ registration forms integrated with the API, including client-side validation and post-registration redirect
+- [x] **Phase 8: Registration UI** - PF/PJ registration forms integrated with the API, including client-side validation and post-registration redirect (completed 2026-04-07)
 - [ ] **Phase 9: Login UI** - Custom login screen with ROPC token exchange and in-memory JWT storage
 - [ ] **Phase 10: Profile UI** - Read-only profile screen displaying PF/PJ data via authenticated API call
 
@@ -137,8 +137,11 @@ Plans:
   2. Submitting a PF form with an invalid CPF format shows an inline error before the request is sent
   3. Submitting a PJ form with a missing required field shows an inline error before the request is sent
   4. Completing a valid registration submits the form to the API and, on success, redirects the user to the login screen
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 3 plans
+Plans:
+- [ ] 08-01-PLAN.md — Registration entry point: /registration route, PF/PJ type selector, placeholders
+- [ ] 08-02-PLAN.md — PF and PJ registration forms: Zod schemas, RHF + inline validation, check-digit
+- [ ] 08-03-PLAN.md — API integration: registerClient, error handling, success redirect to /login
 
 ### Phase 9: Login UI
 **Goal**: Users can log in through the custom React login screen and the resulting JWT is held in memory, never persisted to browser storage
@@ -179,6 +182,6 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 | 5. Registration API | 4/4 | Complete   | 2026-04-05 |
 | 6. Authentication API | 3/3 | Complete   | 2026-04-06 |
 | 7. Frontend Foundation | 4/4 | Complete   | 2026-04-07 |
-| 8. Registration UI | 0/TBD | Not started | - |
+| 8. Registration UI | 3/3 | Complete   | 2026-04-07 |
 | 9. Login UI | 0/TBD | Not started | - |
 | 10. Profile UI | 0/TBD | Not started | - |

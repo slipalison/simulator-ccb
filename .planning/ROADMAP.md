@@ -151,8 +151,11 @@ Plans:
   1. The login screen accepts email and password, submits credentials to Keycloak via ROPC grant, and on success navigates to the profile screen
   2. After a successful login, inspecting localStorage and sessionStorage shows no JWT tokens — the token lives only in React state
   3. After 5 failed login attempts the login screen displays a generic "invalid credentials" error and the account is locked (brute force protection visible end-to-end)
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 3 plans
+Plans:
+- [ ] 09-01-PLAN.md — Login schema, API client (loginClient, refreshToken), AuthContext (memory-only tokens), LoginForm molecule
+- [ ] 09-02-PLAN.md — LoginPage wired with form + auth + redirect, ProfilePage placeholder with AuthGuard, routes + AuthProvider
+- [ ] 09-03-PLAN.md — Tests: auth-context (memory storage), login-flow (form → API → redirect), profile guard
 
 ### Phase 10: Profile UI
 **Goal**: An authenticated user can see their own registration data in read-only mode, with visual distinction between PF and PJ profiles

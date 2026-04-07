@@ -1,6 +1,5 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
 import { LoginForm } from "@/components/molecules/LoginForm";
 import { useAuth } from "@/lib/auth-context";
 import { LoginError } from "@/lib/api";
@@ -16,7 +15,6 @@ export function LoginPage() {
   const { login, auth } = useAuth();
   const navigate = useNavigate();
   const [serverError, setServerError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // If already authenticated, redirect to profile
   useEffect(() => {
@@ -28,7 +26,6 @@ export function LoginPage() {
 
   const handleLogin = async (data: LoginData) => {
     setServerError(null);
-    setIsSubmitting(true);
     try {
       await login(data.email, data.password);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,8 +36,6 @@ export function LoginPage() {
       } else {
         setServerError("An unexpected error occurred.");
       }
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -52,7 +47,7 @@ export function LoginPage() {
           Entre com seu email e senha para acessar sua conta.
         </p>
         <div className="flex justify-center">
-          <LoginForm onSubmit={handleLogin} isSubmitting={isSubmitting} serverError={serverError} />
+          <LoginForm onSubmit={handleLogin} serverError={serverError} />
         </div>
       </div>
     </PageLayout>

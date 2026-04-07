@@ -50,6 +50,7 @@ services:
       - ./keycloak/onboarding-realm.json:/opt/keycloak/data/import/onboarding-realm.json:ro
     ports:
       - "127.0.0.1:8180:8080"
+      - "127.0.0.1:9000:9000"   # Keycloak management port (health endpoints)
     depends_on:
       keycloak_db:
         condition: service_healthy

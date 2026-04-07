@@ -54,7 +54,7 @@ Content-Type: {{contentType}}
 
 {
   "nome": "Outro Nome",
-  "cpf": "71428794090",
+  "cpf": "71428794085",
   "email": "joao.uat@teste.com",
   "phone": "+5511999990004",
   "password": "Str0ng!Pass"
@@ -102,7 +102,7 @@ Idempotency-Key: 00000000-0000-0000-0000-000000000001
 }
 
 ### Test 13b: Invalid CNPJ (wrong check digit)
-# Expected: 422 Unprocessable Entity
+# Expected: 400 Bad Request — model binding rejeita o CNPJ antes do handler de domínio
 POST {{baseUrl}}/api/registration
 Content-Type: {{contentType}}
 
@@ -121,6 +121,10 @@ Content-Type: {{contentType}}
 
 ### Test 15: Login (valid credentials — use email from Test 10)
 # Expected: 200 OK with TokenResponse
+# PRÉ-REQUISITO: joao.uat@teste.com deve existir (Test 10 executado com sucesso)
+# ATENÇÃO: Se retornar 401, verifique se a conta está bloqueada pelos testes de brute force.
+#   Para desbloquear: Keycloak Admin (http://localhost:8180) → Realm: onboarding
+#   → Users → joao.uat@teste.com → Action: Enable ou Delete brute force records
 # @name loginValid
 POST {{baseUrl}}/api/auth/login
 Content-Type: {{contentType}}
@@ -194,7 +198,7 @@ Content-Type: {{contentType}}
 }
 
 ### Test 15c: Login with missing password
-# Expected: 422 Unprocessable Entity — validation error
+# Expected: 400 Bad Request — model binding falha por campo obrigatório ausente
 POST {{baseUrl}}/api/auth/login
 Content-Type: {{contentType}}
 
@@ -241,7 +245,8 @@ GET {{baseUrl}}/healthz/ready
 GET http://localhost:8180/realms/onboarding/.well-known/openid-configuration
 
 ### Keycloak Health (ready)
-GET http://localhost:8180/health/ready
+# Porta 9000 = management port (KC_HEALTH_ENABLED=true). Exposta no compose.yaml.
+GET http://localhost:9000/health/ready
 
 ### Grafana UI
 # Expected: 200 OK (login: admin / ${GRAFANA_ADMIN_PASSWORD:-admin})
@@ -249,48 +254,66 @@ GET http://localhost:3000/api/health
 
 # ────────────────────────────────────────────────────────────────
 # BRUTE FORCE TEST (Test 3) — Direct to Keycloak
-# Requires user to exist in Keycloak first (run Test 10 above)
-# Expected: First 5 attempts return 401, then Keycloak locks account
+#
+# IMPORTANTE: Execute esta seção SEPARADAMENTE do "All Tests".
+#   Estes testes usam um usuário dedicado (brute.force@teste.com) para
+#   não bloquear joao.uat@teste.com e quebrar os testes de autenticação.
+#
+# ORDEM: Execute o Setup abaixo (uma vez) antes das tentativas.
+# Expected: Primeiras 5 tentativas retornam 401, Keycloak bloqueia na 6ª.
 # ────────────────────────────────────────────────────────────────
+
+### Brute Force — Setup: Registrar usuário dedicado
+# Expected: 201 Created (ou 409 se já existir de execução anterior — ok)
+POST {{baseUrl}}/api/registration
+Content-Type: {{contentType}}
+
+{
+  "nome": "Brute Force Test User",
+  "cpf": "11122233396",
+  "email": "brute.force@teste.com",
+  "phone": "+5511999990099",
+  "password": "Str0ng!Pass"
+}
 
 ### Brute Force Attempt 1
 POST http://localhost:8180/realms/onboarding/protocol/openid-connect/token
 Content-Type: application/x-www-form-urlencoded
 
-client_id=onboarding-app&username=joao.uat@teste.com&password=senhaerrada&grant_type=password
+client_id=onboarding-app&username=brute.force@teste.com&password=senhaerrada&grant_type=password
 
 ### Brute Force Attempt 2
 POST http://localhost:8180/realms/onboarding/protocol/openid-connect/token
 Content-Type: application/x-www-form-urlencoded
 
-client_id=onboarding-app&username=joao.uat@teste.com&password=senhaerrada&grant_type=password
+client_id=onboarding-app&username=brute.force@teste.com&password=senhaerrada&grant_type=password
 
 ### Brute Force Attempt 3
 POST http://localhost:8180/realms/onboarding/protocol/openid-connect/token
 Content-Type: application/x-www-form-urlencoded
 
-client_id=onboarding-app&username=joao.uat@teste.com&password=senhaerrada&grant_type=password
+client_id=onboarding-app&username=brute.force@teste.com&password=senhaerrada&grant_type=password
 
 ### Brute Force Attempt 4
 POST http://localhost:8180/realms/onboarding/protocol/openid-connect/token
 Content-Type: application/x-www-form-urlencoded
 
-client_id=onboarding-app&username=joao.uat@teste.com&password=senhaerrada&grant_type=password
+client_id=onboarding-app&username=brute.force@teste.com&password=senhaerrada&grant_type=password
 
 ### Brute Force Attempt 5
 POST http://localhost:8180/realms/onboarding/protocol/openid-connect/token
 Content-Type: application/x-www-form-urlencoded
 
-client_id=onboarding-app&username=joao.uat@teste.com&password=senhaerrada&grant_type=password
+client_id=onboarding-app&username=brute.force@teste.com&password=senhaerrada&grant_type=password
 
 ### Brute Force Attempt 6 — Should be LOCKED
 POST http://localhost:8180/realms/onboarding/protocol/openid-connect/token
 Content-Type: application/x-www-form-urlencoded
 
-client_id=onboarding-app&username=joao.uat@teste.com&password=senhaerrada&grant_type=password
+client_id=onboarding-app&username=brute.force@teste.com&password=senhaerrada&grant_type=password
 
 ### Brute Force Attempt 7 — Should be LOCKED
 POST http://localhost:8180/realms/onboarding/protocol/openid-connect/token
 Content-Type: application/x-www-form-urlencoded
 
-client_id=onboarding-app&username=joao.uat@teste.com&password=senhaerrada&grant_type=password
+client_id=onboarding-app&username=brute.force@teste.com&password=senhaerrada&grant_type=password

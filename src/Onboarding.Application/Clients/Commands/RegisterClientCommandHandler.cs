@@ -62,6 +62,13 @@ public sealed class RegisterClientCommandHandler
                 firstName: command.Nome,
                 ct: ct);
         }
+        catch (DuplicateKeycloakUserException ex)
+        {
+            // Keycloak detected a duplicate user (email/username collision).
+            // Compensate: delete the DB row we just inserted, then return 409.
+            await _repository.DeleteAsync(client.Id, ct);
+            throw new DuplicateClientException("A client with the provided information already exists.", ex);
+        }
         catch (Exception ex) when (IsTransientKeycloakError(ex))
         {
             // Compensation: delete the persisted row — Keycloak is the auth source of truth

@@ -101,7 +101,8 @@
         "enabled": true,
         "conditions": [
           {
-            "condition": "any-client"
+            "condition": "any-client",
+            "config": {}
           }
         ],
         "profiles": ["no-wildcard-redirects"]

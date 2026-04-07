@@ -104,9 +104,24 @@ try
             // D-05: ROPC tokens have aud: ["account"] — not our API audience. Disable to avoid 401 false positive.
             options.TokenValidationParameters.ValidateAudience = false;
 
+            // IDX10204 fix: OIDC discovery via internal URL (keycloak:8080) does not auto-populate
+            // ValidIssuer when KC_HOSTNAME differs. Set it explicitly from config.
+            options.TokenValidationParameters.ValidIssuer =
+                builder.Configuration["Keycloak:ValidIssuer"] ?? "http://localhost:8180/realms/onboarding";
+
             // D-04: Preserve Keycloak claim names as-is (e.g. "email" stays "email", not XML namespace URI)
             // Without this, User.FindFirst("email") returns null — Pitfall 2 from RESEARCH.md
             options.MapInboundClaims = false;
+
+            // FIX Test 18: OIDC discovery returns jwks_uri with KC_HOSTNAME (localhost:8180) which is
+            // unreachable from inside the API container. The Backchannel rewrites these URLs to use the
+            // internal Docker network hostname (keycloak:8080) so the JWKS can be fetched.
+            options.Backchannel = new HttpClient(new HostnameRewriteHandler(
+                internalHost: "keycloak:8080",
+                externalHost: "localhost:8180"))
+            {
+                Timeout = TimeSpan.FromSeconds(30),
+            };
         });
 
     builder.Services.AddAuthorization();

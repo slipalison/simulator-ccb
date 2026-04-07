@@ -3,7 +3,7 @@ using Keycloak.AuthServices.Sdk.Admin.Models;
 using Keycloak.AuthServices.Sdk.Admin.Requests.Users;
 using Microsoft.Extensions.Configuration;
 using Onboarding.Application.Common;
-using System.Net.Http.Headers;
+using Onboarding.Domain.Exceptions;
 using System.Net.Http.Json;
 
 namespace Onboarding.Infrastructure.Keycloak;
@@ -36,16 +36,24 @@ public sealed class KeycloakUserService : IKeycloakUserService
             Username = username,
             Email = email,
             FirstName = firstName,
+            LastName = "-",          // Keycloak 26.x User Profile requires lastName; use placeholder
             Enabled = true,
             EmailVerified = true,
-            // Explicitly clear required actions to prevent "Account is not fully set up" error
-            // See: https://github.com/keycloak/keycloak/issues/32595
             RequiredActions = [],
         };
 
-        // Keycloak Admin API: POST /admin/realms/{realm}/users → 201 Created (no body, Location header)
-        // Credentials set via UserRepresentation may be ignored in Keycloak 26.x — we set password explicitly.
-        await _keycloakUserClient.CreateUserAsync(_realm, user, ct);
+        try
+        {
+            // Keycloak Admin API: POST /admin/realms/{realm}/users → 201 Created (no body, Location header)
+            // Credentials set via UserRepresentation may be ignored in Keycloak 26.x — we set password explicitly.
+            await _keycloakUserClient.CreateUserAsync(_realm, user, ct);
+        }
+        catch (Exception ex) when (IsConflictException(ex))
+        {
+            // Keycloak returns 409 when a user with the same username, email, or email+realm already exists
+            throw new DuplicateKeycloakUserException(
+                $"A Keycloak user with email '{email}' already exists.", ex);
+        }
 
         var users = await _keycloakUserClient.GetUsersAsync(
             _realm,
@@ -64,7 +72,15 @@ public sealed class KeycloakUserService : IKeycloakUserService
             passwordPayload,
             ct);
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(ct);
+            if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+                throw new DuplicateKeycloakUserException(
+                    $"Keycloak rejected password reset for user '{userId}' (409): {body}");
+
+            response.EnsureSuccessStatusCode();
+        }
 
         return userId;
     }
@@ -80,5 +96,26 @@ public sealed class KeycloakUserService : IKeycloakUserService
         if (userId is not null)
             await _keycloakUserClient.DeleteUserAsync(_realm, userId, ct);
         // No-op if user does not exist
+    }
+
+    /// <summary>
+    /// Detects if an exception indicates a 409 Conflict from Keycloak.
+    /// The SDK may wrap the original HttpResponseMessage or throw HttpRequestException.
+    /// </summary>
+    private static bool IsConflictException(Exception ex)
+    {
+        // Check for HttpRequestException with 409 status code
+        if (ex is System.Net.Http.HttpRequestException hrex && hrex.StatusCode == System.Net.HttpStatusCode.Conflict)
+            return true;
+
+        // Check inner exceptions too — the SDK may wrap the original
+        if (ex.InnerException != null && IsConflictException(ex.InnerException))
+            return true;
+
+        // Check exception message for 409 indicators
+        if (ex.Message.Contains("409", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
     }
 }

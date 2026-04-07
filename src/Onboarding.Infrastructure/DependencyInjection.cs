@@ -51,7 +51,6 @@ public static class InfrastructureServiceExtensions
         {
             AuthServerUrl = keycloakBaseUrl,
             Realm = realm,
-            Resource = adminClientId,
         }).AddClientCredentialsTokenHandler(ClientCredentialsClientName.Parse("keycloak-admin"));
 
         // Named HttpClient for direct Keycloak Admin API calls (e.g., reset-password)

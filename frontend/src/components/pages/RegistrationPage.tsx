@@ -1,7 +1,19 @@
 import { useState } from "react";
 import { PageLayout } from "@/components/templates/PageLayout";
 import { RegistrationTypeSelector, type RegistrationType } from "@/components/molecules/RegistrationTypeSelector";
+import { PfRegistrationForm } from "@/components/molecules/PfRegistrationForm";
+import { PjRegistrationForm } from "@/components/molecules/PjRegistrationForm";
+import type { PfRegistrationData } from "@/lib/validation-schemas";
+import type { PjRegistrationData } from "@/lib/validation-schemas";
 import { Button } from "@/components/ui/button";
+
+function handlePfSubmit(data: PfRegistrationData) {
+  console.log("PF registration data:", data);
+}
+
+function handlePjSubmit(data: PjRegistrationData) {
+  console.log("PJ registration data:", data);
+}
 
 export function RegistrationPage() {
   const [selectedType, setSelectedType] = useState<RegistrationType | null>(null);
@@ -27,8 +39,8 @@ export function RegistrationPage() {
               <h1 className="text-2xl font-bold text-foreground">Cadastro &#8212; Pessoa F&#237;sica</h1>
               <Button variant="outline" onClick={handleBack}>Voltar</Button>
             </div>
-            <div className="rounded-lg border bg-card p-6 text-center text-muted-foreground">
-              Formul&#225;rio PF em breve
+            <div className="rounded-lg border bg-card p-6">
+              <PfRegistrationForm onSubmit={handlePfSubmit} />
             </div>
           </>
         ) : (
@@ -37,8 +49,8 @@ export function RegistrationPage() {
               <h1 className="text-2xl font-bold text-foreground">Cadastro &#8212; Pessoa Jur&#237;dica</h1>
               <Button variant="outline" onClick={handleBack}>Voltar</Button>
             </div>
-            <div className="rounded-lg border bg-card p-6 text-center text-muted-foreground">
-              Formul&#225;rio PJ em breve
+            <div className="rounded-lg border bg-card p-6">
+              <PjRegistrationForm onSubmit={handlePjSubmit} />
             </div>
           </>
         )}

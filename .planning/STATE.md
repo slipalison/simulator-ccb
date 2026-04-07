@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-stopped_at: Phase 08 complete — Registration UI delivered
-last_updated: "2026-04-07T20:00:00.000Z"
-last_activity: 2026-04-07 -- Phase 08 Registration UI completa: 3/3 plans, registration forms com validação + API integration + redirect login
+stopped_at: Phase 09 complete — Login UI delivered
+last_updated: "2026-04-07T21:00:00.000Z"
+last_activity: 2026-04-07 -- Phase 09 Login UI completa: 3/3 plans, login form + AuthContext (memory-only tokens) + ProfilePage placeholder + 13 tests
 progress:
   total_phases: 10
-  completed_phases: 8
+  completed_phases: 9
   total_plans: 27
-  completed_plans: 24
-  percent: 80
+  completed_plans: 27
+  percent: 90
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** Phase 09 — Login UI (próxima)
+**Current focus:** Phase 10 — Profile UI (próxima)
 
 ## Current Position
 
-Phase: 08 (registration-ui) — COMPLETE
-Next: 09 (login-ui) — NOT STARTED
-Last activity: 2026-04-07 -- Phase 08 completa; registration forms com validação client-side, API integration, redirect para /login
+Phase: 09 (login-ui) — COMPLETE
+Next: 10 (profile-ui) — NOT STARTED
+Last activity: 2026-04-07 -- Phase 09 completa; login form com ROPC, AuthContext memory-only, ProfilePage placeholder, 13 testes
 
-Progress: [████████░░] 80% (8/10 fases)
+Progress: [█████████░] 90% (9/10 fases)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 21
-- Phases completas: 7/10
+- Total plans completed: 27
+- Phases completas: 9/10
 
 **By Phase:**
 
@@ -49,7 +49,8 @@ Progress: [████████░░] 80% (8/10 fases)
 | 05-registration-api | 4/4 | Complete 2026-04-05 |
 | 06-authentication-api | 3/3 | Complete 2026-04-06 |
 | 07-frontend-foundation | 4/4 | Complete 2026-04-07 |
-| 08-registration-ui | 0/3 | Planned 2026-04-07 |
+| 08-registration-ui | 3/3 | Complete 2026-04-07 |
+| 09-login-ui | 3/3 | Complete 2026-04-07 |
 
 *Updated after each plan completion*
 | Phase 01-infrastructure P01 | 2 | 3 tasks | 7 files |

@@ -14,7 +14,7 @@ This roadmap builds a secure PF/PJ client onboarding system from infrastructure 
 - [x] **Phase 6: Authentication API** - JWT issuance, token refresh, and protected route enforcement in the backend
 - [x] **Phase 7: Frontend Foundation** - Vinxi SPA scaffold with Atomic Design structure, routing, and form primitives (completed 2026-04-07)
 - [x] **Phase 8: Registration UI** - PF/PJ registration forms integrated with the API, including client-side validation and post-registration redirect (completed 2026-04-07)
-- [ ] **Phase 9: Login UI** - Custom login screen with ROPC token exchange and in-memory JWT storage
+- [x] **Phase 9: Login UI** - Custom login screen with ROPC token exchange and in-memory JWT storage (completed 2026-04-07)
 - [ ] **Phase 10: Profile UI** - Read-only profile screen displaying PF/PJ data via authenticated API call
 
 ## Phase Details
@@ -153,9 +153,9 @@ Plans:
   3. After 5 failed login attempts the login screen displays a generic "invalid credentials" error and the account is locked (brute force protection visible end-to-end)
 **Plans**: 3 plans
 Plans:
-- [ ] 09-01-PLAN.md — Login schema, API client (loginClient, refreshToken), AuthContext (memory-only tokens), LoginForm molecule
-- [ ] 09-02-PLAN.md — LoginPage wired with form + auth + redirect, ProfilePage placeholder with AuthGuard, routes + AuthProvider
-- [ ] 09-03-PLAN.md — Tests: auth-context (memory storage), login-flow (form → API → redirect), profile guard
+- [x] 09-01-PLAN.md — Login schema, API client (loginClient, refreshToken), AuthContext (memory-only tokens), LoginForm molecule
+- [x] 09-02-PLAN.md — LoginPage wired with form + auth + redirect, ProfilePage placeholder with AuthGuard, routes + AuthProvider
+- [x] 09-03-PLAN.md — Tests: auth-context (memory storage), login-flow (form → API → redirect), profile guard
 
 ### Phase 10: Profile UI
 **Goal**: An authenticated user can see their own registration data in read-only mode, with visual distinction between PF and PJ profiles
@@ -186,5 +186,5 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 | 6. Authentication API | 3/3 | Complete   | 2026-04-06 |
 | 7. Frontend Foundation | 4/4 | Complete   | 2026-04-07 |
 | 8. Registration UI | 3/3 | Complete   | 2026-04-07 |
-| 9. Login UI | 0/TBD | Not started | - |
+| 9. Login UI | 3/3 | Complete   | 2026-04-07 |
 | 10. Profile UI | 0/TBD | Not started | - |

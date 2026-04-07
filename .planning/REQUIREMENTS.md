@@ -26,7 +26,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **SEC-07**: Service account com least privilege (manage-users only) para Admin API
 - [x] **SEC-08**: Erros genéricos em todas as respostas de autenticação (sem information leakage)
 - [x] **SEC-09**: Log masking para dados sensíveis (senhas, tokens, secrets não aparecem nos logs)
-- [ ] **SEC-10**: JWT armazenado em memória no frontend (nunca localStorage/sessionStorage)
+- [x] **SEC-10**: JWT armazenado em memória no frontend (nunca localStorage/sessionStorage)
 
 ### Cadastro
 
@@ -42,7 +42,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Autenticação
 
-- [ ] **AUTH-01**: Tela de login custom no React com autenticação via Keycloak (ROPC grant)
+- [x] **AUTH-01**: Tela de login custom no React com autenticação via Keycloak (ROPC grant)
 - [ ] **AUTH-02**: Token JWT (access + refresh) retornado após login bem-sucedido
 - [ ] **AUTH-03**: Rota /profile protegida — redireciona para login se não autenticado
 - [ ] **AUTH-04**: Token refresh automático quando access_token próximo da expiração
@@ -145,7 +145,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SEC-07 | Phase 2 | Complete |
 | SEC-08 | Phase 5 | Complete |
 | SEC-09 | Phase 4 | Complete |
-| SEC-10 | Phase 9 | Pending |
+| SEC-10 | Phase 9 | Complete |
 | REG-01 | Phase 8 | Complete |
 | REG-02 | Phase 8 | Complete |
 | REG-03 | Phase 5 | Pending |
@@ -155,7 +155,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REG-07 | Phase 8 | Complete |
 | REG-08 | Phase 5 | Pending |
 | REG-09 | Phase 8 | Complete |
-| AUTH-01 | Phase 9 | Pending |
+| AUTH-01 | Phase 9 | Complete |
 | AUTH-02 | Phase 6 | Pending |
 | AUTH-03 | Phase 6 | Pending |
 | AUTH-04 | Phase 6 | Pending |

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vinxi dev --port 5173 --host",
     "build": "vinxi build",
-    "start": "vinxi start"
+    "start": "vinxi start",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [],
   "author": "",
@@ -18,8 +20,14 @@
     "vinxi": "^0.5.11"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "typescript": "^5.7.3"
+    "@vitejs/plugin-react": "^6.0.1",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.3"
   }
 }

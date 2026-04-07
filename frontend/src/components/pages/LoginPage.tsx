@@ -1,33 +1,46 @@
+import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { LoginForm } from "@/components/molecules/LoginForm";
 import { useAuth } from "@/lib/auth-context";
+import { LoginError } from "@/lib/api";
 import type { LoginData } from "@/lib/validation-schemas";
 import { PageLayout } from "@/components/templates/PageLayout";
 
 /**
  * LoginPage: custom login screen with email + password.
  * Sends credentials to backend (POST /api/auth/login), stores tokens in memory.
- * Redirects to /profile on success (placeholder for Phase 10).
+ * Redirects to /profile on success.
  */
 export function LoginPage() {
   const { login, auth } = useAuth();
   const navigate = useNavigate();
   const [serverError, setServerError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (data: LoginData) => {
+  // If already authenticated, redirect to profile
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      navigate({ to: "/profile" as any, replace: true });
+    }
+  }, [auth.isAuthenticated, navigate]);
+
+  const handleLogin = async (data: LoginData) => {
     setServerError(null);
+    setIsSubmitting(true);
     try {
       await login(data.email, data.password);
-      // Redirect to profile page (Phase 10 — route not yet registered)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      navigate({ to: "/profile" as any });
-    } catch (err) {
-      if (err instanceof Error) {
-        setServerError(err.message);
+      navigate({ to: "/profile" as any, replace: true });
+    } catch (error) {
+      if (error instanceof LoginError) {
+        setServerError(error.message);
       } else {
-        setServerError("Invalid credentials.");
+        setServerError("An unexpected error occurred.");
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -39,7 +52,7 @@ export function LoginPage() {
           Entre com seu email e senha para acessar sua conta.
         </p>
         <div className="flex justify-center">
-          <LoginForm onSubmit={handleSubmit} serverError={serverError} />
+          <LoginForm onSubmit={handleLogin} isSubmitting={isSubmitting} serverError={serverError} />
         </div>
       </div>
     </PageLayout>

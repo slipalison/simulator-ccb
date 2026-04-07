@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LabeledField } from "@/components/molecules/LabeledField";
@@ -9,6 +10,8 @@ import {
 
 export interface PfRegistrationFormProps {
   onSubmit?: (data: PfRegistrationData) => void | Promise<void>;
+  isSubmitting?: boolean;
+  fieldErrors?: Record<string, string[]>;
 }
 
 /**
@@ -16,12 +19,17 @@ export interface PfRegistrationFormProps {
  * Campos: nome, CPF, email, telefone, senha.
  * CPF e telefone: non-digit stripping on blur.
  */
-export function PfRegistrationForm({ onSubmit }: PfRegistrationFormProps) {
+export function PfRegistrationForm({
+  onSubmit,
+  isSubmitting: externalIsSubmitting,
+  fieldErrors,
+}: PfRegistrationFormProps) {
   const {
     register,
     handleSubmit,
     setValue,
-    formState: { errors, isSubmitting },
+    setError,
+    formState: { errors, isSubmitting: internalIsSubmitting },
   } = useForm<PfRegistrationData>({
     resolver: zodResolver(pfRegistrationSchema),
     defaultValues: {
@@ -32,6 +40,20 @@ export function PfRegistrationForm({ onSubmit }: PfRegistrationFormProps) {
       password: "",
     },
   });
+
+  const isSubmitting = externalIsSubmitting ?? internalIsSubmitting;
+
+  // Map server-side field errors to RHF setError
+  useEffect(() => {
+    if (fieldErrors) {
+      Object.entries(fieldErrors).forEach(([field, messages]) => {
+        setError(field as keyof PfRegistrationData, {
+          type: "server",
+          message: messages[0],
+        });
+      });
+    }
+  }, [fieldErrors, setError]);
 
   const handleBlurStripDigits = (
     field: "cpf" | "phone"

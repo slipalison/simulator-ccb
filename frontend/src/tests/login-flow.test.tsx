@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import { AuthProvider } from "@/lib/auth-context";
+import { AuthProvider, useAuth } from "@/lib/auth-context";
 import { LoginPage } from "@/components/pages/LoginPage";
 import { ProfilePage } from "@/components/pages/ProfilePage";
 import * as api from "@/lib/api";
 import { RouterProvider, createRouter, createMemoryHistory } from "@tanstack/react-router";
-import { routeTree } from "@/routeTree.gen";
+import { router } from "@/router";
 
 // Mock the entire API module
 vi.mock("@/lib/api", () => ({
@@ -25,23 +25,23 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
-function createTestRouter(initialEntries: string[] = ["/login"]) {
-  const memoryHistory = createMemoryHistory({ initialEntries });
-  const testRouter = createRouter({
-    routeTree,
-    history: memoryHistory,
-  });
-  return { router: testRouter, memoryHistory };
+function wrapper({ children }: { children: React.ReactNode }) {
+  return <AuthProvider>{children}</AuthProvider>;
 }
 
-function renderWithRouter(initialEntries: string[] = ["/login"]) {
-  const { router, memoryHistory } = createTestRouter(initialEntries);
+async function renderWithRouter(initialEntries: string[] = ["/login"]) {
+  const memoryHistory = createMemoryHistory({ initialEntries });
+  const testRouter = createRouter({
+    routeTree: router.options.routeTree,
+    history: memoryHistory,
+  });
   const view = render(
     <AuthProvider>
-      <RouterProvider router={router} />
+      <RouterProvider router={testRouter} />
     </AuthProvider>
   );
-  return { ...view, router, memoryHistory };
+  await testRouter.load();
+  return { ...view, router: testRouter, memoryHistory };
 }
 
 describe("AUTH-01: Login flow — form to redirect", () => {
@@ -50,7 +50,11 @@ describe("AUTH-01: Login flow — form to redirect", () => {
   });
 
   it("LoginPage renders LoginForm with email and password fields", async () => {
-    renderWithRouter(["/login"]);
+    render(
+      <AuthProvider>
+        <LoginPage />
+      </AuthProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
@@ -61,7 +65,11 @@ describe("AUTH-01: Login flow — form to redirect", () => {
   });
 
   it("Submitting empty form shows validation errors", async () => {
-    renderWithRouter(["/login"]);
+    render(
+      <AuthProvider>
+        <LoginPage />
+      </AuthProvider>
+    );
 
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /entrar/i })).toBeInTheDocument();
@@ -93,7 +101,7 @@ describe("AUTH-01: Login flow — form to redirect", () => {
     };
     vi.mocked(api.loginClient).mockResolvedValue(mockResponse);
 
-    const { router, memoryHistory } = renderWithRouter(["/login"]);
+    const { memoryHistory } = await renderWithRouter(["/login"]);
 
     // Wait for form to render
     await waitFor(() => {
@@ -125,7 +133,11 @@ describe("AUTH-01: Login flow — form to redirect", () => {
       new api.LoginError("Invalid credentials.")
     );
 
-    renderWithRouter(["/login"]);
+    render(
+      <AuthProvider>
+        <LoginPage />
+      </AuthProvider>
+    );
 
     // Wait for form to render
     await waitFor(() => {
@@ -157,7 +169,11 @@ describe("AUTH-01: Login flow — form to redirect", () => {
       new api.LoginError("Invalid credentials.")
     );
 
-    renderWithRouter(["/login"]);
+    render(
+      <AuthProvider>
+        <LoginPage />
+      </AuthProvider>
+    );
 
     // Wait for form to render
     await waitFor(() => {
@@ -193,7 +209,7 @@ describe("Profile guard — unauthenticated redirect", () => {
   });
 
   it("ProfilePage redirects to /login when unauthenticated", async () => {
-    const { memoryHistory } = renderWithRouter(["/profile"]);
+    const { memoryHistory } = await renderWithRouter(["/profile"]);
 
     // Wait for redirect to /login
     await waitFor(() => {
@@ -214,7 +230,7 @@ describe("Profile guard — unauthenticated redirect", () => {
     vi.mocked(api.loginClient).mockResolvedValue(mockResponse);
 
     // Start at login, fill form, submit to get authenticated
-    const { router, memoryHistory } = renderWithRouter(["/login"]);
+    const { memoryHistory } = await renderWithRouter(["/login"]);
 
     await waitFor(() => {
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();

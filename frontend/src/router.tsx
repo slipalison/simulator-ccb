@@ -7,6 +7,7 @@ import {
 import { HomePage } from "@/components/pages/HomePage";
 import { NotFoundPage } from "@/components/pages/NotFoundPage";
 import { RegistrationPage } from "@/components/pages/RegistrationPage";
+import { LoginPage } from "@/components/pages/LoginPage";
 
 // Root route com notFoundComponent para roteamento type-safe de 404
 // NOTA: NotFoundRoute (classe) está depreciada — usar notFoundComponent no rootRoute
@@ -29,8 +30,15 @@ const registrationRoute = createRoute({
   component: RegistrationPage,
 });
 
+// Rota de login: /login
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/login",
+  component: LoginPage,
+});
+
 // Árvore de rotas
-const routeTree = rootRoute.addChildren([indexRoute, registrationRoute]);
+const routeTree = rootRoute.addChildren([indexRoute, registrationRoute, loginRoute]);
 
 // Instância do router
 export const router = createRouter({ routeTree });

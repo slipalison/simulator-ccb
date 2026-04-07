@@ -1,8 +1,100 @@
 // ---------------------------------------------------------------------------
-// Registration API client
+// Login API client
 // ---------------------------------------------------------------------------
-// Typed client for POST /api/registration.
+// Typed client for POST /api/auth/login and POST /api/auth/refresh.
 // Uses native fetch — no external dependencies.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Response type — mirrors backend TokenResponse
+// ---------------------------------------------------------------------------
+
+export interface LoginResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  tokenType: string;
+  refreshExpiresIn: number;
+  scope: string;
+}
+
+// ---------------------------------------------------------------------------
+// Refresh token request type
+// ---------------------------------------------------------------------------
+
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+// ---------------------------------------------------------------------------
+// Custom error classes for auth
+// ---------------------------------------------------------------------------
+
+export class LoginError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "LoginError";
+  }
+}
+
+export class RefreshTokenError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RefreshTokenError";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// API functions
+// ---------------------------------------------------------------------------
+
+export async function loginClient(
+  email: string,
+  password: string
+): Promise<LoginResponse> {
+  const response = await fetch("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+
+  if (response.status === 200) {
+    return (await response.json()) as LoginResponse;
+  }
+
+  if (response.status === 422) {
+    throw new LoginError("Validation failed");
+  }
+
+  if (response.status === 401) {
+    throw new LoginError("Invalid credentials.");
+  }
+
+  throw new ApiError("An unexpected error occurred.");
+}
+
+export async function refreshTokenClient(
+  refreshToken: string
+): Promise<LoginResponse> {
+  const response = await fetch("/api/auth/refresh", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  if (response.status === 200) {
+    return (await response.json()) as LoginResponse;
+  }
+
+  if (response.status === 401) {
+    throw new RefreshTokenError("Invalid or expired refresh token.");
+  }
+
+  throw new ApiError("An unexpected error occurred.");
+}
+
+// ---------------------------------------------------------------------------
+// Registration API client
 // ---------------------------------------------------------------------------
 
 import type { PfRegistrationData, PjRegistrationData } from "@/lib/validation-schemas";

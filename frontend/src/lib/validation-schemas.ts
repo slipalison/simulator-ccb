@@ -132,3 +132,14 @@ export const pjRegistrationSchema = z.object({
 });
 
 export type PjRegistrationData = z.infer<typeof pjRegistrationSchema>;
+
+// ---------------------------------------------------------------------------
+// Login Schema
+// ---------------------------------------------------------------------------
+
+export const loginSchema = z.object({
+  email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
+  password: z.string().min(1, "Senha é obrigatória"),
+});
+
+export type LoginData = z.infer<typeof loginSchema>;

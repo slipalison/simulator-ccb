@@ -4,6 +4,9 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Folder Name="/Solution Items/">
+    <File Path="tests/uat-tests.http" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Onboarding.API/Onboarding.API.csproj" />
     <Project Path="src/Onboarding.Application/Onboarding.Application.csproj" />

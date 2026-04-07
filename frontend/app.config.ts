@@ -1,7 +1,7 @@
 import { createApp } from "vinxi";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
-import tsconfigPaths from "vite-tsconfig-paths";
+import { fileURLToPath } from "node:url";
 
 export default createApp({
   routers: [
@@ -15,6 +15,11 @@ export default createApp({
       type: "spa",
       handler: "./index.html",
       vite: {
+        resolve: {
+          alias: {
+            "@": fileURLToPath(new URL("./src", import.meta.url)),
+          },
+        },
         server: {
           host: "0.0.0.0",
           port: 5173,
@@ -22,7 +27,7 @@ export default createApp({
           watch: { usePolling: true, interval: 1000 },
         },
       },
-      plugins: () => [tsconfigPaths(), react(), tailwindcss()],
+      plugins: () => [react(), tailwindcss()],
     },
   ],
 });

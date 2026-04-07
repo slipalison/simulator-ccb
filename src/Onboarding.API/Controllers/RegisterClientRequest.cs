@@ -14,8 +14,9 @@ public sealed class RegisterClientRequest
     public string? RazaoSocial { get; set; }
     public string? Cnpj { get; set; }
 
-    // Common fields
-    public string Email { get; set; } = default!;
-    public string Phone { get; set; } = default!;
-    public string Password { get; set; } = default!;
+    // Common fields — nullable to allow FluentValidation to handle missing fields
+    // (non-nullable would cause 400 from model binding before FluentValidation runs)
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string? Password { get; set; }
 }

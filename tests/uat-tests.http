@@ -1,0 +1,296 @@
+@baseUrl = http://localhost:8080
+@contentType = application/json
+
+# ────────────────────────────────────────────────────────────────
+# PHASE 5: Registration API Tests (Tests 10-14)
+# ────────────────────────────────────────────────────────────────
+
+### Test 10: PF Registration (valid payload)
+# Expected: 201 Created with { id: "guid" }
+# Creates user in app_db + Keycloak
+POST {{baseUrl}}/api/registration
+Content-Type: {{contentType}}
+Idempotency-Key: {{$guid}}
+
+{
+  "nome": "João da Silva UAT",
+  "cpf": "52998224725",
+  "email": "joao.uat@teste.com",
+  "phone": "+5511999990001",
+  "password": "Str0ng!Pass"
+}
+
+### Test 11: PJ Registration (valid payload)
+# Expected: 201 Created with { id: "guid" }
+POST {{baseUrl}}/api/registration
+Content-Type: {{contentType}}
+Idempotency-Key: {{$guid}}
+
+{
+  "razaoSocial": "Empresa UAT LTDA",
+  "cnpj": "11222333000181",
+  "email": "empresa.uat@teste.com",
+  "phone": "+5511999990002",
+  "password": "Str0ng!Pass"
+}
+
+### Test 12a: Duplicate CPF Detection
+# Expected: 409 Conflict — same CPF as Test 10
+POST {{baseUrl}}/api/registration
+Content-Type: {{contentType}}
+
+{
+  "nome": "João Duplicado",
+  "cpf": "52998224725",
+  "email": "duplicado@teste.com",
+  "phone": "+5511999990003",
+  "password": "Str0ng!Pass"
+}
+
+### Test 12b: Duplicate Email Detection
+# Expected: 409 Conflict — same email as Test 10
+POST {{baseUrl}}/api/registration
+Content-Type: {{contentType}}
+
+{
+  "nome": "Outro Nome",
+  "cpf": "71428794090",
+  "email": "joao.uat@teste.com",
+  "phone": "+5511999990004",
+  "password": "Str0ng!Pass"
+}
+
+### Test 13: Invalid CPF (wrong check digit)
+# Expected: 422 Unprocessable Entity — "The provided document number is invalid."
+POST {{baseUrl}}/api/registration
+Content-Type: {{contentType}}
+
+{
+  "nome": "CPF Inválido",
+  "cpf": "12345678900",
+  "email": "cpf.invalido@teste.com",
+  "phone": "+5511999990005",
+  "password": "Str0ng!Pass"
+}
+
+### Test 14a: Idempotency — First request (201)
+# Expected: 201 Created
+POST {{baseUrl}}/api/registration
+Content-Type: {{contentType}}
+Idempotency-Key: 00000000-0000-0000-0000-000000000001
+
+{
+  "nome": "João Idempotente",
+  "cpf": "11144477735",
+  "email": "joao.idem@teste.com",
+  "phone": "+5511999990006",
+  "password": "Str0ng!Pass"
+}
+
+### Test 14b: Idempotency — Same key (should return cached 201)
+# Expected: 201 with same id (from cache, not handler)
+POST {{baseUrl}}/api/registration
+Content-Type: {{contentType}}
+Idempotency-Key: 00000000-0000-0000-0000-000000000001
+
+{
+  "nome": "João Idempotente",
+  "cpf": "11144477735",
+  "email": "joao.idem@teste.com",
+  "phone": "+5511999990006",
+  "password": "Str0ng!Pass"
+}
+
+### Test 13b: Invalid CNPJ (wrong check digit)
+# Expected: 422 Unprocessable Entity
+POST {{baseUrl}}/api/registration
+Content-Type: {{contentType}}
+
+{
+  "razaoSocial": "CNPJ Inválido LTDA",
+  "cnpj": "12345678000199",
+  "email": "cnpj.invalido@teste.com",
+  "phone": "+5511999990007",
+  "password": "Str0ng!Pass"
+}
+
+# ────────────────────────────────────────────────────────────────
+# PHASE 6: Authentication API Tests (Tests 15-19)
+# Run Test 10 first to create the user used below
+# ────────────────────────────────────────────────────────────────
+
+### Test 15: Login (valid credentials — use email from Test 10)
+# Expected: 200 OK with TokenResponse
+# @name loginValid
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "joao.uat@teste.com",
+  "password": "Str0ng!Pass"
+}
+
+> {%
+    // Salva tokens em variáveis globais do HTTP Client do Rider
+    client.global.set("accessToken", response.body.accessToken);
+    client.global.set("refreshToken", response.body.refreshToken);
+%}
+
+### Test 16: Login (invalid credentials)
+# Expected: 401 Unauthorized — { "Detail": "Invalid credentials." }
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "joao.uat@teste.com",
+  "password": "senhaerrada"
+}
+
+### Test 16b: Login (non-existent email)
+# Expected: 401 Unauthorized — same generic message (SEC-08, no info disclosure)
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "naoexiste@teste.com",
+  "password": "qualquercoisa"
+}
+
+### Test 17: Protected Route without Token
+# Expected: 401 Unauthorized
+GET {{baseUrl}}/api/clients/me
+
+### Test 18: Protected Route with Token (use accessToken salvo no Test 15)
+# Expected: 200 OK with profile data { id, name, email, phone, type, cpf? }
+GET {{baseUrl}}/api/clients/me
+Authorization: Bearer {{accessToken}}
+
+### Test 19: Token Refresh (use refreshToken salvo no Test 15)
+# Expected: 200 OK with new TokenResponse (new accessToken + new refreshToken)
+# @name refreshValid
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### Test 19b: Token Refresh with expired/invalid token
+# Expected: 401 Unauthorized — "Invalid or expired refresh token."
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: {{contentType}}
+
+{
+  "refreshToken": "token-invalid-expirado-aqui"
+}
+
+### Test 15b: Login with missing email
+# Expected: 422 Unprocessable Entity — validation error
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "password": "Str0ng!Pass"
+}
+
+### Test 15c: Login with missing password
+# Expected: 422 Unprocessable Entity — validation error
+POST {{baseUrl}}/api/auth/login
+Content-Type: {{contentType}}
+
+{
+  "email": "joao.uat@teste.com"
+}
+
+# ────────────────────────────────────────────────────────────────
+# PHASE 4: Observability Tests (Tests 6-9)
+# ────────────────────────────────────────────────────────────────
+
+### Test 9a: Health Check — Liveness Probe
+# Expected: 200 OK
+GET {{baseUrl}}/healthz/live
+
+### Test 9b: Health Check — Readiness Probe
+# Expected: 200 OK
+GET {{baseUrl}}/healthz/ready
+
+### Test 6/7/8: Observe Structured Logging + TraceId
+# Any API call above generates logs with TraceId in response headers.
+# Check response header "traceId" in any response above.
+# To see full logs, check Docker logs:
+#   docker compose logs api | Select-String "TraceId"
+#
+# Expected log format (JSON):
+# {
+#   "Timestamp": "...",
+#   "Level": "Information",
+#   "MessageTemplate": "...",
+#   "TraceId": "00-xxxxx-xxxxx-01",
+#   "SpanId": "...",
+#   "Properties": { ... }
+# }
+#
+# Verify NO passwords or tokens appear in logs (Test 8 — Secret Masking)
+
+# ────────────────────────────────────────────────────────────────
+# HEALTHCHECKS — Keycloak + Services
+# ────────────────────────────────────────────────────────────────
+
+### Keycloak Realm Discovery
+# Expected: 200 OK with JSON containing "issuer": "http://localhost:8180/realms/onboarding"
+GET http://localhost:8180/realms/onboarding/.well-known/openid-configuration
+
+### Keycloak Health (ready)
+GET http://localhost:8180/health/ready
+
+### Grafana UI
+# Expected: 200 OK (login: admin / ${GRAFANA_ADMIN_PASSWORD:-admin})
+GET http://localhost:3000/api/health
+
+# ────────────────────────────────────────────────────────────────
+# BRUTE FORCE TEST (Test 3) — Direct to Keycloak
+# Requires user to exist in Keycloak first (run Test 10 above)
+# Expected: First 5 attempts return 401, then Keycloak locks account
+# ────────────────────────────────────────────────────────────────
+
+### Brute Force Attempt 1
+POST http://localhost:8180/realms/onboarding/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=onboarding-app&username=joao.uat@teste.com&password=senhaerrada&grant_type=password
+
+### Brute Force Attempt 2
+POST http://localhost:8180/realms/onboarding/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=onboarding-app&username=joao.uat@teste.com&password=senhaerrada&grant_type=password
+
+### Brute Force Attempt 3
+POST http://localhost:8180/realms/onboarding/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=onboarding-app&username=joao.uat@teste.com&password=senhaerrada&grant_type=password
+
+### Brute Force Attempt 4
+POST http://localhost:8180/realms/onboarding/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=onboarding-app&username=joao.uat@teste.com&password=senhaerrada&grant_type=password
+
+### Brute Force Attempt 5
+POST http://localhost:8180/realms/onboarding/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=onboarding-app&username=joao.uat@teste.com&password=senhaerrada&grant_type=password
+
+### Brute Force Attempt 6 — Should be LOCKED
+POST http://localhost:8180/realms/onboarding/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=onboarding-app&username=joao.uat@teste.com&password=senhaerrada&grant_type=password
+
+### Brute Force Attempt 7 — Should be LOCKED
+POST http://localhost:8180/realms/onboarding/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+client_id=onboarding-app&username=joao.uat@teste.com&password=senhaerrada&grant_type=password

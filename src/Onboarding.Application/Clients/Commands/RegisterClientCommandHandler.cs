@@ -39,15 +39,15 @@ public sealed class RegisterClientCommandHandler
                 throw new DuplicateClientException("CNPJ already registered.");
         }
 
-        if (await _repository.ExistsByEmailAsync(command.Email, ct))
+        if (await _repository.ExistsByEmailAsync(command.Email!, ct))
             throw new DuplicateClientException("Email already registered.");
 
         // 2. Build domain aggregate — value objects validate format + check digits here (REG-03, REG-04)
         var client = command.Cpf is not null
             ? Client.RegisterPessoaFisica(
-                command.Nome, command.Cpf, command.Email, command.Phone)
+                command.Nome, command.Cpf, command.Email!, command.Phone!)
             : Client.RegisterPessoaJuridica(
-                command.RazaoSocial!, command.Cnpj!, command.Email, command.Phone);
+                command.RazaoSocial!, command.Cnpj!, command.Email!, command.Phone!);
 
         // 3. Persist to app_db first (architectural decision from STATE.md)
         await _repository.AddAsync(client, ct);
@@ -56,9 +56,9 @@ public sealed class RegisterClientCommandHandler
         try
         {
             await _keycloakUserService.CreateUserAsync(
-                username: command.Email,
-                email: command.Email,
-                password: command.Password,
+                username: command.Email!,
+                email: command.Email!,
+                password: command.Password!,
                 firstName: command.Nome,
                 ct: ct);
         }

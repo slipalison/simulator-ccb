@@ -3,22 +3,24 @@ using Keycloak.AuthServices.Sdk.Admin.Models;
 using Keycloak.AuthServices.Sdk.Admin.Requests.Users;
 using Microsoft.Extensions.Configuration;
 using Onboarding.Application.Common;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 
 namespace Onboarding.Infrastructure.Keycloak;
 
-/// <summary>
-/// Implements IKeycloakUserService using Keycloak.AuthServices.Sdk.
-/// Called by the command handler after app_db persistence succeeds (REG-06).
-/// If CreateUserAsync fails, the handler compensates by calling IClientRepository.DeleteAsync.
-/// </summary>
 public sealed class KeycloakUserService : IKeycloakUserService
 {
     private readonly IKeycloakUserClient _keycloakUserClient;
+    private readonly HttpClient _adminHttpClient;
     private readonly string _realm;
 
-    public KeycloakUserService(IKeycloakUserClient keycloakUserClient, IConfiguration configuration)
+    public KeycloakUserService(
+        IKeycloakUserClient keycloakUserClient,
+        IHttpClientFactory httpClientFactory,
+        IConfiguration configuration)
     {
         _keycloakUserClient = keycloakUserClient;
+        _adminHttpClient = httpClientFactory.CreateClient("keycloak-admin-api");
         _realm = configuration["Keycloak:Realm"] ?? "onboarding";
     }
 
@@ -36,19 +38,13 @@ public sealed class KeycloakUserService : IKeycloakUserService
             FirstName = firstName,
             Enabled = true,
             EmailVerified = true,
-            Credentials =
-            [
-                new CredentialRepresentation
-                {
-                    Type = "password",
-                    Value = password,
-                    Temporary = false
-                }
-            ]
+            // Explicitly clear required actions to prevent "Account is not fully set up" error
+            // See: https://github.com/keycloak/keycloak/issues/32595
+            RequiredActions = [],
         };
 
         // Keycloak Admin API: POST /admin/realms/{realm}/users → 201 Created (no body, Location header)
-        // We must fetch the user ID separately via GetUsersAsync by email.
+        // Credentials set via UserRepresentation may be ignored in Keycloak 26.x — we set password explicitly.
         await _keycloakUserClient.CreateUserAsync(_realm, user, ct);
 
         var users = await _keycloakUserClient.GetUsersAsync(
@@ -56,9 +52,21 @@ public sealed class KeycloakUserService : IKeycloakUserService
             new GetUsersRequestParameters { Email = email, Exact = true },
             ct);
 
-        return users.First().Id
+        var userId = users.First().Id
             ?? throw new InvalidOperationException(
                 $"Keycloak created user for email but returned no ID.");
+
+        // Explicitly set the password via PUT /admin/realms/{realm}/users/{id}/reset-password
+        // This ensures the password is correctly stored regardless of Keycloak version quirks.
+        var passwordPayload = new { type = "password", value = password, temporary = false };
+        var response = await _adminHttpClient.PutAsJsonAsync(
+            $"admin/realms/{_realm}/users/{userId}/reset-password",
+            passwordPayload,
+            ct);
+
+        response.EnsureSuccessStatusCode();
+
+        return userId;
     }
 
     public async Task DeleteUserByEmailAsync(string email, CancellationToken ct = default)

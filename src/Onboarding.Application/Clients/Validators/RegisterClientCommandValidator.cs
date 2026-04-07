@@ -9,15 +9,18 @@ public sealed class RegisterClientCommandValidator
     public RegisterClientCommandValidator()
     {
         RuleFor(x => x.Email)
+            .NotNull().WithMessage("Email is required.")
             .NotEmpty().WithMessage("Email is required.")
             .EmailAddress().WithMessage("Email format is invalid.")
             .MaximumLength(320).WithMessage("Email must be at most 320 characters.");
 
         RuleFor(x => x.Phone)
+            .NotNull().WithMessage("Phone is required.")
             .NotEmpty().WithMessage("Phone is required.")
             .MaximumLength(20).WithMessage("Phone must be at most 20 characters.");
 
         RuleFor(x => x.Password)
+            .NotNull().WithMessage("Password is required.")
             .NotEmpty().WithMessage("Password is required.")
             .MinimumLength(8).WithMessage("Password must be at least 8 characters.");
 

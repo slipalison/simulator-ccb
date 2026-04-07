@@ -54,6 +54,15 @@ public static class InfrastructureServiceExtensions
             Resource = adminClientId,
         }).AddClientCredentialsTokenHandler(ClientCredentialsClientName.Parse("keycloak-admin"));
 
+        // Named HttpClient for direct Keycloak Admin API calls (e.g., reset-password)
+        // This client reuses the keycloak-admin service account token handler
+        services.AddHttpClient("keycloak-admin-api", client =>
+            {
+                client.BaseAddress = new Uri(keycloakBaseUrl.TrimEnd('/') + "/");
+                client.Timeout = TimeSpan.FromSeconds(10);
+            })
+            .AddClientCredentialsTokenHandler(ClientCredentialsClientName.Parse("keycloak-admin"));
+
         services.AddScoped<IKeycloakUserService, KeycloakUserService>();
 
         // Keycloak token endpoint — ROPC/refresh calls (D-11, D-12)

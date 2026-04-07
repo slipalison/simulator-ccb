@@ -19,8 +19,9 @@ export function LoginPage() {
     setServerError(null);
     try {
       await login(data.email, data.password);
-      // Redirect to profile page (Phase 10)
-      navigate({ to: "/profile" });
+      // Redirect to profile page (Phase 10 — route not yet registered)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      navigate({ to: "/profile" as any });
     } catch (err) {
       if (err instanceof Error) {
         setServerError(err.message);

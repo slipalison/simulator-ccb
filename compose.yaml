@@ -68,6 +68,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__AppDb: Host=app_db;Port=5432;Database=onboarding;Username=appuser;Password=${APP_DB_PASSWORD}
+      Keycloak__AuthServerUrl: http://keycloak:8080
       Keycloak__Authority: http://keycloak:8080/realms/onboarding
       Keycloak__AdminClientId: onboarding-api-admin
       Keycloak__AdminClientSecret: ${KC_ADMIN_CLIENT_SECRET}

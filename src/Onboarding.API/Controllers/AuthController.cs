@@ -68,7 +68,7 @@ public sealed class AuthController : ControllerBase
                 Secure = false, // true in production (HTTPS)
                 SameSite = SameSiteMode.Lax,
                 Expires = DateTimeOffset.UtcNow.AddSeconds(tokens.RefreshExpiresIn),
-                Path = "/api/auth/refresh" // Only sent to refresh endpoint
+                Path = "/api" // Available to all /api endpoints
             });
 
             // Return access token only (refresh token in cookie)
@@ -133,7 +133,7 @@ public sealed class AuthController : ControllerBase
                 Secure = false, // true in production (HTTPS)
                 SameSite = SameSiteMode.Lax,
                 Expires = DateTimeOffset.UtcNow.AddSeconds(tokens.RefreshExpiresIn),
-                Path = "/api/auth/refresh"
+                Path = "/api"
             });
 
             // Return access token only
@@ -151,7 +151,7 @@ public sealed class AuthController : ControllerBase
             _logger.LogWarning(ex, "Refresh token exchange failed");
 
             // Clear invalid cookie
-            Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api/auth/refresh" });
+            Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api" });
 
             return Unauthorized(new ProblemDetails
             {
@@ -168,7 +168,7 @@ public sealed class AuthController : ControllerBase
     public IActionResult Logout()
     {
         // Clear refresh token cookie
-        Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api/auth/refresh" });
+        Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api" });
         return NoContent();
     }
 
@@ -203,7 +203,7 @@ public sealed class AuthController : ControllerBase
                 Secure = false,
                 SameSite = SameSiteMode.Lax,
                 Expires = DateTimeOffset.UtcNow.AddSeconds(tokens.RefreshExpiresIn),
-                Path = "/api/auth/refresh"
+                Path = "/api"
             });
 
             // Return user info (decoded from access token)
@@ -218,7 +218,7 @@ public sealed class AuthController : ControllerBase
         catch (KeycloakAuthException)
         {
             // Session invalid — clear cookie
-            Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api/auth/refresh" });
+            Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api" });
 
             return Unauthorized(new ProblemDetails
             {

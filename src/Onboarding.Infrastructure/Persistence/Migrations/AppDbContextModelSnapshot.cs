@@ -81,6 +81,48 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
 
                     b.ToTable("clients", (string)null);
                 });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.PasswordReset.PasswordResetToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("email");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<bool>("IsUsed")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_used");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("token");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .HasDatabaseName("ix_password_reset_tokens_email");
+
+                    b.HasIndex("Token")
+                        .IsUnique()
+                        .HasDatabaseName("ix_password_reset_tokens_token");
+
+                    b.ToTable("password_reset_tokens", (string)null);
+                });
 #pragma warning restore 612, 618
         }
     }

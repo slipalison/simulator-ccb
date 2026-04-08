@@ -18,7 +18,7 @@ This roadmap builds a secure PF/PJ client onboarding system from infrastructure 
 - [x] **Phase 10: Profile UI** - Read-only profile screen displaying PF/PJ data via authenticated API call (completed 2026-04-08)
 - [x] **Phase 11: UX Redesign** - Unified registration form with password UX, login-first navigation, auto-login post-registration, and forgot password flow (completed 2026-04-08)
 - [x] **Phase 12: UI Redesign** - shadcn/ui adoption, dark/light theme, complete visual redesign of all screens (Login, Registration, Profile, Forgot/Reset Password) (completed 2026-04-08)
-- [ ] **Phase 13: Reset Password Fix** - Configurable frontend URL in reset email, end-to-end forgot/reset/login flow working
+- [x] **Phase 13: Reset Password Fix** - Configurable frontend URL in reset email, end-to-end forgot/reset/login flow working
 - [ ] **Phase 14: E2E Testing** - Playwright installation, E2E tests for registration, login, profile, and reset password flows
 - [ ] **Phase 15: Production Cleanup** - Cookie Secure flag configuration, dead code removal, test suite fixes
 

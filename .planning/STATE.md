@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: ux-ui-redesign
-status: complete
-stopped_at: Post-milestone: auth persistence fix (httpOnly cookies, session restoration on F5)
-last_updated: "2026-04-08T19:00:00.000Z"
-last_activity: 2026-04-08 -- Auth persistence fix: refresh token em httpOnly cookie, session restoration on page reload, CORS credentials, proxy cookie forwarding
+status: post-milestone
+stopped_at: Phase 13 complete — Reset Password Fix (configurable Frontend:BaseUrl)
+last_updated: "2026-04-08T22:55:00.000Z"
+last_activity: 2026-04-08 -- Phase 13: Reset Password Fix — configurable Frontend:BaseUrl, P0 audit gap closed
 progress:
-  total_phases: 12
-  completed_phases: 12
-  total_plans: 35
-  completed_plans: 35
+  total_phases: 13
+  completed_phases: 13
+  total_plans: 36
+  completed_plans: 36
   percent: 100
 ---
 
@@ -21,25 +21,25 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE COMPLETE — All 12 phases delivered + auth persistence fix
-**Last activity:** 2026-04-08 -- Post-milestone: auth persistence fix (httpOnly cookies, session restoration on F5, CORS credentials, proxy cookie forwarding, 6 new tests)
+**Current focus:** MILESTONE COMPLETE — All 13 phases delivered (v2.0 + post-milestone fixes)
+**Last activity:** 2026-04-08 -- Phase 13: Reset Password Fix — configurable Frontend:BaseUrl, P0 audit gap closed
 
-Progress: [████████████] 100% (35/35 plans complete)
+Progress: [████████████████] 100% (36/36 plans complete)
 
 ## Current Position
 
-Phase: 12 (ui-redesign) — COMPLETE + auth persistence post-fix
-Next: Audit milestone, new milestone, or ad-hoc features
-Last activity: 2026-04-08 -- Post-milestone auth fix complete: login survives page reload, refresh token in httpOnly cookie, GET /api/auth/me for session restoration
+Phase: 13 (reset-password-fix) — COMPLETE
+Next: Phase 14 (E2E Testing) or Phase 15 (Production Cleanup)
+Last activity: 2026-04-08 -- Phase 13 complete: Frontend:BaseUrl configurable, reset link uses correct port 5173, 2 new tests passing
 
-Progress: [████████████] 100% (35/35 plans complete)
+Progress: [████████████████] 100% (36/36 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 35
-- Phases completas: 12/12 (MILESTONE COMPLETE)
+- Total plans completed: 36
+- Phases completas: 13/13 (MILESTONE COMPLETE + post-milestone fixes)
 
 **By Phase:**
 
@@ -57,6 +57,7 @@ Progress: [████████████] 100% (35/35 plans complete)
 | 10-profile-ui | 3/3 | Complete 2026-04-08 |
 | 11-ux-redesign | 2/2 | Complete 2026-04-08 |
 | 12-ui-redesign | 3/3 | Complete 2026-04-08 |
+| 13-reset-password-fix | 1/1 | Complete 2026-04-08 |
 
 *Updated after each plan completion*
 | Phase 01-infrastructure P01 | 2 | 3 tasks | 7 files |

@@ -6,6 +6,7 @@ import { PersonTypeRadio } from "@/components/molecules/PersonTypeRadio";
 import { PasswordField } from "@/components/molecules/PasswordField";
 import { PasswordStrengthMeter } from "@/components/molecules/PasswordStrengthMeter";
 import { AppButton } from "@/components/atoms/AppButton";
+import { LabeledField } from "@/components/molecules/LabeledField";
 import {
   registrationSchema,
   type RegistrationData,
@@ -20,6 +21,7 @@ import {
   LoginError,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
+import { AuthLayout } from "@/components/templates/AuthLayout";
 
 /**
  * RegistrationForm: unified PF/PJ registration form with dynamic fields
@@ -137,169 +139,142 @@ export function RegistrationForm() {
   const isPf = personType === "PF";
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
-      {/* Person Type Radio */}
-      <PersonTypeRadio
-        value={personType}
-        onChange={(value) => setValue("personType", value, { shouldValidate: true })}
-      />
+    <AuthLayout
+      title="Criar Conta"
+      subtitle="Preencha seus dados para criar sua conta"
+      footer={
+        <p className="text-center text-sm text-slate-600">
+          Já tem conta?{" "}
+          <a href="/login" className="font-medium text-primary hover:underline">
+            Faça login
+          </a>
+        </p>
+      }
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
+        {/* Person Type Radio */}
+        <PersonTypeRadio
+          value={personType}
+          onChange={(value) => setValue("personType", value, { shouldValidate: true })}
+        />
 
-      {/* Server error */}
-      {submitError && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600" role="alert">
-          {submitError}
-        </div>
-      )}
-
-      {/* Common fields */}
-      <div className="space-y-4">
-        {isPf ? (
-          <>
-            <div className="space-y-1">
-              <label htmlFor="nome" className="block text-sm font-medium text-foreground">
-                Nome
-              </label>
-              <input
-                id="nome"
-                placeholder="Nome completo"
-                className={`w-full rounded-md border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
-                  errors.nome ? "border-red-300 bg-red-50" : "border-input bg-background"
-                }`}
-                {...register("nome")}
-                aria-invalid={!!errors.nome}
-              />
-              {errors.nome && (
-                <p className="text-xs text-red-600" role="alert">{errors.nome.message}</p>
-              )}
-            </div>
-            <div className="space-y-1">
-              <label htmlFor="cpf" className="block text-sm font-medium text-foreground">
-                CPF
-              </label>
-              <input
-                id="cpf"
-                placeholder="00000000000"
-                inputMode="numeric"
-                className={`w-full rounded-md border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
-                  errors.cpf ? "border-red-300 bg-red-50" : "border-input bg-background"
-                }`}
-                {...register("cpf")}
-                onBlur={handleBlurStripDigits("cpf")}
-                aria-invalid={!!errors.cpf}
-              />
-              {errors.cpf && (
-                <p className="text-xs text-red-600" role="alert">{errors.cpf.message}</p>
-              )}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="space-y-1">
-              <label htmlFor="razaoSocial" className="block text-sm font-medium text-foreground">
-                Razão Social
-              </label>
-              <input
-                id="razaoSocial"
-                placeholder="Razão Social da empresa"
-                className={`w-full rounded-md border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
-                  errors.razaoSocial ? "border-red-300 bg-red-50" : "border-input bg-background"
-                }`}
-                {...register("razaoSocial")}
-                aria-invalid={!!errors.razaoSocial}
-              />
-              {errors.razaoSocial && (
-                <p className="text-xs text-red-600" role="alert">{errors.razaoSocial.message}</p>
-              )}
-            </div>
-            <div className="space-y-1">
-              <label htmlFor="cnpj" className="block text-sm font-medium text-foreground">
-                CNPJ
-              </label>
-              <input
-                id="cnpj"
-                placeholder="00000000000000"
-                inputMode="numeric"
-                className={`w-full rounded-md border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
-                  errors.cnpj ? "border-red-300 bg-red-50" : "border-input bg-background"
-                }`}
-                {...register("cnpj")}
-                onBlur={handleBlurStripDigits("cnpj")}
-                aria-invalid={!!errors.cnpj}
-              />
-              {errors.cnpj && (
-                <p className="text-xs text-red-600" role="alert">{errors.cnpj.message}</p>
-              )}
-            </div>
-          </>
+        {/* Server error */}
+        {submitError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600" role="alert">
+            {submitError}
+          </div>
         )}
 
-        {/* Email */}
-        <div className="space-y-1">
-          <label htmlFor="email" className="block text-sm font-medium text-foreground">
-            Email
-          </label>
-          <input
+        {/* Common fields */}
+        <div className="space-y-4">
+          {isPf ? (
+            <>
+              <LabeledField
+                id="nome"
+                label="Nome"
+                error={errors.nome?.message}
+                inputProps={{
+                  placeholder: "Nome completo",
+                  disabled: isSubmitting,
+                  ...register("nome"),
+                }}
+              />
+              <LabeledField
+                id="cpf"
+                label="CPF"
+                error={errors.cpf?.message}
+                inputProps={{
+                  placeholder: "00000000000",
+                  inputMode: "numeric",
+                  disabled: isSubmitting,
+                  ...register("cpf"),
+                  onBlur: handleBlurStripDigits("cpf"),
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <LabeledField
+                id="razaoSocial"
+                label="Razão Social"
+                error={errors.razaoSocial?.message}
+                inputProps={{
+                  placeholder: "Razão Social da empresa",
+                  disabled: isSubmitting,
+                  ...register("razaoSocial"),
+                }}
+              />
+              <LabeledField
+                id="cnpj"
+                label="CNPJ"
+                error={errors.cnpj?.message}
+                inputProps={{
+                  placeholder: "00000000000000",
+                  inputMode: "numeric",
+                  disabled: isSubmitting,
+                  ...register("cnpj"),
+                  onBlur: handleBlurStripDigits("cnpj"),
+                }}
+              />
+            </>
+          )}
+
+          {/* Email */}
+          <LabeledField
             id="email"
-            type="email"
-            placeholder="seu@email.com"
-            className={`w-full rounded-md border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
-              errors.email ? "border-red-300 bg-red-50" : "border-input bg-background"
-            }`}
-            {...register("email")}
-            aria-invalid={!!errors.email}
+            label="Email"
+            error={errors.email?.message}
+            inputProps={{
+              type: "email",
+              placeholder: "seu@email.com",
+              disabled: isSubmitting,
+              ...register("email"),
+            }}
           />
-          {errors.email && (
-            <p className="text-xs text-red-600" role="alert">{errors.email.message}</p>
-          )}
-        </div>
 
-        {/* Phone */}
-        <div className="space-y-1">
-          <label htmlFor="phone" className="block text-sm font-medium text-foreground">
-            Telefone
-          </label>
-          <input
+          {/* Phone */}
+          <LabeledField
             id="phone"
-            placeholder="11999999999"
-            inputMode="tel"
-            className={`w-full rounded-md border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-primary ${
-              errors.phone ? "border-red-300 bg-red-50" : "border-input bg-background"
-            }`}
-            {...register("phone")}
-            onBlur={handleBlurStripDigits("phone")}
-            aria-invalid={!!errors.phone}
+            label="Telefone"
+            error={errors.phone?.message}
+            inputProps={{
+              placeholder: "11999999999",
+              inputMode: "tel",
+              disabled: isSubmitting,
+              ...register("phone"),
+              onBlur: handleBlurStripDigits("phone"),
+            }}
           />
-          {errors.phone && (
-            <p className="text-xs text-red-600" role="alert">{errors.phone.message}</p>
-          )}
+
+          {/* Password */}
+          <PasswordField
+            id="password"
+            label="Senha"
+            value={password}
+            onChange={(value) => setValue("password", value, { shouldValidate: true })}
+            error={errors.password?.message}
+          />
+
+          {/* Password Strength Meter */}
+          <PasswordStrengthMeter password={password ?? ""} />
+
+          {/* Confirm Password */}
+          <PasswordField
+            id="confirmPassword"
+            label="Confirmar Senha"
+            value={watch("confirmPassword") ?? ""}
+            onChange={(value) => setValue("confirmPassword", value, { shouldValidate: true })}
+            error={errors.confirmPassword?.message}
+          />
         </div>
 
-        {/* Password */}
-        <PasswordField
-          id="password"
-          label="Senha"
-          value={password}
-          onChange={(value) => setValue("password", value, { shouldValidate: true })}
-          error={errors.password?.message}
-        />
-
-        {/* Password Strength Meter */}
-        <PasswordStrengthMeter password={password ?? ""} />
-
-        {/* Confirm Password */}
-        <PasswordField
-          id="confirmPassword"
-          label="Confirmar Senha"
-          value={watch("confirmPassword") ?? ""}
-          onChange={(value) => setValue("confirmPassword", value, { shouldValidate: true })}
-          error={errors.confirmPassword?.message}
-        />
-      </div>
-
-      {/* Submit button */}
-      <AppButton type="submit" disabled={isSubmitting} className="w-full">
-        {isSubmitting ? "Criando..." : "Criar conta"}
-      </AppButton>
-    </form>
+        {/* Submit button */}
+        <div className="pt-2">
+          <AppButton type="submit" disabled={isSubmitting} className="w-full">
+            {isSubmitting ? "Criando..." : "Criar conta"}
+          </AppButton>
+        </div>
+      </form>
+    </AuthLayout>
   );
 }

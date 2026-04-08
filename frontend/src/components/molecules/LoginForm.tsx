@@ -28,7 +28,7 @@ export function LoginForm({ onSubmit, serverError }: LoginFormProps) {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="space-y-4 w-full max-w-sm"
+      className="space-y-4 w-full"
       noValidate
     >
       {serverError && (

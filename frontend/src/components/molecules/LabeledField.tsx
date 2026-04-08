@@ -16,7 +16,7 @@ export interface LabeledFieldProps {
 export function LabeledField({ id, label, error, inputProps }: LabeledFieldProps) {
   return (
     <div className="space-y-1">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} className="text-left">{label}</Label>
       <Input
         id={id}
         aria-invalid={!!error}

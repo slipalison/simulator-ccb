@@ -4,7 +4,7 @@ import { LoginForm } from "@/components/molecules/LoginForm";
 import { useAuth } from "@/lib/auth-context";
 import { LoginError } from "@/lib/api";
 import type { LoginData } from "@/lib/validation-schemas";
-import { PageLayout } from "@/components/templates/PageLayout";
+import { AuthLayout } from "@/components/templates/AuthLayout";
 
 /**
  * LoginPage: custom login screen with email + password.
@@ -40,29 +40,26 @@ export function LoginPage() {
   };
 
   return (
-    <PageLayout>
-      <div className="mx-auto max-w-md text-center">
-        <h1 className="mb-4 text-3xl font-bold text-foreground">Login</h1>
-        <p className="mb-6 text-muted-foreground">
-          Entre com seu email e senha para acessar sua conta.
-        </p>
-        <div className="flex justify-center">
-          <LoginForm onSubmit={handleLogin} serverError={serverError} />
-        </div>
-        <div className="mt-6 space-y-2 text-sm">
-          <p className="text-muted-foreground">
+    <AuthLayout
+      title="Login"
+      subtitle="Entre com seu email e senha para acessar sua conta"
+      footer={
+        <div className="space-y-2 text-center text-sm">
+          <p className="text-slate-600">
             Nao tem uma conta?{" "}
             <a href="/register" className="font-medium text-primary hover:underline">
               Criar conta
             </a>
           </p>
-          <p className="text-muted-foreground">
+          <p className="text-slate-600">
             <a href="/forgot-password" className="font-medium text-primary hover:underline">
               Esqueci minha senha
             </a>
           </p>
         </div>
-      </div>
-    </PageLayout>
+      }
+    >
+      <LoginForm onSubmit={handleLogin} serverError={serverError} />
+    </AuthLayout>
   );
 }

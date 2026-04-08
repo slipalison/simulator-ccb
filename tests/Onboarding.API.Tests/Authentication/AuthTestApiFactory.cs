@@ -7,6 +7,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Onboarding.Application.Common;
+using Onboarding.Application.Services;
 using Onboarding.Domain.Repositories;
 
 namespace Onboarding.API.Tests.Authentication;
@@ -20,6 +21,9 @@ internal sealed class AuthTestApiFactory : WebApplicationFactory<Program>
 {
     public IClientRepository RepositoryMock { get; } = Substitute.For<IClientRepository>();
     public IKeycloakTokenService TokenServiceMock { get; } = Substitute.For<IKeycloakTokenService>();
+    public IKeycloakUserService KeycloakUserServiceMock { get; } = Substitute.For<IKeycloakUserService>();
+    public IPasswordResetTokenRepository TokenRepositoryMock { get; } = Substitute.For<IPasswordResetTokenRepository>();
+    public IEmailService EmailServiceMock { get; } = Substitute.For<IEmailService>();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -49,6 +53,9 @@ internal sealed class AuthTestApiFactory : WebApplicationFactory<Program>
             // Replace real infrastructure with mocks (no DB, no Keycloak required)
             services.AddScoped<IClientRepository>(_ => RepositoryMock);
             services.AddScoped<IKeycloakTokenService>(_ => TokenServiceMock);
+            services.AddScoped<IKeycloakUserService>(_ => KeycloakUserServiceMock);
+            services.AddScoped<IPasswordResetTokenRepository>(_ => TokenRepositoryMock);
+            services.AddScoped<IEmailService>(_ => EmailServiceMock);
 
             // Disable JWT validation for tests — PostConfigure overrides app configuration
             // D-04/D-05: in tests we use FakeJwtTokenHelper to generate unsigned tokens

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Onboarding.Application.Auth.Commands;
 using Onboarding.Application.Auth.DTOs;
 using Onboarding.Application.Common;
+using Onboarding.Domain.Exceptions;
 using Onboarding.Infrastructure.Keycloak;
 
 namespace Onboarding.API.Controllers;
@@ -111,9 +112,90 @@ public sealed class AuthController : ControllerBase
             });
         }
     }
+
+    /// <summary>POST /api/auth/forgot-password — UX-05: initiate password reset flow.</summary>
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> ForgotPassword(
+        [FromBody] ForgotPasswordRequest request,
+        [FromServices] ICommandHandler<ForgotPasswordCommand, Unit> handler,
+        [FromServices] IValidator<ForgotPasswordCommand> validator,
+        CancellationToken ct)
+    {
+        var command = new ForgotPasswordCommand(request.Email ?? string.Empty);
+
+        var validation = await validator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+        {
+            return BadRequest(new ValidationProblemDetails(
+                validation.Errors
+                    .GroupBy(e => e.PropertyName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
+        }
+
+        try
+        {
+            await handler.HandleAsync(command, ct);
+            // Always returns 200 (no info disclosure)
+            return Ok(new { message = "Se o email existir, voce recebera um link de recuperacao." });
+        }
+        catch (RateLimitExceededException ex)
+        {
+            return StatusCode(429, new ProblemDetails
+            {
+                Title = "Rate limit exceeded",
+                Status = StatusCodes.Status429TooManyRequests,
+                Detail = ex.Message
+            });
+        }
+    }
+
+    /// <summary>POST /api/auth/reset-password — UX-05: reset password with token.</summary>
+    [HttpPost("reset-password")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ResetPassword(
+        [FromBody] ResetPasswordRequest request,
+        [FromServices] ICommandHandler<ResetPasswordCommand, Unit> handler,
+        [FromServices] IValidator<ResetPasswordCommand> validator,
+        CancellationToken ct)
+    {
+        var command = new ResetPasswordCommand(
+            request.Token ?? string.Empty,
+            request.NewPassword ?? string.Empty);
+
+        var validation = await validator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+        {
+            return UnprocessableEntity(new ValidationProblemDetails(
+                validation.Errors
+                    .GroupBy(e => e.PropertyName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
+        }
+
+        try
+        {
+            await handler.HandleAsync(command, ct);
+            return Ok(new { message = "Senha alterada com sucesso." });
+        }
+        catch (BadRequestException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Bad request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = ex.Message
+            });
+        }
+    }
 }
 
 // HTTP request DTOs for AuthController — nullable to allow FluentValidation to handle missing fields
 // (non-nullable would cause 400 from model binding before FluentValidation runs)
 public sealed record LoginRequest(string? Email, string? Password);
 public sealed record RefreshTokenRequest(string? RefreshToken);
+public sealed record ForgotPasswordRequest(string? Email);
+public sealed record ResetPasswordRequest(string? Token, string? NewPassword);

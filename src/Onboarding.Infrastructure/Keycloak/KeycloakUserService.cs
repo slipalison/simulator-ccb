@@ -98,6 +98,45 @@ public sealed class KeycloakUserService : IKeycloakUserService
         // No-op if user does not exist
     }
 
+    public async Task<bool> UserExistsByEmailAsync(string email, CancellationToken ct = default)
+    {
+        var users = await _keycloakUserClient.GetUsersAsync(
+            _realm,
+            new GetUsersRequestParameters { Email = email, Exact = true },
+            ct);
+
+        return users.Any();
+    }
+
+    public async Task<KeycloakUser?> GetUserByEmailAsync(string email, CancellationToken ct = default)
+    {
+        var users = await _keycloakUserClient.GetUsersAsync(
+            _realm,
+            new GetUsersRequestParameters { Email = email, Exact = true },
+            ct);
+
+        var user = users.FirstOrDefault();
+        if (user == null) return null;
+
+        return new KeycloakUser(user.Id!.ToString(), user.Email ?? email);
+    }
+
+    public async Task UpdateUserPasswordAsync(string userId, string newPassword, CancellationToken ct = default)
+    {
+        var passwordPayload = new { type = "password", value = newPassword, temporary = false };
+        var response = await _adminHttpClient.PutAsJsonAsync(
+            $"admin/realms/{_realm}/users/{userId}/reset-password",
+            passwordPayload,
+            ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException(
+                $"Keycloak rejected password update for user '{userId}': {body}");
+        }
+    }
+
     /// <summary>
     /// Detects if an exception indicates a 409 Conflict from Keycloak.
     /// The SDK may wrap the original HttpResponseMessage or throw HttpRequestException.

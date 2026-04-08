@@ -26,6 +26,12 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IValidator<LoginCommand>, LoginCommandValidator>();
         services.AddScoped<IValidator<RefreshTokenCommand>, RefreshTokenCommandValidator>();
 
+        // Forgot/Reset password commands (Phase 11 — UX-05)
+        services.AddScoped<ICommandHandler<ForgotPasswordCommand, Unit>, ForgotPasswordCommandHandler>();
+        services.AddScoped<ICommandHandler<ResetPasswordCommand, Unit>, ResetPasswordCommandHandler>();
+        services.AddScoped<IValidator<ForgotPasswordCommand>, ForgotPasswordCommandValidator>();
+        services.AddScoped<IValidator<ResetPasswordCommand>, ResetPasswordCommandValidator>();
+
         return services;
     }
 }

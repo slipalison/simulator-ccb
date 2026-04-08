@@ -24,4 +24,26 @@ public interface IKeycloakUserService
     /// No-op if no user with the given email exists.
     /// </summary>
     Task DeleteUserByEmailAsync(string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Checks if a user exists in Keycloak by email address.
+    /// Used by forgot password flow to determine whether to send a reset email.
+    /// Returns false if no user found (without throwing).
+    /// </summary>
+    Task<bool> UserExistsByEmailAsync(string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets a Keycloak user by email address. Returns null if not found.
+    /// </summary>
+    Task<KeycloakUser?> GetUserByEmailAsync(string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates the password for a Keycloak user by their ID.
+    /// </summary>
+    Task UpdateUserPasswordAsync(string userId, string newPassword, CancellationToken ct = default);
 }
+
+/// <summary>
+/// Minimal representation of a Keycloak user.
+/// </summary>
+public sealed record KeycloakUser(string Id, string Email);

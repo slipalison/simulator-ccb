@@ -1,0 +1,14 @@
+using FluentValidation;
+using Onboarding.Application.Auth.Commands;
+
+namespace Onboarding.Application.Auth.Validators;
+
+public class ForgotPasswordCommandValidator : AbstractValidator<ForgotPasswordCommand>
+{
+    public ForgotPasswordCommandValidator()
+    {
+        RuleFor(x => x.Email)
+            .NotEmpty()
+            .EmailAddress();
+    }
+}

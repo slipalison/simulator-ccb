@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Onboarding.Application.Common;
+using Onboarding.Application.Services;
 using Onboarding.Domain.Repositories;
+using Onboarding.Infrastructure.Services;
 using Onboarding.Infrastructure.Keycloak;
 using Onboarding.Infrastructure.Persistence;
 using Onboarding.Infrastructure.Repositories;
@@ -63,6 +65,15 @@ public static class InfrastructureServiceExtensions
             .AddClientCredentialsTokenHandler(ClientCredentialsClientName.Parse("keycloak-admin"));
 
         services.AddScoped<IKeycloakUserService, KeycloakUserService>();
+
+        // Email service (Resend.com) — Phase 11 UX-05
+        services.AddHttpClient<IEmailService, ResendEmailService>(client =>
+        {
+            client.BaseAddress = new Uri("https://api.resend.com/");
+        });
+
+        // Password reset token repository
+        services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
 
         // Keycloak token endpoint — ROPC/refresh calls (D-11, D-12)
         // Named client without auth handler — ROPC calls do not carry outbound Bearer token

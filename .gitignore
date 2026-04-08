@@ -59,4 +59,5 @@ scripts/.zitadel-setup-done
 .vs/
 frontend/dist/
 frontend/.vinxi/
+frontend/.output/
 .idea

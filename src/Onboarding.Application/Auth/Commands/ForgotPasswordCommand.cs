@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Onboarding.Application.Common;
 using Onboarding.Application.Services;
@@ -18,17 +19,20 @@ public sealed class ForgotPasswordCommandHandler : ICommandHandler<ForgotPasswor
     private readonly IPasswordResetTokenRepository _tokenRepo;
     private readonly IKeycloakUserService _keycloakService;
     private readonly IEmailService _emailService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<ForgotPasswordCommandHandler> _logger;
 
     public ForgotPasswordCommandHandler(
         IPasswordResetTokenRepository tokenRepo,
         IKeycloakUserService keycloakService,
         IEmailService emailService,
+        IConfiguration configuration,
         ILogger<ForgotPasswordCommandHandler> logger)
     {
         _tokenRepo = tokenRepo;
         _keycloakService = keycloakService;
         _emailService = emailService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -51,8 +55,10 @@ public sealed class ForgotPasswordCommandHandler : ICommandHandler<ForgotPasswor
             var token = PasswordResetToken.Create(command.Email);
             await _tokenRepo.AddAsync(token, ct);
 
-            // Send email via Resend.com
-            var resetLink = $"http://localhost:3001/reset-password?token={token.Token}";
+            // Send email via Resend.com — use configurable frontend base URL
+            var frontendBaseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+            frontendBaseUrl = frontendBaseUrl.TrimEnd('/');
+            var resetLink = $"{frontendBaseUrl}/reset-password?token={token.Token}";
             await _emailService.SendPasswordResetEmailAsync(command.Email, resetLink, ct);
 
             _logger.LogInformation("Password reset email sent to {Email}", command.Email);

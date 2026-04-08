@@ -3,9 +3,9 @@ gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: ux-ui-redesign
 status: complete
-stopped_at: Phase 12 (ui-redesign) COMPLETE — all plans executed, phase goal verified
-last_updated: "2026-04-08T18:10:00.000Z"
-last_activity: 2026-04-08 -- Phase 12 Plan 03 complete: ProfilePage + Header + Forgot/Reset pages redesigned with shadcn/ui, 21 new tests passing, 114 total
+stopped_at: Post-milestone: auth persistence fix (httpOnly cookies, session restoration on F5)
+last_updated: "2026-04-08T19:00:00.000Z"
+last_activity: 2026-04-08 -- Auth persistence fix: refresh token em httpOnly cookie, session restoration on page reload, CORS credentials, proxy cookie forwarding
 progress:
   total_phases: 12
   completed_phases: 12
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE COMPLETE — All 12 phases delivered
-**Last activity:** 2026-04-08 -- Phase 12 complete: shadcn/ui adoption, dark/light theme, complete visual redesign of all screens (Login, Registration, Profile, Forgot/Reset Password)
+**Current focus:** MILESTONE COMPLETE — All 12 phases delivered + auth persistence fix
+**Last activity:** 2026-04-08 -- Post-milestone: auth persistence fix (httpOnly cookies, session restoration on F5, CORS credentials, proxy cookie forwarding, 6 new tests)
 
 Progress: [████████████] 100% (35/35 plans complete)
 
 ## Current Position
 
-Phase: 12 (ui-redesign) — COMPLETE
-Next: Audit milestone or new milestone
-Last activity: 2026-04-08 -- Phase 12 complete: shadcn/ui setup, theme toggle, redesigned Login/Registration/Profile/Forgot/Reset pages, Header with user menu, 44 new tests
+Phase: 12 (ui-redesign) — COMPLETE + auth persistence post-fix
+Next: Audit milestone, new milestone, or ad-hoc features
+Last activity: 2026-04-08 -- Post-milestone auth fix complete: login survives page reload, refresh token in httpOnly cookie, GET /api/auth/me for session restoration
 
 Progress: [████████████] 100% (35/35 plans complete)
 
@@ -110,6 +110,10 @@ Recent decisions affecting current work:
 - [Phase 11-ux-redesign]: ProfilePage self-wraps with AuthGuard (not router-level guard) — simpler test isolation
 - [Phase 11-ux-redesign]: Auto-login reuses existing `login()` from auth-context — no separate `autoLogin()` function needed
 - [Phase 11-ux-redesign]: Zod `superRefine()` used for conditional PF/PJ validation based on `personType` field
+- [Post-milestone auth fix]: Refresh token stored in httpOnly cookie (Path=/api, not /api/auth/refresh — too restrictive)
+- [Post-milestone auth fix]: Vinxi api-proxy must forward Set-Cookie headers from backend to browser (manual fetch approach, sendProxy caused 405)
+- [Post-milestone auth fix]: CORS AllowCredentials required for cookie-based auth — frontend origin http://localhost:5173
+- [Post-milestone auth fix]: GET /api/auth/me endpoint created for session restoration on page load
 
 ### Pending Todos
 

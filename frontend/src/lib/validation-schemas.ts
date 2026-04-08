@@ -143,3 +143,103 @@ export const loginSchema = z.object({
 });
 
 export type LoginData = z.infer<typeof loginSchema>;
+
+// ---------------------------------------------------------------------------
+// Unified Registration Schema (PF/PJ dynamic)
+// ---------------------------------------------------------------------------
+
+export const registrationSchema = z
+  .object({
+    personType: z.enum(["PF", "PJ"]),
+    email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
+    phone: z
+      .string()
+      .min(1, "Telefone é obrigatório")
+      .regex(/^\+?\d{10,11}$/, "Telefone deve conter 10 ou 11 dígitos"),
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, "Confirmação de senha é obrigatória"),
+    // PF fields
+    nome: z.string().optional(),
+    cpf: z.string().optional(),
+    // PJ fields
+    razaoSocial: z.string().optional(),
+    cnpj: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Password match validation
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "As senhas não coincidem",
+        path: ["confirmPassword"],
+      });
+    }
+
+    // Conditional PF validation
+    if (data.personType === "PF") {
+      if (!data.nome || data.nome.trim().length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Nome é obrigatório e deve ter pelo menos 2 caracteres",
+          path: ["nome"],
+        });
+      }
+      if (!data.cpf) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "CPF é obrigatório",
+          path: ["cpf"],
+        });
+      } else {
+        const digits = data.cpf.replace(/\D/g, "");
+        if (digits.length !== 11) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "CPF deve conter 11 dígitos",
+            path: ["cpf"],
+          });
+        } else if (!validateCpf(digits)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "CPF inválido",
+            path: ["cpf"],
+          });
+        }
+      }
+    }
+
+    // Conditional PJ validation
+    if (data.personType === "PJ") {
+      if (!data.razaoSocial || data.razaoSocial.trim().length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Razão Social é obrigatória e deve ter pelo menos 2 caracteres",
+          path: ["razaoSocial"],
+        });
+      }
+      if (!data.cnpj) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "CNPJ é obrigatório",
+          path: ["cnpj"],
+        });
+      } else {
+        const digits = data.cnpj.replace(/\D/g, "");
+        if (digits.length !== 14) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "CNPJ deve conter 14 dígitos",
+            path: ["cnpj"],
+          });
+        } else if (!validateCnpj(digits)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "CNPJ inválido",
+            path: ["cnpj"],
+          });
+        }
+      }
+    }
+  });
+
+export type RegistrationData = z.infer<typeof registrationSchema>;

@@ -21,6 +21,19 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
+// Mock router
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-router")>();
+  return {
+    ...actual,
+  };
+});
+
+// Set URL with token for tests
+beforeEach(() => {
+  window.history.pushState({}, "", "/reset-password?token=test-token");
+});
+
 describe("ResetPasswordPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -34,8 +47,8 @@ describe("ResetPasswordPage", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Senha")).toBeInTheDocument();
-      expect(screen.getByLabelText("Confirmar Senha")).toBeInTheDocument();
+      expect(document.getElementById("password")).toBeInTheDocument();
+      expect(document.getElementById("confirmPassword")).toBeInTheDocument();
     });
 
     expect(
@@ -51,10 +64,10 @@ describe("ResetPasswordPage", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+      expect(document.getElementById("password")).toBeInTheDocument();
     });
 
-    const passwordInput = screen.getByLabelText("Senha");
+    const passwordInput = document.getElementById("password") as HTMLInputElement;
     await act(async () => {
       fireEvent.change(passwordInput, { target: { value: "Str0ng@Pass!" } });
     });
@@ -73,11 +86,11 @@ describe("ResetPasswordPage", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+      expect(document.getElementById("password")).toBeInTheDocument();
     });
 
-    const passwordInput = screen.getByLabelText("Senha");
-    const confirmInput = screen.getByLabelText("Confirmar Senha");
+    const passwordInput = document.getElementById("password") as HTMLInputElement;
+    const confirmInput = document.getElementById("confirmPassword") as HTMLInputElement;
 
     await act(async () => {
       fireEvent.change(passwordInput, { target: { value: "Str0ng@Pass!" } });
@@ -108,11 +121,11 @@ describe("ResetPasswordPage", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+      expect(document.getElementById("password")).toBeInTheDocument();
     });
 
-    const passwordInput = screen.getByLabelText("Senha");
-    const confirmInput = screen.getByLabelText("Confirmar Senha");
+    const passwordInput = document.getElementById("password") as HTMLInputElement;
+    const confirmInput = document.getElementById("confirmPassword") as HTMLInputElement;
 
     await act(async () => {
       fireEvent.change(passwordInput, { target: { value: "Str0ng@Pass!" } });
@@ -144,11 +157,11 @@ describe("ResetPasswordPage", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+      expect(document.getElementById("password")).toBeInTheDocument();
     });
 
-    const passwordInput = screen.getByLabelText("Senha");
-    const confirmInput = screen.getByLabelText("Confirmar Senha");
+    const passwordInput = document.getElementById("password") as HTMLInputElement;
+    const confirmInput = document.getElementById("confirmPassword") as HTMLInputElement;
 
     await act(async () => {
       fireEvent.change(passwordInput, { target: { value: "Str0ng@Pass!" } });

@@ -1,29 +1,49 @@
 import { useState, FormEvent } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { AuthLayout } from "@/components/templates/AuthLayout";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ThemeToggle } from "../atoms/ThemeToggle";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { forgotPasswordClient, ForgotPasswordError } from "@/lib/api";
+
+const forgotSchema = z.object({
+  email: z.string().email("Email invalido"),
+});
 
 /**
  * ForgotPasswordPage: user enters email to receive password reset link.
  * Always shows generic success message (no info disclosure).
+ * Redesigned with shadcn Card + Form.
  */
 export function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const form = useForm<z.infer<typeof forgotSchema>>({
+    resolver: zodResolver(forgotSchema),
+    defaultValues: { email: "" },
+  });
+
+  async function onSubmit(values: z.infer<typeof forgotSchema>) {
     setError(null);
     setLoading(true);
 
     try {
-      await forgotPasswordClient(email);
+      await forgotPasswordClient(values.email);
       setSubmitted(true);
     } catch (err: unknown) {
       if (err instanceof ForgotPasswordError) {
@@ -34,74 +54,79 @@ export function ForgotPasswordPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   if (submitted) {
     return (
-      <AuthLayout
-        title="Email Enviado"
-        subtitle="Verifique sua caixa de entrada"
-        footer={
-          <div className="text-center text-sm">
-            <a href="/login" className="font-medium text-primary hover:underline">
-              Voltar para login &rarr;
-            </a>
-          </div>
-        }
-      >
-        <div className="space-y-4">
-          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-            Se o email existir, voce recebera um link de recuperacao.
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={() => navigate({ to: "/login" as any })}
-          >
-            Voltar para login
-          </Button>
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
         </div>
-      </AuthLayout>
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-2xl text-center">Email Enviado</CardTitle>
+            <CardDescription className="text-center">
+              Se o email existir, voce recebera um link de recuperacao.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button className="w-full" onClick={() => navigate({ to: "/login" as any })}>
+              Voltar para login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <AuthLayout
-      title="Recuperar Senha"
-      subtitle="Informe seu email para receber um link de recuperacao"
-      footer={
-        <div className="text-center text-sm">
-          <a href="/login" className="font-medium text-primary hover:underline">
-            Voltar para login &rarr;
-          </a>
-        </div>
-      }
-    >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-1">
-          <Label htmlFor="email">Email</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="seu@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            aria-label="Email"
-          />
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-2xl text-center">Recuperar Senha</CardTitle>
+          <CardDescription className="text-center">
+            Informe seu email para receber um link de recuperacao.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="seu@email.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800" role="alert">
-            {error}
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Enviando..." : "Enviar link"}
+              </Button>
+            </form>
+          </Form>
+
+          <div className="mt-4 text-center text-sm">
+            <a href="/login" className="text-primary hover:underline">
+              Voltar para login &rarr;
+            </a>
           </div>
-        )}
-
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Enviando..." : "Enviar link"}
-        </Button>
-      </form>
-    </AuthLayout>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

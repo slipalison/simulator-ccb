@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { RouterProvider, createRouter, createMemoryHistory } from "@tanstack/react-router";
 import { router } from "@/router";
+import { AuthProvider } from "@/lib/auth-context";
 
 // Criar router com history apontando para rota desconhecida
 async function renderWithUnknownRoute() {
@@ -11,7 +12,11 @@ async function renderWithUnknownRoute() {
     routeTree: router.options.routeTree,
     history: memoryHistory,
   });
-  const result = render(<RouterProvider router={testRouter} />);
+  const result = render(
+    <AuthProvider>
+      <RouterProvider router={testRouter} />
+    </AuthProvider>
+  );
   // TanStack Router é assíncrono — aguardar resolução do estado de navegação
   await testRouter.load();
   return result;

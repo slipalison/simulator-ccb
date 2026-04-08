@@ -16,6 +16,7 @@ This roadmap builds a secure PF/PJ client onboarding system from infrastructure 
 - [x] **Phase 8: Registration UI** - PF/PJ registration forms integrated with the API, including client-side validation and post-registration redirect (completed 2026-04-07)
 - [x] **Phase 9: Login UI** - Custom login screen with ROPC token exchange and in-memory JWT storage (completed 2026-04-07)
 - [x] **Phase 10: Profile UI** - Read-only profile screen displaying PF/PJ data via authenticated API call (completed 2026-04-08)
+- [ ] **Phase 11: UX Redesign** - Unified registration form, password UX, login-first navigation, auto-login, forgot password flow
 
 ## Phase Details
 
@@ -166,8 +167,28 @@ Plans:
   2. The profile data is loaded by GET /api/clients/me with the Bearer JWT — no data is embedded in the route or hardcoded
   3. A PF profile and a PJ profile are visually distinct (different labels, different document field displayed)
   4. Navigating directly to /profile without a token redirects to the login screen
-**Plans**: TBD
-**UI hint**: yes
+**Plans**: 3/3 plans
+Plans:
+- [x] 10-01-PLAN.md — ProfilePage, ProfileCard, ProfileField atoms, API client
+- [x] 10-02-PLAN.md — PF/PJ visual differentiation, loading states, error handling
+- [x] 10-03-PLAN.md — Tests: profile-flow, profile-card, auth guard redirect
+
+### Phase 11: UX Redesign
+**Goal**: Unified registration experience with password UX, login-first navigation, auto-login post-registration, and forgot password flow
+**Depends on**: Phase 10, Phase 6
+**Requirements**: UX-01, UX-02, UX-03, UX-04, UX-05, UX-06
+**Success Criteria** (what must be TRUE):
+  1. Registration is completed in a single form with dynamic PF/PJ fields (radio button) — no separate type selection screen
+  2. Password field includes a visual strength meter (5 levels) and show/hide toggle
+  3. Confirm password field blocks submission if passwords don't match
+  4. The root URL `/` shows LoginPage for unauthenticated users, auto-redirects to `/profile` for authenticated users
+  5. After successful registration, user is automatically logged in and redirected to profile (no intermediate login screen)
+  6. Forgot password flow sends reset email via Resend.com with time-limited token (15min expiry)
+  7. Reset password updates Keycloak user password via Admin API
+**Plans**: 2/2 plans
+Plans:
+- [ ] 11-01-PLAN.md — Unified registration form, password strength meter, show/hide, confirm password, login-first navigation, auto-login
+- [ ] 11-02-PLAN.md — Forgot/reset password flow with Resend.com integration
 
 ## Progress
 
@@ -188,3 +209,4 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 | 8. Registration UI | 3/3 | Complete   | 2026-04-07 |
 | 9. Login UI | 3/3 | Complete   | 2026-04-07 |
 | 10. Profile UI | 3/3 | Complete   | 2026-04-08 |
+| 11. UX Redesign | 0/2 | Not Started | - |

@@ -16,7 +16,7 @@ This roadmap builds a secure PF/PJ client onboarding system from infrastructure 
 - [x] **Phase 8: Registration UI** - PF/PJ registration forms integrated with the API, including client-side validation and post-registration redirect (completed 2026-04-07)
 - [x] **Phase 9: Login UI** - Custom login screen with ROPC token exchange and in-memory JWT storage (completed 2026-04-07)
 - [x] **Phase 10: Profile UI** - Read-only profile screen displaying PF/PJ data via authenticated API call (completed 2026-04-08)
-- [ ] **Phase 11: UX Redesign** - Unified registration form, password UX, login-first navigation, auto-login, forgot password flow
+- [x] **Phase 11: UX Redesign** - Unified registration form with password UX, login-first navigation, auto-login post-registration, and forgot password flow (completed 2026-04-08)
 
 ## Phase Details
 
@@ -209,4 +209,4 @@ Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in par
 | 8. Registration UI | 3/3 | Complete   | 2026-04-07 |
 | 9. Login UI | 3/3 | Complete   | 2026-04-07 |
 | 10. Profile UI | 3/3 | Complete   | 2026-04-08 |
-| 11. UX Redesign | 0/2 | Not Started | - |
+| 11. UX Redesign | 2/2 | Complete   | 2026-04-08 |

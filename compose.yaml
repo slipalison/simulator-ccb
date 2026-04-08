@@ -75,6 +75,7 @@ services:
       Keycloak__AdminClientSecret: ${KC_ADMIN_CLIENT_SECRET}
       Keycloak__RealmUrl: http://keycloak:8080/realms/onboarding
       Keycloak__ValidIssuer: http://localhost:8180/realms/onboarding
+      Frontend__BaseUrl: ${FRONTEND_BASE_URL:-http://localhost:5173}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4317
       OTEL_SERVICE_NAME: onboarding-api
     ports:

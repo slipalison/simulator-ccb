@@ -18,6 +18,9 @@ This roadmap builds a secure PF/PJ client onboarding system from infrastructure 
 - [x] **Phase 10: Profile UI** - Read-only profile screen displaying PF/PJ data via authenticated API call (completed 2026-04-08)
 - [x] **Phase 11: UX Redesign** - Unified registration form with password UX, login-first navigation, auto-login post-registration, and forgot password flow (completed 2026-04-08)
 - [x] **Phase 12: UI Redesign** - shadcn/ui adoption, dark/light theme, complete visual redesign of all screens (Login, Registration, Profile, Forgot/Reset Password) (completed 2026-04-08)
+- [ ] **Phase 13: Reset Password Fix** - Configurable frontend URL in reset email, end-to-end forgot/reset/login flow working
+- [ ] **Phase 14: E2E Testing** - Playwright installation, E2E tests for registration, login, profile, and reset password flows
+- [ ] **Phase 15: Production Cleanup** - Cookie Secure flag configuration, dead code removal, test suite fixes
 
 ## Phase Details
 
@@ -190,6 +193,48 @@ Plans:
 Plans:
 - [ ] 11-01-PLAN.md — Unified registration form, password strength meter, show/hide, confirm password, login-first navigation, auto-login
 - [ ] 11-02-PLAN.md — Forgot/reset password flow with Resend.com integration
+
+### Phase 13: Reset Password Fix
+**Goal:** Configurable frontend URL in reset email, end-to-end forgot/reset/login flow working
+**Depends on**: Phase 11 (UX Redesign)
+**Gap Closure:** P0-01 from v2.0 audit — reset link hardcoded to localhost:3001, frontend runs on :5173
+**Success Criteria** (what must be TRUE):
+  1. `Frontend:BaseUrl` configuration exists (environment variable or appsettings)
+  2. Reset email contains configurable URL: `{Frontend:BaseUrl}/reset-password?token=...`
+  3. Clicking reset link navigates to working reset password page on port 5173
+  4. Full flow tested: forgot → email received → reset → login
+**Plans**: 1 plan
+Plans:
+- [ ] 13-01-PLAN.md — Configurable Frontend:BaseUrl, update ForgotPasswordCommand, test
+
+### Phase 14: E2E Testing
+**Goal:** Playwright installed, E2E tests for critical user flows
+**Depends on**: Phase 12 (UI Redesign)
+**Gap Closure:** P0-02 from v2.0 audit — zero E2E test coverage
+**Success Criteria** (what must be TRUE):
+  1. `@playwright/test` installed and configured in frontend project
+  2. E2E test: Registration → Auto-login → Profile (PF and PJ)
+  3. E2E test: Login → Profile → F5 → Session restored
+  4. E2E test: Direct /profile access → redirect to /login
+  5. All E2E tests pass with `npx playwright test`
+**Plans**: 1 plan
+Plans:
+- [ ] 14-01-PLAN.md — Playwright install, config, 3 E2E flow tests
+
+### Phase 15: Production Cleanup
+**Goal:** Cookie Secure flag configuration, dead code removal, test suite fixes
+**Depends on**: Phase 12 (UI Redesign)
+**Gap Closure:** P1-01, P1-02, + tech debt from v2.0 audit
+**Success Criteria** (what must be TRUE):
+  1. Cookie `Secure` flag is environment-configured (true in production, false in dev)
+  2. Orphan file `frontend/src/client.tsx` deleted
+  3. Dead code `LabeledField.tsx` deleted
+  4. HealthCheckEndpointTests fixed (4 failures → 0)
+  5. Stale TDD comments removed from test files
+  6. All backend tests passing (no failures)
+**Plans**: 1 plan
+Plans:
+- [ ] 15-01-PLAN.md — Cookie config, cleanup, test fixes
 
 ## Progress
 

@@ -195,3 +195,51 @@ export async function registerClient(
   // Fallback for any other error
   throw new ApiError("An unexpected error occurred.");
 }
+
+// ---------------------------------------------------------------------------
+// Profile API client
+// ---------------------------------------------------------------------------
+
+import type { ClientProfileDto } from "@/lib/types";
+
+// ---------------------------------------------------------------------------
+// Custom error class for profile fetch failures
+// ---------------------------------------------------------------------------
+
+export class ProfileError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ProfileError";
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Fetch current user's profile using Bearer token from AuthContext
+// Dynamic import avoids circular dependency: api.ts → auth-context.tsx → api.ts
+// ---------------------------------------------------------------------------
+
+export async function getProfileClient(): Promise<ClientProfileDto> {
+  const { getAccessToken } = await import("./auth-context");
+  const token = getAccessToken();
+
+  if (!token) {
+    throw new ProfileError("No authentication token available");
+  }
+
+  const response = await fetch("/api/clients/me", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new ProfileError("Authentication required");
+    }
+    throw new ProfileError("Failed to fetch profile data");
+  }
+
+  return response.json() as Promise<ClientProfileDto>;
+}

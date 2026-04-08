@@ -118,6 +118,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
+// Standalone token accessor (for use outside React components)
+// Used by API clients that cannot use hooks — avoids circular dependency
+// via dynamic import().
+// ---------------------------------------------------------------------------
+
+export function getAccessToken(): string | null {
+  return tokens.accessToken;
+}
+
+// ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
 

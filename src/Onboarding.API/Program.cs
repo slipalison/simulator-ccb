@@ -126,6 +126,19 @@ try
 
     builder.Services.AddAuthorization();
 
+    // CORS — allow frontend origin with credentials (cookies)
+    const string corsPolicy = "AllowFrontendWithCredentials";
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy(corsPolicy, policy =>
+        {
+            policy.WithOrigins("http://localhost:5173") // Vinxi dev server
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials(); // Required for httpOnly cookies
+        });
+    });
+
     // Application layer — handlers, validators
     builder.Services.AddApplication();
 
@@ -137,6 +150,7 @@ try
     var app = builder.Build();
 
     app.UseSerilogRequestLogging();     // D-05: per-request log with method/path/status/duration
+    app.UseCors("AllowFrontendWithCredentials"); // Must come before UseAuthentication
     app.UseAuthentication();   // D-04: populate HttpContext.User — MUST come before UseAuthorization
     app.UseAuthorization();    // D-06: enforce [Authorize] attributes — MUST come after UseAuthentication
 

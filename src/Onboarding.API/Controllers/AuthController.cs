@@ -60,7 +60,25 @@ public sealed class AuthController : ControllerBase
         try
         {
             var tokens = await _loginHandler.HandleAsync(command, ct);
-            return Ok(tokens);
+
+            // Set refresh token as httpOnly cookie (secure against XSS)
+            Response.Cookies.Append("refreshToken", tokens.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false, // true in production (HTTPS)
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTimeOffset.UtcNow.AddSeconds(tokens.RefreshExpiresIn),
+                Path = "/api/auth/refresh" // Only sent to refresh endpoint
+            });
+
+            // Return access token only (refresh token in cookie)
+            return Ok(new
+            {
+                tokens.AccessToken,
+                tokens.ExpiresIn,
+                tokens.TokenType,
+                tokens.Scope
+            });
         }
         catch (KeycloakAuthException ex)
         {
@@ -77,14 +95,23 @@ public sealed class AuthController : ControllerBase
 
     /// <summary>POST /api/auth/refresh — AUTH-04: exchange refresh token for new token pair.</summary>
     [HttpPost("refresh")]
-    [ProducesResponseType(typeof(TokenResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Refresh(
-        [FromBody] RefreshTokenRequest request,
         CancellationToken ct)
     {
-        var command = new RefreshTokenCommand(request.RefreshToken ?? string.Empty);
+        // Read refresh token from httpOnly cookie
+        if (!Request.Cookies.TryGetValue("refreshToken", out var refreshToken) || string.IsNullOrEmpty(refreshToken))
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Title = "Authentication failed",
+                Status = StatusCodes.Status401Unauthorized,
+                Detail = "No refresh token available."
+            });
+        }
+
+        var command = new RefreshTokenCommand(refreshToken);
 
         var validation = await _refreshValidator.ValidateAsync(command, ct);
         if (!validation.IsValid)
@@ -98,17 +125,106 @@ public sealed class AuthController : ControllerBase
         try
         {
             var tokens = await _refreshHandler.HandleAsync(command, ct);
-            return Ok(tokens);
+
+            // Update refresh token cookie with new token
+            Response.Cookies.Append("refreshToken", tokens.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false, // true in production (HTTPS)
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTimeOffset.UtcNow.AddSeconds(tokens.RefreshExpiresIn),
+                Path = "/api/auth/refresh"
+            });
+
+            // Return access token only
+            return Ok(new
+            {
+                tokens.AccessToken,
+                tokens.ExpiresIn,
+                tokens.TokenType,
+                tokens.Scope
+            });
         }
         catch (KeycloakAuthException ex)
         {
             // D-13 + SEC-08: generic error for invalid/expired refresh token
             _logger.LogWarning(ex, "Refresh token exchange failed");
+
+            // Clear invalid cookie
+            Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api/auth/refresh" });
+
             return Unauthorized(new ProblemDetails
             {
                 Title = "Authentication failed",
                 Status = StatusCodes.Status401Unauthorized,
                 Detail = "Invalid or expired refresh token."
+            });
+        }
+    }
+
+    /// <summary>POST /api/auth/logout — clear session and refresh token cookie.</summary>
+    [HttpPost("logout")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public IActionResult Logout()
+    {
+        // Clear refresh token cookie
+        Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api/auth/refresh" });
+        return NoContent();
+    }
+
+    /// <summary>GET /api/auth/me — validate session and return user info.</summary>
+    [HttpGet("me")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> GetMe(
+        CancellationToken ct)
+    {
+        // Read refresh token from cookie to validate session
+        if (!Request.Cookies.TryGetValue("refreshToken", out var refreshToken) || string.IsNullOrEmpty(refreshToken))
+        {
+            return Unauthorized(new ProblemDetails
+            {
+                Title = "Authentication failed",
+                Status = StatusCodes.Status401Unauthorized,
+                Detail = "No session found."
+            });
+        }
+
+        // Try to refresh tokens to validate the session
+        try
+        {
+            var command = new RefreshTokenCommand(refreshToken);
+            var tokens = await _refreshHandler.HandleAsync(command, ct);
+
+            // Update cookie with new tokens
+            Response.Cookies.Append("refreshToken", tokens.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = false,
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTimeOffset.UtcNow.AddSeconds(tokens.RefreshExpiresIn),
+                Path = "/api/auth/refresh"
+            });
+
+            // Return user info (decoded from access token)
+            return Ok(new
+            {
+                tokens.AccessToken,
+                tokens.ExpiresIn,
+                tokens.TokenType,
+                tokens.Scope
+            });
+        }
+        catch (KeycloakAuthException)
+        {
+            // Session invalid — clear cookie
+            Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api/auth/refresh" });
+
+            return Unauthorized(new ProblemDetails
+            {
+                Title = "Authentication failed",
+                Status = StatusCodes.Status401Unauthorized,
+                Detail = "Session expired."
             });
         }
     }

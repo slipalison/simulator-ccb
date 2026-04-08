@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
+import { renderHook, act, waitFor } from "@testing-library/react";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
 import * as api from "@/lib/api";
 
@@ -21,27 +21,82 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
+// Mock fetch for session restoration
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
+
 function wrapper({ children }: { children: React.ReactNode }) {
   return <AuthProvider>{children}</AuthProvider>;
 }
 
-describe("SEC-10: AuthContext — memory-only token storage", () => {
+describe("Auth persistence: session restoration via httpOnly cookies", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset module-level state by re-rendering a fresh provider
+    mockFetch.mockReset();
   });
 
-  it("initial state is unauthenticated", () => {
+  it("restoreSession returns false when no session exists", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+    });
+
     const { result } = renderHook(() => useAuth(), { wrapper });
+
+    // Wait for initial loading to complete
+    await waitFor(() => {
+      expect(result.current.auth.isLoading).toBe(false);
+    });
 
     expect(result.current.auth.isAuthenticated).toBe(false);
-    expect(result.current.getAccessToken()).toBeNull();
+
+    // Try to restore session
+    const restored = await act(async () => {
+      return await result.current.restoreSession();
+    });
+
+    expect(restored).toBe(false);
+    expect(result.current.auth.isAuthenticated).toBe(false);
   });
 
-  it("login stores accessToken and refreshToken in memory", async () => {
+  it("restoreSession returns true and sets tokens when session is valid", async () => {
+    // First mock: initial session restoration on mount (fails)
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    // Wait for initial loading to complete
+    await waitFor(() => {
+      expect(result.current.auth.isLoading).toBe(false);
+    });
+
+    // Second mock: manual restoreSession call (succeeds)
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          accessToken: "restored-access-token",
+          expiresIn: 300,
+        }),
+    });
+
+    // Restore session
+    const restored = await act(async () => {
+      return await result.current.restoreSession();
+    });
+
+    expect(restored).toBe(true);
+    expect(result.current.auth.isAuthenticated).toBe(true);
+    expect(result.current.getAccessToken()).toBe("restored-access-token");
+  });
+
+  it("login stores accessToken from response (refreshToken in httpOnly cookie)", async () => {
     const mockResponse = {
       accessToken: "mock-access-token",
-      refreshToken: "mock-refresh-token",
+      refreshToken: "mock-refresh-token", // Not stored in memory anymore
       expiresIn: 300,
       tokenType: "Bearer",
       refreshExpiresIn: 86400,
@@ -59,7 +114,7 @@ describe("SEC-10: AuthContext — memory-only token storage", () => {
     expect(result.current.getAccessToken()).toBe("mock-access-token");
   });
 
-  it("login calculates expiresAt from expiresIn", async () => {
+  it("logout calls backend to clear httpOnly cookie", async () => {
     const mockResponse = {
       accessToken: "mock-access-token",
       refreshToken: "mock-refresh-token",
@@ -70,31 +125,14 @@ describe("SEC-10: AuthContext — memory-only token storage", () => {
     };
     vi.mocked(api.loginClient).mockResolvedValue(mockResponse);
 
-    const beforeLogin = Date.now();
-    const { result } = renderHook(() => useAuth(), { wrapper });
-
-    await act(async () => {
-      await result.current.login("test@example.com", "password123");
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          accessToken: "restored-access-token",
+          expiresIn: 300,
+        }),
     });
-    const afterLogin = Date.now();
-
-    // Token should be set (indirect proof expiresAt was calculated)
-    expect(result.current.getAccessToken()).toBe("mock-access-token");
-    // expiresAt should be approximately now + 300 seconds
-    // We verify this by checking the token is valid (auth is true)
-    expect(result.current.auth.isAuthenticated).toBe(true);
-  });
-
-  it("logout clears all state", async () => {
-    const mockResponse = {
-      accessToken: "mock-access-token",
-      refreshToken: "mock-refresh-token",
-      expiresIn: 300,
-      tokenType: "Bearer",
-      refreshExpiresIn: 86400,
-      scope: "openid",
-    };
-    vi.mocked(api.loginClient).mockResolvedValue(mockResponse);
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
@@ -103,11 +141,18 @@ describe("SEC-10: AuthContext — memory-only token storage", () => {
       await result.current.login("test@example.com", "password123");
     });
     expect(result.current.auth.isAuthenticated).toBe(true);
-    expect(result.current.getAccessToken()).toBe("mock-access-token");
+
+    // Restore session to set initial loading to false
+    await act(async () => {
+      await result.current.restoreSession();
+    });
+
+    // Mock logout fetch
+    mockFetch.mockResolvedValueOnce({ ok: true });
 
     // Then logout
-    act(() => {
-      result.current.logout();
+    await act(async () => {
+      await result.current.logout();
     });
 
     expect(result.current.auth.isAuthenticated).toBe(false);

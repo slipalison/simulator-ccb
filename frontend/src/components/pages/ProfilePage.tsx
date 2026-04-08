@@ -66,7 +66,7 @@ export function ProfilePage() {
   }, [auth.isAuthenticated])
 
   async function handleLogout() {
-    logout()
+    await logout()
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     navigate({ to: "/login" as any })
   }

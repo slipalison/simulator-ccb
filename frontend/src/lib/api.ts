@@ -56,6 +56,7 @@ export async function loginClient(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
+    credentials: "include", // Allow httpOnly cookies
   });
 
   if (response.status === 200) {
@@ -78,8 +79,7 @@ export async function refreshTokenClient(
 ): Promise<LoginResponse> {
   const response = await fetch("/api/auth/refresh", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
+    credentials: "include", // Send httpOnly cookie with refresh token
   });
 
   if (response.status === 200) {

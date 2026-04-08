@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import { loginClient, refreshTokenClient, type LoginResponse } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
@@ -8,16 +8,12 @@ import { loginClient, refreshTokenClient, type LoginResponse } from "@/lib/api";
 
 interface AuthTokens {
   accessToken: string | null;
-  refreshToken: string | null;
   expiresAt: number | null;
-  refreshExpiresAt: number | null;
 }
 
 let tokens: AuthTokens = {
   accessToken: null,
-  refreshToken: null,
   expiresAt: null,
-  refreshExpiresAt: null,
 };
 
 // ---------------------------------------------------------------------------
@@ -30,8 +26,9 @@ interface AuthContextValue {
     isLoading: boolean;
   };
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   refreshIfNeeded: () => Promise<void>;
+  restoreSession: () => Promise<boolean>;
   getAccessToken: () => string | null;
 }
 
@@ -44,7 +41,34 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   // Derived state only (booleans — OK for useState)
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start true for session restoration
+
+  // Attempt to restore session on mount
+  useEffect(() => {
+    async function tryRestoreSession() {
+      try {
+        const response = await fetch("/api/auth/me", {
+          method: "GET",
+          credentials: "include", // Send httpOnly cookie
+        });
+
+        if (response.ok) {
+          const data = await response.json() as { accessToken: string; expiresIn: number };
+          tokens = {
+            accessToken: data.accessToken,
+            expiresAt: Date.now() + data.expiresIn * 1000,
+          };
+          setIsAuthenticated(true);
+        }
+      } catch {
+        // Session restoration failed — user needs to login
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    tryRestoreSession();
+  }, []);
 
   async function login(email: string, password: string): Promise<void> {
     setIsLoading(true);
@@ -52,11 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response: LoginResponse = await loginClient(email, password);
 
       // Write to module-level variable — NOT state
+      // Refresh token is now in httpOnly cookie (set by backend)
       tokens = {
         accessToken: response.accessToken,
-        refreshToken: response.refreshToken,
         expiresAt: Date.now() + response.expiresIn * 1000,
-        refreshExpiresAt: Date.now() + response.refreshExpiresIn * 1000,
       };
 
       setIsAuthenticated(true);
@@ -65,36 +88,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  function logout(): void {
+  async function logout(): Promise<void> {
+    // Call backend logout to clear httpOnly cookie
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // Cookie clear best-effort
+    }
+
     // Reset module-level tokens
     tokens = {
       accessToken: null,
-      refreshToken: null,
       expiresAt: null,
-      refreshExpiresAt: null,
     };
     setIsAuthenticated(false);
   }
 
+  async function restoreSession(): Promise<boolean> {
+    try {
+      const response = await fetch("/api/auth/me", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json() as { accessToken: string; expiresIn: number };
+        tokens = {
+          accessToken: data.accessToken,
+          expiresAt: Date.now() + data.expiresIn * 1000,
+        };
+        setIsAuthenticated(true);
+        return true;
+      }
+    } catch {
+      // Session restoration failed
+    }
+
+    tokens = { accessToken: null, expiresAt: null };
+    setIsAuthenticated(false);
+    return false;
+  }
+
   async function refreshIfNeeded(): Promise<void> {
-    if (!tokens.refreshToken) return;
     if (!tokens.expiresAt) return;
 
     const timeUntilExpiry = tokens.expiresAt - Date.now();
     if (timeUntilExpiry > 60_000) return; // More than 60s — no refresh needed
 
     try {
-      const response: LoginResponse = await refreshTokenClient(tokens.refreshToken);
+      const response = await fetch("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include", // Send httpOnly cookie
+      });
 
-      tokens = {
-        accessToken: response.accessToken,
-        refreshToken: response.refreshToken,
-        expiresAt: Date.now() + response.expiresIn * 1000,
-        refreshExpiresAt: Date.now() + response.refreshExpiresIn * 1000,
-      };
+      if (response.ok) {
+        const data = await response.json() as { accessToken: string; expiresIn: number };
+        tokens = {
+          accessToken: data.accessToken,
+          expiresAt: Date.now() + data.expiresIn * 1000,
+        };
+      } else {
+        // Refresh failed — user must re-login
+        await logout();
+      }
     } catch {
       // Refresh failed — user must re-login
-      logout();
+      await logout();
     }
   }
 
@@ -109,6 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         refreshIfNeeded,
+        restoreSession,
         getAccessToken,
       }}
     >

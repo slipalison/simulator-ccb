@@ -11,6 +11,16 @@ import { router } from "@/router";
 vi.mock("@/lib/api", () => ({
   loginClient: vi.fn(),
   refreshTokenClient: vi.fn(),
+  getProfileClient: vi.fn().mockResolvedValue({
+    id: "test-id",
+    name: "Test User",
+    email: "test@example.com",
+    phone: "(11) 99999-9999",
+    type: "PessoaFisica",
+    cpf: "123.456.789-00",
+    cnpj: null,
+    razaoSocial: null,
+  }),
   LoginError: class LoginError extends Error {
     constructor(message: string) {
       super(message);
@@ -21,6 +31,12 @@ vi.mock("@/lib/api", () => ({
     constructor(message: string) {
       super(message);
       this.name = "ApiError";
+    }
+  },
+  ProfileError: class ProfileError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = "ProfileError";
     }
   },
 }));
@@ -253,12 +269,12 @@ describe("Profile guard — unauthenticated redirect", () => {
       expect(memoryHistory.location.pathname).toBe("/profile");
     });
 
-    // Now profile page should show placeholder
+    // Now profile page should show the profile heading
     await waitFor(() => {
-      expect(screen.getByText(/Profile page/i)).toBeInTheDocument();
+      expect(screen.getByText(/Meu Perfil/i)).toBeInTheDocument();
     });
 
-    // And logout button should be visible
-    expect(screen.getByRole("button", { name: /logout/i })).toBeInTheDocument();
+    // And logout (Sair) button should be visible
+    expect(screen.getByRole("button", { name: /sair/i })).toBeInTheDocument();
   });
 });

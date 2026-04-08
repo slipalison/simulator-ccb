@@ -6,32 +6,23 @@ import type { ClientProfileDto } from "@/lib/types";
 import { ProfileCard } from "@/components/molecules/ProfileCard";
 import { PageLayout } from "@/components/templates/PageLayout";
 import { AppButton } from "@/components/atoms/AppButton";
+import { AuthGuard } from "@/components/guards/AuthGuard";
 
 /**
  * ProfilePage: exibe dados cadastrais do cliente autenticado.
- * Redireciona para /login se não autenticado.
+ * Protegida por AuthGuard — redireciona para /login se nao autenticado.
  * Busca dados via getProfileClient() ao montar.
  */
 export function ProfilePage() {
-  const { auth, logout } = useAuth();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ClientProfileDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Auth guard — redireciona para login se não autenticado
-  useEffect(() => {
-    if (!auth.isAuthenticated) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      navigate({ to: "/login" as any, replace: true });
-    }
-  }, [auth.isAuthenticated, navigate]);
-
   // Busca dados do perfil ao montar
   useEffect(() => {
     async function fetchProfile() {
-      if (!auth.isAuthenticated) return;
-
       try {
         setIsLoading(true);
         setError(null);
@@ -49,7 +40,7 @@ export function ProfilePage() {
     }
 
     fetchProfile();
-  }, [auth.isAuthenticated]);
+  }, []);
 
   function handleLogout() {
     logout();
@@ -57,33 +48,42 @@ export function ProfilePage() {
     navigate({ to: "/login" as any, replace: true });
   }
 
+  const displayName = profile?.name || profile?.razaoSocial || "Usuario";
+
   return (
-    <PageLayout>
-      <div className="max-w-2xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Meu Perfil</h1>
-          <AppButton variant="outline" onClick={handleLogout}>
-            Sair
-          </AppButton>
+    <AuthGuard>
+      <PageLayout>
+        <div className="max-w-2xl mx-auto space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold">Meu Perfil</h1>
+              <p className="text-sm text-muted-foreground">
+                Bem-vindo, {displayName}!
+              </p>
+            </div>
+            <AppButton variant="outline" onClick={handleLogout}>
+              Sair
+            </AppButton>
+          </div>
+
+          {isLoading && (
+            <div className="text-center py-8" data-testid="profile-loading">
+              <p>Carregando perfil...</p>
+            </div>
+          )}
+
+          {error && (
+            <div
+              className="bg-red-50 border border-red-200 rounded-lg p-4"
+              data-testid="profile-error"
+            >
+              <p className="text-red-800">Erro ao carregar perfil: {error}</p>
+            </div>
+          )}
+
+          {profile && !isLoading && <ProfileCard profile={profile} />}
         </div>
-
-        {isLoading && (
-          <div className="text-center py-8" data-testid="profile-loading">
-            <p>Carregando perfil...</p>
-          </div>
-        )}
-
-        {error && (
-          <div
-            className="bg-red-50 border border-red-200 rounded-lg p-4"
-            data-testid="profile-error"
-          >
-            <p className="text-red-800">Erro ao carregar perfil: {error}</p>
-          </div>
-        )}
-
-        {profile && !isLoading && <ProfileCard profile={profile} />}
-      </div>
-    </PageLayout>
+      </PageLayout>
+    </AuthGuard>
   );
 }

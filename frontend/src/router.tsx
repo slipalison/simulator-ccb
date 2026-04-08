@@ -3,32 +3,33 @@ import {
   createRoute,
   createRouter,
   Outlet,
+  useNavigate,
 } from "@tanstack/react-router";
-import { HomePage } from "@/components/pages/HomePage";
 import { NotFoundPage } from "@/components/pages/NotFoundPage";
-import { RegistrationPage } from "@/components/pages/RegistrationPage";
+import { RegistrationForm } from "@/components/molecules/RegistrationForm";
 import { LoginPage } from "@/components/pages/LoginPage";
 import { ProfilePage } from "@/components/pages/ProfilePage";
+import { useAuth } from "@/lib/auth-context";
+import { useEffect } from "react";
 
 // Root route com notFoundComponent para roteamento type-safe de 404
-// NOTA: NotFoundRoute (classe) está depreciada — usar notFoundComponent no rootRoute
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
   notFoundComponent: NotFoundPage,
 });
 
-// Rota index: /
+// Rota index: / -> LoginPage (se nao logado) ou redirect para /profile (se logado)
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: HomePage,
+  component: RootRoute,
 });
 
-// Rota de registro: /registration
-const registrationRoute = createRoute({
+// Rota de registro: /register (formulario unico PF/PJ)
+const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/registration",
-  component: RegistrationPage,
+  path: "/register",
+  component: RegistrationForm,
 });
 
 // Rota de login: /login
@@ -38,24 +39,40 @@ const loginRoute = createRoute({
   component: LoginPage,
 });
 
-// Rota de perfil: /profile (protegida — Phase 10)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// Rota de perfil: /profile (protegida)
 const profileRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/profile",
   component: ProfilePage,
 } as any);
 
-// Árvore de rotas
-const routeTree = rootRoute.addChildren([indexRoute, registrationRoute, loginRoute, profileRoute]);
+// Arvore de rotas
+const routeTree = rootRoute.addChildren([indexRoute, registerRoute, loginRoute, profileRoute]);
 
-// Instância do router
+// Instancia do router
 export const router = createRouter({ routeTree });
 
-// Registro obrigatório para type safety do TypeScript
-// Sem isso, useNavigate, Link e outros hooks não são type-checked
+// Registro obrigatorio para type safety do TypeScript
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
   }
+}
+
+// ---------------------------------------------------------------------------
+// RootRoute: shows LoginPage for unauthenticated users
+// If authenticated, useEffect will redirect to /profile
+// ---------------------------------------------------------------------------
+
+function RootRoute() {
+  const { auth } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      navigate({ to: "/profile" as any, replace: true });
+    }
+  }, [auth.isAuthenticated, navigate]);
+
+  return <LoginPage />;
 }

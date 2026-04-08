@@ -49,6 +49,19 @@ export function LoginPage() {
         <div className="flex justify-center">
           <LoginForm onSubmit={handleLogin} serverError={serverError} />
         </div>
+        <div className="mt-6 space-y-2 text-sm">
+          <p className="text-muted-foreground">
+            Nao tem uma conta?{" "}
+            <a href="/register" className="font-medium text-primary hover:underline">
+              Criar conta
+            </a>
+          </p>
+          <p className="text-muted-foreground">
+            <a href="/forgot-password" className="font-medium text-primary hover:underline">
+              Esqueci minha senha
+            </a>
+          </p>
+        </div>
       </div>
     </PageLayout>
   );

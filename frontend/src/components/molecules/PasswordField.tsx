@@ -10,6 +10,7 @@ interface PasswordFieldProps {
   error?: string;
   label: string;
   id: string;
+  disabled?: boolean;
 }
 
 /**
@@ -22,6 +23,7 @@ export function PasswordField({
   error,
   label,
   id,
+  disabled,
 }: PasswordFieldProps) {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -40,6 +42,7 @@ export function PasswordField({
             "pr-10",
             error && "border-red-300 bg-red-50"
           )}
+          disabled={disabled}
           aria-invalid={!!error}
           aria-describedby={error ? `${id}-error` : undefined}
         />

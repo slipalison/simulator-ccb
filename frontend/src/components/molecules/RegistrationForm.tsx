@@ -5,8 +5,20 @@ import { useNavigate } from "@tanstack/react-router";
 import { PersonTypeRadio } from "@/components/molecules/PersonTypeRadio";
 import { PasswordField } from "@/components/molecules/PasswordField";
 import { PasswordStrengthMeter } from "@/components/molecules/PasswordStrengthMeter";
-import { AppButton } from "@/components/atoms/AppButton";
-import { LabeledField } from "@/components/molecules/LabeledField";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/atoms/ThemeToggle";
+import { Loader2 } from "lucide-react";
 import {
   registrationSchema,
   type RegistrationData,
@@ -21,11 +33,9 @@ import {
   LoginError,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { AuthLayout } from "@/components/templates/AuthLayout";
 
 /**
- * RegistrationForm: unified PF/PJ registration form with dynamic fields
- * Uses Radio button to toggle between PF and PJ fields
+ * RegistrationForm: unified PF/PJ registration form with shadcn/ui
  * Auto-login after successful registration
  */
 export function RegistrationForm() {
@@ -35,15 +45,7 @@ export function RegistrationForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]> | null>(null);
 
-  const {
-    register,
-    handleSubmit,
-    watch,
-    setValue,
-    setError,
-    formState: { errors },
-    trigger,
-  } = useForm<RegistrationData>({
+  const form = useForm<RegistrationData>({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
       personType: "PF",
@@ -58,38 +60,39 @@ export function RegistrationForm() {
     },
   });
 
-  const personType = watch("personType");
-  const password = watch("password");
+  const personType = form.watch("personType");
+  const password = form.watch("password");
+  const confirmPassword = form.watch("confirmPassword");
 
   // Reset conditional fields when personType changes
   useEffect(() => {
     if (personType === "PF") {
-      setValue("razaoSocial", "");
-      setValue("cnpj", "");
+      form.setValue("razaoSocial", "");
+      form.setValue("cnpj", "");
     } else {
-      setValue("nome", "");
-      setValue("cpf", "");
+      form.setValue("nome", "");
+      form.setValue("cpf", "");
     }
     // Clear field errors for the switched type
     setFieldErrors(null);
-  }, [personType, setValue]);
+  }, [personType, form]);
 
   // Map server-side field errors to RHF setError
   useEffect(() => {
     if (fieldErrors) {
       Object.entries(fieldErrors).forEach(([field, messages]) => {
-        setError(field as keyof RegistrationData, {
+        form.setError(field as keyof RegistrationData, {
           type: "server",
           message: messages[0],
         });
       });
     }
-  }, [fieldErrors, setError]);
+  }, [fieldErrors, form]);
 
   const handleBlurStripDigits = (field: "cpf" | "cnpj" | "phone") => {
     return (e: React.FocusEvent<HTMLInputElement>) => {
       const stripped = e.target.value.replace(/\D/g, "");
-      setValue(field, stripped, { shouldValidate: true });
+      form.setValue(field, stripped, { shouldValidate: true });
     };
   };
 
@@ -137,144 +140,246 @@ export function RegistrationForm() {
   };
 
   const isPf = personType === "PF";
+  const passwordsMatch = password && confirmPassword && password === confirmPassword;
 
   return (
-    <AuthLayout
-      title="Criar Conta"
-      subtitle="Preencha seus dados para criar sua conta"
-      footer={
-        <p className="text-center text-sm text-slate-600">
-          Já tem conta?{" "}
-          <a href="/login" className="font-medium text-primary hover:underline">
-            Faça login
-          </a>
-        </p>
-      }
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" noValidate>
-        {/* Person Type Radio */}
-        <PersonTypeRadio
-          value={personType}
-          onChange={(value) => setValue("personType", value, { shouldValidate: true })}
-        />
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
+      <Card className="w-full max-w-lg">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl text-center">Criar sua conta</CardTitle>
+          <CardDescription className="text-center">
+            Preencha seus dados para se cadastrar
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" noValidate>
+              {/* Person Type */}
+              <FormField
+                control={form.control}
+                name="personType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tipo de pessoa</FormLabel>
+                    <FormControl>
+                      <PersonTypeRadio
+                        value={field.value}
+                        onChange={(value) => {
+                          field.onChange(value);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        {/* Server error */}
-        {submitError && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600" role="alert">
-            {submitError}
+              {/* Server error */}
+              {submitError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{submitError}</AlertDescription>
+                </Alert>
+              )}
+
+              {/* PF Fields */}
+              {isPf && (
+                <FormField
+                  control={form.control}
+                  name="nome"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nome completo</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="João da Silva"
+                          disabled={isSubmitting}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {isPf && (
+                <FormField
+                  control={form.control}
+                  name="cpf"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CPF</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="000.000.000-00"
+                          inputMode="numeric"
+                          disabled={isSubmitting}
+                          {...field}
+                          onBlur={handleBlurStripDigits("cpf")}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {/* PJ Fields */}
+              {!isPf && (
+                <FormField
+                  control={form.control}
+                  name="razaoSocial"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Razão Social</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Empresa LTDA"
+                          disabled={isSubmitting}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {!isPf && (
+                <FormField
+                  control={form.control}
+                  name="cnpj"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>CNPJ</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="00.000.000/0000-00"
+                          inputMode="numeric"
+                          disabled={isSubmitting}
+                          {...field}
+                          onBlur={handleBlurStripDigits("cnpj")}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {/* Email */}
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        placeholder="seu@email.com"
+                        disabled={isSubmitting}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Phone */}
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telefone</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="(00) 00000-0000"
+                        inputMode="tel"
+                        disabled={isSubmitting}
+                        {...field}
+                        onBlur={handleBlurStripDigits("phone")}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Password */}
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Senha</FormLabel>
+                    <FormControl>
+                      <PasswordField
+                        id="password"
+                        label="Senha"
+                        value={field.value}
+                        onChange={field.onChange}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Password Strength Meter */}
+              <PasswordStrengthMeter password={password ?? ""} />
+
+              {/* Confirm Password */}
+              <FormField
+                control={form.control}
+                name="confirmPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Confirmar senha</FormLabel>
+                    <FormControl>
+                      <PasswordField
+                        id="confirmPassword"
+                        label="Confirmar senha"
+                        value={field.value}
+                        onChange={field.onChange}
+                        disabled={isSubmitting}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Password match indicator */}
+              {passwordsMatch && (
+                <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+                  <span>&#10003;</span> As senhas coincidem
+                </p>
+              )}
+
+              {/* Submit */}
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Criar conta
+              </Button>
+            </form>
+          </Form>
+
+          {/* Footer link */}
+          <div className="mt-6 text-center text-sm text-muted-foreground">
+            Ja tem conta?{" "}
+            <a href="/login" className="text-primary hover:underline font-medium">
+              Fazer login &rarr;
+            </a>
           </div>
-        )}
-
-        {/* Common fields */}
-        <div className="space-y-4">
-          {isPf ? (
-            <>
-              <LabeledField
-                id="nome"
-                label="Nome"
-                error={errors.nome?.message}
-                inputProps={{
-                  placeholder: "Nome completo",
-                  disabled: isSubmitting,
-                  ...register("nome"),
-                }}
-              />
-              <LabeledField
-                id="cpf"
-                label="CPF"
-                error={errors.cpf?.message}
-                inputProps={{
-                  placeholder: "00000000000",
-                  inputMode: "numeric",
-                  disabled: isSubmitting,
-                  ...register("cpf"),
-                  onBlur: handleBlurStripDigits("cpf"),
-                }}
-              />
-            </>
-          ) : (
-            <>
-              <LabeledField
-                id="razaoSocial"
-                label="Razão Social"
-                error={errors.razaoSocial?.message}
-                inputProps={{
-                  placeholder: "Razão Social da empresa",
-                  disabled: isSubmitting,
-                  ...register("razaoSocial"),
-                }}
-              />
-              <LabeledField
-                id="cnpj"
-                label="CNPJ"
-                error={errors.cnpj?.message}
-                inputProps={{
-                  placeholder: "00000000000000",
-                  inputMode: "numeric",
-                  disabled: isSubmitting,
-                  ...register("cnpj"),
-                  onBlur: handleBlurStripDigits("cnpj"),
-                }}
-              />
-            </>
-          )}
-
-          {/* Email */}
-          <LabeledField
-            id="email"
-            label="Email"
-            error={errors.email?.message}
-            inputProps={{
-              type: "email",
-              placeholder: "seu@email.com",
-              disabled: isSubmitting,
-              ...register("email"),
-            }}
-          />
-
-          {/* Phone */}
-          <LabeledField
-            id="phone"
-            label="Telefone"
-            error={errors.phone?.message}
-            inputProps={{
-              placeholder: "11999999999",
-              inputMode: "tel",
-              disabled: isSubmitting,
-              ...register("phone"),
-              onBlur: handleBlurStripDigits("phone"),
-            }}
-          />
-
-          {/* Password */}
-          <PasswordField
-            id="password"
-            label="Senha"
-            value={password}
-            onChange={(value) => setValue("password", value, { shouldValidate: true })}
-            error={errors.password?.message}
-          />
-
-          {/* Password Strength Meter */}
-          <PasswordStrengthMeter password={password ?? ""} />
-
-          {/* Confirm Password */}
-          <PasswordField
-            id="confirmPassword"
-            label="Confirmar Senha"
-            value={watch("confirmPassword") ?? ""}
-            onChange={(value) => setValue("confirmPassword", value, { shouldValidate: true })}
-            error={errors.confirmPassword?.message}
-          />
-        </div>
-
-        {/* Submit button */}
-        <div className="pt-2">
-          <AppButton type="submit" disabled={isSubmitting} className="w-full">
-            {isSubmitting ? "Criando..." : "Criar conta"}
-          </AppButton>
-        </div>
-      </form>
-    </AuthLayout>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

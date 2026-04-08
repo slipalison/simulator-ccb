@@ -1,8 +1,19 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginData } from "@/lib/validation-schemas";
-import { LabeledField } from "@/components/molecules/LabeledField";
-import { AppButton } from "@/components/atoms/AppButton";
+import { PasswordField } from "@/components/molecules/PasswordField";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Loader2 } from "lucide-react";
 
 export interface LoginFormProps {
   onSubmit: (data: LoginData) => void | Promise<void>;
@@ -10,60 +21,74 @@ export interface LoginFormProps {
 }
 
 /**
- * Molecule: login form with RHF + Zod validation.
+ * Molecule: login form with shadcn/ui Form, Input, Button + RHF + Zod validation.
  * Calls parent onSubmit with valid data — API call happens in parent.
  */
 export function LoginForm({ onSubmit, serverError }: LoginFormProps) {
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginData>({
+  const form = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
 
+  const { isSubmitting } = form.formState;
   const isDisabled = isSubmitting;
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="space-y-4 w-full"
-      noValidate
-    >
-      {serverError && (
-        <p className="text-sm text-red-600" role="alert">
-          {serverError}
-        </p>
-      )}
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(onSubmit)}
+        className="space-y-4 w-full"
+        noValidate
+      >
+        {serverError && (
+          <Alert variant="destructive" role="alert">
+            <AlertDescription>{serverError}</AlertDescription>
+          </Alert>
+        )}
 
-      <LabeledField
-        id="email"
-        label="Email"
-        error={errors.email?.message}
-        inputProps={{
-          type: "email",
-          placeholder: "seu@email.com",
-          disabled: isDisabled,
-          ...register("email"),
-        }}
-      />
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input
+                  type="email"
+                  placeholder="seu@email.com"
+                  disabled={isDisabled}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <LabeledField
-        id="password"
-        label="Senha"
-        error={errors.password?.message}
-        inputProps={{
-          type: "password",
-          placeholder: "Sua senha",
-          disabled: isDisabled,
-          ...register("password"),
-        }}
-      />
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormControl>
+                <PasswordField
+                  id="password"
+                  label="Senha"
+                  value={field.value}
+                  onChange={field.onChange}
+                  disabled={isDisabled}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-      <AppButton type="submit" className="w-full" disabled={isDisabled}>
-        {isSubmitting ? "Entrando..." : "Entrar"}
-      </AppButton>
-    </form>
+        <Button type="submit" className="w-full" disabled={isDisabled}>
+          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Entrar
+        </Button>
+      </form>
+    </Form>
   );
 }

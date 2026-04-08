@@ -4,10 +4,11 @@ import { LoginForm } from "@/components/molecules/LoginForm";
 import { useAuth } from "@/lib/auth-context";
 import { LoginError } from "@/lib/api";
 import type { LoginData } from "@/lib/validation-schemas";
-import { AuthLayout } from "@/components/templates/AuthLayout";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/atoms/ThemeToggle";
 
 /**
- * LoginPage: custom login screen with email + password.
+ * LoginPage: redesigned with shadcn Card.
  * Sends credentials to backend (POST /api/auth/login), stores tokens in memory.
  * Redirects to /profile on success.
  */
@@ -40,26 +41,35 @@ export function LoginPage() {
   };
 
   return (
-    <AuthLayout
-      title="Login"
-      subtitle="Entre com seu email e senha para acessar sua conta"
-      footer={
-        <div className="space-y-2 text-center text-sm">
-          <p className="text-slate-600">
-            Nao tem uma conta?{" "}
-            <a href="/register" className="font-medium text-primary hover:underline">
-              Criar conta
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 relative">
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggle />
+      </div>
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl text-center">Bem-vindo de volta!</CardTitle>
+          <CardDescription className="text-center">
+            Entre com suas credenciais para acessar sua conta
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LoginForm onSubmit={handleLogin} serverError={serverError} />
+          <div className="mt-6 space-y-2 text-center text-sm">
+            <a
+              href="/forgot-password"
+              className="block text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Esqueceu a senha?
             </a>
-          </p>
-          <p className="text-slate-600">
-            <a href="/forgot-password" className="font-medium text-primary hover:underline">
-              Esqueci minha senha
-            </a>
-          </p>
-        </div>
-      }
-    >
-      <LoginForm onSubmit={handleLogin} serverError={serverError} />
-    </AuthLayout>
+            <div className="text-muted-foreground">
+              Nao tem conta?{" "}
+              <a href="/register" className="text-primary hover:underline font-medium">
+                Criar conta &rarr;
+              </a>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

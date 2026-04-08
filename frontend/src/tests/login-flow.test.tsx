@@ -74,7 +74,7 @@ describe("AUTH-01: Login flow — form to redirect", () => {
 
     await waitFor(() => {
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-      expect(screen.getByLabelText(/senha/i)).toBeInTheDocument();
+      expect(screen.getAllByLabelText(/senha/i).length).toBeGreaterThan(0);
     });
 
     expect(screen.getByRole("button", { name: /entrar/i })).toBeInTheDocument();
@@ -97,9 +97,9 @@ describe("AUTH-01: Login flow — form to redirect", () => {
     });
 
     await waitFor(() => {
-      // Zod validation errors should appear
-      const alerts = screen.getAllByRole("alert");
-      expect(alerts.length).toBeGreaterThan(0);
+      // Zod validation errors should appear - check for "obrigatório" text in error messages
+      const errorMessages = screen.getAllByText(/obrigat/i);
+      expect(errorMessages.length).toBeGreaterThan(0);
     });
 
     // API should not be called for invalid form
@@ -126,7 +126,7 @@ describe("AUTH-01: Login flow — form to redirect", () => {
 
     // Fill form
     const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/senha/i);
+    const passwordInput = screen.getAllByLabelText(/senha/i).find(el => el.tagName === "INPUT") as HTMLInputElement;
 
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: "test@example.com" } });
@@ -162,7 +162,7 @@ describe("AUTH-01: Login flow — form to redirect", () => {
 
     // Fill form
     const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/senha/i);
+    const passwordInput = screen.getAllByLabelText(/senha/i).find(el => el.tagName === "INPUT") as HTMLInputElement;
 
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: "wrong@example.com" } });
@@ -198,7 +198,7 @@ describe("AUTH-01: Login flow — form to redirect", () => {
 
     // Fill form
     const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/senha/i);
+    const passwordInput = screen.getAllByLabelText(/senha/i).find(el => el.tagName === "INPUT") as HTMLInputElement;
 
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: "retain@example.com" } });
@@ -253,7 +253,7 @@ describe("Profile guard — unauthenticated redirect", () => {
     });
 
     const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/senha/i);
+    const passwordInput = screen.getAllByLabelText(/senha/i).find(el => el.tagName === "INPUT") as HTMLInputElement;
 
     await act(async () => {
       fireEvent.change(emailInput, { target: { value: "test@example.com" } });

@@ -58,7 +58,7 @@ describe("RegistrationForm", () => {
   it("renders PF fields by default", () => {
     render(<RegistrationForm />);
 
-    expect(screen.getByLabelText("Nome")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome completo")).toBeInTheDocument();
     expect(screen.getByLabelText("CPF")).toBeInTheDocument();
     expect(screen.queryByLabelText("Razão Social")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("CNPJ")).not.toBeInTheDocument();
@@ -73,7 +73,7 @@ describe("RegistrationForm", () => {
       fireEvent.click(pjRadio);
     });
 
-    expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Nome completo")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("CPF")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Razão Social")).toBeInTheDocument();
     expect(screen.getByLabelText("CNPJ")).toBeInTheDocument();
@@ -84,12 +84,12 @@ describe("RegistrationForm", () => {
 
     // Fill invalid CPF (all same digits)
     await act(async () => {
-      fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "João Silva" } });
+      fireEvent.change(screen.getByLabelText("Nome completo"), { target: { value: "João Silva" } });
       fireEvent.change(screen.getByLabelText("CPF"), { target: { value: "00000000000" } });
       fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@email.com" } });
       fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "11999999999" } });
       fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "Test@1234" } });
-      fireEvent.change(screen.getByLabelText("Confirmar Senha"), { target: { value: "Test@1234" } });
+      fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "Test@1234" } });
     });
 
     await act(async () => {
@@ -116,7 +116,7 @@ describe("RegistrationForm", () => {
       fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@email.com" } });
       fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "11999999999" } });
       fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "Test@1234" } });
-      fireEvent.change(screen.getByLabelText("Confirmar Senha"), { target: { value: "Test@1234" } });
+      fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "Test@1234" } });
     });
 
     await act(async () => {
@@ -148,12 +148,12 @@ describe("RegistrationForm", () => {
     render(<RegistrationForm />);
 
     await act(async () => {
-      fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "João Silva" } });
+      fireEvent.change(screen.getByLabelText("Nome completo"), { target: { value: "João Silva" } });
       fireEvent.change(screen.getByLabelText("CPF"), { target: { value: "12345678909" } });
       fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@email.com" } });
       fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "11999999999" } });
       fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "Test@1234" } });
-      fireEvent.change(screen.getByLabelText("Confirmar Senha"), { target: { value: "Different@1" } });
+      fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "Different@1" } });
     });
 
     await act(async () => {
@@ -182,12 +182,12 @@ describe("RegistrationForm", () => {
     render(<RegistrationForm />);
 
     await act(async () => {
-      fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "João Silva" } });
+      fireEvent.change(screen.getByLabelText("Nome completo"), { target: { value: "João Silva" } });
       fireEvent.change(screen.getByLabelText("CPF"), { target: { value: "12345678909" } });
       fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@email.com" } });
       fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "11999999999" } });
       fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "Test@1234" } });
-      fireEvent.change(screen.getByLabelText("Confirmar Senha"), { target: { value: "Test@1234" } });
+      fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "Test@1234" } });
     });
 
     await act(async () => {
@@ -207,12 +207,12 @@ describe("RegistrationForm", () => {
     render(<RegistrationForm />);
 
     await act(async () => {
-      fireEvent.change(screen.getByLabelText("Nome"), { target: { value: "João Silva" } });
+      fireEvent.change(screen.getByLabelText("Nome completo"), { target: { value: "João Silva" } });
       fireEvent.change(screen.getByLabelText("CPF"), { target: { value: "12345678909" } });
       fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@email.com" } });
       fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "11999999999" } });
       fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "Test@1234" } });
-      fireEvent.change(screen.getByLabelText("Confirmar Senha"), { target: { value: "Test@1234" } });
+      fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "Test@1234" } });
     });
 
     await act(async () => {

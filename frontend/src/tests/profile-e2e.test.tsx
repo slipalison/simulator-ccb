@@ -123,7 +123,9 @@ describe("Profile E2E Flow", () => {
       fireEvent.change(screen.getByLabelText(/email/i), {
         target: { value: "maria@email.com" },
       });
-      fireEvent.change(screen.getByLabelText(/senha/i), {
+      const passwordInputs = screen.getAllByLabelText(/senha/i);
+      const passwordInput = passwordInputs.find(el => el.tagName === "INPUT") as HTMLInputElement;
+      fireEvent.change(passwordInput, {
         target: { value: "Senha@123" },
       });
     });

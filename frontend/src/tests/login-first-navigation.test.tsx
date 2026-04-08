@@ -64,7 +64,7 @@ describe("Login-first navigation", () => {
     await renderWithRouter("/");
 
     await waitFor(() => {
-      expect(screen.getByText("Login")).toBeInTheDocument();
+      expect(screen.getByText("Bem-vindo de volta!")).toBeInTheDocument();
     });
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
     expect(screen.getByLabelText("Senha")).toBeInTheDocument();

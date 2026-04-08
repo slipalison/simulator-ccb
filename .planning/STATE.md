@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: complete
-stopped_at: Phase 10 complete — Profile UI delivered — milestone v1.0 DONE
-last_updated: "2026-04-08T00:00:00.000Z"
-last_activity: 2026-04-08 -- Phase 10 Profile UI completa: 3/3 plans, ProfilePage + ProfileCard + átomos + 48 testes passando
+milestone: v2.0
+milestone_name: ux-ui-redesign
+status: in-progress
+stopped_at: Phase 11 Plan 01 (11-01) complete — unified registration form + login-first navigation
+last_updated: "2026-04-08T13:05:00.000Z"
+last_activity: 2026-04-08 -- Phase 11 Plan 01 executed: unified PF/PJ form, password UX, login-first nav, auto-login (64 frontend tests passing)
 progress:
-  total_phases: 10
+  total_phases: 11
   completed_phases: 10
-  total_plans: 30
-  completed_plans: 30
-  percent: 100
+  total_plans: 32
+  completed_plans: 31
+  percent: 97
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** Phase 10 — Profile UI (próxima)
+**Current focus:** Phase 11 — UX Redesign (plans created, awaiting execution)
 
 ## Current Position
 
-Phase: 09 (login-ui) — COMPLETE
-Next: 10 (profile-ui) — NOT STARTED
-Last activity: 2026-04-07 -- Phase 09 completa; login form com ROPC, AuthContext memory-only, ProfilePage placeholder, 13 testes
+Phase: 11 (ux-redesign) — Plan 01 COMPLETE
+Next: Phase 11 Plan 02 (forgot password flow) OR Phase 12 (ui-redesign)
+Last activity: 2026-04-08 -- Phase 11 Plan 01 executed: unified PF/PJ registration form, password UX (strength meter + show/hide), login-first navigation, auto-login after registration
 
-Progress: [█████████░] 90% (9/10 fases)
+Progress: [██████████░] 97% (31/32 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 27
-- Phases completas: 9/10
+- Total plans completed: 28
+- Phases completas: 10/11 (Phase 11 partially complete: 1/2 plans)
 
 **By Phase:**
 
@@ -51,6 +51,8 @@ Progress: [█████████░] 90% (9/10 fases)
 | 07-frontend-foundation | 4/4 | Complete 2026-04-07 |
 | 08-registration-ui | 3/3 | Complete 2026-04-07 |
 | 09-login-ui | 3/3 | Complete 2026-04-07 |
+| 10-profile-ui | 3/3 | Complete 2026-04-08 |
+| 11-ux-redesign | 1/2 | Plan 01 Complete 2026-04-08 |
 
 *Updated after each plan completion*
 | Phase 01-infrastructure P01 | 2 | 3 tasks | 7 files |
@@ -100,6 +102,10 @@ Recent decisions affecting current work:
 - [Phase 04-observability]: Bootstrap logger pattern used in Program.cs — Log.Logger configured before builder.Build() to capture startup exceptions before DI is ready
 - [Phase 04-observability]: SensitiveDataDestructuringPolicy.MaskEmail() is public (not internal) — allows direct test assertion without InternalsVisibleTo
 - [Phase 04-observability]: OTel using directives must be explicit in Program.cs — using OpenTelemetry.Trace, OpenTelemetry.Metrics, Serilog.Enrichers.Span not in global usings
+- [Phase 11-ux-redesign]: Used `<a>` tags instead of TanStack `<Link>` for Criar/Esqueci links — avoids router context dependency in unit tests
+- [Phase 11-ux-redesign]: ProfilePage self-wraps with AuthGuard (not router-level guard) — simpler test isolation
+- [Phase 11-ux-redesign]: Auto-login reuses existing `login()` from auth-context — no separate `autoLogin()` function needed
+- [Phase 11-ux-redesign]: Zod `superRefine()` used for conditional PF/PJ validation based on `personType` field
 
 ### Pending Todos
 
@@ -112,26 +118,27 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-04-08T12:35:00.000Z
-Stopped at: Project review complete — 4 tasks completed (review, tests, retrospective, v2 proposal)
+Last session: 2026-04-08T13:05:00.000Z
+Stopped at: Phase 11 Plan 01 complete — SUMMARY.md created, STATE.md updated
 Resume file: none
 
 ### Last Session Summary
 
-User requested: "1, 2, 3 e 4" (all four post-completion tasks)
+User requested: Execute plan 11-01 of phase 11 (ux-redesign)
 
 **Tasks Completed:**
-1. ✅ Full project review — All 30 phase summaries read, artifacts verified
-2. ✅ Backend tests executed — 43 domain + 44 API tests passing (2 skipped for manual Grafana verification)
-3. ✅ Retrospective documented — `.planning/RETROSPECTIVE.md` created with metrics, lessons, decisions
-4. ✅ v2.0 proposed — `.planning/V2-PROPOSAL.md` created with 6 phases, 12 plans, prioritization
+1. TDD RED — 16 stub tests created (registration-form: 8, password-strength: 5, login-first-navigation: 3)
+2. GREEN — All components implemented (password-strength.ts, PasswordStrengthMeter, PasswordField, PersonTypeRadio, RegistrationForm, dynamic Zod schema)
+3. Login-First Navigation — Router reorganized, LoginPage updated, AuthGuard created, ProfilePage updated, obsolete files removed
+4. SUMMARY.md created, STATE.md updated
+5. 3 atomic commits made
+6. 64 frontend tests passing (48 existing + 16 new)
 
 **Key Findings:**
-- 135 tests passing across backend + frontend
-- 6 code review warnings (WR-01 to WR-06) — none critical
-- 3 human verification items pending for Phase 10 (browser testing with live stack)
-- v2.0 proposal: 6 phases (Code Fixes, PKCE, E2E, HTTPS, Secrets/Backup, Monitoring/CI-CD)
+- Registration flow reduced from 3 screens to 1 unified form
+- Auto-login works seamlessly after registration
+- Password strength meter provides real-time visual feedback with 5 levels
+- All 16 new tests pass; total frontend: 64, total project: 152
 
 **Documents Created:**
-- `.planning/RETROSPECTIVE.md` — 7-day development retrospective
-- `.planning/V2-PROPOSAL.md` — Milestone v2.0 proposal with prioritization
+- `.planning/phases/11-ux-redesign/11-01-SUMMARY.md` — Plan execution summary

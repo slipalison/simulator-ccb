@@ -243,3 +243,70 @@ export async function getProfileClient(): Promise<ClientProfileDto> {
 
   return response.json() as Promise<ClientProfileDto>;
 }
+
+// ---------------------------------------------------------------------------
+// Forgot/Reset Password API clients — Phase 11 UX-05
+// ---------------------------------------------------------------------------
+
+export class ForgotPasswordError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ForgotPasswordError";
+  }
+}
+
+export class ResetPasswordError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ResetPasswordError";
+  }
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+}
+
+export async function forgotPasswordClient(
+  email: string
+): Promise<ForgotPasswordResponse> {
+  const response = await fetch("/api/auth/forgot-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+
+  if (response.status === 429) {
+    const error = await response.json() as { detail?: string };
+    throw new ForgotPasswordError(error.detail || "Muitas tentativas. Tente novamente mais tarde.");
+  }
+
+  if (response.status === 400) {
+    const error = await response.json() as { title?: string };
+    throw new ForgotPasswordError(error.title || "Email invalido.");
+  }
+
+  // Always returns success (no info disclosure)
+  if (response.status === 200) {
+    return (await response.json()) as ForgotPasswordResponse;
+  }
+
+  throw new ApiError("An unexpected error occurred.");
+}
+
+export async function resetPasswordClient(
+  token: string,
+  newPassword: string
+): Promise<{ message: string }> {
+  const response = await fetch("/api/auth/reset-password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, newPassword }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json() as { detail?: string };
+    throw new ResetPasswordError(error.detail || "Erro ao redefinir senha.");
+  }
+
+  return (await response.json()) as { message: string };
+}

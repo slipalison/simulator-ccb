@@ -9,8 +9,11 @@ import { NotFoundPage } from "@/components/pages/NotFoundPage";
 import { RegistrationForm } from "@/components/molecules/RegistrationForm";
 import { LoginPage } from "@/components/pages/LoginPage";
 import { ProfilePage } from "@/components/pages/ProfilePage";
+import { ForgotPasswordPage } from "@/components/pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "@/components/pages/ResetPasswordPage";
 import { useAuth } from "@/lib/auth-context";
 import { useEffect } from "react";
+import { z } from "zod";
 
 // Root route com notFoundComponent para roteamento type-safe de 404
 const rootRoute = createRootRoute({
@@ -46,8 +49,30 @@ const profileRoute = createRoute({
   component: ProfilePage,
 } as any);
 
+// Rota de forgot password: /forgot-password
+const forgotPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/forgot-password",
+  component: ForgotPasswordPage,
+});
+
+// Rota de reset password: /reset-password?token=xxx
+const resetPasswordRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reset-password",
+  component: ResetPasswordPage,
+  validateSearch: z.object({ token: z.string().optional() }),
+});
+
 // Arvore de rotas
-const routeTree = rootRoute.addChildren([indexRoute, registerRoute, loginRoute, profileRoute]);
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  registerRoute,
+  loginRoute,
+  profileRoute,
+  forgotPasswordRoute,
+  resetPasswordRoute,
+]);
 
 // Instancia do router
 export const router = createRouter({ routeTree });

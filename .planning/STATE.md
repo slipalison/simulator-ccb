@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v2.0
 milestone_name: ux-ui-redesign
-status: in-progress
-stopped_at: Phase 12 (ui-redesign) Plan 03 COMPLETE — profile-header-forgot-redesign
+status: complete
+stopped_at: Phase 12 (ui-redesign) COMPLETE — all plans executed, phase goal verified
 last_updated: "2026-04-08T18:10:00.000Z"
 last_activity: 2026-04-08 -- Phase 12 Plan 03 complete: ProfilePage + Header + Forgot/Reset pages redesigned with shadcn/ui, 21 new tests passing, 114 total
 progress:
@@ -21,25 +21,25 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE COMPLETE — All 11 phases delivered
-**Last activity:** 2026-04-08 -- Phase 11 complete: unified registration form, password UX, login-first navigation, auto-login, forgot/reset password flow
+**Current focus:** MILESTONE COMPLETE — All 12 phases delivered
+**Last activity:** 2026-04-08 -- Phase 12 complete: shadcn/ui adoption, dark/light theme, complete visual redesign of all screens (Login, Registration, Profile, Forgot/Reset Password)
 
-Progress: [███████████] 100% (32/32 plans complete)
+Progress: [████████████] 100% (35/35 plans complete)
 
 ## Current Position
 
-Phase: 11 (ux-redesign) — COMPLETE
+Phase: 12 (ui-redesign) — COMPLETE
 Next: Audit milestone or new milestone
-Last activity: 2026-04-08 -- Phase 11 complete: unified PF/PJ registration form, password UX (strength meter + show/hide), login-first navigation, auto-login, forgot/reset password flow
+Last activity: 2026-04-08 -- Phase 12 complete: shadcn/ui setup, theme toggle, redesigned Login/Registration/Profile/Forgot/Reset pages, Header with user menu, 44 new tests
 
-Progress: [███████████] 100% (32/32 plans complete)
+Progress: [████████████] 100% (35/35 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 32
-- Phases completas: 11/11 (MILESTONE COMPLETE)
+- Total plans completed: 35
+- Phases completas: 12/12 (MILESTONE COMPLETE)
 
 **By Phase:**
 
@@ -56,6 +56,7 @@ Progress: [███████████] 100% (32/32 plans complete)
 | 09-login-ui | 3/3 | Complete 2026-04-07 |
 | 10-profile-ui | 3/3 | Complete 2026-04-08 |
 | 11-ux-redesign | 2/2 | Complete 2026-04-08 |
+| 12-ui-redesign | 3/3 | Complete 2026-04-08 |
 
 *Updated after each plan completion*
 | Phase 01-infrastructure P01 | 2 | 3 tasks | 7 files |

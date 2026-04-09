@@ -1,7 +1,5 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using Onboarding.API.Configuration;
 using Onboarding.Application.Auth.Commands;
 using Onboarding.Application.Auth.DTOs;
 using Onboarding.Application.Common;
@@ -24,22 +22,19 @@ public sealed class AuthController : ControllerBase
     private readonly IValidator<LoginCommand> _loginValidator;
     private readonly IValidator<RefreshTokenCommand> _refreshValidator;
     private readonly ILogger<AuthController> _logger;
-    private readonly bool _cookieSecure;
 
     public AuthController(
         ICommandHandler<LoginCommand, TokenResponse> loginHandler,
         ICommandHandler<RefreshTokenCommand, TokenResponse> refreshHandler,
         IValidator<LoginCommand> loginValidator,
         IValidator<RefreshTokenCommand> refreshValidator,
-        ILogger<AuthController> logger,
-        IOptions<CookieSettings> cookieSettings)
+        ILogger<AuthController> logger)
     {
         _loginHandler = loginHandler;
         _refreshHandler = refreshHandler;
         _loginValidator = loginValidator;
         _refreshValidator = refreshValidator;
         _logger = logger;
-        _cookieSecure = cookieSettings.Value.Secure;
     }
 
     /// <summary>POST /api/auth/login — AUTH-02: exchange credentials for JWT token pair.</summary>
@@ -70,7 +65,7 @@ public sealed class AuthController : ControllerBase
             Response.Cookies.Append("refreshToken", tokens.RefreshToken, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = _cookieSecure,
+                Secure = false, // true in production (HTTPS)
                 SameSite = SameSiteMode.Lax,
                 Expires = DateTimeOffset.UtcNow.AddSeconds(tokens.RefreshExpiresIn),
                 Path = "/api" // Available to all /api endpoints
@@ -135,7 +130,7 @@ public sealed class AuthController : ControllerBase
             Response.Cookies.Append("refreshToken", tokens.RefreshToken, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = _cookieSecure,
+                Secure = false, // true in production (HTTPS)
                 SameSite = SameSiteMode.Lax,
                 Expires = DateTimeOffset.UtcNow.AddSeconds(tokens.RefreshExpiresIn),
                 Path = "/api"
@@ -156,7 +151,7 @@ public sealed class AuthController : ControllerBase
             _logger.LogWarning(ex, "Refresh token exchange failed");
 
             // Clear invalid cookie
-            Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api", Secure = _cookieSecure });
+            Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api" });
 
             return Unauthorized(new ProblemDetails
             {
@@ -173,7 +168,7 @@ public sealed class AuthController : ControllerBase
     public IActionResult Logout()
     {
         // Clear refresh token cookie
-        Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api", Secure = _cookieSecure });
+        Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api" });
         return NoContent();
     }
 
@@ -205,7 +200,7 @@ public sealed class AuthController : ControllerBase
             Response.Cookies.Append("refreshToken", tokens.RefreshToken, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = _cookieSecure,
+                Secure = false,
                 SameSite = SameSiteMode.Lax,
                 Expires = DateTimeOffset.UtcNow.AddSeconds(tokens.RefreshExpiresIn),
                 Path = "/api"
@@ -223,7 +218,7 @@ public sealed class AuthController : ControllerBase
         catch (KeycloakAuthException)
         {
             // Session invalid — clear cookie
-            Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api", Secure = _cookieSecure });
+            Response.Cookies.Delete("refreshToken", new CookieOptions { Path = "/api" });
 
             return Unauthorized(new ProblemDetails
             {

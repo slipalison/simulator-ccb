@@ -129,7 +129,7 @@ Plans:
 **Plans:** 2 plans
 Plans:
 - [x] 18-01-PLAN.md — Admin users listing table with pagination, search, filters (58 tests) — COMPLETE 2026-04-09
-- [ ] 18-02-PLAN.md — User detail page with PF/PJ data display, Keycloak status badge, action buttons
+- [x] 18-02-PLAN.md — User detail page with PF/PJ data display, Keycloak status badge (32 tests) — COMPLETE 2026-04-09
 
 ### Phase 19: Admin Backoffice UI — Edit, Block, Delete
 **Goal:** Edit user form, block/unblock dialog, LGPD-compliant deletion with strong confirmation
@@ -441,7 +441,7 @@ Plans:
 **Plans:** 2 plans
 Plans:
 - [x] 18-01-PLAN.md — Admin users listing table with pagination, search, filters (58 tests) — COMPLETE 2026-04-09
-- [ ] 18-02-PLAN.md — User detail page with PF/PJ data display, Keycloak status badge, action buttons
+- [x] 18-02-PLAN.md — User detail page with PF/PJ data display, Keycloak status badge (32 tests) — COMPLETE 2026-04-09
 
 ### Phase 19: Admin Backoffice UI — Edit, Block, Delete
 **Goal:** Edit user form, block/unblock dialog, LGPD-compliant deletion with strong confirmation

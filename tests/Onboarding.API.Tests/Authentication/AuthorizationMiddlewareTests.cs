@@ -5,7 +5,7 @@ using System.Net;
 namespace Onboarding.API.Tests.Authentication;
 
 /// <summary>
-/// GREEN tests for AUTH-02: [Authorize] middleware returns 401 without Bearer token.
+/// Tests for [Authorize] middleware behavior — returns 401 without Bearer token.
 /// </summary>
 [Collection(WebAppFactoryCollection.Name)]
 public class AuthorizationMiddlewareTests : IAsyncLifetime

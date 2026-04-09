@@ -10,7 +10,7 @@ using System.Net.Http.Json;
 namespace Onboarding.API.Tests.Api;
 
 /// <summary>
-/// GREEN tests for AUTH-03: GET /api/clients/me behavior with JWT.
+/// Tests for GET /api/clients/me behavior with JWT authentication (AUTH-03).
 /// </summary>
 [Collection(WebAppFactoryCollection.Name)]
 public class ClientsMeEndpointTests : IAsyncLifetime

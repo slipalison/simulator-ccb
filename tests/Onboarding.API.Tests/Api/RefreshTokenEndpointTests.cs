@@ -9,7 +9,7 @@ using Onboarding.Infrastructure.Keycloak;
 namespace Onboarding.API.Tests.Api;
 
 /// <summary>
-/// GREEN tests for AUTH-04: POST /api/auth/refresh behavior.
+/// Tests for POST /api/auth/refresh behavior (AUTH-04).
 /// </summary>
 [Collection(WebAppFactoryCollection.Name)]
 public class RefreshTokenEndpointTests : IAsyncLifetime

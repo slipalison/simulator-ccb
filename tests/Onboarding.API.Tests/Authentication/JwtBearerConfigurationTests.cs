@@ -8,7 +8,7 @@ using Shouldly;
 namespace Onboarding.API.Tests.Authentication;
 
 /// <summary>
-/// GREEN tests for AUTH-02: JWT Bearer is configured with correct parameters.
+/// Tests for JWT Bearer authentication configuration.
 /// Verifies AddJwtBearer options without starting HTTP server.
 /// </summary>
 [Collection(WebAppFactoryCollection.Name)]

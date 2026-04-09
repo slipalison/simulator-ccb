@@ -9,7 +9,7 @@ using Onboarding.Infrastructure.Keycloak;
 namespace Onboarding.API.Tests.Api;
 
 /// <summary>
-/// GREEN tests for AUTH-02/AUTH-04: POST /api/auth/login behavior.
+/// Tests for POST /api/auth/login behavior (AUTH-02) and token response.
 /// </summary>
 [Collection(WebAppFactoryCollection.Name)]
 public class LoginEndpointTests : IAsyncLifetime

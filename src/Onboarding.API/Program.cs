@@ -2,6 +2,7 @@ using System.Reflection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Onboarding.API.Configuration;
 using Onboarding.API.Observability;
 using Onboarding.Application;
 using Onboarding.Infrastructure;
@@ -144,6 +145,9 @@ try
 
     // Infrastructure layer — DbContext, ClientRepository, KeycloakUserService, KC Admin HTTP client
     builder.Services.AddInfrastructure(builder.Configuration);
+
+    // Cookie settings — environment-configured Secure flag
+    builder.Services.Configure<CookieSettings>(builder.Configuration.GetSection(nameof(CookieSettings)));
 
     builder.Services.AddControllers();
 

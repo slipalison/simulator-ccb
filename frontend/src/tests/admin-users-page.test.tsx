@@ -22,6 +22,16 @@ vi.mock("sonner", () => ({
   },
 }));
 
+// Mock TanStack Router navigate
+const mockNavigate = vi.fn();
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@tanstack/react-router")>();
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 const mockPaginatedResult = {
   items: [
     {
@@ -250,9 +260,8 @@ describe("Admin Users Page", () => {
     expect(initialCall.status).toBe(undefined);
   });
 
-  it("View Details button shows toast", async () => {
+  it("View Details button navigates to /admin/users/$id", async () => {
     vi.mocked(adminApi.listUsers).mockResolvedValue(mockPaginatedResult);
-    const { toast } = await import("sonner");
 
     render(<AdminUsersPage />);
 
@@ -262,8 +271,9 @@ describe("Admin Users Page", () => {
 
     fireEvent.click(screen.getByTestId("view-details-1"));
 
-    expect(toast.info).toHaveBeenCalledWith("Detalhes do usuario", {
-      description: "Em desenvolvimento.",
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/admin/users/$id",
+      params: { id: "1" },
     });
   });
 });

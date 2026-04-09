@@ -11,10 +11,7 @@ using Shouldly;
 
 namespace Onboarding.API.Tests.AdminAuth;
 
-/// <summary>
-/// Endpoint tests for AdminAuthController (Task 3).
-/// Tests login/logout/me endpoints with cookie handling.
-/// </summary>
+[Collection("AdminAuthEndpoint")]
 public class AdminAuthEndpointTests : IClassFixture<AdminAuthTestFactory>
 {
     private readonly AdminAuthTestFactory _factory;

@@ -10,15 +10,12 @@ using Shouldly;
 
 namespace Onboarding.API.Tests.AdminAuth;
 
-/// <summary>
-/// Integration tests for admin cookie auth flow with existing admin endpoints (Task 5).
-/// Tests that admin cookie works across all /api/admin/* endpoints.
-/// </summary>
-public class AdminAuthIntegrationTests : IClassFixture<AdminAuthTestFactory>
+[Collection("AdminAuthIntegration")]
+public class AdminAuthIntegrationTests : IClassFixture<AdminAuthIntegrationTestFactory>
 {
-    private readonly AdminAuthTestFactory _factory;
+    private readonly AdminAuthIntegrationTestFactory _factory;
 
-    public AdminAuthIntegrationTests(AdminAuthTestFactory factory)
+    public AdminAuthIntegrationTests(AdminAuthIntegrationTestFactory factory)
     {
         _factory = factory;
     }
@@ -68,19 +65,6 @@ public class AdminAuthIntegrationTests : IClassFixture<AdminAuthTestFactory>
         // Non-admin user cannot access admin endpoints
         // Since login failed, there's no cookie — should get 401
         var response = await client.GetAsync("/api/admin/users?page=1&pageSize=20");
-        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-    }
-
-    [Fact]
-    public async Task AdminEndpoint_NoCookie_Returns401()
-    {
-        // Arrange
-        var client = _factory.CreateClient();
-
-        // Act
-        var response = await client.GetAsync("/api/admin/users?page=1&pageSize=20");
-
-        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 

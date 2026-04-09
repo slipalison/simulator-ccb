@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { AdminSearchBar } from "@/components/molecules/AdminSearchBar";
 import { AdminStatusFilter } from "@/components/molecules/AdminStatusFilter";
@@ -9,6 +10,7 @@ import { toast } from "sonner";
 import type { UserSummaryDto, PaginatedResult } from "@/lib/admin-api";
 
 export function AdminUsersPage() {
+  const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -54,10 +56,7 @@ export function AdminUsersPage() {
   }, [debouncedSearch, status]);
 
   const handleViewDetails = (id: string) => {
-    // Phase 18 Plan 02 will implement /admin/users/{id} route
-    toast.info("Detalhes do usuario", {
-      description: "Em desenvolvimento.",
-    });
+    navigate({ to: "/admin/users/$id" as any, params: { id } });
   };
 
   return (

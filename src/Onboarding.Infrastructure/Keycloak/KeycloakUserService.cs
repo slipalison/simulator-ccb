@@ -137,6 +137,30 @@ public sealed class KeycloakUserService : IKeycloakUserService
         }
     }
 
+    public async Task BlockUserAsync(string keycloakUserId, CancellationToken ct = default)
+    {
+        var user = await _keycloakUserClient.GetUserAsync(_realm, keycloakUserId, cancellationToken: ct)
+            ?? throw new InvalidOperationException($"Keycloak user '{keycloakUserId}' not found.");
+
+        // Idempotency: if already disabled, skip update call
+        if (user.Enabled == false) return;
+
+        user.Enabled = false;
+        await _keycloakUserClient.UpdateUserAsync(_realm, keycloakUserId, user, ct);
+    }
+
+    public async Task UnblockUserAsync(string keycloakUserId, CancellationToken ct = default)
+    {
+        var user = await _keycloakUserClient.GetUserAsync(_realm, keycloakUserId, cancellationToken: ct)
+            ?? throw new InvalidOperationException($"Keycloak user '{keycloakUserId}' not found.");
+
+        // Idempotency: if already enabled, skip update call
+        if (user.Enabled == true) return;
+
+        user.Enabled = true;
+        await _keycloakUserClient.UpdateUserAsync(_realm, keycloakUserId, user, ct);
+    }
+
     /// <summary>
     /// Detects if an exception indicates a 409 Conflict from Keycloak.
     /// The SDK may wrap the original HttpResponseMessage or throw HttpRequestException.

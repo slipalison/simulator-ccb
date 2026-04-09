@@ -90,7 +90,7 @@ public class BlockUserCommandValidatorTests
     [Fact]
     public void ValidUserId_ShouldPass()
     {
-        var command = new BlockUserCommand(Guid.NewGuid());
+        var command = new BlockUserCommand(Guid.NewGuid(), "admin-sub", "admin@example.com");
         var result = _validator.TestValidate(command);
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -98,7 +98,7 @@ public class BlockUserCommandValidatorTests
     [Fact]
     public void EmptyUserId_ShouldFail()
     {
-        var command = new BlockUserCommand(Guid.Empty);
+        var command = new BlockUserCommand(Guid.Empty, "admin-sub", "admin@example.com");
         var result = _validator.TestValidate(command);
         result.ShouldHaveValidationErrorFor(x => x.UserId);
     }

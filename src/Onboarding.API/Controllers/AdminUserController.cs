@@ -13,7 +13,7 @@ namespace Onboarding.API.Controllers;
 /// All endpoints are protected by [Authorize(Roles = "admin")].
 /// </summary>
 [ApiController]
-[Route("api/admin/[controller]")]
+[Route("api/admin")]
 [Authorize(Roles = "admin")]
 public sealed class AdminUserController : ControllerBase
 {

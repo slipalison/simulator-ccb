@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: admin-backoffice-panel
-status: roadmap-defined
-stopped_at: Milestone v3.0 roadmap created — 5 phases defined (16-20)
-last_updated: "2026-04-09T16:00:00.000Z"
-last_activity: 2026-04-09 -- Milestone v3.0 roadmap created with Phase 16-20 for Admin Backoffice Panel
+status: in-progress
+stopped_at: Phase 16 complete — Admin API Endpoints fully implemented and tested
+last_updated: "2026-04-09T19:20:00.000Z"
+last_activity: 2026-04-09 -- Phase 16 (Admin API Endpoints) COMPLETE — 30 admin integration tests, 158 total tests passing
 progress:
   total_phases: 20
-  completed_phases: 14
-  total_plans: 48
-  completed_plans: 38
-  percent: 79
+  completed_phases: 15
+  total_plans: 49
+  completed_plans: 41
+  percent: 84
 ---
 
 # Project State
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Roadmap defined, ready for requirements formalization)
-**Last activity:** 2026-04-09 -- Milestone v3.0 roadmap created with 5 new phases (16-20) for admin backoffice
+**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 16 COMPLETE, ready for Phase 17/18)
+**Last activity:** 2026-04-09 -- Phase 16 (Admin API Endpoints) COMPLETE — all 3 plans, 30 integration tests
 
-Progress: [███████████████░░░] 79% (38/48 plans - v3.0 defining requirements)
+Progress: [████████████████░░] 84% (41/49 plans - Phase 16 complete)
 
 ## Current Position
 
-Phase: Roadmap complete — Milestone v3.0 phases 16-20 defined
-Next: Formalize v3.0 requirements (ADMIN-01 to ADMIN-16) in REQUIREMENTS.md, then plan Phase 16
-Last activity: 2026-04-09 -- Roadmap updated with milestone v3.0 breakdown
+Phase: 16-admin-api-endpoints COMPLETE
+Next: Phase 17 (Admin Auth & Session Management) or Phase 18 (Admin Backoffice UI)
+Last activity: 2026-04-09 -- Phase 16 Plan 03 integration tests complete
 
-Progress: [███████████████░░░] 79% (38/48 plans - v3.0 defining requirements)
+Progress: [████████████████░░] 84% (41/49 plans - Phase 16 complete)
 
 ## Milestone Breakdown
 
@@ -65,6 +65,7 @@ Progress: [███████████████░░░] 79% (38/48 pl
 | 12-ui-redesign | 3/3 | Complete 2026-04-08 |
 | 13-reset-password-fix | 1/1 | Complete 2026-04-08 |
 | 15-production-cleanup | 1/1 | Complete 2026-04-09 |
+| 16-admin-api-endpoints | 3/3 | Complete 2026-04-09 |
 
 *Updated after each plan completion*
 | Phase 01-infrastructure P01 | 2 | 3 tasks | 7 files |

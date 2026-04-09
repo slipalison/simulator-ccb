@@ -8,6 +8,34 @@ Sistema de onboarding para cadastro de clientes Pessoa Física (PF) e Pessoa Jur
 
 Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
 
+## Current Milestone: v3.0 Painel de Backoffice Admin
+
+**Goal:** Painel administrativo para gerenciar cadastros de usuários — listar, visualizar, editar, bloquear/desbloquear e excluir (LGPD) com autenticação baseada em cookies httpOnly e autorização por role "admin".
+
+**Target features:**
+- Endpoints admin na API .NET (listar, detalhes, editar, bloquear, excluir usuários)
+- Proteção por role "admin" nos endpoints admin
+- Frontend Vinxi para backoffice com autenticação via cookies httpOnly
+- Listagem paginada com busca, filtros por status, colunas configuráveis
+- Detalhes do usuário, edição com formulário validado
+- Bloqueio/desbloqueio com dialog de confirmação
+- Exclusão LGPD com confirmação forte (digitar email)
+- Middleware de proteção: exige sessão válida + role "admin"
+- Refresh automático de access token transparente ao usuário
+- Header com nome do admin logado + logout
+- Tratamento global de erros (401, 403, 5xx) com toasts
+- Server Components para leitura, Client Components para interatividade
+
+### Stack Adicional para v3.0
+
+- **Frontend Admin**: Vinxi (mesma stack do projeto atual, não Next.js)
+- **UI Library**: shadcn/ui (já utilizada no projeto)
+- **Auth**: Cookies httpOnly gerenciados pelo Vinxi via Server Actions
+- **Token decoding**: jose (Edge Runtime compatible) para middleware
+- **Notifications**: Sonner para toasts
+
+**Depends on**: Milestone v2.0 completo (15 phases delivered)
+
 ## Requirements
 
 ### Validated
@@ -19,26 +47,26 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 ### Active
 
-- [ ] Cadastro de Pessoa Física (nome, CPF, email, telefone, senha)
-- [ ] Cadastro de Pessoa Jurídica (razão social, CNPJ, email, telefone, senha)
-- [ ] Criação de usuário no Keycloak via Admin API durante o cadastro
-- [ ] Tela de login custom com autenticação via Keycloak
-- [ ] Redirecionamento pós-cadastro para tela de login
-- [ ] Tela de perfil com dados cadastrais (read-only) após primeiro login
-- [ ] Keycloak hardened contra vulnerabilidades conhecidas (SSRF, open redirect, brute force, etc.) — validated above
-- [ ] Docker Compose com toda a infraestrutura (API, frontend, PostgreSQL, Keycloak)
-- [ ] Backend com TDD, DDD, SOLID, sem Minimal API
-- [ ] Serilog + OpenTelemetry para logs, traces e metrics
-- [ ] Frontend com Atomic Design (componentes atômicos)
+- [ ] Endpoints admin na API .NET (listar, visualizar, editar, bloquear/desbloquear, excluir usuários)
+- [ ] Proteção por role "admin" nos endpoints admin
+- [ ] Frontend Vinxi para backoffice com autenticação via cookies httpOnly
+- [ ] Listagem paginada de usuários com busca e filtros
+- [ ] Detalhes do usuário, edição com formulário validado
+- [ ] Bloqueio/desbloqueio com dialog de confirmação
+- [ ] Exclusão LGPD com confirmação forte (digitar email)
+- [ ] Middleware de proteção: exige sessão válida + role "admin"
+- [ ] Refresh automático de access token transparente
+- [ ] Header com nome do admin logado + logout
+- [ ] Tratamento global de erros (401, 403, 5xx) com toasts
 
 ### Out of Scope
 
 - Validação de email no cadastro — não necessário no v1
 - OAuth social login (Google, GitHub, etc.) — complexidade adicional sem valor para v1
-- Edição de dados cadastrais — v1 é somente leitura
-- Dashboard/área administrativa — fora do escopo inicial
+- Edição de dados cadastrais pelo usuário final — v1 é somente leitura
 - Mobile app — web-first
 - Notificações push/email — sem necessidade no v1
+- Migração de ROPC para Auth Code + PKCE — documentado para v4
 
 ## Context
 
@@ -92,6 +120,9 @@ O login usa tela custom no React autenticando via Keycloak (Resource Owner Passw
 | Sem validação de email no v1 | Simplificar fluxo inicial — cadastrou, já pode logar | — Pending |
 | Atomic Design no frontend | Facilitar mudanças futuras de layout com componentes reutilizáveis | — Pending |
 | Sem MediatR — CQRS manual via DI | MediatR não é mais open source (licença comercial). Handlers injetados direto via DI nativo do .NET | ✓ Good |
+| Backoffice usa mesma stack Vinxi | Manter consistência de stack, não introduzir Next.js para admin | ✓ v3.0 |
+| Endpoints admin precisam ser criados | API atual só tem registro/login/me — CRUD admin não existe | ✓ v3.0 |
+| Role "admin" para autorização | Keycloak roles em `realm_access.roles` — frontend confia no backend para segurança real | ✓ v3.0 |
 
 ## Evolution
 
@@ -111,4 +142,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-02 after Phase 03 completion — Domain layer (38 testes TDD) e application CQRS layer implementados (BACK-01 a BACK-04, BACK-06 verified)*
+*Last updated: 2026-04-09 — Milestone v3.0 started: Admin Backoffice Panel (Vinxi, cookies httpOnly, role-based access)*

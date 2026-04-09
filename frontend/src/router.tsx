@@ -11,6 +11,10 @@ import { LoginPage } from "@/components/pages/LoginPage";
 import { ProfilePage } from "@/components/pages/ProfilePage";
 import { ForgotPasswordPage } from "@/components/pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/components/pages/ResetPasswordPage";
+import { AdminLoginPage } from "@/components/pages/AdminLoginPage";
+import { AdminAccessDeniedPage } from "@/components/pages/AdminAccessDeniedPage";
+import { AdminUsersPage } from "@/components/pages/AdminUsersPage";
+import { AdminLayout } from "@/components/templates/AdminLayout";
 import { useAuth } from "@/lib/auth-context";
 import { useEffect } from "react";
 import { z } from "zod";
@@ -64,6 +68,33 @@ const resetPasswordRoute = createRoute({
   validateSearch: z.object({ token: z.string().optional() }),
 });
 
+// ---------------------------------------------------------------------------
+// Admin Routes — /admin/*
+// These use a separate AdminAuthProvider (no session conflicts with user auth)
+// ---------------------------------------------------------------------------
+
+const adminLoginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/login",
+  component: AdminLoginPage,
+});
+
+const adminAccessDeniedRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/access-denied",
+  component: AdminAccessDeniedPage,
+});
+
+const adminUsersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/users",
+  component: () => (
+    <AdminLayout>
+      <AdminUsersPage />
+    </AdminLayout>
+  ),
+} as any);
+
 // Arvore de rotas
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -72,6 +103,9 @@ const routeTree = rootRoute.addChildren([
   profileRoute,
   forgotPasswordRoute,
   resetPasswordRoute,
+  adminLoginRoute,
+  adminAccessDeniedRoute,
+  adminUsersRoute,
 ]);
 
 // Instancia do router

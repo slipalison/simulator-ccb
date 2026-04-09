@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: admin-backoffice-panel
 status: in-progress
-stopped_at: Phase 16 complete — Admin API Endpoints fully implemented and tested
-last_updated: "2026-04-09T19:20:00.000Z"
-last_activity: 2026-04-09 -- Phase 16 (Admin API Endpoints) COMPLETE — 30 admin integration tests, 158 total tests passing
+stopped_at: Phase 17 plans created — Admin Auth & Session Management (cookie-based auth, token refresh, error handling)
+last_updated: "2026-04-09T20:00:00.000Z"
+last_activity: 2026-04-09 -- Phase 17 (Admin Auth & Session Management) PLANNED — 2 plans covering backend cookie auth + frontend session management
 progress:
   total_phases: 20
   completed_phases: 15
-  total_plans: 49
+  total_plans: 51
   completed_plans: 41
   percent: 84
 ---
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 16 COMPLETE, ready for Phase 17/18)
-**Last activity:** 2026-04-09 -- Phase 16 (Admin API Endpoints) COMPLETE — all 3 plans, 30 integration tests
+**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 16 COMPLETE, Phase 17 PLANNED)
+**Last activity:** 2026-04-09 -- Phase 17 (Admin Auth & Session Management) PLANNED — 2 plans ready for execution
 
-Progress: [████████████████░░] 84% (41/49 plans - Phase 16 complete)
+Progress: [████████████████░░] 84% (41/51 plans - Phase 17 planned)
 
 ## Current Position
 
-Phase: 16-admin-api-endpoints COMPLETE
-Next: Phase 17 (Admin Auth & Session Management) or Phase 18 (Admin Backoffice UI)
-Last activity: 2026-04-09 -- Phase 16 Plan 03 integration tests complete
+Phase: 17-admin-auth-session PLANNED (0/2 plans)
+Next: Execute Phase 17 Plan 01 (backend cookie auth) then Plan 02 (frontend session management)
+Last activity: 2026-04-09 -- Phase 17 plans created
 
-Progress: [████████████████░░] 84% (41/49 plans - Phase 16 complete)
+Progress: [████████████████░░] 84% (41/51 plans - Phase 17 planned)
 
 ## Milestone Breakdown
 
@@ -66,6 +66,7 @@ Progress: [████████████████░░] 84% (41/49 pl
 | 13-reset-password-fix | 1/1 | Complete 2026-04-08 |
 | 15-production-cleanup | 1/1 | Complete 2026-04-09 |
 | 16-admin-api-endpoints | 3/3 | Complete 2026-04-09 |
+| 17-admin-auth-session | 0/2 | Planned 2026-04-09 |
 
 *Updated after each plan completion*
 | Phase 01-infrastructure P01 | 2 | 3 tasks | 7 files |
@@ -87,6 +88,12 @@ Progress: [████████████████░░] 84% (41/49 pl
 
 Decisions are logged in PROJECT.md Key Decisions table.
 Recent decisions affecting current work:
+
+- [Phase 17-admin-auth-session]: Admin cookie name is `adminRefreshToken` (separate from regular user `refreshToken`) — avoids collision between user and admin sessions
+- [Phase 17-admin-auth-session]: Admin cookie Path=/api/admin (more restrictive than user cookie Path=/api) — scopes cookies to admin endpoints only
+- [Phase 17-admin-auth-session]: Admin AuthContext is separate from user AuthContext — prevents session conflicts between admin and regular user
+- [Phase 17-admin-auth-session]: Admin login uses same ROPC grant as regular login but validates "admin" role — no separate identity provider
+- [Phase 17-admin-auth-session]: Token refresh for admin calls /api/admin/auth/me (which internally refreshes) — simpler than separate refresh endpoint
 
 - Roadmap: ROPC grant chosen over Auth Code + PKCE — conscious tradeoff, revisit if security requirements increase
 - Roadmap: Registration flow persists to app_db FIRST, then creates Keycloak user — rollback strategy needed if Keycloak call fails
@@ -126,7 +133,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+- Phase 17 (Admin Auth & Session Management): Execute Plan 01 (backend cookie auth) then Plan 02 (frontend session management)
+- Phase 17 requirement: Need an admin user seeded in Keycloak with "admin" role for testing
 
 ### Blockers/Concerns
 

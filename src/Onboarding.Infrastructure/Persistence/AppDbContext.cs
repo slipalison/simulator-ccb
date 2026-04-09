@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Onboarding.Domain.Aggregates.Audit;
 using Onboarding.Domain.Aggregates.ClientAggregate;
 using Onboarding.Domain.Aggregates.PasswordReset;
 using Onboarding.Infrastructure.Persistence.Configurations;
@@ -11,10 +12,12 @@ public sealed class AppDbContext : DbContext
 
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new ClientConfiguration());
         modelBuilder.ApplyConfiguration(new PasswordResetTokenConfiguration());
+        modelBuilder.ApplyConfiguration(new AuditLogConfiguration());
     }
 }

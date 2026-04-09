@@ -2,25 +2,168 @@
 
 ## Overview
 
-This roadmap builds a secure PF/PJ client onboarding system from infrastructure up. The delivery sequence mirrors the dependency chain: Docker infrastructure first, then a hardened Keycloak, then the DDD backend domain, then observability wiring, then registration and authentication endpoints, then a frontend scaffold, and finally the three user-facing screens (registration, login, profile). Every phase delivers a coherent, independently verifiable capability before the next begins.
+This roadmap builds a secure PF/PJ client onboarding system from infrastructure up, then extends it with an admin backoffice panel for user management. The delivery sequence mirrors the dependency chain: Docker infrastructure first, then a hardened Keycloak, then the DDD backend domain, then observability wiring, then registration and authentication endpoints, then a frontend scaffold, and finally the three user-facing screens (registration, login, profile). After v1.0/v2.0 completion, milestone v3.0 adds admin CRUD endpoints, role-based access control, and a backoffice UI with pagination, filtering, and LGPD-compliant user deletion.
 
-## Phases
+Every phase delivers a coherent, independently verifiable capability before the next begins.
+
+---
+
+## Milestones
+
+| Milestone | Name | Phases | Status |
+|-----------|------|--------|--------|
+| **v1.0** | Foundation — Cadastro e Login com Perfil Read-Only | 1-10 | ✅ Complete |
+| **v2.0** | UX/UI Redesign + Production Readiness | 11-15 | ✅ Complete |
+| **v3.0** | Admin Backoffice Panel | 16-20 | 📋 Defining |
+
+---
+
+## Milestone v1.0 — Foundation (Phases 1-10)
+
+**Goal:** Sistema de onboarding funcional com cadastro PF/PJ, autenticação Keycloak, perfil read-only, observabilidade completa e stack Dockerizada.
+
+### Phases
 
 - [x] **Phase 1: Infrastructure** - Docker Compose with dual PostgreSQL, Keycloak realm configured and running (completed 2026-04-01)
 - [x] **Phase 2: Keycloak Security Hardening** - Keycloak hardened against all documented attack surfaces (completed 2026-04-02)
-- [x] **Phase 3: Backend Domain Layer** - DDD domain model with value objects, aggregate, and full test coverage
-- [x] **Phase 4: Observability** - Serilog + OpenTelemetry wired across all services with correlation ID propagation
-- [x] **Phase 5: Registration API** - Backend endpoints for PF/PJ registration with full validation and Keycloak user creation
-- [x] **Phase 6: Authentication API** - JWT issuance, token refresh, and protected route enforcement in the backend
+- [x] **Phase 3: Backend Domain Layer** - DDD domain model with value objects, aggregate, and full test coverage (completed 2026-04-02)
+- [x] **Phase 4: Observability** - Serilog + OpenTelemetry wired across all services with correlation ID propagation (completed 2026-04-03)
+- [x] **Phase 5: Registration API** - Backend endpoints for PF/PJ registration with full validation and Keycloak user creation (completed 2026-04-05)
+- [x] **Phase 6: Authentication API** - JWT issuance, token refresh, and protected route enforcement in the backend (completed 2026-04-06)
 - [x] **Phase 7: Frontend Foundation** - Vinxi SPA scaffold with Atomic Design structure, routing, and form primitives (completed 2026-04-07)
 - [x] **Phase 8: Registration UI** - PF/PJ registration forms integrated with the API, including client-side validation and post-registration redirect (completed 2026-04-07)
 - [x] **Phase 9: Login UI** - Custom login screen with ROPC token exchange and in-memory JWT storage (completed 2026-04-07)
 - [x] **Phase 10: Profile UI** - Read-only profile screen displaying PF/PJ data via authenticated API call (completed 2026-04-08)
+
+**Requirements Mapped:** INFRA-01 to INFRA-05, SEC-01 to SEC-09, BACK-01 to BACK-06, OBS-01 to OBS-05, REG-01 to REG-09, AUTH-01 to AUTH-04, PROF-01 to PROF-03, FRONT-01 to FRONT-05
+
+**Success Criteria (Achieved):**
+1. ✅ Running `docker compose up` starts all services healthy with no manual intervention
+2. ✅ Keycloak hardened: brute force protection, password policy, SSRF prevention, exact redirect URIs
+3. ✅ DDD domain model with Cpf, Cnpj, Email, PhoneNumber value objects and Client aggregate
+4. ✅ Serilog structured logging + OpenTelemetry traces + Grafana LGTM stack operational
+5. ✅ PF/PJ registration persists to PostgreSQL, creates Keycloak user, detects duplicates (409)
+6. ✅ JWT auth with ROPC grant, token refresh, protected routes, memory-only storage (SEC-10)
+7. ✅ Frontend boots with Atomic Design, TanStack Router, RHF + Zod validation
+8. ✅ Registration forms with inline validation, auto-login post-registration, redirect to /login
+9. ✅ Login screen with ROPC token exchange, generic error messages (no account enumeration)
+10. ✅ Profile displays PF/PJ data read-only, visually distinct (badges), auth guard redirect
+
+---
+
+## Milestone v2.0 — UX/UI Redesign + Production Readiness (Phases 11-15)
+
+**Goal:** Transformar o sistema de "funcional mas cru" em "profissional, seguro e pronto para produção".
+
+### Phases
+
 - [x] **Phase 11: UX Redesign** - Unified registration form with password UX, login-first navigation, auto-login post-registration, and forgot password flow (completed 2026-04-08)
 - [x] **Phase 12: UI Redesign** - shadcn/ui adoption, dark/light theme, complete visual redesign of all screens (Login, Registration, Profile, Forgot/Reset Password) (completed 2026-04-08)
-- [x] **Phase 13: Reset Password Fix** - Configurable frontend URL in reset email, end-to-end forgot/reset/login flow working
+- [x] **Phase 13: Reset Password Fix** - Configurable frontend URL in reset email, end-to-end forgot/reset/login flow working (completed 2026-04-08)
 - [ ] **Phase 14: E2E Testing** - Playwright installation, E2E tests for registration, login, profile, and reset password flows
-- [x] **Phase 15: Production Cleanup** - Cookie Secure flag configuration, dead code removal, test suite fixes
+- [x] **Phase 15: Production Cleanup** - Cookie Secure flag configuration, dead code removal, test suite fixes (completed 2026-04-09)
+
+**Requirements Mapped:** UX-01 to UX-07, UI-01 to UI-07, E2E-01 to E2E-05, PROD-01 to PROD-05
+
+**Success Criteria (Achieved except Phase 14):**
+1. ✅ Single registration form with dynamic PF/PJ fields (radio button), no separate type selection
+2. ✅ Password strength meter (5 levels), show/hide toggle, confirm password validation
+3. ✅ Root `/` shows LoginPage for unauthenticated, auto-redirects to `/profile` for authenticated
+4. ✅ Auto-login after registration — no intermediate login screen
+5. ✅ Forgot password sends reset email via Resend.com (15min expiry), reset updates Keycloak password
+6. ✅ shadcn/ui adopted across all screens, dark/light theme with localStorage persistence
+7. ✅ Reset password link uses configurable `Frontend:BaseUrl` (not hardcoded localhost:3001)
+8. ✅ Cookie Secure flag environment-configured, dead code removed, all tests passing
+9. ⏳ **Phase 14 pending:** Playwright installed, E2E tests for registration → auto-login → profile, login → profile → F5 → session restored, direct /profile → redirect /login
+
+---
+
+## Milestone v3.0 — Admin Backoffice Panel (Phases 16-20)
+
+**Goal:** Painel administrativo para gerenciar cadastros de usuários — listar, visualizar, editar, bloquear/desbloquear e excluir (LGPD) com autenticação baseada em cookies httpOnly e autorização por role "admin".
+
+**Depends on:** Milestone v1.0 + v2.0 complete (Phase 14 E2E Testing can be deferred)
+
+### Phase 16: Admin API Endpoints
+**Goal:** Backend CRUD endpoints for user management with role-based authorization
+**Depends on:** Phase 5 (Registration API), Phase 6 (Authentication API)
+**Requirements:** ADMIN-01, ADMIN-02, ADMIN-03, ADMIN-04, ADMIN-05
+**Success Criteria** (what must be TRUE):
+  1. GET `/api/admin/users` returns paginated list of users with search and status filters
+  2. GET `/api/admin/users/{id}` returns detailed user data (PF or PJ) including Keycloak status
+  3. PUT `/api/admin/users/{id}` updates user data with full server-side validation
+  4. POST `/api/admin/users/{id}/block` and POST `/api/admin/users/{id}/unblock` toggle user active status in Keycloak
+  5. DELETE `/api/admin/users/{id}` performs LGPD-compliant deletion (anonymize data + delete Keycloak user)
+  6. All admin endpoints require `[Authorize(Roles = "admin")]` — non-admin users receive 403 Forbidden
+**Plans:** 3 plans
+Plans:
+- [ ] 16-01-PLAN.md — Admin DTOs, paginated query models, FluentValidation for update/block/delete
+- [ ] 16-02-PLAN.md — AdminUserController with GET/PUT/POST/DELETE, CQRS handlers, Keycloak Admin API integration
+- [ ] 16-03-PLAN.md — Role-based authorization middleware, Keycloak "admin" role mapping, 403 handling
+
+### Phase 17: Admin Auth & Session Management
+**Goal:** HttpOnly cookie-based authentication for backoffice with transparent token refresh
+**Depends on:** Phase 16, Phase 6
+**Requirements:** ADMIN-06, ADMIN-07, ADMIN-08
+**Success Criteria** (what must be TRUE):
+  1. Admin login uses httpOnly, Secure, SameSite=Strict cookies — no JWT in localStorage
+  2. Access token refresh is transparent — middleware intercepts 401, refreshes, retries original request
+  3. Session expiration redirects admin to login with toast notification
+  4. Admin header displays logged-in admin name + logout button
+  5. Global error handling: 401 → login redirect, 403 → access denied page, 5xx → toast error
+**Plans:** 2 plans
+Plans:
+- [ ] 17-01-PLAN.md — Cookie auth middleware, httpOnly cookie setup, admin session storage
+- [ ] 17-02-PLAN.md — Transparent token refresh interceptor, session restoration on page load, error handling middleware
+
+### Phase 18: Admin Backoffice UI — List & Details
+**Goal:** Paginated user listing with search, filters, and detail view
+**Depends on:** Phase 17
+**Requirements:** ADMIN-09, ADMIN-10, ADMIN-11
+**Success Criteria** (what must be TRUE):
+  1. `/admin/users` shows paginated table (20 per page) with name, document, email, status, actions
+  2. Search bar filters by name, CPF/CNPJ, or email in real-time (debounced 300ms)
+  3. Status filter dropdown: All, Active, Blocked, Deleted
+  4. Clicking a user opens `/admin/users/{id}` with full PF/PJ data in read-only mode
+  5. Loading skeleton states shown during API calls, error states with retry button
+**Plans:** 2 plans
+Plans:
+- [ ] 18-01-PLAN.md — Admin layout, users table with pagination, search, filters (shadcn components)
+- [ ] 18-02-PLAN.md — User detail page with PF/PJ data display, Keycloak status badge, action buttons
+
+### Phase 19: Admin Backoffice UI — Edit, Block, Delete
+**Goal:** Edit user form, block/unblock dialog, LGPD-compliant deletion with strong confirmation
+**Depends on:** Phase 18
+**Requirements:** ADMIN-12, ADMIN-13, ADMIN-14
+**Success Criteria** (what must be TRUE):
+  1. Edit form validates all fields client-side (Zod) and server-side (FluentValidation) before submission
+  2. Block/unblock uses confirmation dialog with reason field — action logs to audit trail
+  3. LGPD deletion requires typing user email to confirm — anonymizes PostgreSQL data + deletes Keycloak user
+  4. Success/error toasts after each action — table refreshes automatically
+  5. Optimistic UI updates for block/unblock — reverts on API error
+**Plans:** 2 plans
+Plans:
+- [ ] 19-01-PLAN.md — Edit user form with Zod validation, block/unblock dialog with reason, API integration
+- [ ] 19-02-PLAN.md — LGPD deletion flow (email confirmation dialog), anonymization handler, audit logging
+
+### Phase 20: Admin E2E Testing & Production Readiness
+**Goal:** Playwright E2E tests for admin flows, production config, documentation
+**Depends on:** Phase 19, Phase 14 (E2E Testing from v2.0)
+**Requirements:** ADMIN-15, ADMIN-16, E2E-06, E2E-07
+**Success Criteria** (what must be TRUE):
+  1. E2E test: Admin login → list users → search → filter by status → view details
+  2. E2E test: Admin edits user → validation errors → successful update → toast confirmation
+  3. E2E test: Admin blocks user → confirmation dialog → user blocked → table refreshes
+  4. E2E test: Admin deletes user (LGPD) → types email to confirm → user anonymized + Keycloak deleted
+  5. E2E test: Non-admin user accessing `/admin` receives 403 access denied page
+  6. All E2E tests pass with `npx playwright test`
+  7. Production documentation updated: deployment guide, admin role setup, backup procedures
+**Plans:** 2 plans
+Plans:
+- [ ] 20-01-PLAN.md — Playwright E2E tests for admin flows (list, edit, block, delete, 403 handling)
+- [ ] 20-02-PLAN.md — Production documentation, deployment guide, admin role provisioning in Keycloak
+
+---
 
 ## Phase Details
 
@@ -35,9 +178,9 @@ This roadmap builds a secure PF/PJ client onboarding system from infrastructure 
   4. Keycloak realm "onboarding" exists with the required clients, policies, and roles after first boot
 **Plans**: 3 plans
 Plans:
-- [ ] 01-PLAN-01.md — Repo skeleton, compose.yaml with dual PostgreSQL, secret management
-- [ ] 01-PLAN-02.md — Keycloak realm JSON with clients, brute force, password policy
-- [ ] 01-PLAN-03.md — .NET solution scaffold, Vinxi frontend, full stack smoke test
+- [x] 01-PLAN-01.md — Repo skeleton, compose.yaml with dual PostgreSQL, secret management
+- [x] 01-PLAN-02.md — Keycloak realm JSON with clients, brute force, password policy
+- [x] 01-PLAN-03.md — .NET solution scaffold, Vinxi frontend, full stack smoke test
 
 ### Phase 2: Keycloak Security Hardening
 **Goal**: Keycloak is hardened against all documented attack surfaces before any user data flows through it
@@ -144,9 +287,9 @@ Plans:
   4. Completing a valid registration submits the form to the API and, on success, redirects the user to the login screen
 **Plans**: 3 plans
 Plans:
-- [ ] 08-01-PLAN.md — Registration entry point: /registration route, PF/PJ type selector, placeholders
-- [ ] 08-02-PLAN.md — PF and PJ registration forms: Zod schemas, RHF + inline validation, check-digit
-- [ ] 08-03-PLAN.md — API integration: registerClient, error handling, success redirect to /login
+- [x] 08-01-PLAN.md — Registration entry point: /registration route, PF/PJ type selector, placeholders
+- [x] 08-02-PLAN.md — PF and PJ registration forms: Zod schemas, RHF + inline validation, check-digit
+- [x] 08-03-PLAN.md — API integration: registerClient, error handling, success redirect to /login
 
 ### Phase 9: Login UI
 **Goal**: Users can log in through the custom React login screen and the resulting JWT is held in memory, never persisted to browser storage
@@ -171,7 +314,7 @@ Plans:
   2. The profile data is loaded by GET /api/clients/me with the Bearer JWT — no data is embedded in the route or hardcoded
   3. A PF profile and a PJ profile are visually distinct (different labels, different document field displayed)
   4. Navigating directly to /profile without a token redirects to the login screen
-**Plans**: 3/3 plans
+**Plans**: 3 plans
 Plans:
 - [x] 10-01-PLAN.md — ProfilePage, ProfileCard, ProfileField atoms, API client
 - [x] 10-02-PLAN.md — PF/PJ visual differentiation, loading states, error handling
@@ -189,10 +332,26 @@ Plans:
   5. After successful registration, user is automatically logged in and redirected to profile (no intermediate login screen)
   6. Forgot password flow sends reset email via Resend.com with time-limited token (15min expiry)
   7. Reset password updates Keycloak user password via Admin API
-**Plans**: 2/2 plans
+**Plans**: 2 plans
 Plans:
-- [ ] 11-01-PLAN.md — Unified registration form, password strength meter, show/hide, confirm password, login-first navigation, auto-login
-- [ ] 11-02-PLAN.md — Forgot/reset password flow with Resend.com integration
+- [x] 11-01-PLAN.md — Unified registration form, password strength meter, show/hide, confirm password, login-first navigation, auto-login
+- [x] 11-02-PLAN.md — Forgot/reset password flow with Resend.com integration
+
+### Phase 12: UI Redesign
+**Goal**: Professional, polished UI with shadcn/ui components and dark/light theme support
+**Depends on**: Phase 11
+**Requirements**: UI-01, UI-02, UI-03, UI-04, UI-05, UI-06, UI-07
+**Success Criteria** (what must be TRUE):
+  1. shadcn/ui is set up with components.json and all required components installed (button, input, card, form, dialog, toast, etc.)
+  2. Dark/light theme toggle persists user preference via localStorage with system default detection
+  3. LoginPage, RegistrationPage, ProfilePage redesigned with shadcn/ui components
+  4. Fixed header with logo, theme toggle, and user menu (logout)
+  5. All forms use shadcn Form + Input + Label with inline Zod validation errors
+**Plans**: 3 plans
+Plans:
+- [x] 12-01-PLAN.md — shadcn/ui setup, theme infrastructure, Tailwind CSS variables for light/dark
+- [x] 12-02-PLAN.md — LoginPage + RegistrationPage redesign with shadcn components
+- [x] 12-03-PLAN.md — ProfilePage + Header redesign, user menu, theme toggle
 
 ### Phase 13: Reset Password Fix
 **Goal:** Configurable frontend URL in reset email, end-to-end forgot/reset/login flow working
@@ -205,7 +364,7 @@ Plans:
   4. Full flow tested: forgot → email received → reset → login
 **Plans**: 1 plan
 Plans:
-- [ ] 13-01-PLAN.md — Configurable Frontend:BaseUrl, update ForgotPasswordCommand, test
+- [x] 13-01-PLAN.md — Configurable Frontend:BaseUrl, update ForgotPasswordCommand, test
 
 ### Phase 14: E2E Testing
 **Goal:** Playwright installed, E2E tests for critical user flows
@@ -216,10 +375,11 @@ Plans:
   2. E2E test: Registration → Auto-login → Profile (PF and PJ)
   3. E2E test: Login → Profile → F5 → Session restored
   4. E2E test: Direct /profile access → redirect to /login
-  5. All E2E tests pass with `npx playwright test`
+  5. E2E test: Forgot password → reset email → reset password → login
+  6. All E2E tests pass with `npx playwright test`
 **Plans**: 1 plan
 Plans:
-- [ ] 14-01-PLAN.md — Playwright install, config, 3 E2E flow tests
+- [ ] 14-01-PLAN.md — Playwright install, config, 5 E2E flow tests
 
 ### Phase 15: Production Cleanup
 **Goal:** Cookie Secure flag configuration, dead code removal, test suite fixes
@@ -236,23 +396,148 @@ Plans:
 Plans:
 - [x] 15-01-PLAN.md — Cookie config, cleanup, test fixes
 
+### Phase 16: Admin API Endpoints
+**Goal:** Backend CRUD endpoints for user management with role-based authorization
+**Depends on:** Phase 5 (Registration API), Phase 6 (Authentication API)
+**Requirements:** ADMIN-01, ADMIN-02, ADMIN-03, ADMIN-04, ADMIN-05
+**Success Criteria** (what must be TRUE):
+  1. GET `/api/admin/users` returns paginated list of users with search and status filters
+  2. GET `/api/admin/users/{id}` returns detailed user data (PF or PJ) including Keycloak status
+  3. PUT `/api/admin/users/{id}` updates user data with full server-side validation
+  4. POST `/api/admin/users/{id}/block` and POST `/api/admin/users/{id}/unblock` toggle user active status in Keycloak
+  5. DELETE `/api/admin/users/{id}` performs LGPD-compliant deletion (anonymize data + delete Keycloak user)
+  6. All admin endpoints require `[Authorize(Roles = "admin")]` — non-admin users receive 403 Forbidden
+**Plans:** 3 plans
+Plans:
+- [ ] 16-01-PLAN.md — Admin DTOs, paginated query models, FluentValidation for update/block/delete
+- [ ] 16-02-PLAN.md — AdminUserController with GET/PUT/POST/DELETE, CQRS handlers, Keycloak Admin API integration
+- [ ] 16-03-PLAN.md — Role-based authorization middleware, Keycloak "admin" role mapping, 403 handling
+
+### Phase 17: Admin Auth & Session Management
+**Goal:** HttpOnly cookie-based authentication for backoffice with transparent token refresh
+**Depends on:** Phase 16, Phase 6
+**Requirements:** ADMIN-06, ADMIN-07, ADMIN-08
+**Success Criteria** (what must be TRUE):
+  1. Admin login uses httpOnly, Secure, SameSite=Strict cookies — no JWT in localStorage
+  2. Access token refresh is transparent — middleware intercepts 401, refreshes, retries original request
+  3. Session expiration redirects admin to login with toast notification
+  4. Admin header displays logged-in admin name + logout button
+  5. Global error handling: 401 → login redirect, 403 → access denied page, 5xx → toast error
+**Plans:** 2 plans
+Plans:
+- [ ] 17-01-PLAN.md — Cookie auth middleware, httpOnly cookie setup, admin session storage
+- [ ] 17-02-PLAN.md — Transparent token refresh interceptor, session restoration on page load, error handling middleware
+
+### Phase 18: Admin Backoffice UI — List & Details
+**Goal:** Paginated user listing with search, filters, and detail view
+**Depends on:** Phase 17
+**Requirements:** ADMIN-09, ADMIN-10, ADMIN-11
+**Success Criteria** (what must be TRUE):
+  1. `/admin/users` shows paginated table (20 per page) with name, document, email, status, actions
+  2. Search bar filters by name, CPF/CNPJ, or email in real-time (debounced 300ms)
+  3. Status filter dropdown: All, Active, Blocked, Deleted
+  4. Clicking a user opens `/admin/users/{id}` with full PF/PJ data in read-only mode
+  5. Loading skeleton states shown during API calls, error states with retry button
+**Plans:** 2 plans
+Plans:
+- [ ] 18-01-PLAN.md — Admin layout, users table with pagination, search, filters (shadcn components)
+- [ ] 18-02-PLAN.md — User detail page with PF/PJ data display, Keycloak status badge, action buttons
+
+### Phase 19: Admin Backoffice UI — Edit, Block, Delete
+**Goal:** Edit user form, block/unblock dialog, LGPD-compliant deletion with strong confirmation
+**Depends on:** Phase 18
+**Requirements:** ADMIN-12, ADMIN-13, ADMIN-14
+**Success Criteria** (what must be TRUE):
+  1. Edit form validates all fields client-side (Zod) and server-side (FluentValidation) before submission
+  2. Block/unblock uses confirmation dialog with reason field — action logs to audit trail
+  3. LGPD deletion requires typing user email to confirm — anonymizes PostgreSQL data + deletes Keycloak user
+  4. Success/error toasts after each action — table refreshes automatically
+  5. Optimistic UI updates for block/unblock — reverts on API error
+**Plans:** 2 plans
+Plans:
+- [ ] 19-01-PLAN.md — Edit user form with Zod validation, block/unblock dialog with reason, API integration
+- [ ] 19-02-PLAN.md — LGPD deletion flow (email confirmation dialog), anonymization handler, audit logging
+
+### Phase 20: Admin E2E Testing & Production Readiness
+**Goal:** Playwright E2E tests for admin flows, production config, documentation
+**Depends on:** Phase 19, Phase 14 (E2E Testing from v2.0)
+**Requirements:** ADMIN-15, ADMIN-16, E2E-06, E2E-07
+**Success Criteria** (what must be TRUE):
+  1. E2E test: Admin login → list users → search → filter by status → view details
+  2. E2E test: Admin edits user → validation errors → successful update → toast confirmation
+  3. E2E test: Admin blocks user → confirmation dialog → user blocked → table refreshes
+  4. E2E test: Admin deletes user (LGPD) → types email to confirm → user anonymized + Keycloak deleted
+  5. E2E test: Non-admin user accessing `/admin` receives 403 access denied page
+  6. All E2E tests pass with `npx playwright test`
+  7. Production documentation updated: deployment guide, admin role setup, backup procedures
+**Plans:** 2 plans
+Plans:
+- [ ] 20-01-PLAN.md — Playwright E2E tests for admin flows (list, edit, block, delete, 403 handling)
+- [ ] 20-02-PLAN.md — Production documentation, deployment guide, admin role provisioning in Keycloak
+
+---
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+Phases execute in numeric order within each milestone. Cross-milestone dependencies must be satisfied first.
 
-Note: Phase 7 (Frontend Foundation) depends only on Phase 1 and can begin in parallel with Phases 2–6 if desired, but the default execution order is sequential.
+```
+v1.0:  1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+v2.0:  11 → 12 → 13 → 14 → 15
+v3.0:  16 → 17 → 18 → 19 → 20
+```
+
+**Milestone v1.0 — Foundation (Complete)**
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Infrastructure | 3/3 | Complete   | 2026-04-01 |
-| 2. Keycloak Security Hardening | 1/1 | Complete   | 2026-04-02 |
-| 3. Backend Domain Layer | 2/2 | Complete   | 2026-04-02 |
-| 4. Observability | 4/4 | Complete   | 2026-04-03 |
-| 5. Registration API | 4/4 | Complete   | 2026-04-05 |
-| 6. Authentication API | 3/3 | Complete   | 2026-04-06 |
-| 7. Frontend Foundation | 4/4 | Complete   | 2026-04-07 |
-| 8. Registration UI | 3/3 | Complete   | 2026-04-07 |
-| 9. Login UI | 3/3 | Complete   | 2026-04-07 |
-| 10. Profile UI | 3/3 | Complete   | 2026-04-08 |
-| 11. UX Redesign | 2/2 | Complete   | 2026-04-08 |
+| 1. Infrastructure | 3/3 | ✅ Complete | 2026-04-01 |
+| 2. Keycloak Security Hardening | 1/1 | ✅ Complete | 2026-04-02 |
+| 3. Backend Domain Layer | 2/2 | ✅ Complete | 2026-04-02 |
+| 4. Observability | 4/4 | ✅ Complete | 2026-04-03 |
+| 5. Registration API | 4/4 | ✅ Complete | 2026-04-05 |
+| 6. Authentication API | 3/3 | ✅ Complete | 2026-04-06 |
+| 7. Frontend Foundation | 4/4 | ✅ Complete | 2026-04-07 |
+| 8. Registration UI | 3/3 | ✅ Complete | 2026-04-07 |
+| 9. Login UI | 3/3 | ✅ Complete | 2026-04-07 |
+| 10. Profile UI | 3/3 | ✅ Complete | 2026-04-08 |
+
+**Milestone v2.0 — UX/UI Redesign (Complete except E2E)**
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 11. UX Redesign | 2/2 | ✅ Complete | 2026-04-08 |
+| 12. UI Redesign | 3/3 | ✅ Complete | 2026-04-08 |
+| 13. Reset Password Fix | 1/1 | ✅ Complete | 2026-04-08 |
+| 14. E2E Testing | 0/1 | ⏳ Pending | — |
+| 15. Production Cleanup | 1/1 | ✅ Complete | 2026-04-09 |
+
+**Milestone v3.0 — Admin Backoffice (Defining Requirements)**
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 16. Admin API Endpoints | 0/3 | 📋 Planned | — |
+| 17. Admin Auth & Session | 0/2 | 📋 Planned | — |
+| 18. Admin List & Details | 0/2 | 📋 Planned | — |
+| 19. Admin Edit, Block, Delete | 0/2 | 📋 Planned | — |
+| 20. Admin E2E & Production | 0/2 | 📋 Planned | — |
+
+---
+
+## Next Steps
+
+**Current Milestone:** v3.0 — Admin Backoffice Panel (Defining Requirements)
+
+**▶ Recommended Next Actions:**
+
+1. **`/gsd:define-requirements`** — Formalize v3.0 requirements (ADMIN-01 to ADMIN-16, E2E-06/07) in REQUIREMENTS.md
+2. **`/gsd:plan-phase 16`** — Start planning Phase 16 (Admin API Endpoints) — the first v3.0 phase
+3. **`/gsd:discuss-phase 16`** — Gather context before planning (recommended)
+
+**Deferred:**
+- Phase 14 (E2E Testing from v2.0) — can be done in parallel with v3.0 or deferred until after v3.0
+
+---
+
+*Last updated: 2026-04-09 — Milestone v3.0 roadmap created with 5 new phases (16-20)*

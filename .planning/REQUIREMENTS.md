@@ -317,3 +317,142 @@ Nenhum requisito foi explicitamente delegado para v2. Os itens abaixo foram cons
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-04-09 | Initial requirements from research | GSD |
+| 2026-04-09 | Added v3.0 Admin Backoffice requirements (ADMIN-01 to ADMIN-16) | GSD |
+
+---
+
+# Requirements — v3.0: Admin Backoffice Panel
+
+**Milestone:** v3.0 — Painel Administrativo para Gerenciamento de Usuários
+**Source:** PROJECT.md Current Milestone v3.0 section
+**Created:** 2026-04-09
+**Status:** DRAFT — awaiting review
+
+---
+
+## 9. Admin API Endpoints
+
+### R9.1 — Paginated User Listing
+- [ ] GET `/api/admin/users` retorna lista paginada (20 por página)
+- [ ] Query params: `page`, `pageSize`, `search` (nome/email/documento), `status` (active/blocked/deleted)
+- [ ] Responde com `{ items, totalCount, page, pageSize }`
+- [ ] Protegido por `[Authorize(Roles = "admin")]`
+
+### R9.2 — User Details
+- [ ] GET `/api/admin/users/{id}` retorna dados completos do usuário (PF ou PJ)
+- [ ] Inclui status no Keycloak (enabled, locked, roles)
+- [ ] Retorna 404 se usuário não existe
+- [ ] Protegido por `[Authorize(Roles = "admin")]`
+
+### R9.3 — User Update
+- [ ] PUT `/api/admin/users/{id}` atualiza dados do usuário
+- [ ] Validação server-side completa (FluentValidation)
+- [ ] Atualiza PostgreSQL e Keycloak (transação/compensação)
+- [ ] Retorna 400 se validação falhar, 404 se não existe
+- [ ] Protegido por `[Authorize(Roles = "admin")]`
+
+### R9.4 — User Block/Unblock
+- [ ] POST `/api/admin/users/{id}/block` desativa usuário no Keycloak
+- [ ] POST `/api/admin/users/{id}/unblock` reativa usuário no Keycloak
+- [ ] Requer campo `reason` no payload para audit trail
+- [ ] Retorna 409 se usuário já está no estado solicitado
+- [ ] Protegido por `[Authorize(Roles = "admin")]`
+
+### R9.5 — LGPD-Compliant User Deletion
+- [ ] DELETE `/api/admin/users/{id}` anonimiza dados no PostgreSQL + deleta usuário no Keycloak
+- [ ] Anonimização: nome → "Deleted User", CPF/CNPJ → null, email → anonymized-{id}@deleted.local
+- [ ] Retorna 204 se sucesso, 404 se não existe
+- [ ] Audit log registra deleção com timestamp e admin responsável
+- [ ] Protegido por `[Authorize(Roles = "admin")]`
+
+## 10. Admin Auth & Session Management
+
+### R10.1 — HttpOnly Cookie Authentication
+- [ ] Admin login usa cookies httpOnly, Secure, SameSite=Strict
+- [ ] Nenhum JWT exposto no localStorage ou sessionStorage do frontend
+- [ ] Cookie configurado com path `/api` e expiry adequado
+
+### R10.2 — Transparent Token Refresh
+- [ ] Middleware intercepta 401, usa refresh token para obter novo access token
+- [ ] Retry automático da requisição original após refresh
+- [ ] Se refresh falhar, session expirada → redirect para login
+
+### R10.3 — Session Restoration & Error Handling
+- [ ] Ao carregar página, frontend chama `/api/auth/me` para verificar sessão
+- [ ] 401 → redirect para `/admin/login` com toast "Sessão expirada"
+- [ ] 403 → página de acesso negado "Você não tem permissão para acessar esta área"
+- [ ] 5xx → toast genérico "Erro interno do servidor"
+
+## 11. Admin Backoffice UI
+
+### R11.1 — User Listing Page
+- [ ] `/admin/users` exibe tabela paginada com nome, documento, email, status, ações
+- [ ] Search bar com debounce 300ms (busca por nome, CPF/CNPJ, email)
+- [ ] Dropdown de filtro por status: Todos, Ativo, Bloqueado, Deletado
+- [ ] Skeleton loading states durante chamadas API
+- [ ] Estado vazio exibe "Nenhum usuário encontrado"
+
+### R11.2 — User Detail Page
+- [ ] `/admin/users/{id}` exibe dados PF/PJ em modo leitura
+- [ ] Badge de status do Keycloak (enabled/disabled/locked)
+- [ ] Botões de ação: Editar, Bloquear/Desbloquear, Excluir
+- [ ] Breadcrumb navigation: Users → Detail
+
+### R11.3 — Edit User Form
+- [ ] Formulário de edição com validação client-side (Zod) e server-side (FluentValidation)
+- [ ] Campos: nome/razão social, email, telefone, documento (read-only)
+- [ ] Toast de sucesso após atualização
+- [ ] Reverter otimista em caso de erro API
+
+### R11.4 — Block/Unblock Dialog
+- [ ] Dialog de confirmação com campo obrigatório `reason`
+- [ ] Texto explicativo: "Bloqueio impede login do usuário imediatamente"
+- [ ] Ação registrada em audit log
+- [ ] Tabela atualiza status automaticamente após ação
+
+### R11.5 — LGPD Deletion Flow
+- [ ] Dialog exige digitar email do usuário para confirmar
+- [ ] Texto de aviso: "Esta ação é irreversível. Dados serão anonimizados."
+- [ ] Após confirmação: DELETE `/api/admin/users/{id}` → toast "Usuário excluído conforme LGPD"
+- [ ] Tabela remove usuário automaticamente
+
+### R11.6 — Admin Layout & Navigation
+- [ ] Layout fixo com header: logo "Backoffice Admin", nome do admin logado, botão logout
+- [ ] Sidebar com navegação: Usuários, Audit Log (future), Configurações (future)
+- [ ] Responsivo para mobile (sidebar colapsa)
+
+## 12. Admin E2E Testing
+
+### R12.1 — Admin Flow E2E Tests
+- [ ] E2E: Admin login → lista usuários → busca → filtra por status → vê detalhes
+- [ ] E2E: Admin edita usuário → erros de validação → atualização com sucesso → toast
+- [ ] E2E: Admin bloqueia usuário → dialog de confirmação → usuário bloqueado → tabela atualiza
+- [ ] E2E: Admin exclui usuário (LGPD) → digita email para confirmar → usuário anonimizado
+- [ ] E2E: Usuário não-admin acessando `/admin` → página 403 acesso negado
+
+---
+
+## Requirement Traceability — v3.0
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| ADMIN-01 — Paginated User Listing | Phase 16 | 📋 Planned |
+| ADMIN-02 — User Details | Phase 16 | 📋 Planned |
+| ADMIN-03 — User Update | Phase 16 | 📋 Planned |
+| ADMIN-04 — User Block/Unblock | Phase 16 | 📋 Planned |
+| ADMIN-05 — LGPD Deletion | Phase 16 | 📋 Planned |
+| ADMIN-06 — HttpOnly Cookie Auth | Phase 17 | 📋 Planned |
+| ADMIN-07 — Transparent Token Refresh | Phase 17 | 📋 Planned |
+| ADMIN-08 — Session Restoration & Error Handling | Phase 17 | 📋 Planned |
+| ADMIN-09 — User Listing Page | Phase 18 | 📋 Planned |
+| ADMIN-10 — User Detail Page | Phase 18 | 📋 Planned |
+| ADMIN-11 — Edit User Form | Phase 19 | 📋 Planned |
+| ADMIN-12 — Block/Unblock Dialog | Phase 19 | 📋 Planned |
+| ADMIN-13 — LGPD Deletion Flow | Phase 19 | 📋 Planned |
+| ADMIN-14 — Admin Layout & Navigation | Phase 18 | 📋 Planned |
+| ADMIN-15 — E2E Admin Flows | Phase 20 | 📋 Planned |
+| ADMIN-16 — Production Documentation | Phase 20 | 📋 Planned |
+
+---
+
+*Requirements document is living — update as requirements are clarified, validated, or delegated to future milestones.*

@@ -14,6 +14,7 @@ import { ResetPasswordPage } from "@/components/pages/ResetPasswordPage";
 import { AdminLoginPage } from "@/components/pages/AdminLoginPage";
 import { AdminAccessDeniedPage } from "@/components/pages/AdminAccessDeniedPage";
 import { AdminUsersPage } from "@/components/pages/AdminUsersPage";
+import { AdminUserDetailPage } from "@/components/pages/AdminUserDetailPage";
 import { AdminLayout } from "@/components/templates/AdminLayout";
 import { useAuth } from "@/lib/auth-context";
 import { useEffect } from "react";
@@ -95,6 +96,19 @@ const adminUsersRoute = createRoute({
   ),
 } as any);
 
+const adminUserDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/users/$id",
+  component: () => {
+    const { id } = adminUserDetailRoute.useParams();
+    return (
+      <AdminLayout>
+        <AdminUserDetailPage userId={id as string} />
+      </AdminLayout>
+    );
+  },
+} as any);
+
 // Arvore de rotas
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -106,6 +120,7 @@ const routeTree = rootRoute.addChildren([
   adminLoginRoute,
   adminAccessDeniedRoute,
   adminUsersRoute,
+  adminUserDetailRoute,
 ]);
 
 // Instancia do router

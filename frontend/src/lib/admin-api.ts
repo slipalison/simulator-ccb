@@ -18,9 +18,11 @@ export class AdminLoginError extends Error {
 }
 
 export class AdminApiError extends Error {
-  constructor(message: string) {
+  public status?: number;
+  constructor(message: string, status?: number) {
     super(message);
     this.name = "AdminApiError";
+    this.status = status;
   }
 }
 
@@ -133,4 +135,40 @@ export async function listUsers(
   }
 
   return response.json() as Promise<PaginatedResult<UserSummaryDto>>;
+}
+
+// ---------------------------------------------------------------------------
+// Admin User Detail — GET /api/admin/users/{id}
+// ---------------------------------------------------------------------------
+
+export interface UserDetailDto {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  document?: string;
+  type: "PF" | "PJ";
+  razaoSocial?: string;
+  createdAt: string;
+  deletedAt?: string;
+  keycloakEnabled: boolean;
+  keycloakEmailVerified: boolean;
+  keycloakUserId?: string;
+}
+
+export async function getUserDetail(userId: string): Promise<UserDetailDto> {
+  const response = await fetch(`/api/admin/users/${userId}`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (response.status === 404) {
+    throw new AdminApiError("Usuario nao encontrado.", 404);
+  }
+
+  if (!response.ok) {
+    throw new AdminApiError("Falha ao carregar dados do usuario.");
+  }
+
+  return response.json() as Promise<UserDetailDto>;
 }

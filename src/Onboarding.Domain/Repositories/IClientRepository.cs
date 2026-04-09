@@ -18,4 +18,11 @@ public interface IClientRepository
     /// Email is normalized to lowercase before querying (matches Email value object behavior).
     /// </summary>
     Task<Client?> GetByEmailAsync(string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Returns a paginated list of clients with optional search and status filters.
+    /// Used by admin paginated user listing (ADMIN-01).
+    /// </summary>
+    Task<(IReadOnlyList<Client> Items, int TotalCount)> GetPagedAsync(
+        int page, int pageSize, string? search, string? status, CancellationToken ct = default);
 }

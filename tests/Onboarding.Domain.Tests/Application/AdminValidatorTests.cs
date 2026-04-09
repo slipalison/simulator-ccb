@@ -14,7 +14,7 @@ public class UpdateUserCommandValidatorTests
     {
         // Arrange
         var command = new UpdateUserCommand(
-            Guid.NewGuid(), "John Doe", null, "john@example.com", "11999999999");
+            Guid.NewGuid(), "John Doe", null, "john@example.com", "11999999999", "admin-sub", "admin@example.com");
 
         // Act
         var result = _validator.TestValidate(command);
@@ -31,7 +31,7 @@ public class UpdateUserCommandValidatorTests
     {
         // Arrange
         var command = new UpdateUserCommand(
-            Guid.NewGuid(), name!, null, "john@example.com", "11999999999");
+            Guid.NewGuid(), name!, null, "john@example.com", "11999999999", "admin-sub", "admin@example.com");
 
         // Act
         var result = _validator.TestValidate(command);
@@ -45,7 +45,7 @@ public class UpdateUserCommandValidatorTests
     {
         // Arrange
         var command = new UpdateUserCommand(
-            Guid.NewGuid(), new string('A', 201), null, "john@example.com", "11999999999");
+            Guid.NewGuid(), new string('A', 201), null, "john@example.com", "11999999999", "admin-sub", "admin@example.com");
 
         // Act
         var result = _validator.TestValidate(command);
@@ -59,7 +59,7 @@ public class UpdateUserCommandValidatorTests
     {
         // Arrange
         var command = new UpdateUserCommand(
-            Guid.NewGuid(), "John", null, "not-an-email", "11999999999");
+            Guid.NewGuid(), "John", null, "not-an-email", "11999999999", "admin-sub", "admin@example.com");
 
         // Act
         var result = _validator.TestValidate(command);
@@ -73,7 +73,7 @@ public class UpdateUserCommandValidatorTests
     {
         // Arrange
         var command = new UpdateUserCommand(
-            Guid.NewGuid(), "John", new string('B', 301), "john@example.com", "11999999999");
+            Guid.NewGuid(), "John", new string('B', 301), "john@example.com", "11999999999", "admin-sub", "admin@example.com");
 
         // Act
         var result = _validator.TestValidate(command);

@@ -106,15 +106,15 @@ Plans:
 **Depends on:** Phase 16, Phase 6
 **Requirements:** ADMIN-06, ADMIN-07, ADMIN-08
 **Success Criteria** (what must be TRUE):
-  1. Admin login uses httpOnly, Secure, SameSite=Strict cookies — no JWT in localStorage
-  2. Access token refresh is transparent — middleware intercepts 401, refreshes, retries original request
-  3. Session expiration redirects admin to login with toast notification
-  4. Admin header displays logged-in admin name + logout button
-  5. Global error handling: 401 → login redirect, 403 → access denied page, 5xx → toast error
+  1. ✅ Admin login uses httpOnly, Secure, SameSite=Strict cookies — no JWT in localStorage
+  2. ✅ Access token refresh is transparent — middleware intercepts 401, refreshes, retries original request
+  3. ✅ Session expiration redirects admin to login with toast notification
+  4. ✅ Admin header displays logged-in admin name + logout button
+  5. ✅ Global error handling: 401 → login redirect, 403 → access denied page, 5xx → toast error
 **Plans:** 2 plans
 Plans:
-- [ ] 17-01-PLAN.md — Cookie auth middleware, httpOnly cookie setup, admin session storage
-- [ ] 17-02-PLAN.md — Transparent token refresh interceptor, session restoration on page load, error handling middleware
+- [x] 17-01-PLAN.md — Cookie auth middleware, httpOnly cookie setup, admin session storage (completed 2026-04-09)
+- [x] 17-02-PLAN.md — Transparent token refresh interceptor, session restoration on page load, error handling middleware (completed 2026-04-09)
 
 ### Phase 18: Admin Backoffice UI — List & Details
 **Goal:** Paginated user listing with search, filters, and detail view
@@ -418,15 +418,15 @@ Plans:
 **Depends on:** Phase 16, Phase 6
 **Requirements:** ADMIN-06, ADMIN-07, ADMIN-08
 **Success Criteria** (what must be TRUE):
-  1. Admin login uses httpOnly, Secure, SameSite=Strict cookies — no JWT in localStorage
-  2. Access token refresh is transparent — middleware intercepts 401, refreshes, retries original request
-  3. Session expiration redirects admin to login with toast notification
-  4. Admin header displays logged-in admin name + logout button
-  5. Global error handling: 401 → login redirect, 403 → access denied page, 5xx → toast error
+  1. ✅ Admin login uses httpOnly, Secure, SameSite=Strict cookies — no JWT in localStorage
+  2. ✅ Access token refresh is transparent — middleware intercepts 401, refreshes, retries original request
+  3. ✅ Session expiration redirects admin to login with toast notification
+  4. ✅ Admin header displays logged-in admin name + logout button
+  5. ✅ Global error handling: 401 → login redirect, 403 → access denied page, 5xx → toast error
 **Plans:** 2 plans
 Plans:
-- [ ] 17-01-PLAN.md — Cookie auth middleware, httpOnly cookie setup, admin session storage
-- [ ] 17-02-PLAN.md — Transparent token refresh interceptor, session restoration on page load, error handling middleware
+- [x] 17-01-PLAN.md — Cookie auth middleware, httpOnly cookie setup, admin session storage (completed 2026-04-09)
+- [x] 17-02-PLAN.md — Transparent token refresh interceptor, session restoration on page load, error handling middleware (completed 2026-04-09)
 
 ### Phase 18: Admin Backoffice UI — List & Details
 **Goal:** Paginated user listing with search, filters, and detail view

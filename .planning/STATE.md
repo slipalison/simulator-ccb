@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: admin-backoffice-panel
 status: in-progress
-stopped_at: Phase 17 Plan 02 COMPLETE — Frontend admin session management (34 tests)
-last_updated: "2026-04-09T21:00:00.000Z"
-last_activity: 2026-04-09 -- Phase 17 (Admin Auth & Session Management) PLAN 02 COMPLETE — frontend session management with 8 tasks, 34 tests
+stopped_at: Phase 17 complete — Admin Auth & Session Management (cookie-based auth, token refresh, error handling)
+last_updated: "2026-04-09T20:30:00.000Z"
+last_activity: 2026-04-09 -- Phase 17 (Admin Auth & Session Management) COMPLETE — 56 tests passing, all must-haves verified
 progress:
   total_phases: 20
-  completed_phases: 15
+  completed_phases: 16
   total_plans: 51
   completed_plans: 43
   percent: 86
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 16 COMPLETE, Phase 17 PLANNED)
-**Last activity:** 2026-04-09 -- Phase 17 (Admin Auth & Session Management) PLANNED — 2 plans ready for execution
+**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 17 COMPLETE, ready for Phase 18)
+**Last activity:** 2026-04-09 -- Phase 17 (Admin Auth & Session Management) COMPLETE — 56 tests, all must-haves verified
 
-Progress: [████████████████░░] 84% (41/51 plans - Phase 17 planned)
+Progress: [████████████████░░] 86% (43/51 plans - Phase 17 complete)
 
 ## Current Position
 
 Phase: 17-admin-auth-session COMPLETE (2/2 plans)
-Next: Execute Phase 18 (Admin User Management)
-Last activity: 2026-04-09 -- Phase 17 Plan 02 COMPLETE — frontend admin session management with 8 tasks, 34 tests
+Next: Phase 18 (Admin Backoffice UI — List & Details)
+Last activity: 2026-04-09 -- Phase 17 COMPLETE — backend cookie auth + frontend session management
 
-Progress: [████████████████░░] 84% (41/51 plans - Phase 17 planned)
+Progress: [████████████████░░] 86% (43/51 plans - Phase 17 complete)
 
 ## Milestone Breakdown
 
@@ -133,8 +133,8 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Phase 17 (Admin Auth & Session Management): Execute Plan 01 (backend cookie auth) then Plan 02 (frontend session management)
-- Phase 17 requirement: Need an admin user seeded in Keycloak with "admin" role for testing
+- Phase 18 (Admin Backoffice UI — List & Details): Create plans for paginated user listing, search, filters, and detail view
+- Admin user seed: Need admin user in Keycloak with "admin" role for manual testing (if not already present)
 
 ### Blockers/Concerns
 

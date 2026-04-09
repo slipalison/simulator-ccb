@@ -64,7 +64,6 @@ public sealed class ClientRepository : IClientRepository
     public Task<(IReadOnlyList<Client> Items, int TotalCount)> GetPagedAsync(
         int page, int pageSize, string? search, string? status, CancellationToken ct = default)
     {
-        // Stub implementation — real implementation will be added in Plan 02.
-        throw new NotImplementedException("GetPagedAsync implementation will be added in Plan 02.");
+        throw new NotImplementedException("Use IAdminRepository.GetPagedAsync instead.");
     }
 }

@@ -82,3 +82,55 @@ export async function getAdminMe(): Promise<AdminSessionResponse> {
 
   throw new AdminApiError("Session invalid");
 }
+
+// ---------------------------------------------------------------------------
+// Admin User Listing — GET /api/admin/users
+// ---------------------------------------------------------------------------
+
+export interface UserSummaryDto {
+  id: string;
+  name: string;
+  email: string;
+  document?: string;
+  type: "PF" | "PJ";
+  enabled: boolean;
+  deletedAt?: string;
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ListUsersParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+}
+
+export async function listUsers(
+  params: ListUsersParams = {}
+): Promise<PaginatedResult<UserSummaryDto>> {
+  const searchParams = new URLSearchParams();
+  if (params.page) searchParams.set("page", String(params.page));
+  if (params.pageSize) searchParams.set("pageSize", String(params.pageSize));
+  if (params.search) searchParams.set("search", params.search);
+  if (params.status) searchParams.set("status", params.status);
+
+  const queryString = searchParams.toString();
+  const url = queryString ? `/api/admin/users?${queryString}` : "/api/admin/users";
+
+  const response = await fetch(url, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new AdminApiError("Falha ao listar usuarios.");
+  }
+
+  return response.json() as Promise<PaginatedResult<UserSummaryDto>>;
+}

@@ -1,4 +1,6 @@
 using System.Reflection;
+using Keycloak.AuthServices.Authorization;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -126,6 +128,14 @@ try
         });
 
     builder.Services.AddAuthorization();
+
+    // Keycloak role-based authorization — transforms nested resource_access/realm_access roles
+    // to flat role claims so [Authorize(Roles = "admin")] works.
+    builder.Services.AddKeycloakAuthorization(options =>
+    {
+        options.EnableRolesMapping = Keycloak.AuthServices.Authorization.RolesClaimTransformationSource.ResourceAccess;
+        options.RolesResource = "onboarding-api-admin";
+    });
 
     // CORS — allow frontend origin with credentials (cookies)
     const string corsPolicy = "AllowFrontendWithCredentials";

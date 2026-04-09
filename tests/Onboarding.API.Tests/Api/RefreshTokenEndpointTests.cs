@@ -48,12 +48,13 @@ public class RefreshTokenEndpointTests : IAsyncLifetime
             .RefreshTokenAsync("valid-refresh-token", Arg.Any<CancellationToken>())
             .Returns(FakeTokens);
 
-        var payload = new { refreshToken = "valid-refresh-token" };
+        // Refresh token is sent via httpOnly cookie, not request body
+        _client!.DefaultRequestHeaders.Add("Cookie", "refreshToken=valid-refresh-token");
 
         // Act
-        var response = await _client!.PostAsJsonAsync("/api/auth/refresh", payload);
+        var response = await _client!.PostAsJsonAsync("/api/auth/refresh", new { });
 
-        // Assert — AUTH-04: 200 with new token pair
+        // Assert — AUTH-04: 200 with new access token (refresh token rotated via cookie)
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>();
         body.ShouldNotBeNull();
@@ -80,12 +81,11 @@ public class RefreshTokenEndpointTests : IAsyncLifetime
 
     [Fact]
     [Trait("Category", "Integration")]
-    public async Task Refresh_WithMissingRefreshToken_Returns422()
+    public async Task Refresh_WithMissingRefreshToken_Returns401()
     {
-        var payload = new { refreshToken = (string?)null };
+        // No refresh token cookie — controller returns 401 when cookie is absent
+        var response = await _client!.PostAsJsonAsync("/api/auth/refresh", new { });
 
-        var response = await _client!.PostAsJsonAsync("/api/auth/refresh", payload);
-
-        response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 }

@@ -53,12 +53,13 @@ public class LoginEndpointTests : IAsyncLifetime
         // Act
         var response = await _client!.PostAsJsonAsync("/api/auth/login", payload);
 
-        // Assert — AUTH-02: 200 with access_token + refresh_token
+        // Assert — AUTH-02: 200 with access token (refresh token in httpOnly cookie)
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>();
         body.ShouldNotBeNull();
         body.ContainsKey("accessToken").ShouldBeTrue();
-        body.ContainsKey("refreshToken").ShouldBeTrue();
+        // Refresh token is in httpOnly cookie, not response body
+        body.ContainsKey("refreshToken").ShouldBeFalse();
     }
 
     [Fact]

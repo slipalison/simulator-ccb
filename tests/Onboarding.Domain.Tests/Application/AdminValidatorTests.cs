@@ -132,7 +132,7 @@ public class DeleteUserCommandValidatorTests
     [Fact]
     public void ValidCommand_ShouldPass()
     {
-        var command = new DeleteUserCommand(Guid.NewGuid(), "user@example.com");
+        var command = new DeleteUserCommand(Guid.NewGuid(), "user@example.com", "admin-sub", "admin@example.com");
         var result = _validator.TestValidate(command);
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -140,7 +140,7 @@ public class DeleteUserCommandValidatorTests
     [Fact]
     public void EmptyConfirmEmail_ShouldFail()
     {
-        var command = new DeleteUserCommand(Guid.NewGuid(), "");
+        var command = new DeleteUserCommand(Guid.NewGuid(), "", "admin-sub", "admin@example.com");
         var result = _validator.TestValidate(command);
         result.ShouldHaveValidationErrorFor(x => x.ConfirmEmail);
     }
@@ -148,7 +148,7 @@ public class DeleteUserCommandValidatorTests
     [Fact]
     public void InvalidConfirmEmailFormat_ShouldFail()
     {
-        var command = new DeleteUserCommand(Guid.NewGuid(), "not-an-email");
+        var command = new DeleteUserCommand(Guid.NewGuid(), "not-an-email", "admin-sub", "admin@example.com");
         var result = _validator.TestValidate(command);
         result.ShouldHaveValidationErrorFor(x => x.ConfirmEmail);
     }
@@ -156,7 +156,7 @@ public class DeleteUserCommandValidatorTests
     [Fact]
     public void EmptyUserId_ShouldFail()
     {
-        var command = new DeleteUserCommand(Guid.Empty, "user@example.com");
+        var command = new DeleteUserCommand(Guid.Empty, "user@example.com", "admin-sub", "admin@example.com");
         var result = _validator.TestValidate(command);
         result.ShouldHaveValidationErrorFor(x => x.UserId);
     }

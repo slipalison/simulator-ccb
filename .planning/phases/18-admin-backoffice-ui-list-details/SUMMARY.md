@@ -71,6 +71,81 @@
 
 ## Next Steps
 
-- **Plan 18-02:** User Detail Page (`/admin/users/{id}`)
+- **Plan 18-02:** User Detail Page (`/admin/users/{id}`) — ✅ COMPLETE
 - **Phase 19:** Edit, Block, Delete UI
+- **Phase 20:** E2E tests
+
+---
+
+# Phase 18 Plan 02 — Admin User Detail Page — SUMMARY
+
+**Date:** 2026-04-09
+**Objective:** Build the user detail page at /admin/users/{id} displaying full PF/PJ data in read-only mode, Keycloak status badges, and action button placeholders.
+
+## Task Results
+
+| Task | Description | Status | Commit |
+|------|-------------|--------|--------|
+| 1 | Add getUserDetail() + UserDetailDto type to admin-api.ts | ✅ DONE | `80620f9` |
+| 2 | Create KeycloakStatusBadge molecule with enabled/emailVerified badges | ✅ DONE | `f40e8c0` |
+| 3 | Create UserDetailCard molecule with full PF/PJ data display | ✅ DONE | `824c52c` |
+| 4 | Create AdminUserDetailPage with loading/404/error states | ✅ DONE | `1b3d995` |
+| 5 | Add /admin/users/$id route to router.tsx | ✅ DONE | `b377398` |
+| 6 | Update AdminUsersPage handleViewDetails to navigate instead of toast | ✅ DONE | `e2f08d6` |
+| 7 | Write ALL unit tests (32 tests across 3 test files + 1 updated) | ✅ DONE | `e934029` |
+
+## Test Results
+
+- **keycloak-status-badge.test.tsx:** 5 tests ✅
+- **user-detail-card.test.tsx:** 16 tests ✅
+- **admin-user-detail-page.test.tsx:** 11 tests ✅
+- **admin-users-page.test.tsx:** 13 tests ✅ (updated "View Details" test from toast to navigation)
+- **Total: 45 tests across 4 test files, all passing**
+
+## Build Verification
+
+- `npm test -- --run` — 45/45 pass (in the 4 affected test files), 238/238 total
+- `npm run build` — succeeds without errors
+
+## Files Created/Modified
+
+### Created (5 files)
+- `frontend/src/components/molecules/KeycloakStatusBadge.tsx` — Keycloak status badges (Ativo/Inativo, Email verificado/nao verificado)
+- `frontend/src/components/molecules/UserDetailCard.tsx` — Full PF/PJ data display card with action buttons
+- `frontend/src/components/pages/AdminUserDetailPage.tsx` — Detail page with loading/404/error states + breadcrumb
+- `frontend/src/tests/keycloak-status-badge.test.tsx` — 5 tests
+- `frontend/src/tests/user-detail-card.test.tsx` — 16 tests
+- `frontend/src/tests/admin-user-detail-page.test.tsx` — 11 tests
+
+### Modified (3 files)
+- `frontend/src/lib/admin-api.ts` — Added UserDetailDto type, getUserDetail() function, AdminApiError.status property
+- `frontend/src/router.tsx` — Added /admin/users/$id route with AdminLayout wrapper
+- `frontend/src/components/pages/AdminUsersPage.tsx` — Updated handleViewDetails to navigate instead of showing toast
+- `frontend/src/tests/admin-users-page.test.tsx` — Updated "View Details" test to verify navigation
+
+## Features Implemented
+
+1. **User detail API client** — `getUserDetail(id)` with `credentials: include`, typed `UserDetailDto` return
+2. **Keycloak status badges** — Green "Ativo" / Red "Inativo" + Gray "Email verificado" / Outline "Email nao verificado"
+3. **PF/PJ data display** — Type label (Pessoa Fisica/Juridica), CPF/CNPJ, phone, email, created date
+4. **PJ-specific section** — Shows "Dados da Empresa" with razaoSocial only for PJ users
+5. **Deleted state** — Shows deleted date in red, disables/hides action buttons
+6. **Action buttons** — Edit, Block/Unblock (conditional on enabled state), Delete — all show "Em desenvolvimento" toasts
+7. **Loading skeleton** — shadcn Skeleton placeholders during API call
+8. **404 state** — "Usuario nao encontrado" with back to list button
+9. **Error state** — "Erro ao carregar" with retry button
+10. **Breadcrumb navigation** — "Usuarios / User Name" with back link
+11. **Route integration** — /admin/users/$id route within AdminLayout, navigation from listing "Ver" button works
+
+## Notes
+
+- `AdminApiError` now supports optional `status` property for 404 detection
+- AdminUserDetailPage accepts `userId` prop instead of reading params directly (better test isolation)
+- Route uses `adminUserDetailRoute.useParams()` to extract the `$id` param
+- All components follow Portuguese Brazil for user-facing text
+- Action buttons are placeholders for Phase 19 (Edit, Block/Unblock, Delete functionality)
+
+## Next Steps
+
+- **Phase 19:** Edit, Block, Delete UI — wire up action buttons with actual API calls
 - **Phase 20:** E2E tests

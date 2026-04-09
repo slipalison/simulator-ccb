@@ -111,7 +111,7 @@ public class UnblockUserCommandValidatorTests
     [Fact]
     public void ValidUserId_ShouldPass()
     {
-        var command = new UnblockUserCommand(Guid.NewGuid());
+        var command = new UnblockUserCommand(Guid.NewGuid(), "admin-sub", "admin@example.com");
         var result = _validator.TestValidate(command);
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -119,7 +119,7 @@ public class UnblockUserCommandValidatorTests
     [Fact]
     public void EmptyUserId_ShouldFail()
     {
-        var command = new UnblockUserCommand(Guid.Empty);
+        var command = new UnblockUserCommand(Guid.Empty, "admin-sub", "admin@example.com");
         var result = _validator.TestValidate(command);
         result.ShouldHaveValidationErrorFor(x => x.UserId);
     }

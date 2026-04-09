@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: admin-backoffice-panel
 status: in-progress
-stopped_at: Phase 17 complete — Admin Auth & Session Management (cookie-based auth, token refresh, error handling)
-last_updated: "2026-04-09T20:30:00.000Z"
-last_activity: 2026-04-09 -- Phase 17 (Admin Auth & Session Management) COMPLETE — 56 tests passing, all must-haves verified
+stopped_at: Phase 18 Plan 01 complete — Admin Users Listing Table (58 tests passing)
+last_updated: "2026-04-09T21:30:00.000Z"
+last_activity: 2026-04-09 -- Phase 18 Plan 01 (Admin Users Listing Table) COMPLETE — 58 tests, 12 files created, 2 modified
 progress:
   total_phases: 20
   completed_phases: 16
-  total_plans: 51
-  completed_plans: 43
-  percent: 86
+  total_plans: 52
+  completed_plans: 44
+  percent: 85
 ---
 
 # Project State
@@ -21,18 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 17 COMPLETE, ready for Phase 18)
-**Last activity:** 2026-04-09 -- Phase 17 (Admin Auth & Session Management) COMPLETE — 56 tests, all must-haves verified
+**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 18 Plan 01 COMPLETE, Plan 02 pending)
+**Last activity:** 2026-04-09 -- Phase 18 Plan 01 COMPLETE — 58 tests, paginated table with search/filters
 
-Progress: [████████████████░░] 86% (43/51 plans - Phase 17 complete)
+Progress: [████████████████░░] 85% (44/52 plans - Phase 18 Plan 01 complete)
 
 ## Current Position
 
-Phase: 17-admin-auth-session COMPLETE (2/2 plans)
-Next: Phase 18 (Admin Backoffice UI — List & Details)
-Last activity: 2026-04-09 -- Phase 17 COMPLETE — backend cookie auth + frontend session management
+Phase: 18-admin-backoffice-ui-list-details PLAN 01 COMPLETE (1/2 plans)
+Next: Create and execute Phase 18 Plan 02 (User Detail Page)
+Last activity: 2026-04-09 -- Phase 18 Plan 01 COMPLETE — 58 tests, 12 files created, 2 modified
 
-Progress: [████████████████░░] 86% (43/51 plans - Phase 17 complete)
+Progress: [████████████████░░] 85% (44/52 plans - Phase 18 Plan 01 complete)
 
 ## Milestone Breakdown
 

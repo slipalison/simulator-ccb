@@ -128,7 +128,7 @@ Plans:
   5. Loading skeleton states shown during API calls, error states with retry button
 **Plans:** 2 plans
 Plans:
-- [ ] 18-01-PLAN.md — Admin layout, users table with pagination, search, filters (shadcn components)
+- [x] 18-01-PLAN.md — Admin users listing table with pagination, search, filters (58 tests) — COMPLETE 2026-04-09
 - [ ] 18-02-PLAN.md — User detail page with PF/PJ data display, Keycloak status badge, action buttons
 
 ### Phase 19: Admin Backoffice UI — Edit, Block, Delete
@@ -440,7 +440,7 @@ Plans:
   5. Loading skeleton states shown during API calls, error states with retry button
 **Plans:** 2 plans
 Plans:
-- [ ] 18-01-PLAN.md — Admin layout, users table with pagination, search, filters (shadcn components)
+- [x] 18-01-PLAN.md — Admin users listing table with pagination, search, filters (58 tests) — COMPLETE 2026-04-09
 - [ ] 18-02-PLAN.md — User detail page with PF/PJ data display, Keycloak status badge, action buttons
 
 ### Phase 19: Admin Backoffice UI — Edit, Block, Delete

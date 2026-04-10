@@ -62,6 +62,38 @@
     }
   ],
 
+  "roles": {
+    "realm": [
+      {
+        "name": "admin",
+        "description": "Admin backoffice access role",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "onboarding"
+      }
+    ],
+    "client": {}
+  },
+
+  "users": [
+    {
+      "username": "admin@onboarding.local",
+      "email": "admin@onboarding.local",
+      "emailVerified": true,
+      "enabled": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin@123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["admin"]
+    }
+  ],
+
   "clientScopeMappings": {
     "realm-management": [
       {

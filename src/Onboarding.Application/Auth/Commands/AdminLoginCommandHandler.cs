@@ -31,28 +31,58 @@ public sealed class AdminLoginCommandHandler : ICommandHandler<AdminLoginCommand
         var handler = new JwtSecurityTokenHandler();
         var jwt = handler.ReadJwtToken(tokens.AccessToken);
 
-        // Keycloak stores roles in resource_access.{client_id}.roles
-        // We check both "role" claims (flat) and resource_access (nested structure)
+        // Keycloak stores roles in multiple places:
+        // 1. "role" claims (flat, mapped via client scopes)
+        // 2. "realm_access": {"roles": [...]} — realm roles
+        // 3. "resource_access": {client: {roles: [...]}} — client roles
         var roles = jwt.Claims
             .Where(c => c.Type == "role")
             .Select(c => c.Value)
             .ToList();
 
-        // Also check resource_access claim for nested roles
-        var resourceAccessClaim = jwt.Claims.FirstOrDefault(c => c.Type == "resource_access");
-        if (resourceAccessClaim != null)
+        // Check realm_access for realm roles (e.g., "admin")
+        var realmAccessClaim = jwt.Claims.FirstOrDefault(c => c.Type == "realm_access");
+        if (realmAccessClaim != null)
         {
-            // Parse the JSON to find all role arrays
-            var json = System.Text.Json.JsonDocument.Parse(resourceAccessClaim.Value);
-            foreach (var client in json.RootElement.EnumerateObject())
+            try
             {
-                if (client.Value.TryGetProperty("roles", out var rolesArray))
+                var json = System.Text.Json.JsonDocument.Parse(realmAccessClaim.Value);
+                if (json.RootElement.TryGetProperty("roles", out var rolesArray))
                 {
                     foreach (var role in rolesArray.EnumerateArray())
                     {
                         roles.Add(role.GetString()!);
                     }
                 }
+            }
+            catch
+            {
+                // Ignore parse errors — roles may still come from other sources
+            }
+        }
+
+        // Also check resource_access claim for client-specific roles
+        var resourceAccessClaim = jwt.Claims.FirstOrDefault(c => c.Type == "resource_access");
+        if (resourceAccessClaim != null)
+        {
+            try
+            {
+                // Parse the JSON to find all role arrays
+                var json = System.Text.Json.JsonDocument.Parse(resourceAccessClaim.Value);
+                foreach (var client in json.RootElement.EnumerateObject())
+                {
+                    if (client.Value.TryGetProperty("roles", out var rolesArray))
+                    {
+                        foreach (var role in rolesArray.EnumerateArray())
+                        {
+                            roles.Add(role.GetString()!);
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore parse errors
             }
         }
 

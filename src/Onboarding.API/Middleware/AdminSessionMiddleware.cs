@@ -27,6 +27,8 @@ public static class AdminSessionMiddleware
         return app.Use(async (context, next) =>
         {
             var path = context.Request.Path;
+            var logger = context.RequestServices.GetRequiredService<ILoggerFactory>()
+                .CreateLogger("AdminSessionMiddleware");
 
             // Skip auth endpoints — they handle cookies themselves
             if (path.StartsWithSegments("/api/admin/auth"))
@@ -38,6 +40,7 @@ public static class AdminSessionMiddleware
             // Only process admin API paths
             if (!path.StartsWithSegments("/api/admin"))
             {
+                logger.LogDebug("AdminSessionMiddleware: skipped (not admin path): {Path}", path);
                 await next();
                 return;
             }
@@ -46,15 +49,17 @@ public static class AdminSessionMiddleware
             if (!context.Request.Cookies.TryGetValue(AdminCookieName, out var refreshToken) ||
                 string.IsNullOrEmpty(refreshToken))
             {
+                logger.LogWarning("AdminSessionMiddleware: no cookie found. Cookie header: {CookieHeader}",
+                    context.Request.Headers.Cookie.ToString());
                 // No cookie — let downstream auth handle the 401
                 await next();
                 return;
             }
 
+            logger.LogInformation("AdminSessionMiddleware: found refresh token, exchanging...");
+
             // Exchange refresh token for access + refresh tokens
             var tokenService = context.RequestServices.GetRequiredService<IKeycloakTokenService>();
-            var logger = context.RequestServices.GetRequiredService<ILoggerFactory>()
-                .CreateLogger("AdminSessionMiddleware");
 
             try
             {

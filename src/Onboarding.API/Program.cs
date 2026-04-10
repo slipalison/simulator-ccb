@@ -124,12 +124,21 @@ try
             options.Events.OnTokenValidated = context =>
             {
                 var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
-                if (identity != null && context.SecurityToken is System.IdentityModel.Tokens.Jwt.JwtSecurityToken jwt)
+                if (identity == null) return System.Threading.Tasks.Task.CompletedTask;
+
+                // Try to get realm_access from the token's encoded payload
+                var jwt = context.SecurityToken as Microsoft.IdentityModel.JsonWebTokens.JsonWebToken;
+                if (jwt != null)
                 {
-                    if (jwt.Payload.TryGetValue("realm_access", out var realmAccessObj) &&
-                        realmAccessObj is System.Text.Json.JsonElement realmAccess)
+                    try
                     {
-                        if (realmAccess.TryGetProperty("roles", out var rolesArray))
+                        // Decode the payload from base64url (add padding if needed)
+                        var encoded = jwt.EncodedPayload;
+                        var padded = encoded.Length % 4 == 0 ? encoded : encoded.PadRight(encoded.Length + (4 - encoded.Length % 4), '=');
+                        var decoded = System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(padded.Replace('-', '+').Replace('_', '/')));
+                        using var doc = System.Text.Json.JsonDocument.Parse(decoded);
+                        if (doc.RootElement.TryGetProperty("realm_access", out var realmAccess) &&
+                            realmAccess.TryGetProperty("roles", out var rolesArray))
                         {
                             foreach (var role in rolesArray.EnumerateArray())
                             {
@@ -141,7 +150,9 @@ try
                             }
                         }
                     }
+                    catch { /* ignore token parse errors */ }
                 }
+
                 return System.Threading.Tasks.Task.CompletedTask;
             };
 

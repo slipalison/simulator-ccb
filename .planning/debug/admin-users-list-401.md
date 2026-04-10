@@ -47,3 +47,15 @@
 **Root cause:** Keycloak stores realm roles in realm_access.roles (nested JSON), but ASP.NET Core JWT handler doesn't flatten them. Keycloak.AuthServices only supports ResourceAccess (client roles).  
 **Fix:** RealmRolesClaimsTransformation extracts roles from realm_access JSON and adds flat role claims  
 **Commit:** 8e04d2d 
+  
+  
+### ? RESOLVED 2026-04-10  
+**Final root cause:** JsonWebToken (not JwtSecurityToken) is used by JwtBearer in .NET 10. It has no `Payload` property. Had to manually decode `EncodedPayload` from base64url.  
+**Commit:** c12930c 
+  
+  
+### Client 401 fix (2026-04-10)  
+**Issue:** Client gets 401 on /api/clients/me after login  
+**Root cause:** OnTokenValidated event runs for ALL JWTs. If it throws, breaks client auth.  
+**Fix:** Wrapped entire event in outer try/catch + null check for EncodedPayload  
+**Commit:** c0ca9c7 

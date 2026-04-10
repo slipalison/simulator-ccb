@@ -123,19 +123,17 @@ try
             // Extract realm_access.roles from JWT and add as flat role claims
             // Only runs for admin tokens (client tokens don't need role extraction)
             // Wrapped in try/catch to NEVER break client authentication
-            options.Events.OnTokenValidated = context =>
+            options.Events.OnTokenValidated = async context =>
             {
                 try
                 {
                     var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
-                    if (identity == null) return System.Threading.Tasks.Task.CompletedTask;
+                    if (identity == null) return;
 
-                    // Only JsonWebToken has EncodedPayload; JwtSecurityToken has Payload dictionary
                     var jwt = context.SecurityToken as Microsoft.IdentityModel.JsonWebTokens.JsonWebToken;
                     if (jwt == null || string.IsNullOrEmpty(jwt.EncodedPayload))
-                        return System.Threading.Tasks.Task.CompletedTask;
+                        return;
 
-                    // Decode the payload from base64url (add padding if needed)
                     var encoded = jwt.EncodedPayload;
                     var padded = encoded.Length % 4 == 0 ? encoded : encoded.PadRight(encoded.Length + (4 - encoded.Length % 4), '=');
                     var decoded = System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(padded.Replace('-', '+').Replace('_', '/')));
@@ -157,11 +155,7 @@ try
                 catch
                 {
                     // NEVER throw — this must not break client authentication
-                    // Admin role extraction is best-effort; if it fails, [Authorize(Roles="admin")]
-                    // will return 403 which is acceptable. Client auth should never be affected.
                 }
-
-                return System.Threading.Tasks.Task.CompletedTask;
             };
 
             // FIX Test 18: OIDC discovery returns jwks_uri with KC_HOSTNAME (localhost:8180) which is

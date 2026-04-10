@@ -80,6 +80,7 @@ public static class AdminSessionMiddleware
 
                 // Set Authorization header with the new access token so JWT Bearer auth works
                 context.Request.Headers.Authorization = $"Bearer {tokens.AccessToken}";
+                logger.LogInformation("AdminSessionMiddleware: set Authorization header");
 
                 // Update the refresh token cookie with the new value
                 // Note: CookieSettings.Secure is read at login time; here we use default dev settings
@@ -96,10 +97,15 @@ public static class AdminSessionMiddleware
                     return Task.CompletedTask;
                 });
             }
-            catch (KeycloakAuthException)
+            catch (KeycloakAuthException ex)
             {
                 // Token expired/invalid — clear cookie and let downstream return 401
+                logger.LogWarning(ex, "AdminSessionMiddleware: Keycloak auth exception");
                 context.Response.Cookies.Delete(AdminCookieName, new CookieOptions { Path = "/api/admin" });
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "AdminSessionMiddleware: UNEXPECTED exception");
             }
 
             await next();

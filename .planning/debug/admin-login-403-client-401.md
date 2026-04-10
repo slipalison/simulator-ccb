@@ -97,3 +97,7 @@ This should be tracked as a separate issue: `registration-fails-keycloak-403`.
   - `UnauthorizedAccessException` → 403 Forbidden
   - Everything else → 500 Internal Server Error (generic message only)
 **File:** `D:\REPO\keycloak-tests\src\Onboarding.API\Middleware\GlobalExceptionHandler.cs`
+  
+## Resolution  
+**Status:** ? RESOLVED 2026-04-10  
+**Commits:** d52786a (auth fixes), 73c3865 (migrations + exception handler) 

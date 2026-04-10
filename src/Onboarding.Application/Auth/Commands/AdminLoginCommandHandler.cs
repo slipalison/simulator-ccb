@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Onboarding.Application.Auth.DTOs;
 using Onboarding.Application.Common;
@@ -33,56 +34,47 @@ public sealed class AdminLoginCommandHandler : ICommandHandler<AdminLoginCommand
 
         // Keycloak stores roles in multiple places:
         // 1. "role" claims (flat, mapped via client scopes)
-        // 2. "realm_access": {"roles": [...]} — realm roles
-        // 3. "resource_access": {client: {roles: [...]}} — client roles
+        // 2. "realm_access": {"roles": [...]} — realm roles (nested JSON, not a string claim)
+        // 3. "resource_access": {client: {roles: [...]}} — client roles (nested JSON)
         var roles = jwt.Claims
             .Where(c => c.Type == "role")
             .Select(c => c.Value)
             .ToList();
 
+        // Use the raw Payload to access nested JSON claims (realm_access, resource_access)
+        // JwtSecurityTokenHandler does NOT convert nested JSON objects to string claims,
+        // so jwt.Claims.FirstOrDefault(c => c.Type == "realm_access") always returns null.
+        // In System.IdentityModel.Tokens.Jwt v8, nested objects are deserialized as JsonElement.
+        var payload = jwt.Payload;
+
         // Check realm_access for realm roles (e.g., "admin")
-        var realmAccessClaim = jwt.Claims.FirstOrDefault(c => c.Type == "realm_access");
-        if (realmAccessClaim != null)
+        if (payload.TryGetValue("realm_access", out var realmAccessObj) && realmAccessObj is JsonElement realmAccessJson &&
+            realmAccessJson.TryGetProperty("roles", out var realmRolesArray))
         {
-            try
+            foreach (var role in realmRolesArray.EnumerateArray())
             {
-                var json = System.Text.Json.JsonDocument.Parse(realmAccessClaim.Value);
-                if (json.RootElement.TryGetProperty("roles", out var rolesArray))
+                if (role.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(role.GetString()))
                 {
-                    foreach (var role in rolesArray.EnumerateArray())
-                    {
-                        roles.Add(role.GetString()!);
-                    }
+                    roles.Add(role.GetString()!);
                 }
-            }
-            catch
-            {
-                // Ignore parse errors — roles may still come from other sources
             }
         }
 
-        // Also check resource_access claim for client-specific roles
-        var resourceAccessClaim = jwt.Claims.FirstOrDefault(c => c.Type == "resource_access");
-        if (resourceAccessClaim != null)
+        // Also check resource_access for client-specific roles
+        if (payload.TryGetValue("resource_access", out var resourceAccessObj) && resourceAccessObj is JsonElement resourceAccessJson)
         {
-            try
+            foreach (var client in resourceAccessJson.EnumerateObject())
             {
-                // Parse the JSON to find all role arrays
-                var json = System.Text.Json.JsonDocument.Parse(resourceAccessClaim.Value);
-                foreach (var client in json.RootElement.EnumerateObject())
+                if (client.Value.TryGetProperty("roles", out var clientRolesArray))
                 {
-                    if (client.Value.TryGetProperty("roles", out var rolesArray))
+                    foreach (var role in clientRolesArray.EnumerateArray())
                     {
-                        foreach (var role in rolesArray.EnumerateArray())
+                        if (role.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(role.GetString()))
                         {
                             roles.Add(role.GetString()!);
                         }
                     }
                 }
-            }
-            catch
-            {
-                // Ignore parse errors
             }
         }
 

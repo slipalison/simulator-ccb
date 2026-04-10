@@ -143,7 +143,7 @@ try
     {
         options.AddPolicy(corsPolicy, policy =>
         {
-            policy.WithOrigins("http://localhost:5173") // Vinxi dev server
+            policy.WithOrigins("http://localhost:5173","http://localhost:5174") // Vinxi dev server
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials(); // Required for httpOnly cookies

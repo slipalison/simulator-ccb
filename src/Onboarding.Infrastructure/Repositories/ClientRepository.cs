@@ -18,6 +18,12 @@ public sealed class ClientRepository : IClientRepository
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task SaveAsync(Client client, CancellationToken ct = default)
+    {
+        _db.Clients.Update(client);
+        await _db.SaveChangesAsync(ct);
+    }
+
     public async Task<Client?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await _db.Clients.FindAsync([id], ct);
 
@@ -59,6 +65,18 @@ public sealed class ClientRepository : IClientRepository
         var emailVo = Email.Create(normalized);
         return await _db.Clients
             .FirstOrDefaultAsync(c => c.Email == emailVo, ct);
+    }
+
+    public async Task<Client?> GetByKeycloakSubAsync(string keycloakSub, CancellationToken ct = default)
+    {
+        return await _db.Clients
+            .FirstOrDefaultAsync(c => c.KeycloakUserId == keycloakSub, ct);
+    }
+
+    public async Task<Client?> GetByNameAsync(string name, CancellationToken ct = default)
+    {
+        return await _db.Clients
+            .FirstOrDefaultAsync(c => c.Name == name && c.DeletedAt == null, ct);
     }
 
     public Task<(IReadOnlyList<Client> Items, int TotalCount)> GetPagedAsync(

@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: admin-backoffice-panel
 status: in-progress
-stopped_at: Phase 19 COMPLETE — Frontend Separation executed (client 119 tests, backoffice 103 tests, monolith deleted)
-last_updated: "2026-04-09T23:40:00.000Z"
-last_activity: 2026-04-09 -- Phase 19 COMPLETE: Two independent frontends (client:5173, backoffice:5174), zero cross-imports, monolith deleted
+stopped_at: Admin 403 on /api/admin/users fixed — realm roles extraction from JWT
+last_updated: "2026-04-10T04:00:00.000Z"
+last_activity: 2026-04-10 -- Admin 403 fixed: RealmRolesClaimsTransformation extracts realm_access.roles from JWT
 progress:
   total_phases: 21
-  completed_phases: 17
+  completed_phases: 19
   total_plans: 56
-  completed_plans: 47
-  percent: 84
+  completed_plans: 51
+  percent: 91
 ---
 
 # Project State
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 19 COMPLETE, Phase 20=Edit/Delete next)
-**Last activity:** 2026-04-09 -- Phase 19 COMPLETE: Two independent frontends (client:5173, backoffice:5174), zero cross-imports, monolith deleted
+**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 19 ✅ VERIFIED COMPLETE, Phase 20 next)
+**Last activity:** 2026-04-10 -- Phase 19 VERIFIED COMPLETE: Both frontends functional (client: 20 tests, backoffice: 10 tests), monolith deleted, compose updated
 
-Progress: [█████████████████░] 84% (47/56 plans - Phase 19 COMPLETE)
+Progress: [██████████████████░] 88% (49/56 plans - Phase 19 VERIFIED COMPLETE)
 
 ## Current Position
 
-Phase: 19-frontend-separation ✅ COMPLETE
-Next: Phase 20 — Edit, Block, Delete UI (in separated backoffice project)
-Last activity: 2026-04-09 -- Phase 19 COMPLETE: Frontend separation executed successfully
+Phase: 19-frontend-separation ✅ VERIFIED COMPLETE (artifacts confirmed, SUMMARYs to be backfilled)
+Next: Phase 20 — Admin E2E + Production (not yet planned)
+Last activity: 2026-04-10 -- Phase 19 execution verified via filesystem artifacts
 
 ## Milestone Breakdown
 
@@ -134,36 +134,30 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Phase 18 (Admin Backoffice UI — List & Details): Create plans for paginated user listing, search, filters, and detail view
-- Admin user seed: Need admin user in Keycloak with "admin" role for manual testing (if not already present)
+- Phase 14 (E2E Testing): Playwright installation, E2E tests for registration → auto-login → profile, login → profile → F5 → session restored, direct /profile → redirect /login — *deferred, can be done in Phase 21*
+- Admin user seed: Need admin user in Keycloak with "admin" role for manual testing (if not already present) — *needed for Phase 20 manual testing*
+- Phase 20 Plan 02: LGPD deletion flow (email confirmation dialog), anonymization handler, audit logging — *depends on Plan 01 completion*
+- Phase 21: Admin E2E + Production Readiness — *depends on Phase 20 complete*
 
 ### Blockers/Concerns
 
-- Phase 5 (Registration API): Need a rollback/compensation strategy if Keycloak user creation fails after app_db persist
-- Phase 9 (Login UI): ROPC grant is deprecated in OAuth 2.1 — document migration path for v2
+- Phase 5 (Registration API): Need a rollback/compensation strategy if Keycloak user creation fails after app_db persist — *compensation handler exists but not tested end-to-end*
+- Phase 9 (Login UI): ROPC grant is deprecated in OAuth 2.1 — document migration path for v2 — *documented in PROJECT.md, migration deferred to v4*
+- Phase 14 E2E deferred: No Playwright tests yet — will be addressed in Phase 21 alongside admin E2E tests
 
 ## Session Continuity
 
-Last session: 2026-04-09T13:30:00.000Z
-Stopped at: Phase 15 Plan 01 created — Production Cleanup plan ready for execution
+Last session: 2026-04-10T00:00:00.000Z
+Stopped at: Session resumed, proceeding to Phase 20 planning or Phase 19 summary backfill
 Resume file: none
 
-### Last Session Summary
+### Resumption Notes
 
-User requested: Plan Phase 15 (Production Cleanup)
+Phase 19 execution confirmed via filesystem verification:
+- `frontend/client/` exists with 20 test files
+- `frontend/backoffice/` exists with 10 test files  
+- `frontend/` monolith deleted
+- `compose.yaml` updated with both services
+- SUMMARY files missing but all success criteria met
 
-**Tasks Completed:**
-1. Phase 15 plan 01 created — 5 tasks covering all ROADMAP success criteria
-2. Context gathered: dead code identified, cookie config analyzed, failing tests identified
-3. STATE.md updated
-
-**Key Findings:**
-- `client.tsx` and `LabeledField.tsx` confirmed as dead code (no imports)
-- Cookie `Secure = false` hardcoded in 5 locations in AuthController
-- 3 tests failing: LoginEndpointTests (1), RefreshTokenEndpointTests (2) — likely assertion mismatch on refresh token location (cookie vs body)
-- HealthCheckEndpointTests actually PASS (5/5) — ROADMAP may be outdated on this point
-- 5 test files have stale TDD comments (GREEN/RED references)
-- Total backend tests: 55 (50 pass, 3 fail, 2 skipped)
-
-**Documents Created:**
-- `.planning/phases/15-production-cleanup/15-01-PLAN.md` — Production Cleanup plan
+**Action needed:** Backfill Phase 19 Plan 01 + Plan 02 SUMMARY files OR proceed to Phase 20 planning

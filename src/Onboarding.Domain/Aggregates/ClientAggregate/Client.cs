@@ -21,15 +21,11 @@ public sealed class Client : Entity<Guid>
     public DateTime? DeletedAt { get; private set; }
     public bool IsDeleted => DeletedAt.HasValue;
 
-    // Protected parameterless constructor: used by EF Core to materialize entities
-    // from the database without invoking factory methods. External code must use
-    // the static factory methods (RegisterPessoaFisica / RegisterPessoaJuridica)
-    // which enforce all domain invariants.
-    // CS0628: Warning suppressed — protected constructor in sealed class is an
-    // intentional EF Core convention pattern required for entity materialization.
-#pragma warning disable CS0628
+    // Keycloak user ID (sub claim) — used to identify the user in JWT tokens
+    // without exposing personal data like email (LGPD privacy)
+    public string? KeycloakUserId { get; private set; }
+
     protected Client() { }
-#pragma warning restore CS0628
 
     public static Client RegisterPessoaFisica(
         string nome,
@@ -64,6 +60,14 @@ public sealed class Client : Entity<Guid>
             Type = ClientType.PessoaJuridica,
             RazaoSocial = razaoSocial
         };
+    }
+
+    /// <summary>
+    /// Sets the Keycloak user ID after user creation.
+    /// </summary>
+    public void SetKeycloakUserId(string keycloakUserId)
+    {
+        KeycloakUserId = keycloakUserId ?? throw new ArgumentNullException(nameof(keycloakUserId));
     }
 
     /// <summary>

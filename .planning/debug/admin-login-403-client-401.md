@@ -76,3 +76,24 @@ The registration flow (`POST /api/registration`) fails because the `onboarding-a
 3. Use Keycloak's `clientScopeMappings` with proper token-based authorization (requires code changes)
 
 This should be tracked as a separate issue: `registration-fails-keycloak-403`.
+
+## Additional Fixes (Second Session)
+
+### 3. EF Core Migration Auto-Apply
+**Problem:** Registration returned 503 with `42P01: relation "clients" does not exist` — no EF Core migrations had been applied to the database.
+**Fix:** Program.cs now calls `db.Database.Migrate()` on startup via `AppDbContext`. Tables are guaranteed to exist before the first request.
+**File:** `D:\REPO\keycloak-tests\src\Onboarding.API\Program.cs`
+
+### 4. Global Exception Handler
+**Problem:** 500 errors exposed full stack traces to the frontend (security vulnerability).
+**Fix:** Created `GlobalExceptionHandler.cs` middleware that:
+- Logs FULL exception (including stack trace) server-side via ILogger
+- Returns sanitized `ProblemDetails` JSON to client (RFC 9110 compliant)
+- Maps known exception types to appropriate HTTP status codes:
+  - `PostgresException` 23505 (unique violation) → 409 Conflict
+  - `PostgresException` 23503 (foreign key) → 400 Bad Request
+  - `DbUpdateException` → 409 Conflict
+  - `KeyNotFoundException` → 404 Not Found
+  - `UnauthorizedAccessException` → 403 Forbidden
+  - Everything else → 500 Internal Server Error (generic message only)
+**File:** `D:\REPO\keycloak-tests\src\Onboarding.API\Middleware\GlobalExceptionHandler.cs`

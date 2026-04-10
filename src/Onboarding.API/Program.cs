@@ -3,11 +3,14 @@ using Keycloak.AuthServices.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Onboarding.API.Configuration;
+using Onboarding.API.Middleware;
 using Onboarding.API.Observability;
 using Onboarding.Application;
 using Onboarding.Infrastructure;
+using Onboarding.Infrastructure.Persistence;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -162,6 +165,14 @@ try
     builder.Services.AddControllers();
 
     var app = builder.Build();
+
+    // Apply EF Core migrations on startup — creates/updates all tables
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+
+    // Global exception handler — prevents stack trace exposure, returns standardized ProblemDetails
+    app.UseGlobalExceptionHandler();
 
     app.UseSerilogRequestLogging();     // D-05: per-request log with method/path/status/duration
     app.UseCors("AllowFrontendWithCredentials"); // Must come before UseAuthentication

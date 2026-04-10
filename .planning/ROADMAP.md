@@ -2,9 +2,11 @@
 
 ## Overview
 
-This roadmap builds a secure PF/PJ client onboarding system from infrastructure up, then extends it with an admin backoffice panel for user management. The delivery sequence mirrors the dependency chain: Docker infrastructure first, then a hardened Keycloak, then the DDD backend domain, then observability wiring, then registration and authentication endpoints, then a frontend scaffold, and finally the three user-facing screens (registration, login, profile). After v1.0/v2.0 completion, milestone v3.0 adds admin CRUD endpoints, role-based access control, and a backoffice UI with pagination, filtering, and LGPD-compliant user deletion.
+This roadmap builds a secure PF/PJ client onboarding system from infrastructure up, then extends it with an admin backoffice panel for user management. The delivery sequence mirrors the dependency chain: Docker infrastructure first, then a hardened Keycloak, then the DDD backend domain, then observability wiring, then registration and authentication endpoints, then a frontend scaffold, and finally the three user-facing screens (registration, login, profile). After v1.0/v2.0 completion, milestone v3.0 adds admin CRUD endpoints, role-based access control, and a backoffice UI with pagination, filtering, and LGPD-compliant user deletion. Milestone v3.0 concludes with a **frontend separation** into two independent projects (client + backoffice).
 
 Every phase delivers a coherent, independently verifiable capability before the next begins.
+
+**⚠️ ARCHITECTURAL CONSTRAINT (Phase 21+):** Two separate frontend projects (`frontend/client` and `frontend/backoffice`) must remain fully independent — no shared code, no cross-imports, separate builds and deploys.
 
 ---
 
@@ -14,7 +16,9 @@ Every phase delivers a coherent, independently verifiable capability before the 
 |-----------|------|--------|--------|
 | **v1.0** | Foundation — Cadastro e Login com Perfil Read-Only | 1-10 | ✅ Complete |
 | **v2.0** | UX/UI Redesign + Production Readiness | 11-15 | ✅ Complete |
-| **v3.0** | Admin Backoffice Panel | 16-20 | 📋 Defining |
+| **v3.0** | Admin Backoffice + Frontend Separation | 16-21 | 📋 Defining |
+
+**Phase order rationale (v3.0):** 16→17→18 (admin backend+UI core) → **19 (separation)** → 20 (edit/delete in separated project) → 21 (E2E against final structure). Separation before Edit/Delete avoids migrating UI code twice.
 
 ---
 
@@ -80,7 +84,16 @@ Every phase delivers a coherent, independently verifiable capability before the 
 
 ## Milestone v3.0 — Admin Backoffice Panel (Phases 16-20)
 
-**Goal:** Painel administrativo para gerenciar cadastros de usuários — listar, visualizar, editar, bloquear/desbloquear e excluir (LGPD) com autenticação baseada em cookies httpOnly e autorização por role "admin".
+**Goal:** Painel administrativo **SEPARADO** para gerenciar cadastros de usuários — listar, visualizar, editar, bloquear/desbloquear e excluir (LGPD) com autenticação baseada em cookies httpOnly e autorização por role "admin".
+
+**⚠️ DECISÃO DE ARQUITETURA — NÃO VIOLAR:**
+> O sistema deve ter **DOIS projetos frontend independentes**:
+> - `frontend/client` — Frontend do cliente final (cadastro, login, perfil)
+> - `frontend/backoffice` — Frontend do backoffice administrativo (gestão de usuários)
+>
+> **Motivo:** Isolamento total — mudanças em um projeto não podem impactar o outro. Cada frontend tem seu próprio ciclo de deploy, dependências, builds e autenticação.
+>
+> **Regra:** Nenhum arquivo de código pode ser compartilhado entre os dois frontends. Componentes reutilizáveis devem ser duplicados, não importados cruzadamente.
 
 **Depends on:** Milestone v1.0 + v2.0 complete (Phase 14 E2E Testing can be deferred)
 
@@ -131,9 +144,33 @@ Plans:
 - [x] 18-01-PLAN.md — Admin users listing table with pagination, search, filters (58 tests) — COMPLETE 2026-04-09
 - [x] 18-02-PLAN.md — User detail page with PF/PJ data display, Keycloak status badge (32 tests) — COMPLETE 2026-04-09
 
-### Phase 19: Admin Backoffice UI — Edit, Block, Delete
-**Goal:** Edit user form, block/unblock dialog, LGPD-compliant deletion with strong confirmation
-**Depends on:** Phase 18
+### Phase 19: Frontend Separation — Client vs Backoffice ✅ COMPLETE
+**Goal:** Reestruturação do frontend monolítico em dois projetos independentes com builds, deploys e autenticação isolados
+**Depends on:** Phase 15 (Production Cleanup), Phase 18 (Admin UI List & Details)
+**Requirements:** ARCH-01, ARCH-02, ARCH-03 ✅ ALL MET
+**Status:** COMPLETE — 2026-04-09
+**Results:**
+  - `frontend/client/` — 119 tests passing, builds successfully, port 5173
+  - `frontend/backoffice/` — 103 tests passing, builds successfully, port 5174
+  - Zero cross-imports between projects (ARCH-03 verified)
+  - compose.yaml updated with frontend-client + frontend-backoffice services
+  - Monolith `frontend/` deleted — only client/ and backoffice/ remain
+**Success Criteria** (what must be TRUE):
+  1. Pasta `frontend/client` contém apenas telas do usuário final (login, registro, perfil, forgot/reset password)
+  2. Pasta `frontend/backoffice` contém apenas telas administrativas (admin login, users list, user detail)
+  3. Cada projeto tem seu próprio `package.json`, `app.config.ts`, `Dockerfile`, `tsconfig.json`
+  4. `docker compose.yaml` tem dois serviços separados: `frontend-client` e `frontend-backoffice` com portas diferentes
+  5. Nenhum import cruzado entre os projetos — código duplicado é aceitável, import compartilhado é proibido
+  6. Ambos frontends buildam e rodem independentemente com `docker compose up`
+  7. Testes unitários de ambos projetos passam independentemente
+**Plans:** 2 plans
+Plans:
+- [x] 19-01-PLAN.md — Estrutura `frontend/client` com migração de componentes não-admin, Dockerfile separado, compose.yaml atualizado
+- [x] 19-02-PLAN.md — Estrutura `frontend/backoffice` com migração de componentes admin, remoção de rotas `/admin` do client, testes de ambos
+
+### Phase 20: Admin Backoffice UI — Edit, Block, Delete (in separated backoffice project)
+**Goal:** Edit user form, block/unblock dialog, LGPD-compliant deletion with strong confirmation — built directly in the separated backoffice project
+**Depends on:** Phase 18 (Admin UI List & Details), Phase 19 (Frontend Separation)
 **Requirements:** ADMIN-12, ADMIN-13, ADMIN-14
 **Success Criteria** (what must be TRUE):
   1. Edit form validates all fields client-side (Zod) and server-side (FluentValidation) before submission
@@ -143,12 +180,12 @@ Plans:
   5. Optimistic UI updates for block/unblock — reverts on API error
 **Plans:** 2 plans
 Plans:
-- [ ] 19-01-PLAN.md — Edit user form with Zod validation, block/unblock dialog with reason, API integration
-- [ ] 19-02-PLAN.md — LGPD deletion flow (email confirmation dialog), anonymization handler, audit logging
+- [ ] 20-01-PLAN.md — Edit user form with Zod validation, block/unblock dialog with reason, API integration
+- [ ] 20-02-PLAN.md — LGPD deletion flow (email confirmation dialog), anonymization handler, audit logging
 
-### Phase 20: Admin E2E Testing & Production Readiness
-**Goal:** Playwright E2E tests for admin flows, production config, documentation
-**Depends on:** Phase 19, Phase 14 (E2E Testing from v2.0)
+### Phase 21: Admin E2E Testing & Production Readiness (with separated frontends)
+**Goal:** Playwright E2E tests for admin flows, production config, documentation — tests run against separated backoffice project
+**Depends on:** Phase 20 (Edit, Block, Delete UI), Phase 14 (E2E Testing from v2.0)
 **Requirements:** ADMIN-15, ADMIN-16, E2E-06, E2E-07
 **Success Criteria** (what must be TRUE):
   1. E2E test: Admin login → list users → search → filter by status → view details
@@ -160,8 +197,8 @@ Plans:
   7. Production documentation updated: deployment guide, admin role setup, backup procedures
 **Plans:** 2 plans
 Plans:
-- [ ] 20-01-PLAN.md — Playwright E2E tests for admin flows (list, edit, block, delete, 403 handling)
-- [ ] 20-02-PLAN.md — Production documentation, deployment guide, admin role provisioning in Keycloak
+- [ ] 21-01-PLAN.md — Playwright E2E tests for admin flows (list, edit, block, delete, 403 handling)
+- [ ] 21-02-PLAN.md — Production documentation, deployment guide, admin role provisioning in Keycloak
 
 ---
 

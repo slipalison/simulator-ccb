@@ -14,6 +14,11 @@ Sistema de onboarding para cadastro de clientes Pessoa Física (PF) e Pessoa Jur
 - **Segurança**: Keycloak deve ser hardened contra vulnerabilidades documentadas
 - **API Style**: Controllers ASP.NET (sem Minimal API)
 - **Observabilidade**: Serilog + OpenTelemetry obrigatórios desde o início
+- **⚠️ Frontend Separation (Phase 21+)**: DOIS projetos frontend independentes são obrigatórios:
+  - `frontend/client` — Frontend do cliente final (cadastro, login, perfil)
+  - `frontend/backoffice` — Frontend administrativo (gestão de usuários)
+  - **Regra**: Nenhum compartilhamento de código entre os projetos — código duplicado é aceitável, import cruzado é proibido
+  - **Motivo**: Isolamento total — cada frontend tem seu próprio ciclo de build, deploy e dependências
 <!-- GSD:project-end -->
 
 <!-- GSD:stack-start source:research/STACK.md -->

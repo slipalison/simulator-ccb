@@ -448,10 +448,32 @@ Nenhum requisito foi explicitamente delegado para v2. Os itens abaixo foram cons
 | ADMIN-10 — User Detail Page | Phase 18 | 📋 Planned |
 | ADMIN-11 — Edit User Form | Phase 19 | 📋 Planned |
 | ADMIN-12 — Block/Unblock Dialog | Phase 19 | 📋 Planned |
-| ADMIN-13 — LGPD Deletion Flow | Phase 19 | 📋 Planned |
-| ADMIN-14 — Admin Layout & Navigation | Phase 18 | 📋 Planned |
-| ADMIN-15 — E2E Admin Flows | Phase 20 | 📋 Planned |
-| ADMIN-16 — Production Documentation | Phase 20 | 📋 Planned |
+| ADMIN-13 — LGPD Deletion Flow | Phase 20 | 📋 Planned |
+| ADMIN-14 — Admin Layout & Navigation | Phase 18 | ✅ Complete |
+| ADMIN-15 — E2E Admin Flows | Phase 21 | 📋 Planned |
+| ADMIN-16 — Production Documentation | Phase 21 | 📋 Planned |
+
+---
+
+## Architecture — Frontend Separation
+
+### ARCH-01 — Independent Client Project
+- [ ] `frontend/client` tem seu próprio `package.json`, `app.config.ts`, `Dockerfile`, `tsconfig.json`
+- [ ] Contém apenas telas do usuário final: login, registro, perfil, forgot/reset password
+- [ ] Roda na porta 5173 (preservada do original)
+- [ ] Build e deploy independentes do backoffice
+
+### ARCH-02 — Independent Backoffice Project
+- [ ] `frontend/backoffice` tem seu próprio `package.json`, `app.config.ts`, `Dockerfile`, `tsconfig.json`
+- [ ] Contém apenas telas administrativas: admin login, users list, user detail
+- [ ] Roda na porta 5174 (nova)
+- [ ] Build e deploy independentes do client
+
+### ARCH-03 — Zero Cross-Import Rule
+- [ ] Nenhum arquivo de código é compartilhado entre os dois projetos
+- [ ] Componentes shadcn/ui, utils, e configs são duplicados (não importados)
+- [ ] Cada projeto tem seus próprios contextos de auth, routers, e API clients
+- [ ] Código duplicado é aceitável; import cruzado é proibido
 
 ---
 

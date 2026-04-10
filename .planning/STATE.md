@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: admin-backoffice-panel
 status: in-progress
-stopped_at: Phase 18 Plan 02 complete — Admin User Detail Page (45 tests, 5 new files, 4 modified)
-last_updated: "2026-04-09T22:00:00.000Z"
-last_activity: 2026-04-09 -- Phase 18 Plan 02 (Admin User Detail Page) COMPLETE — 45 tests, 5 new files created, 4 modified
+stopped_at: Phase 19 COMPLETE — Frontend Separation executed (client 119 tests, backoffice 103 tests, monolith deleted)
+last_updated: "2026-04-09T23:40:00.000Z"
+last_activity: 2026-04-09 -- Phase 19 COMPLETE: Two independent frontends (client:5173, backoffice:5174), zero cross-imports, monolith deleted
 progress:
-  total_phases: 20
-  completed_phases: 16
-  total_plans: 52
-  completed_plans: 45
-  percent: 87
+  total_phases: 21
+  completed_phases: 17
+  total_plans: 56
+  completed_plans: 47
+  percent: 84
 ---
 
 # Project State
@@ -21,24 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 18 COMPLETE, Phase 19 pending)
-**Last activity:** 2026-04-09 -- Phase 18 Plan 02 COMPLETE — 45 tests, 5 new files created, 4 modified
+**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 19 COMPLETE, Phase 20=Edit/Delete next)
+**Last activity:** 2026-04-09 -- Phase 19 COMPLETE: Two independent frontends (client:5173, backoffice:5174), zero cross-imports, monolith deleted
 
-Progress: [█████████████████░] 87% (45/52 plans - Phase 18 COMPLETE)
+Progress: [█████████████████░] 84% (47/56 plans - Phase 19 COMPLETE)
 
 ## Current Position
 
-Phase: 18-admin-backoffice-ui-list-details COMPLETE (2/2 plans)
-Next: Phase 19 — Edit, Block, Delete UI
-Last activity: 2026-04-09 -- Phase 18 Plan 02 COMPLETE — 45 tests, 5 new files created, 4 modified
-
-Progress: [█████████████████░] 87% (45/52 plans - Phase 18 COMPLETE)
+Phase: 19-frontend-separation ✅ COMPLETE
+Next: Phase 20 — Edit, Block, Delete UI (in separated backoffice project)
+Last activity: 2026-04-09 -- Phase 19 COMPLETE: Frontend separation executed successfully
 
 ## Milestone Breakdown
 
 **Milestone v1.0 — Foundation:** ✅ COMPLETE (10/10 phases, 30/30 plans)
 **Milestone v2.0 — UX/UI + Production:** ⚠️ 94% COMPLETE (4/5 phases, 7/8 plans — Phase 14 E2E pending)
-**Milestone v3.0 — Admin Backoffice:** 📋 DEFINING (0/5 phases, 0/11 plans — roadmap created)
+**Milestone v3.0 — Admin Backoffice + Frontend Separation:** 📋 DEFINING (1/6 phases, 0/13 plans — roadmap created, Phase 21 added)
 
 ## Performance Metrics
 
@@ -94,6 +92,9 @@ Recent decisions affecting current work:
 - [Phase 17-admin-auth-session]: Admin AuthContext is separate from user AuthContext — prevents session conflicts between admin and regular user
 - [Phase 17-admin-auth-session]: Admin login uses same ROPC grant as regular login but validates "admin" role — no separate identity provider
 - [Phase 17-admin-auth-session]: Token refresh for admin calls /api/admin/auth/me (which internally refreshes) — simpler than separate refresh endpoint
+
+- [Phase 21-frontend-separation]: DECISÃO DE ARQUITETURA — Dois projetos frontend independentes (`frontend/client` e `frontend/backoffice`) são obrigatórios — nenhum compartilhamento de código, builds separados, deploys independentes
+- [Phase 21-frontend-separation]: Regra de ouro: código duplicado é aceitável, import cruzado é proibido — cada frontend tem seu próprio ciclo de vida
 
 - Roadmap: ROPC grant chosen over Auth Code + PKCE — conscious tradeoff, revisit if security requirements increase
 - Roadmap: Registration flow persists to app_db FIRST, then creates Keycloak user — rollback strategy needed if Keycloak call fails

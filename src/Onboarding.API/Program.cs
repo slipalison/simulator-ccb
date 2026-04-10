@@ -120,6 +120,31 @@ try
             // Without this, User.FindFirst("email") returns null — Pitfall 2 from RESEARCH.md
             options.MapInboundClaims = false;
 
+            // Extract realm_access.roles from JWT and add as flat role claims
+            options.Events.OnTokenValidated = context =>
+            {
+                var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
+                if (identity != null && context.SecurityToken is System.IdentityModel.Tokens.Jwt.JwtSecurityToken jwt)
+                {
+                    if (jwt.Payload.TryGetValue("realm_access", out var realmAccessObj) &&
+                        realmAccessObj is System.Text.Json.JsonElement realmAccess)
+                    {
+                        if (realmAccess.TryGetProperty("roles", out var rolesArray))
+                        {
+                            foreach (var role in rolesArray.EnumerateArray())
+                            {
+                                var roleName = role.GetString();
+                                if (!string.IsNullOrEmpty(roleName))
+                                {
+                                    identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, roleName));
+                                }
+                            }
+                        }
+                    }
+                }
+                return System.Threading.Tasks.Task.CompletedTask;
+            };
+
             // FIX Test 18: OIDC discovery returns jwks_uri with KC_HOSTNAME (localhost:8180) which is
             // unreachable from inside the API container. The Backchannel rewrites these URLs to use the
             // internal Docker network hostname (keycloak:8080) so the JWKS can be fetched.
@@ -143,10 +168,6 @@ try
         options.EnableRolesMapping = Keycloak.AuthServices.Authorization.RolesClaimTransformationSource.ResourceAccess;
         options.RolesResource = "onboarding-api-admin";
     });
-
-    // Custom claims transformation: extract realm_access.roles from JWT
-    // and add them as flat "role" claims for standard ASP.NET Core authorization.
-    builder.Services.AddTransient<IClaimsTransformation, RealmRolesClaimsTransformation>();
 
     // CORS — allow frontend origin with credentials (cookies)
     const string corsPolicy = "AllowFrontendWithCredentials";

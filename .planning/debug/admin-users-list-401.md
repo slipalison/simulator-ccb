@@ -41,3 +41,9 @@
 ## Resolution  
 **Status:** ? RESOLVED 2026-04-10  
 **Commit:** d635cdc (AdminSessionMiddleware) 
+  
+## Resolution  
+**Status:** ? RESOLVED 2026-04-10  
+**Root cause:** Keycloak stores realm roles in realm_access.roles (nested JSON), but ASP.NET Core JWT handler doesn't flatten them. Keycloak.AuthServices only supports ResourceAccess (client roles).  
+**Fix:** RealmRolesClaimsTransformation extracts roles from realm_access JSON and adds flat role claims  
+**Commit:** 8e04d2d 

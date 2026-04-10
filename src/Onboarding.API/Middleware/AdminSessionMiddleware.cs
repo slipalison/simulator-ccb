@@ -53,10 +53,25 @@ public static class AdminSessionMiddleware
 
             // Exchange refresh token for access + refresh tokens
             var tokenService = context.RequestServices.GetRequiredService<IKeycloakTokenService>();
+            var logger = context.RequestServices.GetRequiredService<ILoggerFactory>()
+                .CreateLogger("AdminSessionMiddleware");
 
             try
             {
                 var tokens = await tokenService.RefreshTokenAsync(refreshToken, context.RequestAborted);
+                logger.LogInformation("AdminSessionMiddleware: exchanged refresh token for access token. Scope: {Scope}", tokens.Scope);
+
+                // Decode access token to verify realm_access.roles is present
+                try
+                {
+                    var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                    var jwt = handler.ReadJwtToken(tokens.AccessToken);
+                    var realmAccess = jwt.Payload.ContainsKey("realm_access")
+                        ? jwt.Payload["realm_access"]?.ToString()
+                        : "MISSING";
+                    logger.LogInformation("AdminSessionMiddleware: realm_access in access token: {RealmAccess}", realmAccess);
+                }
+                catch { /* ignore decode errors in middleware */ }
 
                 // Set Authorization header with the new access token so JWT Bearer auth works
                 context.Request.Headers.Authorization = $"Bearer {tokens.AccessToken}";

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Onboarding.API.Configuration;
 using Onboarding.API.Middleware;
 using Onboarding.API.Observability;
+using Onboarding.API.Security;
 using Onboarding.Application;
 using Onboarding.Infrastructure;
 using Onboarding.Infrastructure.Persistence;
@@ -132,13 +133,20 @@ try
 
     builder.Services.AddAuthorization();
 
-    // Keycloak role-based authorization — transforms nested resource_access/realm_access roles
-    // to flat role claims so [Authorize(Roles = "admin")] works.
+    // Keycloak role-based authorization — reads realm_access.roles from JWT
+    // and adds them as flat "role" claims so [Authorize(Roles = "admin")] works.
+    // Note: Keycloak.AuthServices RolesClaimTransformationSource only supports
+    // ResourceAccess, but our tokens have roles in realm_access (realm roles).
+    // We handle this manually via custom claims transformation.
     builder.Services.AddKeycloakAuthorization(options =>
     {
         options.EnableRolesMapping = Keycloak.AuthServices.Authorization.RolesClaimTransformationSource.ResourceAccess;
         options.RolesResource = "onboarding-api-admin";
     });
+
+    // Custom claims transformation: extract realm_access.roles from JWT
+    // and add them as flat "role" claims for standard ASP.NET Core authorization.
+    builder.Services.AddTransient<IClaimsTransformation, RealmRolesClaimsTransformation>();
 
     // CORS — allow frontend origin with credentials (cookies)
     const string corsPolicy = "AllowFrontendWithCredentials";

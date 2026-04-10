@@ -121,36 +121,44 @@ try
             options.MapInboundClaims = false;
 
             // Extract realm_access.roles from JWT and add as flat role claims
+            // Only runs for admin tokens (client tokens don't need role extraction)
+            // Wrapped in try/catch to NEVER break client authentication
             options.Events.OnTokenValidated = context =>
             {
-                var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
-                if (identity == null) return System.Threading.Tasks.Task.CompletedTask;
-
-                // Try to get realm_access from the token's encoded payload
-                var jwt = context.SecurityToken as Microsoft.IdentityModel.JsonWebTokens.JsonWebToken;
-                if (jwt != null)
+                try
                 {
-                    try
+                    var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
+                    if (identity == null) return System.Threading.Tasks.Task.CompletedTask;
+
+                    // Only JsonWebToken has EncodedPayload; JwtSecurityToken has Payload dictionary
+                    var jwt = context.SecurityToken as Microsoft.IdentityModel.JsonWebTokens.JsonWebToken;
+                    if (jwt == null || string.IsNullOrEmpty(jwt.EncodedPayload))
+                        return System.Threading.Tasks.Task.CompletedTask;
+
+                    // Decode the payload from base64url (add padding if needed)
+                    var encoded = jwt.EncodedPayload;
+                    var padded = encoded.Length % 4 == 0 ? encoded : encoded.PadRight(encoded.Length + (4 - encoded.Length % 4), '=');
+                    var decoded = System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(padded.Replace('-', '+').Replace('_', '/')));
+                    using var doc = System.Text.Json.JsonDocument.Parse(decoded);
+
+                    if (doc.RootElement.TryGetProperty("realm_access", out var realmAccess) &&
+                        realmAccess.TryGetProperty("roles", out var rolesArray))
                     {
-                        // Decode the payload from base64url (add padding if needed)
-                        var encoded = jwt.EncodedPayload;
-                        var padded = encoded.Length % 4 == 0 ? encoded : encoded.PadRight(encoded.Length + (4 - encoded.Length % 4), '=');
-                        var decoded = System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(padded.Replace('-', '+').Replace('_', '/')));
-                        using var doc = System.Text.Json.JsonDocument.Parse(decoded);
-                        if (doc.RootElement.TryGetProperty("realm_access", out var realmAccess) &&
-                            realmAccess.TryGetProperty("roles", out var rolesArray))
+                        foreach (var role in rolesArray.EnumerateArray())
                         {
-                            foreach (var role in rolesArray.EnumerateArray())
+                            var roleName = role.GetString();
+                            if (!string.IsNullOrEmpty(roleName))
                             {
-                                var roleName = role.GetString();
-                                if (!string.IsNullOrEmpty(roleName))
-                                {
-                                    identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, roleName));
-                                }
+                                identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, roleName));
                             }
                         }
                     }
-                    catch { /* ignore token parse errors */ }
+                }
+                catch
+                {
+                    // NEVER throw — this must not break client authentication
+                    // Admin role extraction is best-effort; if it fails, [Authorize(Roles="admin")]
+                    // will return 403 which is acceptable. Client auth should never be affected.
                 }
 
                 return System.Threading.Tasks.Task.CompletedTask;

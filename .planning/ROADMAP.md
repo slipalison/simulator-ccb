@@ -16,9 +16,9 @@ Every phase delivers a coherent, independently verifiable capability before the 
 |-----------|------|--------|--------|
 | **v1.0** | Foundation — Cadastro e Login com Perfil Read-Only | 1-10 | ✅ Complete |
 | **v2.0** | UX/UI Redesign + Production Readiness | 11-15 | ✅ Complete |
-| **v3.0** | Admin Backoffice + Frontend Separation | 16-21 | 🚧 92% Complete (5/6 phases, Phase 21 planned) |
+| **v3.0** | Admin Backoffice + Frontend Separation | 16-20 | ✅ Complete (5/5 phases, 13 plans, E2E removed) |
 
-**Phase order rationale (v3.0):** 16→17→18 (admin backend+UI core) → **19 (separation)** → 20 (edit/delete in separated project) → 21 (E2E against final structure). Separation before Edit/Delete avoids migrating UI code twice.
+**Phase order rationale (v3.0):** 16→17→18 (admin backend+UI core) → **19 (separation)** → 20 (edit/delete in separated project). E2E phase removed by user decision.
 
 ---
 
@@ -187,23 +187,6 @@ Plans:
 Plans:
 - [x] 20-01-PLAN.md — Edit user form with Zod validation, block/unblock dialog with reason, API integration (COMPLETE 2026-04-10)
 - [x] 20-02-PLAN.md — LGPD deletion flow (email confirmation dialog), anonymization handler, audit logging (COMPLETE 2026-04-10)
-
-### Phase 21: Admin E2E Testing & Production Readiness (with separated frontends)
-**Goal:** Playwright E2E tests for admin flows, production config, documentation — tests run against separated backoffice project
-**Depends on:** Phase 20 (Edit, Block, Delete UI), Phase 14 (E2E Testing from v2.0 — deferred)
-**Requirements:** ADMIN-15, ADMIN-16, E2E-06, E2E-07
-**Success Criteria** (what must be TRUE):
-  1. E2E test: Admin login → list users → search → filter by status → view details
-  2. E2E test: Admin edits user → validation errors → successful update → toast confirmation
-  3. E2E test: Admin blocks user → confirmation dialog → user blocked → table refreshes
-  4. E2E test: Admin deletes user (LGPD) → types email to confirm → user anonymized + Keycloak deleted
-  5. E2E test: Non-admin user accessing `/admin` receives 403 access denied page
-  6. All E2E tests pass with `npx playwright test`
-  7. Production documentation updated: deployment guide, admin role setup, backup procedures
-**Plans:** 2 plans
-Plans:
-- [x] 21-01-PLAN.md — Playwright E2E tests for admin flows (list, edit, block, delete, 403 handling) — PLANNED
-- [x] 21-02-PLAN.md — Production documentation, deployment guide, admin role provisioning in Keycloak — PLANNED
 
 ---
 

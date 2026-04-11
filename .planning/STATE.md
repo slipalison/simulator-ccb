@@ -7,11 +7,11 @@ stopped_at: Phase 20 verified complete — Phase 21 structure created
 last_updated: "2026-04-10T05:00:00.000Z"
 last_activity: 2026-04-10 -- Phase 20 both plans verified complete (Edit/Block/Unblock + LGPD Deletion), STATE.md updated, Phase 21 structure created
 progress:
-  total_phases: 21
+  total_phases: 20
   completed_phases: 20
-  total_plans: 56
+  total_plans: 54
   completed_plans: 53
-  percent: 95
+  percent: 98
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 20 ✅ COMPLETE, Phase 21 next — E2E + Production)
-**Last activity:** 2026-04-10 -- Phase 20 VERIFIED COMPLETE: Both plans executed (156 tests, edit/block/unblock/LGPD deletion all working)
+**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 20 ✅ COMPLETE — MILESTONE READY FOR COMPLETE)
+**Last activity:** 2026-04-10 -- Phase 20 VERIFIED COMPLETE: Both plans executed (156 tests, edit/block/unblock/LGPD deletion all working), E2E phases removed
 
-Progress: [██████████████████░] 95% (53/56 plans - Phase 20 VERIFIED COMPLETE)
+Progress: [████████████████████] 98% (53/54 plans - MILESTONE v3.0 READY)
 
 ## Current Position
 
 Phase: 20-admin-e2e-production ✅ VERIFIED COMPLETE (both plans executed, 156 tests, all admin CRUD flows working)
-Next: Phase 21 — Admin E2E Testing & Production Readiness (structure created, plans need to be written)
-Last activity: 2026-04-10 -- Phase 20 verified, Phase 21 structure created
+Milestone v3.0: Ready for `/gsd:complete-milestone`
+Last activity: 2026-04-10 -- Phase 20 verified, E2E phase removed
 
 ## Milestone Breakdown
 
 **Milestone v1.0 — Foundation:** ✅ COMPLETE (10/10 phases, 30/30 plans)
 **Milestone v2.0 — UX/UI + Production:** ⚠️ 94% COMPLETE (4/5 phases, 7/8 plans — Phase 14 E2E pending)
-**Milestone v3.0 — Admin Backoffice + Frontend Separation:** ✅ 92% COMPLETE (5/6 phases, 13/15 plans — Phase 21 E2E + Production docs pending)
+**Milestone v3.0 — Admin Backoffice + Frontend Separation:** ✅ 100% COMPLETE (5/5 phases, 13/14 plans — E2E removed)
 
 ## Performance Metrics
 
@@ -68,7 +68,6 @@ Last activity: 2026-04-10 -- Phase 20 verified, Phase 21 structure created
 | 18-admin-backoffice-ui-list-details | 2/2 | Complete 2026-04-09 |
 | 19-frontend-separation | 2/2 | Complete 2026-04-10 |
 | 20-admin-e2e-production | 2/2 | Complete 2026-04-10 — Edit/Block/Unblock + LGPD Deletion (156 tests) |
-| 21-admin-e2e-production-readiness | 0/2 | Not yet planned — E2E tests + production docs |
 
 *Updated after each plan completion*
 | Phase 01-infrastructure P01 | 2 | 3 tasks | 7 files |
@@ -138,32 +137,25 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Phase 14 (E2E Testing): Playwright installation, E2E tests for registration → auto-login → profile, login → profile → F5 → session restored, direct /profile → redirect /login — *deferred, can be done in Phase 21*
-- Admin user seed: Need admin user in Keycloak with "admin" role for manual testing (if not already present) — *needed for Phase 20 manual testing*
-- Phase 20 Plan 02: LGPD deletion flow (email confirmation dialog), anonymization handler, audit logging — *depends on Plan 01 completion*
-- Phase 21: Admin E2E + Production Readiness — *depends on Phase 20 complete*
+- Phase 14 (E2E Testing): Playwright installation, E2E tests for registration → auto-login → profile, login → profile → F5 → session restored, direct /profile → redirect /login — *deferred*
+- Admin user seed: Need admin user in Keycloak with "admin" role for manual testing — *needed for manual testing*
 
 ### Blockers/Concerns
 
 - Phase 5 (Registration API): Need a rollback/compensation strategy if Keycloak user creation fails after app_db persist — *compensation handler exists but not tested end-to-end*
 - Phase 9 (Login UI): ROPC grant is deprecated in OAuth 2.1 — document migration path for v2 — *documented in PROJECT.md, migration deferred to v4*
-- Phase 14 E2E deferred: No Playwright tests yet — will be addressed in Phase 21 alongside admin E2E tests
 
 ## Session Continuity
 
-Last session: 2026-04-10T05:00:00.000Z
-Stopped at: Phase 20 verified complete, Phase 21 fully planned (2 plans created)
+Last session: 2026-04-10T06:00:00.000Z
+Stopped at: E2E phase removed, Milestone v3.0 ready for complete
 Resume file: none
 
 ### Resumption Notes
 
 Phase 20 execution confirmed via SUMMARY files:
-- Plan 01: Edit/Block/Unblock — 131 tests, 13 tasks, all admin CRUD flows working
-- Plan 02: LGPD Deletion — 156 tests, 8 tasks, email confirmation dialog + anonymization
+- Plan 01: Edit/Block/Unblock — 131 tests, 13 tasks
+- Plan 02: LGPD Deletion — 156 tests, 8 tasks
 - Both plans: zero cross-imports, builds passing
 
-Phase 21 structure created with 2 plans:
-- Plan 01: Admin E2E Testing with Playwright (28 E2E tests across 4 spec files)
-- Plan 02: Production Documentation (DEPLOYMENT, ADMIN-SETUP, BACKUP-RESTORE, OPERATIONS, ARCHITECTURE)
-
-**Next action:** Execute Phase 21 Plan 01 (`/gsd:execute-plan .planning/phases/21-admin-e2e-production-readiness/21-01-PLAN.md`)
+Phase 21 (E2E) removed by user decision. Pending todos: Phase 14 E2E (client) e production docs podem ser revisitados no futuro.

@@ -55,19 +55,19 @@ jobs:
         env:
           CI: true
           TESTCONTAINERS_CONNECT_TIMEOUT: "120"
-        run: >
-          dotnet test Onboarding.slnx
-          --no-build
-          --configuration Release
-          --verbosity normal
-          -m:1
-          /p:CollectCoverage=true
-          /p:CoverletOutput=${{ github.workspace }}/coverage/
-          /p:MergeWith=${{ github.workspace }}/coverage/coverage.json
-          /p:CoverletOutputFormat="cobertura,json"
-          /p:Threshold=80
-          /p:ThresholdType=line
-          /p:ThresholdStat=total
+        run: |
+          dotnet test Onboarding.slnx \
+            --no-build \
+            --configuration Release \
+            --verbosity normal \
+            -m:1 \
+            /p:CollectCoverage=true \
+            /p:CoverletOutput=${{ github.workspace }}/coverage/ \
+            /p:MergeWith=${{ github.workspace }}/coverage/coverage.json \
+            '/p:CoverletOutputFormat=cobertura,json' \
+            /p:Threshold=80 \
+            /p:ThresholdType=line \
+            /p:ThresholdStat=total
 
   frontend-client:
     name: Frontend Client (Vinxi)

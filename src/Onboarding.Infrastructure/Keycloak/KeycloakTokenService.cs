@@ -62,7 +62,8 @@ public sealed class KeycloakTokenService : IKeycloakTokenService
             {
                 ["grant_type"] = "refresh_token",
                 ["client_id"] = _clientId,
-                ["refresh_token"] = refreshToken
+                ["refresh_token"] = refreshToken,
+                ["scope"] = "openid email roles profile"  // include roles so realm_access.roles appears in access token
             }),
             ct);
 

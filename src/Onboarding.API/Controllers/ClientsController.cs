@@ -33,29 +33,26 @@ public sealed class ClientsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetMe(CancellationToken ct)
     {
-        // D-07: lookup by email claim from JWT (MapInboundClaims=false preserves "email" claim name)
-        var email = User.FindFirst("email")?.Value;
-        if (string.IsNullOrEmpty(email))
+        // Primary: use "sub" (Keycloak user ID) — opaque, stable, non-personal identifier
+        var keycloakSub = User.FindFirst("sub")?.Value;
+        if (!string.IsNullOrEmpty(keycloakSub))
         {
-            _logger.LogWarning("Authenticated request missing email claim in JWT");
-            return Unauthorized();
+            var client = await _repository.GetByKeycloakSubAsync(keycloakSub, ct);
+            if (client is not null) return Ok(MapToDto(client));
         }
 
-        var client = await _repository.GetByEmailAsync(email, ct);
-        if (client is null)
+        // Fallback: use "name" claim (present in Keycloak tokens via profile scope).
+        // Keycloak appends " -" to the name when emailVerified is false, so strip it.
+        var rawName = User.FindFirst("name")?.Value;
+        if (!string.IsNullOrEmpty(rawName))
         {
-            // D-09: 404 with generic ProblemDetails — should not happen in normal flow
-            // but must not reveal "user does not exist" (SEC-08)
-            _logger.LogWarning("No client found for authenticated email {Email}", email);
-            return NotFound(new ProblemDetails
-            {
-                Title = "Profile not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = "No client profile found for this account."
-            });
+            var name = rawName.EndsWith(" -") ? rawName[..^2] : rawName;
+            var clientByName = await _repository.GetByNameAsync(name, ct);
+            if (clientByName is not null) return Ok(MapToDto(clientByName));
         }
 
-        return Ok(MapToDto(client));
+        _logger.LogWarning("Authenticated request missing both 'sub' and 'name' claims in JWT");
+        return Unauthorized();
     }
 
     private static ClientProfileDto MapToDto(Client client) => new(

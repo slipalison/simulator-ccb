@@ -27,6 +27,8 @@ public static class InfrastructureServiceExtensions
                     "Connection string 'AppDb' not found in configuration.")));
 
         services.AddScoped<IClientRepository, ClientRepository>();
+        services.AddScoped<IAdminRepository, AdminRepository>();
+        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
 
         // Keycloak Admin API — service account CC grant (REG-06)
         var keycloakBaseUrl = configuration["Keycloak:AuthServerUrl"]

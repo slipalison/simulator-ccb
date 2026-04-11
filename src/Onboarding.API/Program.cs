@@ -1,11 +1,17 @@
 using System.Reflection;
+using Keycloak.AuthServices.Authorization;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Onboarding.API.Configuration;
+using Onboarding.API.Middleware;
 using Onboarding.API.Observability;
+using Onboarding.API.Security;
 using Onboarding.Application;
 using Onboarding.Infrastructure;
+using Onboarding.Infrastructure.Persistence;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -114,6 +120,44 @@ try
             // Without this, User.FindFirst("email") returns null — Pitfall 2 from RESEARCH.md
             options.MapInboundClaims = false;
 
+            // Extract realm_access.roles from JWT and add as flat role claims
+            // Only runs for admin tokens (client tokens don't need role extraction)
+            // Wrapped in try/catch to NEVER break client authentication
+            options.Events.OnTokenValidated = async context =>
+            {
+                try
+                {
+                    var identity = context.Principal?.Identity as System.Security.Claims.ClaimsIdentity;
+                    if (identity == null) return;
+
+                    var jwt = context.SecurityToken as Microsoft.IdentityModel.JsonWebTokens.JsonWebToken;
+                    if (jwt == null || string.IsNullOrEmpty(jwt.EncodedPayload))
+                        return;
+
+                    var encoded = jwt.EncodedPayload;
+                    var padded = encoded.Length % 4 == 0 ? encoded : encoded.PadRight(encoded.Length + (4 - encoded.Length % 4), '=');
+                    var decoded = System.Text.Encoding.UTF8.GetString(System.Convert.FromBase64String(padded.Replace('-', '+').Replace('_', '/')));
+                    using var doc = System.Text.Json.JsonDocument.Parse(decoded);
+
+                    if (doc.RootElement.TryGetProperty("realm_access", out var realmAccess) &&
+                        realmAccess.TryGetProperty("roles", out var rolesArray))
+                    {
+                        foreach (var role in rolesArray.EnumerateArray())
+                        {
+                            var roleName = role.GetString();
+                            if (!string.IsNullOrEmpty(roleName))
+                            {
+                                identity.AddClaim(new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Role, roleName));
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // NEVER throw — this must not break client authentication
+                }
+            };
+
             // FIX Test 18: OIDC discovery returns jwks_uri with KC_HOSTNAME (localhost:8180) which is
             // unreachable from inside the API container. The Backchannel rewrites these URLs to use the
             // internal Docker network hostname (keycloak:8080) so the JWKS can be fetched.
@@ -127,13 +171,24 @@ try
 
     builder.Services.AddAuthorization();
 
+    // Keycloak role-based authorization — reads realm_access.roles from JWT
+    // and adds them as flat "role" claims so [Authorize(Roles = "admin")] works.
+    // Note: Keycloak.AuthServices RolesClaimTransformationSource only supports
+    // ResourceAccess, but our tokens have roles in realm_access (realm roles).
+    // We handle this manually via custom claims transformation.
+    builder.Services.AddKeycloakAuthorization(options =>
+    {
+        options.EnableRolesMapping = Keycloak.AuthServices.Authorization.RolesClaimTransformationSource.ResourceAccess;
+        options.RolesResource = "onboarding-api-admin";
+    });
+
     // CORS — allow frontend origin with credentials (cookies)
     const string corsPolicy = "AllowFrontendWithCredentials";
     builder.Services.AddCors(options =>
     {
         options.AddPolicy(corsPolicy, policy =>
         {
-            policy.WithOrigins("http://localhost:5173") // Vinxi dev server
+            policy.WithOrigins("http://localhost:5173","http://localhost:5174") // Vinxi dev server
                   .AllowAnyHeader()
                   .AllowAnyMethod()
                   .AllowCredentials(); // Required for httpOnly cookies
@@ -153,9 +208,18 @@ try
 
     var app = builder.Build();
 
+    // Apply EF Core migrations on startup — creates/updates all tables
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    db.Database.Migrate();
+
+    // Global exception handler — prevents stack trace exposure, returns standardized ProblemDetails
+    app.UseGlobalExceptionHandler();
+
     app.UseSerilogRequestLogging();     // D-05: per-request log with method/path/status/duration
     app.UseCors("AllowFrontendWithCredentials"); // Must come before UseAuthentication
-    app.UseAuthentication();   // D-04: populate HttpContext.User — MUST come before UseAuthorization
+    app.UseAdminSession();       // Convert admin refresh token cookie → JWT access token
+    app.UseAuthentication();   // D-04: populate HttpContext.User — MUST come after admin session
     app.UseAuthorization();    // D-06: enforce [Authorize] attributes — MUST come after UseAuthentication
 
     // Liveness: process is alive — no dependency checks (D-26: used by Docker Compose healthcheck)

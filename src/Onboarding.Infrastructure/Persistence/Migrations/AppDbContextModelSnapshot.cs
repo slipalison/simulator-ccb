@@ -22,6 +22,67 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.Audit.AuditLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("action");
+
+                    b.Property<string>("AdminEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("admin_email");
+
+                    b.Property<string>("AdminSub")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("admin_sub");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)")
+                        .HasColumnName("ip_address");
+
+                    b.Property<string>("SnapshotAfter")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("snapshot_after");
+
+                    b.Property<string>("SnapshotBefore")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("snapshot_before");
+
+                    b.Property<string>("TargetEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("target_email");
+
+                    b.Property<Guid?>("TargetUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_user_id");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("timestamp");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("user_agent");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("audit_logs", (string)null);
+                });
+
             modelBuilder.Entity("Onboarding.Domain.Aggregates.ClientAggregate.Client", b =>
                 {
                     b.Property<Guid>("Id")
@@ -38,11 +99,18 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(11)")
                         .HasColumnName("cpf");
 
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)")
                         .HasColumnName("email");
+
+                    b.Property<string>("KeycloakUserId")
+                        .HasColumnType("text");
 
                     b.Property<string>("Name")
                         .IsRequired()

@@ -70,5 +70,10 @@ public sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
         builder.HasIndex(c => c.Cnpj)
             .IsUnique()
             .HasFilter("cnpj IS NOT NULL");
+
+        // LGPD soft-delete column
+        builder.Property(c => c.DeletedAt)
+            .HasColumnName("deleted_at")
+            .IsRequired(false);
     }
 }

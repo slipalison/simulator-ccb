@@ -94,10 +94,15 @@ services:
       retries: 5
       start_period: 30s
 
-  frontend:
+  frontend-client:
     build:
-      context: ./frontend
+      context: ./frontend/client
       dockerfile: Dockerfile
+    volumes:
+      - ./frontend/client/src:/app/src
+      - ./frontend/client/public:/app/public
+      - ./frontend/client/server.ts:/app/server.ts
+      - ./frontend/client/app.config.ts:/app/app.config.ts
     environment:
       VITE_API_URL: http://localhost:8080
       VITE_KEYCLOAK_URL: http://localhost:8180
@@ -105,6 +110,27 @@ services:
       VITE_KEYCLOAK_CLIENT_ID: onboarding-app
     ports:
       - "127.0.0.1:5173:5173"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  frontend-backoffice:
+    build:
+      context: ./frontend/backoffice
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend/backoffice/src:/app/src
+      - ./frontend/backoffice/public:/app/public
+      - ./frontend/backoffice/server.ts:/app/server.ts
+      - ./frontend/backoffice/app.config.ts:/app/app.config.ts
+    environment:
+      VITE_API_URL: http://localhost:8080
+      VITE_KEYCLOAK_URL: http://localhost:8180
+    ports:
+      - "127.0.0.1:5174:5174"
+    depends_on:
+      api:
+        condition: service_healthy
 
   # ── Observability Stack (Phase 4) ─────────────────────────────────────────
 

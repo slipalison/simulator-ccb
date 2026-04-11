@@ -41,9 +41,20 @@ public interface IKeycloakUserService
     /// Updates the password for a Keycloak user by their ID.
     /// </summary>
     Task UpdateUserPasswordAsync(string userId, string newPassword, CancellationToken ct = default);
+
+    /// <summary>
+    /// Blocks a user in Keycloak by setting Enabled = false.
+    /// Fetches the full UserRepresentation, modifies Enabled, and sends it back.
+    /// </summary>
+    Task BlockUserAsync(string keycloakUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Unblocks a user in Keycloak by setting Enabled = true.
+    /// </summary>
+    Task UnblockUserAsync(string keycloakUserId, CancellationToken ct = default);
 }
 
 /// <summary>
 /// Minimal representation of a Keycloak user.
 /// </summary>
-public sealed record KeycloakUser(string Id, string Email);
+public sealed record KeycloakUser(string Id, string Email, bool Enabled = true, bool EmailVerified = true);

@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { AuthProvider } from "@/lib/auth-context";
-import { RouterProvider, createRouter, createMemoryHistory } from "@tanstack/react-router";
-import { router } from "@/router";
 import * as api from "@/lib/api";
 import { ResetPasswordPage } from "@/components/pages/ResetPasswordPage";
 

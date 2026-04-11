@@ -57,7 +57,7 @@ const mockPFProfile = {
   phone: "(11) 99999-9999",
 };
 
-const mockPJProfile = {
+const _mockPJProfile = {
   id: "pj-id-456",
   type: "PessoaJuridica" as const,
   razaoSocial: "Empresa LTDA",

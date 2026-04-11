@@ -1,0 +1,380 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  backend:
+    name: Backend (.NET 10)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore Onboarding.slnx
+
+      - name: Build
+        run: dotnet build Onboarding.slnx --no-restore --configuration Release
+
+      - name: Test with coverage
+        env:
+          CI: true
+          TESTCONTAINERS_CONNECT_TIMEOUT: "120"
+        run: >
+          dotnet test Onboarding.slnx
+          --no-build
+          --configuration Release
+          --verbosity normal
+          /p:CollectCoverage=true
+          /p:Threshold=80
+          /p:ThresholdType=line
+          /p:ThresholdStat=total
+          /p:CoverletOutputFormat=cobertura
+
+  frontend-client:
+    name: Frontend Client (Vinxi)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend/client
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Cache npm
+        uses: actions/cache@v5
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-client-${{ hashFiles('frontend/client/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-client-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint . --max-warnings 0
+
+      - name: Build
+        env:
+          NODE_ENV: production
+        run: npm run build
+
+  frontend-backoffice:
+    name: Frontend Backoffice (Vinxi)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend/backoffice
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Cache npm
+        uses: actions/cache@v5
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-backoffice-${{ hashFiles('frontend/backoffice/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-backoffice-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint . --max-warnings 0
+
+      - name: Build
+        env:
+          NODE_ENV: production
+        run: npm run build
+
+  sast-semgrep:
+    name: SAST — Semgrep
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep Scan
+        run: |
+          semgrep scan \
+            --config auto \
+            --config .semgrep/ \
+            --output semgrep.sarif \
+            --sarif \
+            --error \
+            --metrics off
+
+      - name: Upload Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  sast-codeql:
+    name: SAST — CodeQL
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: csharp, javascript-typescript
+          config-file: .github/codeql/codeql-config.yml
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v4
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: codeql
+
+  sca-trivy:
+    name: SCA — Trivy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy
+
+  container-scan-trivy:
+    name: Container Scan — Trivy Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend Docker image
+        run: docker build -t onboarding-api:ci -f src/Onboarding.API/Dockerfile .
+
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: onboarding-api:ci
+          format: sarif
+          output: trivy-image-results.sarif
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
+      - name: Upload Trivy Image SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: trivy-image-results.sarif
+          category: trivy-image
+
+  container-lint-dockle:
+    name: Container Lint — Dockle
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend Docker image
+        run: docker build -t onboarding-api:ci -f src/Onboarding.API/Dockerfile .
+
+      - name: Run Dockle scan
+        uses: goodwithtech/dockle-action@v1
+        with:
+          image: onboarding-api:ci
+          exit-code: "1"
+          exit-level: error
+          timeout: "5m"
+
+  iac-checkov:
+    name: IaC — Checkov
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Checkov IaC scan
+        uses: bridgecrew/checkov-action@master
+        with:
+          file: compose.yaml
+          framework: dockerfile_compose
+          output: cli,sarif
+          output-file-path: checkov-results.sarif
+          soft-fail: false
+          check: CKV_DOCKER_*,CKV2_DOCKER_*
+
+      - name: Upload Checkov SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: checkov-results.sarif
+          category: checkov
+
+  iac-kubescape:
+    name: IaC — Kubescape
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for K8s manifests
+        id: check-k8s
+        run: |
+          if find infra/ -name '*.yaml' -o -name '*.yml' | grep -q '.'; then
+            echo "has-k8s=true" >> $GITHUB_OUTPUT
+          else
+            echo "has-k8s=false" >> $GITHUB_OUTPUT
+            echo "No K8s manifests found — skipping Kubescape scan"
+          fi
+
+      - name: Run Kubescape scan
+        if: steps.check-k8s.outputs.has-k8s == 'true'
+        uses: kubescape/kubescape-action@v1
+        with:
+          path: infra/
+          format: sarif
+          output: kubescape-results.sarif
+          fail-threshold: high
+          compliance-frameworks: NSA,CIS
+
+      - name: Upload Kubescape SARIF
+        if: always() && steps.check-k8s.outputs.has-k8s == 'true'
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: kubescape-results.sarif
+          category: kubescape
+
+  secrets-gitleaks:
+    name: Secrets — Gitleaks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          config-path: .gitleaks.toml
+          report-path: gitleaks-report.json
+          verbose: true
+
+  secrets-trufflehog:
+    name: Secrets — TruffleHog
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          extra_args: --only-verified --fail --json
+
+      - name: Upload TruffleHog SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: results.sarif
+          category: trufflehog

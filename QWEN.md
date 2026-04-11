@@ -148,3 +148,6 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 > Profile not yet configured. Run `/gsd:profile-user` to generate your developer profile.
 > This section is managed by `generate-claude-profile` -- do not edit manually.
 <!-- GSD:profile-end -->
+
+## Qwen Added Memories
+- Fase 22 (SAST) completa — pendência: branch protection rules precisam ser configuradas manualmente no GitHub UI (Settings → Branches → Edit main → adicionar 5 status checks: Backend (.NET 10), Frontend Client (Vinxi), Frontend Backoffice (Vinxi), SAST — Semgrep, SAST — CodeQL). Detalhes completos em docs/branch-protection-setup.md. Precisa primeiro push para main e CI rodar pelo menos uma vez para os checks ficarem disponíveis.

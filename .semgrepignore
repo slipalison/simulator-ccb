@@ -1,0 +1,27 @@
+# Build outputs
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/.vinxi/
+**/.output/
+
+# Generated code
+**/Migrations/
+**/*.gen.*
+
+# Config samples and environment files
+**/appsettings.Development.json
+**/.env.example
+**/.env
+
+# Documentation
+**/*.md
+
+# Test coverage
+**/coverage/
+**/*.cobertura.xml
+
+# IDE
+**/.idea/
+**/.vscode/

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { AdminLoginPage } from "@/components/pages/AdminLoginPage";
-import { AdminAuthProvider, useAdminAuth } from "@/lib/admin-auth-context";
+import { AdminAuthProvider } from "@/lib/admin-auth-context";
 import * as adminApi from "@/lib/admin-api";
 import { RouterProvider, createRouter, createMemoryHistory } from "@tanstack/react-router";
 import { router } from "@/router";

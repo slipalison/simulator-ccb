@@ -25,12 +25,10 @@ import {
 } from "@/lib/validation-schemas";
 import {
   registerClient,
-  loginClient,
   RegistrationValidationError,
   DuplicateClientError,
   RegistrationUnavailable,
   ApiError,
-  LoginError,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -115,11 +113,9 @@ export function RegistrationForm() {
       // Auto-login after successful registration
       try {
         await login(data.email, data.password);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         navigate({ to: "/profile" as any, replace: true });
       } catch {
         // Fallback to login page if auto-login fails
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         navigate({ to: "/login" as any, state: { message: "Cadastro criado. Faça login." } as any });
       }
     } catch (err) {

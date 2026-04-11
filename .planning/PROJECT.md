@@ -8,7 +8,7 @@ Sistema de onboarding para cadastro de clientes Pessoa Física (PF) e Pessoa Jur
 
 Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
 
-## Current Milestone: v3.0 Painel de Backoffice Admin
+## Current Milestone: v3.0 Painel de Backoffice Admin ✅ COMPLETE
 
 **Goal:** Painel administrativo para gerenciar cadastros de usuários — listar, visualizar, editar, bloquear/desbloquear e excluir (LGPD) com autenticação baseada em cookies httpOnly e autorização por role "admin".
 
@@ -26,6 +26,8 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 - Tratamento global de erros (401, 403, 5xx) com toasts
 - Server Components para leitura, Client Components para interatividade
 
+**Result:** 100% complete — 5/5 phases, 13/14 plans (E2E phase removed by user decision)
+
 ### Stack Adicional para v3.0
 
 - **Frontend Admin**: Vinxi (mesma stack do projeto atual, não Next.js)
@@ -35,6 +37,28 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 - **Notifications**: Sonner para toasts
 
 **Depends on**: Milestone v2.0 completo (15 phases delivered)
+
+## Current Milestone: v4.0 CI/CD Pipeline + Cybersecurity
+
+**Goal:** Pipeline de integração contínua com builds paralelas (backend + 2 frontends) e esteira completa de segurança (SAST, SCA, containers, IaC, secrets).
+
+**Target features:**
+- GitHub Actions workflow com execução paralela por projeto
+  - Backend: build + testes unitários + validação de cobertura
+  - Frontend client: build + lint + type check
+  - Frontend backoffice: build + lint + type check
+- Validação de cobertura de testes (threshold mínimo)
+- Pipeline de segurança automatizada no CI:
+  - **SAST**: Semgrep (rápido, regras C#, customizável) + CodeQL (profundo, nativo GitHub)
+  - **SCA**: Dependabot (zero config) + Trivy (dependências + containers + IaC + secrets)
+  - **Container**: Trivy (imagem Docker) + Dockle (boas práticas Dockerfile)
+  - **IaC**: Checkov (Terraform, K8s, Docker Compose) + Kubescape (Kubernetes)
+  - **Secrets**: Gitleaks (credenciais commitadas) + TruffleHog (verificação ativa)
+- Relatórios de segurança visíveis no GitHub Security Tab
+- Bloqueio de merge em falha crítica de segurança
+- Documentação de segurança para contribuidores
+
+**Depends on**: Milestone v3.0 completo (Admin Backoffice + Frontend Separation)
 
 ## Requirements
 
@@ -47,17 +71,18 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 ### Active
 
-- [ ] Endpoints admin na API .NET (listar, visualizar, editar, bloquear/desbloquear, excluir usuários)
-- [ ] Proteção por role "admin" nos endpoints admin
-- [ ] Frontend Vinxi para backoffice com autenticação via cookies httpOnly
-- [ ] Listagem paginada de usuários com busca e filtros
-- [ ] Detalhes do usuário, edição com formulário validado
-- [ ] Bloqueio/desbloqueio com dialog de confirmação
-- [ ] Exclusão LGPD com confirmação forte (digitar email)
-- [ ] Middleware de proteção: exige sessão válida + role "admin"
-- [ ] Refresh automático de access token transparente
-- [ ] Header com nome do admin logado + logout
-- [ ] Tratamento global de erros (401, 403, 5xx) com toasts
+- [ ] GitHub Actions workflow com jobs paralelos (backend, frontend client, frontend backoffice)
+- [ ] Build + testes unitários + cobertura para backend .NET 10
+- [ ] Build + lint + type check para frontend client (Vinxi)
+- [ ] Build + lint + type check para frontend backoffice (Vinxi)
+- [ ] SAST: Semgrep + CodeQL configurados para C# e React
+- [ ] SCA: Dependabot + Trivy escaneando dependências
+- [ ] Container scanning: Trivy + Dockle nas imagens Docker
+- [ ] IaC scanning: Checkov + Kubescape para compose.yaml e futuros K8s manifests
+- [ ] Secrets scanning: Gitleaks + TruffleHog bloqueando credenciais commitadas
+- [ ] Relatórios de segurança no GitHub Security Tab
+- [ ] Policy de branch protection bloqueando merge em falha crítica
+- [ ] Documentação de segurança para contribuidores
 
 ### Out of Scope
 
@@ -142,4 +167,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-09 — Milestone v3.0 started: Admin Backoffice Panel (Vinxi, cookies httpOnly, role-based access)*
+*Last updated: 2026-04-10 — Milestone v4.0 started: CI/CD Pipeline + Cybersecurity (parallel builds, SAST, SCA, container/IaC/secrets scanning)*

@@ -49,7 +49,7 @@ describe("ForgotPasswordPage", () => {
   it("shows success message after submitting valid email", async () => {
     vi.mocked(api.forgotPasswordClient).mockResolvedValue({ message: "Se o email existir, voce recebera um link de recuperacao." });
 
-    const { memoryHistory } = renderWithRouter(["/forgot-password"]);
+    renderWithRouter(["/forgot-password"]);
 
     await waitFor(() => {
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();

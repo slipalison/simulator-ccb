@@ -1,8 +1,13 @@
-# Requirements — v1: Client Onboarding (PF/PJ + Keycloak Auth)
+# Requirements — Multi-Milestone (v1.0, v3.0, v4.0)
 
-**Milestone:** v1.0 — Cadastro e Login com Perfil Read-Only
+**Milestones Covered:**
+- v1.0 — Cadastro e Login com Perfil Read-Only
+- v3.0 — Painel Administrativo (Backoffice)
+- v4.0 — CI/CD Pipeline + Cybersecurity
+
 **Source:** FEATURES.md + SUMMARY.md + PROJECT.md
 **Created:** 2026-04-09
+**Last Updated:** 2026-04-11
 **Status:** DRAFT — awaiting review
 
 ---
@@ -15,6 +20,8 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 ## Scope Summary
 
+### v1.0 — Client Onboarding
+
 | Category | v1 | v2 | Out of Scope |
 |----------|----|----|-------------|
 | Registration (PF + PJ) | ✅ 8 | — | — |
@@ -25,6 +32,40 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 | Infrastructure | ✅ 5 | — | — |
 | Data Integrity | ✅ 3 | — | — |
 | **Total** | **35** | **0** | **2** |
+
+### v3.0 — Admin Backoffice
+
+| Category | v3 | v4 | Out of Scope |
+|----------|----|----|-------------|
+| Admin API Endpoints | ✅ 5 | — | — |
+| Admin Auth & Session | ✅ 3 | — | — |
+| Admin Backoffice UI | ✅ 6 | — | — |
+| Admin E2E Testing | ✅ 5 | — | — |
+| Architecture (Frontend Separation) | ✅ 3 | — | — |
+| **Total** | **22** | **0** | **0** |
+
+### v4.0 — CI/CD Pipeline + Cybersecurity
+
+| Category | v4 | v5 | Out of Scope |
+|----------|----|----|-------------|
+| CI/CD Pipeline (GitHub Actions) | ✅ 4 | — | — |
+| SAST (Semgrep + CodeQL) | ✅ 3 | — | — |
+| SCA (Dependabot + Trivy) | ✅ 3 | — | — |
+| Container Security (Trivy + Dockle) | ✅ 3 | — | — |
+| IaC Scanning (Checkov + Kubescape) | ✅ 3 | — | — |
+| Secrets Detection (Gitleaks + TruffleHog) | ✅ 3 | — | — |
+| GitHub Security Integration | ✅ 3 | — | — |
+| Security Documentation | ✅ 3 | — | — |
+| **Total** | **25** | **3 deferred** | **0** |
+
+### Grand Total
+
+| Milestone | Requirements | Deferred | Out of Scope |
+|-----------|-------------|----------|-------------|
+| v1.0 | 35 | 0 | 2 |
+| v3.0 | 22 | 0 | 0 |
+| v4.0 | 25 | 3 | 0 |
+| **All** | **82** | **3** | **2** |
 
 ---
 
@@ -474,6 +515,307 @@ Nenhum requisito foi explicitamente delegado para v2. Os itens abaixo foram cons
 - [ ] Componentes shadcn/ui, utils, e configs são duplicados (não importados)
 - [ ] Cada projeto tem seus próprios contextos de auth, routers, e API clients
 - [ ] Código duplicado é aceitável; import cruzado é proibido
+
+---
+
+# Requirements — v4.0: CI/CD Pipeline + Cybersecurity
+
+**Milestone:** v4.0 — Pipeline de Integração Contínua + Esteira de Segurança
+**Source:** PROJECT.md v4.0 section + FEATURES.md + PITFALLS.md
+**Created:** 2026-04-11
+**Status:** DRAFT — awaiting review
+
+---
+
+## 13. GitHub Actions CI/CD Pipeline
+
+### R13.1 — Parallel Build Jobs
+- [ ] Workflow `.github/workflows/ci.yml` com 3 jobs paralelos independentes
+- [ ] Job `backend`: .NET 10 SDK build + testes unitários + cobertura
+- [ ] Job `frontend-client`: Vinxi build + ESLint + TypeScript type check
+- [ ] Job `frontend-backoffice`: Vinxi build + ESLint + TypeScript type check
+- [ ] Jobs rodam em `ubuntu-latest` com cache de dependências (NuGet, npm)
+- [ ] Cada job falha independentemente — falha em um não bloqueia outros
+
+### R13.2 — Backend Build + Test Validation
+- [ ] `dotnet build --configuration Release` sem warnings críticos
+- [ ] `dotnet test` executa todos os testes unitários (xUnit)
+- [ ] Cobertura mínima de testes: 80% de line coverage
+- [ ] `dotnet test /p:CollectCoverage=true` com report em cobertura XML
+- [ ] Falha se cobertura < threshold definido
+
+### R13.3 — Frontend Build Validation
+- [ ] `npm ci` instala dependências com lockfile integrity
+- [ ] `tsc --noEmit` valida tipos sem gerar output
+- [ ] `eslint . --max-warnings 0` bloqueia warnings como erros
+- [ ] `vinxi build` gera artefato de produção sem erros
+- [ ] Aplicado a ambos os projetos (`frontend/client` e `frontend/backoffice`)
+
+### R13.4 — Pipeline Caching Strategy
+- [ ] Cache de `~/.nuget/packages` para builds .NET subsequentes
+- [ ] Cache de `node_modules/.cache` para builds Vite/Vinxi
+- [ ] Chave de cache baseada em lockfiles (`*.csproj`, `package-lock.json`)
+- [ ] Cache com restore-keys para partial hits
+
+---
+
+## 14. Static Application Security Testing (SAST)
+
+### R14.1 — Semgrep Configuration
+- [ ] `.semgrep/` directory com rules customizadas para C# e React
+- [ ] Regras específicas para:
+  - Detecção de `localStorage` para tokens (anti-pattern)
+  - Uso de `HttpContext.Request` sem validação CSRF
+  - Hardcoded credentials/API keys em código
+  - Falta de validação em inputs de CPF/CNPJ
+- [ ] CI step roda `semgrep ci --config auto` em PRs
+- [ ] Falha crítica em regras de severidade ERROR
+
+### R14.2 — CodeQL Integration
+- [ ] GitHub Advanced Security habilitado com CodeQL analysis
+- [ ] `codeql database init` para C# (`dotnet`) e JavaScript/React
+- [ ] Queries de segurança para:
+  - SQL Injection (EF Core LINQ injection patterns)
+  - XSS (React `dangerouslySetInnerHTML` sem sanitização)
+  - Insecure deserialization (JSON sem validação de tipo)
+  - Path traversal (leitura de arquivos com input do usuário)
+- [ ] Resultados visíveis em GitHub Security Tab → Code scanning alerts
+- [ ] Bloqueio de merge em alertas CRITICAL ou HIGH
+
+### R14.3 — SAST Policy Enforcement
+- [ ] Branch protection rule exige CodeQL scan passing antes de merge
+- [ ] PRs com novos alertas SAST exigem justification ou fix
+- [ ] Dashboard de tendências de alertas (monitorar redução ao longo do tempo)
+
+---
+
+## 15. Software Composition Analysis (SCA)
+
+### R15.1 — Dependabot Configuration
+- [ ] `.github/dependabot.yml` configurado para:
+  - `nuget` (backend .NET packages)
+  - `npm` (frontend packages — ambos os projetos)
+  - `docker` (base images em Dockerfiles)
+  - `github-actions` (actions de terceiros)
+- [ ] Frequency: `weekly` com open pull requests automáticos
+- [ ] Labels: `dependencies`, `security` para CVE updates
+- [ ] Auto-merge para patches e minors com CI passing
+
+### R15.2 — Trivy Dependency Scanning
+- [ ] CI step roda `trivy fs --scanners vuln .` no repo root
+- [ ] Detecta vulnerabilidades em:
+  - `packages-lock.json` (npm dependencies)
+  - `*.csproj` (NuGet dependencies)
+  - Imagens base em Dockerfiles
+- [ ] Falha se encontrar vulnerabilidades CRITICAL ou HIGH sem fix disponível
+- [ ] Report em SARIF format → upload para GitHub Security Tab
+
+### R15.3 — SCA Reporting
+- [ ] Dependabot alerts visíveis em GitHub Security Tab → Dependabot alerts
+- [ ] Trivy results exportados para SARIF → Code scanning alerts
+- [ ] Dashboard semanal de vulnerabilities open/fix rate
+
+---
+
+## 16. Container Security Scanning
+
+### R16.1 — Trivy Image Scanning
+- [ ] CI step executa após build de cada Dockerfile:
+  - `docker build -t onboarding-api:ci src/Api/`
+  - `trivy image --severity HIGH,CRITICAL onboarding-api:ci`
+- [ ] Scanning aplicado a todas as imagens:
+  - Backend API (.NET 10 image)
+  - Frontend client (Node/Vinxi image)
+  - Frontend backoffice (Node/Vinxi image)
+  - Keycloak (quay.io/keycloak/keycloak:26.1)
+- [ ] Falha se encontrar CVEs CRITICAL ou HIGH na imagem
+- [ ] Report em SARIF → GitHub Security Tab
+
+### R16.2 — Dockle Best Practices Check
+- [ ] CI step roda `dockle onboarding-api:ci` em cada imagem
+- [ ] Verifica boas práticas de Dockerfile:
+  - Não rodar como root (`USER` directive)
+  - Não usar `latest` tag em base images
+  - `.dockerignore` presente e configurado
+  - Healthcheck configurado no Dockerfile
+  - Secretos não hardcoded em ENV vars
+- [ ] Falha em checks de severidade FATAL ou WARN
+- [ ] Dockle report em formato JSON → artifacts do workflow
+
+### R16.3 — Container Image Tagging Policy
+- [ ] Tags de imagem seguem semver: `onboarding-api:1.2.3`
+- [ ] Tags `latest` apenas em builds de main branch
+- [ ] Tags `sha-{commit}` para rastreabilidade de builds
+- [ ] Image push para registry apenas se scanning passou
+
+---
+
+## 17. Infrastructure as Code (IaC) Scanning
+
+### R17.1 — Checkov for Docker Compose
+- [ ] CI step roda `checkov --framework dockerfile --file compose.yaml`
+- [ ] Verifica configurações de segurança no Docker Compose:
+  - Containers expostos à rede host sem necessidade
+  - Volumes montados com permissões excessivas
+  - Secrets em variáveis de ambiente não sensíveis
+  - Capabilities do Linux não restritas (`privileged: true`)
+  - Usuário de container não especificado
+- [ ] Falha em checks CRITICAL ou HIGH
+- [ ] Checkov report em SARIF → GitHub Security Tab
+
+### R17.2 — Kubescape for Future Kubernetes
+- [ ] Kubescape instalado no CI (preparação para futuro deploy K8s)
+- [ ] Scan de manifests Kubernetes quando existirem (ainda não no v4.0)
+- [ ] Framework: NSA-CISA, MITRE ATT&CK
+- [ ] **Nota**: Kubescape é setup-only no v4.0 — scanning real quando K8s manifests forem criados
+
+### R17.3 — IaC Policy Documentation
+- [ ] `docs/iac-policies.md` documenta:
+  - Regras de segurança para Docker Compose
+  - Regras futuras para Kubernetes manifests
+  - Processo de exception/approval para waivers
+  - Responsáveis por review de IaC changes
+
+---
+
+## 18. Secrets Detection
+
+### R18.1 — Gitleaks Pre-Commit + CI
+- [ ] `.gitleaks.toml` configurado com regras para:
+  - AWS keys, Azure keys, GCP credentials
+  - JWT signing keys
+  - Database connection strings com senhas
+  - Keycloak client secrets
+  - API keys genéricas (padrão `sk-*`, `pk-*`, etc.)
+- [ ] Pre-commit hook local (via `pre-commit` framework ou Husky)
+- [ ] CI step roda `gitleaks detect --source . --verbose` em PRs
+- [ ] Falha se detectar qualquer secret committed
+- [ ] Allowlist para falsos positivos (test fixtures, exemplos documentados)
+
+### R18.2 — TruffleHog Active Verification
+- [ ] CI step roda `trufflehog filesystem --directory . --only-verified`
+- [ ] Diferente de Gitleaks (pattern matching), TruffleHog **verifica ativamente** se a credencial é válida
+- [ ] Verifica em:
+  - Git history completo (não apenas diff do PR)
+  - Arquivos atuais do repo
+  - Branches de feature abertas
+- [ ] Falha se encontrar credencial verificada como ativa
+- [ ] TruffleHog report em SARIF → GitHub Security Tab
+
+### R18.3 — Secrets Incident Response
+- [ ] `docs/secrets-incident-response.md` documenta:
+  - Processo de revogação imediata quando secret é detectada
+  - Rotação de chaves afetadas (Keycloak client secrets, DB passwords)
+  - Comunicação de incidente ao time
+  - Post-mortem template para análise de causa raiz
+- [ ] Runbook automatizado: detecção → revogação → rotação → verificação
+
+---
+
+## 19. GitHub Security Integration
+
+### R19.1 — Security Tab Dashboard
+- [ ] GitHub Security Tab exibe dashboard consolidado com:
+  - Dependabot alerts (SCA)
+  - Code scanning alerts (SAST: Semgrep + CodeQL)
+  - Secret scanning alerts (Gitleaks + TruffleHog)
+  - Container vulnerabilities (Trivy image scans)
+- [ ] Todos os reports exportados em SARIF format
+- [ ] Dashboard de tendência: alertas open/closed over time
+
+### R19.2 — Branch Protection Rules
+- [ ] Branch `main` protegida com:
+  - Require pull request reviews (min 1 reviewer)
+  - Require status checks passing:
+    - `backend (build + test)`
+    - `frontend-client (build + lint)`
+    - `frontend-backoffice (build + lint)`
+    - `Semgrep SAST`
+    - `CodeQL Analysis`
+    - `Trivy Dependency Scan`
+    - `Trivy Container Scan`
+    - `Checkov IaC Scan`
+    - `Gitleaks Secrets`
+  - Require branches up-to-date before merge (rebase ou squash)
+  - Block force pushes para main
+  - Require signed commits (opcional — configurar se time adotar GPG)
+
+### R19.3 — PR Security Checks
+- [ ] PR template (`.github/pull_request_template.md`) inclui:
+  - Checklist de segurança: "Rodei SAST localmente?"
+  - "Verifiquei que não committei secrets?"
+  - "Adicionei testes para mudanças de segurança?"
+- [ ] GitHub Actions bot comenta no PR com resumo de security scans
+- [ ] Alertas de segurança bloqueiam merge até resolved ou waived
+
+---
+
+## 20. Security Documentation
+
+### R20.1 — Security Runbook
+- [ ] `docs/security-runbook.md` documenta:
+  - Como rodar SAST localmente (`semgrep`, `codeql`)
+  - Como interpretar alerts no GitHub Security Tab
+  - Processo de waiver para falsos positivos
+  - Quem aprovar exceptions (security owner do time)
+  - Frequência de review de security dashboard (semanal)
+
+### R20.2 — Contributing Guidelines
+- [ ] `CONTRIBUTING.md` inclui seção de segurança:
+  - "Antes de submeter um PR, rode: `gitleaks`, `semgrep`, `dotnet test`"
+  - "Não commite `.env` files ou credenciais"
+  - "Reporte vulnerabilidades via Security Tab → New security advisory"
+  - "Policy de versão: seguimos semver, CVE tracking via Dependabot"
+
+### R20.3 — Threat Model Document
+- [ ] `docs/threat-model.md` documenta:
+  - Assets críticos: Keycloak realm, PostgreSQL data, JWT signing keys
+  - Attack vectors: SSRF, XSS, SQLi, credential stuffing, supply chain
+  - Mitigações implementadas por vetor
+  - Riscos residuais aceitos (ex: ROPC grant)
+  - Revisão do threat model: a cada 6 meses ou mudanças de auth
+
+---
+
+## Requirement Traceability — v4.0
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| CI-01 — Parallel Build Jobs | Phase 22 | 📋 Planned |
+| CI-02 — Backend Build + Test | Phase 22 | 📋 Planned |
+| CI-03 — Frontend Build Validation | Phase 22 | 📋 Planned |
+| CI-04 — Pipeline Caching | Phase 22 | 📋 Planned |
+| SEC-01 — Semgrep SAST | Phase 23 | 📋 Planned |
+| SEC-02 — CodeQL SAST | Phase 23 | 📋 Planned |
+| SEC-03 — SAST Policy Enforcement | Phase 23 | 📋 Planned |
+| SEC-04 — Dependabot SCA | Phase 24 | 📋 Planned |
+| SEC-05 — Trivy Dependency Scan | Phase 24 | 📋 Planned |
+| SEC-06 — Trivy Container Scan | Phase 25 | 📋 Planned |
+| SEC-07 — Dockle Best Practices | Phase 25 | 📋 Planned |
+| SEC-08 — Checkov IaC Scan | Phase 26 | 📋 Planned |
+| SEC-09 — Kubescape Setup | Phase 26 | 📋 Planned |
+| SEC-10 — Gitleaks Secrets | Phase 27 | 📋 Planned |
+| SEC-11 — TruffleHog Verification | Phase 27 | 📋 Planned |
+| SEC-12 — Secrets Incident Response | Phase 27 | 📋 Planned |
+| SEC-13 — GitHub Security Tab | Phase 28 | 📋 Planned |
+| SEC-14 — Branch Protection Rules | Phase 28 | 📋 Planned |
+| SEC-15 — Security Documentation | Phase 28 | 📋 Planned |
+
+---
+
+## v4.0 — Deferred
+
+### D4.1 — Kubernetes Manifests + Scanning
+- **Razão**: Projeto ainda roda em Docker Compose local; K8s é futuro (v5.0+)
+- **Quando adicionar**: Quando migrar para orquestração (Kubernetes, ECS, Cloud Run)
+
+### D4.2 — DAST (Dynamic Application Security Testing)
+- **Razão**: OWASP ZAP ou Burp requer aplicação rodando; adiciona complexidade ao CI
+- **Quando adicionar**: Quando aplicação estiver em staging environment acessível
+
+### D4.3 — Signed Commits (GPG/SSH)
+- **Razão**: Overhead de setup para contribuidores; não bloqueia delivery imediato
+- **Quando adicionar**: Quando política de segurança do time exigir provenance de código
 
 ---
 

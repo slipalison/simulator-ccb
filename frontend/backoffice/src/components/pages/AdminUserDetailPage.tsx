@@ -52,7 +52,7 @@ export function AdminUserDetailPage({ userId }: AdminUserDetailPageProps) {
   }, [userId]);
 
   const handleEdit = () => {
-    navigate({ to: "/admin/users/$id/edit" as any, params: { id: userId } });
+    navigate({ to: "/admin/users/$id/edit", params: { id: userId } } as any);
   };
 
   const handleBlock = async (reason: string) => {

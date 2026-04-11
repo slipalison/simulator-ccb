@@ -1,0 +1,22 @@
+name: "Onboarding CodeQL Config"
+
+queries:
+  - uses: security-extended
+  - uses: security-and-quality
+
+query-filters:
+  - exclude:
+      problem.severity:
+        - recommendation
+
+paths-ignore:
+  - "**/node_modules/**"
+  - "**/bin/**"
+  - "**/obj/**"
+  - "**/.vinxi/**"
+  - "**/.output/**"
+  - "**/*.test.*"
+  - "**/*.spec.*"
+  - "scripts/**"
+  - "**/Migrations/**"
+  - "**/coverage/**"

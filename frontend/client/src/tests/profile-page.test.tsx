@@ -44,7 +44,7 @@ const mockUseAuth = vi.fn(() => ({
   login: vi.fn(),
   logout: mockLogout,
   refreshIfNeeded: vi.fn(),
-  getAccessToken: () => "fake-token",
+  getAccessToken: (): string => "fake-token",
 }));
 
 vi.mock("@/lib/auth-context", () => ({
@@ -121,7 +121,7 @@ describe("ProfilePage", () => {
       login: vi.fn(),
       logout: mockLogout,
       refreshIfNeeded: vi.fn(),
-      getAccessToken: () => null,
+      getAccessToken: () => "",
     });
 
     const { memoryHistory } = await renderProfilePage("/profile");

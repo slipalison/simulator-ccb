@@ -77,7 +77,7 @@ const passwordSchema = z
   .regex(/[a-z]/, "Senha deve conter pelo menos uma letra minúscula")
   .regex(/\d/, "Senha deve conter pelo menos um número")
   .regex(
-    /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/,
+    /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/,
     "Senha deve conter pelo menos um caractere especial"
   );
 

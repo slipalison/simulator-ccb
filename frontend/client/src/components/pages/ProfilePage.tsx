@@ -33,7 +33,6 @@ export function ProfilePage() {
   // Auth guard
   useEffect(() => {
     if (!auth.isAuthenticated) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       navigate({ to: "/login" as any })
     }
   }, [auth.isAuthenticated, navigate])
@@ -67,7 +66,6 @@ export function ProfilePage() {
 
   async function handleLogout() {
     await logout()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     navigate({ to: "/login" as any })
   }
 

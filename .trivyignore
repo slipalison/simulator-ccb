@@ -1,0 +1,6 @@
+# Trivy vulnerability exceptions
+# Format: One CVE ID per line
+# Add a comment above each entry explaining justification
+#
+# Example:
+# CVE-2024-XXXX — transitive dependency in package Y, no fix available, low exploitation risk

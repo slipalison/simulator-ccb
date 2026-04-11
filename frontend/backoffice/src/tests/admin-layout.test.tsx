@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { AdminLayout } from "@/components/templates/AdminLayout";
-import { AdminAuthProvider, useAdminAuth } from "@/lib/admin-auth-context";
+import { AdminAuthProvider } from "@/lib/admin-auth-context";
 import * as adminApi from "@/lib/admin-api";
 import { Toaster } from "@/components/ui/sonner";
 

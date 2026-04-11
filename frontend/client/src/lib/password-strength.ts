@@ -34,7 +34,7 @@ export function calculatePasswordStrength(password: string): {
     hasUpper: /[A-Z]/.test(password),
     hasLower: /[a-z]/.test(password),
     hasDigit: /\d/.test(password),
-    hasSpecial: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password),
+    hasSpecial: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password),
     length12Plus: password.length >= 12,
   };
 

@@ -1,0 +1,13 @@
+rules:
+  - id: no-dangerously-set-inner-html
+    patterns:
+      - pattern: |
+          { dangerouslySetInnerHTML: { __html: $HTML } }
+    message: >
+      dangerouslySetInnerHTML can lead to XSS attacks. Sanitize HTML content with
+      DOMPurify (https://github.com/cure53/DOMPurify) before rendering, or avoid
+      rendering raw HTML altogether.
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript

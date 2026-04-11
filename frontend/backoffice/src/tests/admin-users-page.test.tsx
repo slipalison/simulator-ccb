@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { AdminUsersPage } from "@/components/pages/AdminUsersPage";
 import * as adminApi from "@/lib/admin-api";
 
@@ -203,7 +203,8 @@ describe("Admin Users Page", () => {
     }, { timeout: 1000 });
 
     const calls = vi.mocked(adminApi.listUsers).mock.calls;
-    expect(calls[calls.length - 1][0].search).toBe("john");
+    const lastCall = calls[calls.length - 1]![0]!;
+    expect(lastCall.search).toBe("john");
   });
 
   it("resets to page 1 when search changes", async () => {
@@ -221,7 +222,7 @@ describe("Admin Users Page", () => {
     // Wait for debounce + API call with page reset
     await waitFor(() => {
       const calls = vi.mocked(adminApi.listUsers).mock.calls;
-      const lastCall = calls[calls.length - 1][0];
+      const lastCall = calls[calls.length - 1]![0]!;
       expect(lastCall.page).toBe(1);
       expect(lastCall.search).toBe("newsearch");
     }, { timeout: 1000 });
@@ -256,7 +257,7 @@ describe("Admin Users Page", () => {
 
     // The status filter is rendered with value "all" initially
     // which translates to status: undefined in the API call
-    const initialCall = vi.mocked(adminApi.listUsers).mock.calls[0][0];
+    const initialCall = vi.mocked(adminApi.listUsers).mock.calls[0]![0]!;
     expect(initialCall.status).toBe(undefined);
   });
 

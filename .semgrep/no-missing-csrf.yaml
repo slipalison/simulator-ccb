@@ -1,0 +1,13 @@
+rules:
+  - id: no-missing-csrf
+    patterns:
+      - pattern-either:
+          # [HttpPost] method without [ValidateAntiForgeryToken] — detect [HttpPost] followed by method
+          - pattern-regex: \[HttpPost\]\s*(?!\s*\[ValidateAntiForgeryToken\])\s*(?:public\s+)(?:async\s+)?\w+\s+\w+\s*\(
+    message: >
+      POST endpoint missing CSRF validation. Add [ValidateAntiForgeryToken] attribute
+      to prevent cross-site request forgery attacks. Ensure the client sends an antiforgery token
+      in the request body or header.
+    severity: ERROR
+    languages:
+      - csharp

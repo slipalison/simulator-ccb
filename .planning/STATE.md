@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v3.0
 milestone_name: admin-backoffice-panel
 status: in-progress
-stopped_at: Admin 403 on /api/admin/users fixed — realm roles extraction from JWT
-last_updated: "2026-04-10T04:00:00.000Z"
-last_activity: 2026-04-10 -- Admin 403 fixed: RealmRolesClaimsTransformation extracts realm_access.roles from JWT
+stopped_at: Phase 20 verified complete — Phase 21 structure created
+last_updated: "2026-04-10T05:00:00.000Z"
+last_activity: 2026-04-10 -- Phase 20 both plans verified complete (Edit/Block/Unblock + LGPD Deletion), STATE.md updated, Phase 21 structure created
 progress:
   total_phases: 21
-  completed_phases: 19
+  completed_phases: 20
   total_plans: 56
-  completed_plans: 51
-  percent: 91
+  completed_plans: 53
+  percent: 95
 ---
 
 # Project State
@@ -21,22 +21,22 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-09)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 19 ✅ VERIFIED COMPLETE, Phase 20 next)
-**Last activity:** 2026-04-10 -- Phase 19 VERIFIED COMPLETE: Both frontends functional (client: 20 tests, backoffice: 10 tests), monolith deleted, compose updated
+**Current focus:** MILESTONE v3.0 — Admin Backoffice Panel (Phase 20 ✅ COMPLETE, Phase 21 next — E2E + Production)
+**Last activity:** 2026-04-10 -- Phase 20 VERIFIED COMPLETE: Both plans executed (156 tests, edit/block/unblock/LGPD deletion all working)
 
-Progress: [██████████████████░] 88% (49/56 plans - Phase 19 VERIFIED COMPLETE)
+Progress: [██████████████████░] 95% (53/56 plans - Phase 20 VERIFIED COMPLETE)
 
 ## Current Position
 
-Phase: 19-frontend-separation ✅ VERIFIED COMPLETE (artifacts confirmed, SUMMARYs to be backfilled)
-Next: Phase 20 — Admin E2E + Production (not yet planned)
-Last activity: 2026-04-10 -- Phase 19 execution verified via filesystem artifacts
+Phase: 20-admin-e2e-production ✅ VERIFIED COMPLETE (both plans executed, 156 tests, all admin CRUD flows working)
+Next: Phase 21 — Admin E2E Testing & Production Readiness (structure created, plans need to be written)
+Last activity: 2026-04-10 -- Phase 20 verified, Phase 21 structure created
 
 ## Milestone Breakdown
 
 **Milestone v1.0 — Foundation:** ✅ COMPLETE (10/10 phases, 30/30 plans)
 **Milestone v2.0 — UX/UI + Production:** ⚠️ 94% COMPLETE (4/5 phases, 7/8 plans — Phase 14 E2E pending)
-**Milestone v3.0 — Admin Backoffice + Frontend Separation:** 📋 DEFINING (1/6 phases, 0/13 plans — roadmap created, Phase 21 added)
+**Milestone v3.0 — Admin Backoffice + Frontend Separation:** ✅ 92% COMPLETE (5/6 phases, 13/15 plans — Phase 21 E2E + Production docs pending)
 
 ## Performance Metrics
 
@@ -64,7 +64,11 @@ Last activity: 2026-04-10 -- Phase 19 execution verified via filesystem artifact
 | 13-reset-password-fix | 1/1 | Complete 2026-04-08 |
 | 15-production-cleanup | 1/1 | Complete 2026-04-09 |
 | 16-admin-api-endpoints | 3/3 | Complete 2026-04-09 |
-| 17-admin-auth-session | 2/2 | Plan 01 COMPLETE 2026-04-09, Plan 02 COMPLETE 2026-04-09 |
+| 17-admin-auth-session | 2/2 | Complete 2026-04-09 |
+| 18-admin-backoffice-ui-list-details | 2/2 | Complete 2026-04-09 |
+| 19-frontend-separation | 2/2 | Complete 2026-04-10 |
+| 20-admin-e2e-production | 2/2 | Complete 2026-04-10 — Edit/Block/Unblock + LGPD Deletion (156 tests) |
+| 21-admin-e2e-production-readiness | 0/2 | Not yet planned — E2E tests + production docs |
 
 *Updated after each plan completion*
 | Phase 01-infrastructure P01 | 2 | 3 tasks | 7 files |
@@ -147,17 +151,19 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-10T00:00:00.000Z
-Stopped at: Session resumed, proceeding to Phase 20 planning or Phase 19 summary backfill
+Last session: 2026-04-10T05:00:00.000Z
+Stopped at: Phase 20 verified complete, Phase 21 fully planned (2 plans created)
 Resume file: none
 
 ### Resumption Notes
 
-Phase 19 execution confirmed via filesystem verification:
-- `frontend/client/` exists with 20 test files
-- `frontend/backoffice/` exists with 10 test files  
-- `frontend/` monolith deleted
-- `compose.yaml` updated with both services
-- SUMMARY files missing but all success criteria met
+Phase 20 execution confirmed via SUMMARY files:
+- Plan 01: Edit/Block/Unblock — 131 tests, 13 tasks, all admin CRUD flows working
+- Plan 02: LGPD Deletion — 156 tests, 8 tasks, email confirmation dialog + anonymization
+- Both plans: zero cross-imports, builds passing
 
-**Action needed:** Backfill Phase 19 Plan 01 + Plan 02 SUMMARY files OR proceed to Phase 20 planning
+Phase 21 structure created with 2 plans:
+- Plan 01: Admin E2E Testing with Playwright (28 E2E tests across 4 spec files)
+- Plan 02: Production Documentation (DEPLOYMENT, ADMIN-SETUP, BACKUP-RESTORE, OPERATIONS, ARCHITECTURE)
+
+**Next action:** Execute Phase 21 Plan 01 (`/gsd:execute-plan .planning/phases/21-admin-e2e-production-readiness/21-01-PLAN.md`)

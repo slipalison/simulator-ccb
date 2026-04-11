@@ -16,7 +16,7 @@ Every phase delivers a coherent, independently verifiable capability before the 
 |-----------|------|--------|--------|
 | **v1.0** | Foundation — Cadastro e Login com Perfil Read-Only | 1-10 | ✅ Complete |
 | **v2.0** | UX/UI Redesign + Production Readiness | 11-15 | ✅ Complete |
-| **v3.0** | Admin Backoffice + Frontend Separation | 16-21 | 📋 Defining |
+| **v3.0** | Admin Backoffice + Frontend Separation | 16-21 | 🚧 92% Complete (5/6 phases, Phase 21 planned) |
 
 **Phase order rationale (v3.0):** 16→17→18 (admin backend+UI core) → **19 (separation)** → 20 (edit/delete in separated project) → 21 (E2E against final structure). Separation before Edit/Delete avoids migrating UI code twice.
 
@@ -168,24 +168,29 @@ Plans:
 - [x] 19-01-PLAN.md — Estrutura `frontend/client` com migração de componentes não-admin, Dockerfile separado, compose.yaml atualizado
 - [x] 19-02-PLAN.md — Estrutura `frontend/backoffice` com migração de componentes admin, remoção de rotas `/admin` do client, testes de ambos
 
-### Phase 20: Admin Backoffice UI — Edit, Block, Delete (in separated backoffice project)
+### Phase 20: Admin Backoffice UI — Edit, Block, Delete (in separated backoffice project) ✅ COMPLETE
 **Goal:** Edit user form, block/unblock dialog, LGPD-compliant deletion with strong confirmation — built directly in the separated backoffice project
 **Depends on:** Phase 18 (Admin UI List & Details), Phase 19 (Frontend Separation)
-**Requirements:** ADMIN-12, ADMIN-13, ADMIN-14
+**Requirements:** ADMIN-12, ADMIN-13, ADMIN-14 ✅ ALL MET
+**Status:** COMPLETE — 2026-04-10
+**Results:**
+  - Plan 01: EditUserForm + BlockDialog/UnblockDialog — 131 tests, 13 tasks
+  - Plan 02: DeleteDialog (LGPD) — 156 tests total, 8 tasks
+  - Zero cross-imports, both frontends build successfully
 **Success Criteria** (what must be TRUE):
-  1. Edit form validates all fields client-side (Zod) and server-side (FluentValidation) before submission
-  2. Block/unblock uses confirmation dialog with reason field — action logs to audit trail
-  3. LGPD deletion requires typing user email to confirm — anonymizes PostgreSQL data + deletes Keycloak user
-  4. Success/error toasts after each action — table refreshes automatically
-  5. Optimistic UI updates for block/unblock — reverts on API error
+  1. ✅ Edit form validates all fields client-side (Zod) and server-side (FluentValidation) before submission
+  2. ✅ Block/unblock uses confirmation dialog with reason field — action logs to audit trail
+  3. ✅ LGPD deletion requires typing user email to confirm — anonymizes PostgreSQL data + deletes Keycloak user
+  4. ✅ Success/error toasts after each action — table refreshes automatically
+  5. ✅ Optimistic UI updates for block/unblock — reverts on API error
 **Plans:** 2 plans
 Plans:
-- [ ] 20-01-PLAN.md — Edit user form with Zod validation, block/unblock dialog with reason, API integration
-- [ ] 20-02-PLAN.md — LGPD deletion flow (email confirmation dialog), anonymization handler, audit logging
+- [x] 20-01-PLAN.md — Edit user form with Zod validation, block/unblock dialog with reason, API integration (COMPLETE 2026-04-10)
+- [x] 20-02-PLAN.md — LGPD deletion flow (email confirmation dialog), anonymization handler, audit logging (COMPLETE 2026-04-10)
 
 ### Phase 21: Admin E2E Testing & Production Readiness (with separated frontends)
 **Goal:** Playwright E2E tests for admin flows, production config, documentation — tests run against separated backoffice project
-**Depends on:** Phase 20 (Edit, Block, Delete UI), Phase 14 (E2E Testing from v2.0)
+**Depends on:** Phase 20 (Edit, Block, Delete UI), Phase 14 (E2E Testing from v2.0 — deferred)
 **Requirements:** ADMIN-15, ADMIN-16, E2E-06, E2E-07
 **Success Criteria** (what must be TRUE):
   1. E2E test: Admin login → list users → search → filter by status → view details
@@ -197,8 +202,8 @@ Plans:
   7. Production documentation updated: deployment guide, admin role setup, backup procedures
 **Plans:** 2 plans
 Plans:
-- [ ] 21-01-PLAN.md — Playwright E2E tests for admin flows (list, edit, block, delete, 403 handling)
-- [ ] 21-02-PLAN.md — Production documentation, deployment guide, admin role provisioning in Keycloak
+- [x] 21-01-PLAN.md — Playwright E2E tests for admin flows (list, edit, block, delete, 403 handling) — PLANNED
+- [x] 21-02-PLAN.md — Production documentation, deployment guide, admin role provisioning in Keycloak — PLANNED
 
 ---
 

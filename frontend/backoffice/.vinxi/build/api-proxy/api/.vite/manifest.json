@@ -1,8 +1,0 @@
-{
-  "virtual:$vinxi/handler/api-proxy": {
-    "file": "api-proxy.js",
-    "name": "api-proxy",
-    "src": "virtual:$vinxi/handler/api-proxy",
-    "isEntry": true
-  }
-}

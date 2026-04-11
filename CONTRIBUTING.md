@@ -57,7 +57,16 @@ dotnet test tests/Onboarding.API.Tests --configuration Release
 
 Coverage threshold: **80% line coverage** (enforced via `coverlet.msbuild`).
 
-## Security Scanning (SAST)
+## Security
+
+See [docs/security-overview.md](docs/security-overview.md) for the complete security documentation index.
+
+Key documents:
+- [Security Policy](.github/SECURITY.md) — Vulnerability reporting
+- [Security Runbook](docs/security-runbook.md) — Alert response procedures
+- [Secrets Incident Response](docs/secrets-incident-response.md) — Secret revocation
+- [Compliance Mapping](docs/compliance-mapping.md) — OWASP/LGPD/CIS alignment
+- [Audit Checklist](docs/security-audit-checklist.md) — PR review + onboarding
 
 ### Running Semgrep Locally
 

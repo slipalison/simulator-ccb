@@ -39,6 +39,10 @@ public sealed class ClientsController : ControllerBase
         {
             var client = await _repository.GetByKeycloakSubAsync(keycloakSub, ct);
             if (client is not null) return Ok(MapToDto(client));
+
+            // sub present but client not in DB — authenticated user without profile
+            _logger.LogWarning("Authenticated user with sub {Sub} not found in database", keycloakSub);
+            return NotFound();
         }
 
         // Fallback: use "name" claim (present in Keycloak tokens via profile scope).
@@ -49,6 +53,9 @@ public sealed class ClientsController : ControllerBase
             var name = rawName.EndsWith(" -") ? rawName[..^2] : rawName;
             var clientByName = await _repository.GetByNameAsync(name, ct);
             if (clientByName is not null) return Ok(MapToDto(clientByName));
+
+            _logger.LogWarning("Authenticated user with name {Name} not found in database", name);
+            return NotFound();
         }
 
         _logger.LogWarning("Authenticated request missing both 'sub' and 'name' claims in JWT");

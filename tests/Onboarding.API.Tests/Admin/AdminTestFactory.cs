@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using Onboarding.API.Tests.Authentication;
 using Onboarding.Application.Common;
 using Onboarding.Application.Services;
 using Onboarding.Domain.Repositories;
@@ -69,11 +70,11 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
             services.PostConfigure<JwtBearerOptions>(
                 JwtBearerDefaults.AuthenticationScheme, options =>
                 {
-                    options.TokenValidationParameters.ValidateIssuerSigningKey = false;
+                    options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration();
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
                     options.TokenValidationParameters.ValidateLifetime = false;
-                    options.TokenValidationParameters.RequireSignedTokens = false;
+                    options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
                 });
 
             // Replace all IClaimsTransformation implementations with our test version.

@@ -19,6 +19,7 @@ public class ClientsMeEndpointTests : IAsyncLifetime
     private HttpClient? _client;
 
     private const string TestEmail = "joao@example.com";
+    private const string TestSub = "d3f1a2b4-5678-4c9d-a012-e3f4567890ab";
 
     public Task InitializeAsync()
     {
@@ -41,14 +42,14 @@ public class ClientsMeEndpointTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task GetMe_WithValidToken_Returns200WithClientProfile()
     {
-        // Arrange — mock repository returns a PF client for the authenticated email
+        // Arrange — mock repository returns a PF client for the authenticated sub
         var client = Client.RegisterPessoaFisica("João Silva", "529.982.247-25", TestEmail, "11999999999");
         _factory!.RepositoryMock
-            .GetByEmailAsync(TestEmail.ToLowerInvariant(), Arg.Any<CancellationToken>())
+            .GetByKeycloakSubAsync(TestSub, Arg.Any<CancellationToken>())
             .Returns(client);
 
         _client!.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", FakeJwtTokenHelper.GenerateFakeJwt(TestEmail));
+            new AuthenticationHeaderValue("Bearer", FakeJwtTokenHelper.GenerateFakeJwt(TestEmail, TestSub));
 
         // Act
         var response = await _client.GetAsync("/api/clients/me");
@@ -76,11 +77,11 @@ public class ClientsMeEndpointTests : IAsyncLifetime
     {
         // Arrange — repository returns null (client authenticated but not in app_db)
         _factory!.RepositoryMock
-            .GetByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .GetByKeycloakSubAsync(TestSub, Arg.Any<CancellationToken>())
             .Returns((Client?)null);
 
         _client!.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", FakeJwtTokenHelper.GenerateFakeJwt(TestEmail));
+            new AuthenticationHeaderValue("Bearer", FakeJwtTokenHelper.GenerateFakeJwt(TestEmail, TestSub));
 
         // Act
         var response = await _client.GetAsync("/api/clients/me");

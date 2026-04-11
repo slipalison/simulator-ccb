@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { loginClient, refreshTokenClient, type LoginResponse } from "@/lib/api";
+import { loginClient, type LoginResponse } from "@/lib/api";
 
 // ---------------------------------------------------------------------------
 // Module-level token storage (SEC-10: memory only, NEVER localStorage)

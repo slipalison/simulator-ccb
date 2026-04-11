@@ -20,7 +20,6 @@ export function LoginPage() {
   // If already authenticated, redirect to profile
   useEffect(() => {
     if (auth.isAuthenticated) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       navigate({ to: "/profile" as any, replace: true });
     }
   }, [auth.isAuthenticated, navigate]);
@@ -29,7 +28,6 @@ export function LoginPage() {
     setServerError(null);
     try {
       await login(data.email, data.password);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       navigate({ to: "/profile" as any, replace: true });
     } catch (error) {
       if (error instanceof LoginError) {

@@ -90,7 +90,7 @@ export async function getAdminMe(): Promise<AdminSessionResponse> {
 // All requests MUST include credentials (httpOnly cookies).
 // ---------------------------------------------------------------------------
 
-function adminFetchOptions(
+function _adminFetchOptions(
   method: string,
   body?: string
 ): RequestInit & { duplex?: string } {

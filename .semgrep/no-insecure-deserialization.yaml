@@ -1,0 +1,18 @@
+rules:
+  - id: no-insecure-deserialization
+    patterns:
+      - pattern-either:
+          - pattern: new BinaryFormatter()
+          - pattern: new JavaScriptSerializer()
+          - patterns:
+              - pattern-regex: "TypeNameHandling\\s*=\\s*TypeNameHandling\\.(Auto|All)"
+    message: >
+      Insecure deserialization detected. BinaryFormatter is obsolete and vulnerable to RCE.
+      TypeNameHandling.Auto/All allows type injection attacks.
+      Use DataContractSerializer or System.Text.Json with known types only.
+    severity: ERROR
+    languages:
+      - csharp
+    metadata:
+      owasp: "A08:2021 - Software and Data Integrity Failures"
+      cwe: "CWE-502: Deserialization of Untrusted Data"

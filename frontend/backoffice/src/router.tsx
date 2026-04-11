@@ -12,7 +12,6 @@ import { AdminUsersPage } from "@/components/pages/AdminUsersPage";
 import { AdminUserDetailPage } from "@/components/pages/AdminUserDetailPage";
 import { AdminUserEditPage } from "@/components/pages/AdminUserEditPage";
 import { AdminLayout } from "@/components/templates/AdminLayout";
-import { useAdminAuth } from "@/lib/admin-auth-context";
 import { useEffect } from "react";
 
 // Root route com notFoundComponent para roteamento type-safe de 404

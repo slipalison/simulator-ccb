@@ -17,7 +17,6 @@ export function Header() {
 
   async function handleLogout() {
     await logout()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     navigate({ to: "/login" as any })
   }
 

@@ -80,7 +80,7 @@ export function AdminPagination({
           />
         </PaginationItem>
 
-        {pageNumbers.map((p, idx) =>
+        {pageNumbers.map((p, _idx) =>
           typeof p === "string" ? (
             <PaginationItem key={p} data-testid="ellipsis">
               <PaginationEllipsis />

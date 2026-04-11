@@ -1,0 +1,15 @@
+rules:
+  - id: no-dangerously-set-inner-html
+    patterns:
+      - pattern-regex: "dangerouslySetInnerHTML\\s*=\\s*\\{"
+    message: >
+      dangerouslySetInnerHTML bypasses React's XSS protections.
+      If HTML rendering is required, sanitize input with DOMPurify first.
+      Found: dangerouslySetInnerHTML usage
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    metadata:
+      owasp: "A03:2021 - Injection"
+      cwe: "CWE-79: Cross-site Scripting"

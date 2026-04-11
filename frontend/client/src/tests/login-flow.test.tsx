@@ -1,8 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import { AuthProvider, useAuth } from "@/lib/auth-context";
+import { AuthProvider } from "@/lib/auth-context";
 import { LoginPage } from "@/components/pages/LoginPage";
-import { ProfilePage } from "@/components/pages/ProfilePage";
 import * as api from "@/lib/api";
 import { RouterProvider, createRouter, createMemoryHistory } from "@tanstack/react-router";
 import { router } from "@/router";
@@ -40,10 +39,6 @@ vi.mock("@/lib/api", () => ({
     }
   },
 }));
-
-function wrapper({ children }: { children: React.ReactNode }) {
-  return <AuthProvider>{children}</AuthProvider>;
-}
 
 async function renderWithRouter(initialEntries: string[] = ["/login"]) {
   const memoryHistory = createMemoryHistory({ initialEntries });

@@ -30,6 +30,7 @@ public sealed class RegistrationController : ControllerBase
         _logger = logger;
     }
 
+    // nosem: no-missing-csrf — Stateless JWT API, CSRF not applicable (no session cookies, Bearer token in Authorization header)
     [HttpPost]
     [Idempotent]
     [ProducesResponseType(StatusCodes.Status201Created)]

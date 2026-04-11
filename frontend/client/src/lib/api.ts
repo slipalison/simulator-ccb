@@ -75,7 +75,7 @@ export async function loginClient(
 }
 
 export async function refreshTokenClient(
-  refreshToken: string
+  _refreshToken: string
 ): Promise<LoginResponse> {
   const response = await fetch("/api/auth/refresh", {
     method: "POST",
@@ -150,13 +150,13 @@ export class ApiError extends Error {
 // ---------------------------------------------------------------------------
 
 export async function registerClient(
-  data: PfRegistrationData | PjRegistrationData
+  data: RegisterClientRequest
 ): Promise<{ id: string }> {
   const body: RegisterClientRequest = {
-    nome: "nome" in data ? data.nome : undefined,
-    cpf: "cpf" in data ? data.cpf : undefined,
-    razaoSocial: "razaoSocial" in data ? data.razaoSocial : undefined,
-    cnpj: "cnpj" in data ? data.cnpj : undefined,
+    nome: data.nome,
+    cpf: data.cpf,
+    razaoSocial: data.razaoSocial,
+    cnpj: data.cnpj,
     email: data.email,
     phone: data.phone,
     password: data.password,

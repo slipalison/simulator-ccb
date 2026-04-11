@@ -1,0 +1,18 @@
+rules:
+  - id: no-missing-csrf
+    patterns:
+      - patterns:
+          - pattern-regex: "\\[HttpPost\\]"
+          - pattern-not-regex: "\\[ValidateAntiForgeryToken\\]"
+          - pattern-not-regex: "\\[AutoValidateAntiforgeryToken\\]"
+    message: >
+      HTTP POST action missing [ValidateAntiForgeryToken] attribute.
+      Without CSRF protection, authenticated users are vulnerable to cross-site request forgery.
+      Add [ValidateAntiForgeryToken] to the action or [AutoValidateAntiforgeryToken] globally.
+      If CSRF is handled by middleware/global filter, add // nosem: no-missing-csrf with justification.
+    severity: ERROR
+    languages:
+      - csharp
+    metadata:
+      owasp: "A01:2021 - Broken Access Control"
+      cwe: "CWE-352: Cross-Site Request Forgery"

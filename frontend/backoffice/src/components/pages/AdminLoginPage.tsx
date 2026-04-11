@@ -19,7 +19,6 @@ export function AdminLoginPage() {
   // If already authenticated, redirect to admin users
   useEffect(() => {
     if (admin.isAuthenticated) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       navigate({ to: "/admin/users" as any, replace: true });
     }
   }, [admin.isAuthenticated, navigate]);
@@ -28,7 +27,6 @@ export function AdminLoginPage() {
     setServerError(null);
     try {
       await login(data.email, data.password);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       navigate({ to: "/admin/users" as any, replace: true });
     } catch (error) {
       if (error instanceof AdminLoginError) {

@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { LoginPage } from "@/components/pages/LoginPage";
 import { AuthProvider } from "@/lib/auth-context";
-import * as api from "@/lib/api";
 
 // Mock API
 vi.mock("@/lib/api", () => ({

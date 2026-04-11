@@ -32,7 +32,7 @@ export function AdminUsersPage() {
         status: status === "all" ? undefined : status,
       });
       setResult(data);
-    } catch (err) {
+    } catch (_err) {
       setIsError(true);
       toast.error("Falha ao carregar usuarios", {
         description: "Tente novamente.",
@@ -58,11 +58,11 @@ export function AdminUsersPage() {
   }, [debouncedSearch, status]);
 
   const handleViewDetails = (id: string) => {
-    navigate({ to: "/admin/users/$id" as any, params: { id } });
+    navigate({ to: "/admin/users/$id", params: { id } } as any);
   };
 
   const handleEdit = (id: string) => {
-    navigate({ to: "/admin/users/$id/edit" as any, params: { id } });
+    navigate({ to: "/admin/users/$id/edit", params: { id } } as any);
   };
 
   const handleDelete = async () => {

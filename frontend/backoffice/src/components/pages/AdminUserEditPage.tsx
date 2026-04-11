@@ -46,11 +46,11 @@ export function AdminUserEditPage({ userId }: AdminUserEditPageProps) {
   };
 
   const handleCancel = () => {
-    navigate({ to: "/admin/users/$id" as any, params: { id: userId } });
+    navigate({ to: "/admin/users/$id", params: { id: userId } } as any);
   };
 
   const handleSuccess = () => {
-    navigate({ to: "/admin/users/$id" as any, params: { id: userId } });
+    navigate({ to: "/admin/users/$id", params: { id: userId } } as any);
   };
 
   if (isLoading) {
@@ -104,7 +104,7 @@ export function AdminUserEditPage({ userId }: AdminUserEditPageProps) {
         <span>/</span>
         <Button
           variant="link"
-          onClick={() => navigate({ to: "/admin/users/$id" as any, params: { id: userId } })}
+          onClick={() => navigate({ to: "/admin/users/$id", params: { id: userId } } as any)}
           className="p-0 h-auto"
           data-testid="breadcrumb-name"
         >

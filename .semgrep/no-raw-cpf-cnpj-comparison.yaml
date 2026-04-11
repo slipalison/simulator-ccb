@@ -1,0 +1,24 @@
+rules:
+  - id: no-raw-cpf-cnpj-comparison
+    patterns:
+      - pattern-either:
+          - patterns:
+              - pattern: $VAR == "$CPF"
+              - metavariable-regex:
+                  metavariable: $CPF
+                  regex: "^\\d{11}$"
+          - patterns:
+              - pattern: $VAR == "$CNPJ"
+              - metavariable-regex:
+                  metavariable: $CNPJ
+                  regex: "^\\d{14}$"
+          - pattern: string.Compare($VAR, $VAL)
+    message: >
+      Direct string comparison of CPF/CNPJ detected.
+      Use the domain Value Object (Cpf, Cnpj) for validation instead of raw string comparison.
+      Raw strings cannot distinguish valid from invalid documents.
+    severity: WARNING
+    languages:
+      - csharp
+    metadata:
+      category: domain-integrity

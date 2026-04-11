@@ -51,23 +51,66 @@ jobs:
       - name: Build
         run: dotnet build Onboarding.slnx --no-restore --configuration Release
 
-      - name: Test with coverage (merged)
+      - name: Create coverage directory
+        run: mkdir -p coverage
+
+      - name: Test - Domain
+        env:
+          CI: true
+        run: >
+          dotnet test tests/Onboarding.Domain.Tests/Onboarding.Domain.Tests.csproj
+          --no-build
+          --configuration Release
+          --verbosity normal
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:CoverletOutput=${{ github.workspace }}/coverage/domain.cobertura.xml
+
+      - name: Test - API
+        env:
+          CI: true
+        run: >
+          dotnet test tests/Onboarding.API.Tests/Onboarding.API.Tests.csproj
+          --no-build
+          --configuration Release
+          --verbosity normal
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:CoverletOutput=${{ github.workspace }}/coverage/api.cobertura.xml
+
+      - name: Test - Integration
         env:
           CI: true
           TESTCONTAINERS_CONNECT_TIMEOUT: "120"
+        run: >
+          dotnet test tests/Onboarding.Integration.Tests/Onboarding.Integration.Tests.csproj
+          --no-build
+          --configuration Release
+          --verbosity normal
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          /p:CoverletOutput=${{ github.workspace }}/coverage/integration.cobertura.xml
+
+      - name: Merge coverage reports
         run: |
-          dotnet test Onboarding.slnx \
-            --no-build \
-            --configuration Release \
-            --verbosity normal \
-            -m:1 \
-            /p:CollectCoverage=true \
-            /p:CoverletOutput=${{ github.workspace }}/coverage/ \
-            /p:MergeWith=${{ github.workspace }}/coverage/coverage.json \
-            '/p:CoverletOutputFormat=cobertura,json' \
-            /p:Threshold=80 \
-            /p:ThresholdType=line \
-            /p:ThresholdStat=total
+          dotnet tool install --global dotnet-coverage
+          dotnet-coverage merge coverage/*.cobertura.xml -o coverage/merged.cobertura.xml -f cobertura
+
+      - name: Validate coverage threshold (80%)
+        run: |
+          COVERAGE=$(python3 -c "
+          import xml.etree.ElementTree as ET
+          tree = ET.parse('coverage/merged.cobertura.xml')
+          root = tree.getroot()
+          line_rate = float(root.get('line-rate', 0))
+          print(f'{line_rate * 100:.2f}')
+          ")
+          echo "Combined coverage: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "::error::Coverage ${COVERAGE}% is below 80% threshold"
+            exit 1
+          fi
+          echo "Coverage ${COVERAGE}% meets 80% threshold"
 
   frontend-client:
     name: Frontend Client (Vinxi)

@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: cicd-cybersecurity
-status: not-started
-stopped_at: Milestone v4.0 initialized — defining requirements
-last_updated: "2026-04-10T00:00:00.000Z"
-last_activity: 2026-04-10 -- Milestone v4.0 started: CI/CD Pipeline + Cybersecurity
+status: planning
+stopped_at: Milestone v4.0 roadmap defined — 8 phases (21-28), 20 plans
+last_updated: "2026-04-11T00:00:00.000Z"
+last_activity: 2026-04-11 -- Milestone v4.0 roadmap created with phase breakdown
 progress:
-  total_phases: 0
+  total_phases: 8
   completed_phases: 0
-  total_plans: 0
+  total_plans: 20
   completed_plans: 0
   percent: 0
 ---
@@ -21,23 +21,37 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-10)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE v4.0 — CI/CD Pipeline + Cybersecurity (Defining requirements)
-**Last activity:** 2026-04-10 -- Milestone v4.0 initialized
+**Current focus:** MILESTONE v4.0 — CI/CD Pipeline + Cybersecurity (ROADMAP DEFINED)
+**Last activity:** 2026-04-11 -- Milestone v4.0 roadmap created with 8 phases (21-28)
 
-Progress: [                    ] 0% (0/0 plans - MILESTONE v4.0 DEFINING REQUIREMENTS)
+Progress: [                    ] 0% (0/20 plans - MILESTONE v4.0 PLANNED)
 
 ## Current Position
 
-Phase: Not started (run /gsd:create-roadmap)
-Milestone v4.0: Defining requirements
-Last activity: 2026-04-10 -- Milestone v4.0 initialized: CI/CD Pipeline + Cybersecurity
+Phase: Not started (run `/gsd:plan-phase 21`)
+Milestone v4.0: Roadmap defined — 8 phases, 20 plans
+Last activity: 2026-04-11 -- Roadmap created with phase breakdown for CI/CD + Security
 
 ## Milestone Breakdown
 
 **Milestone v1.0 — Foundation:** ✅ COMPLETE (10/10 phases, 30/30 plans)
-**Milestone v2.0 — UX/UI + Production:** ✅ COMPLETE (infrastructure + observability + registration + auth + frontend + profile + UX redesign)
-**Milestone v3.0 — Admin Backoffice + Frontend Separation:** ✅ COMPLETE (5/5 phases, admin CRUD + frontend separation)
-**Milestone v4.0 — CI/CD Pipeline + Cybersecurity:** ⏳ DEFINING REQUIREMENTS
+**Milestone v2.0 — UX/UI + Production:** ✅ COMPLETE (5/5 phases, 7+ plans)
+**Milestone v3.0 — Admin Backoffice + Frontend Separation:** ✅ COMPLETE (5/5 phases, 13/13 plans)
+**Milestone v4.0 — CI/CD Pipeline + Cybersecurity:** 📋 ROADMAP DEFINED (8 phases, 20 plans)
+
+## Milestone v4.0 Phase Breakdown
+
+| Phase | Name | Plans | Status |
+|-------|------|-------|--------|
+| 21 | CI/CD Pipeline Foundation | 0/3 | 📋 Planned |
+| 22 | SAST (Semgrep + CodeQL) | 0/3 | 📋 Planned |
+| 23 | SCA (Dependabot + Trivy) | 0/2 | 📋 Planned |
+| 24 | Container Security (Trivy + Dockle) | 0/2 | 📋 Planned |
+| 25 | IaC Scanning (Checkov + Kubescape) | 0/2 | 📋 Planned |
+| 26 | Secrets Detection (Gitleaks + TruffleHog) | 0/2 | 📋 Planned |
+| 27 | GitHub Security Integration | 0/2 | 📋 Planned |
+| 28 | Security Documentation + Hardening | 0/2 | 📋 Planned |
+| **Total** | **8 phases** | **0/20** | **0%** |
 
 ## Performance Metrics
 

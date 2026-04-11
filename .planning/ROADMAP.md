@@ -190,6 +190,154 @@ Plans:
 
 ---
 
+## Milestone v4.0 — CI/CD Pipeline + Cybersecurity (Phases 21-28)
+
+**Goal:** Pipeline de integração contínua com builds paralelas (backend + 2 frontends) e esteira completa de segurança (SAST, SCA, containers, IaC, secrets).
+
+**Depends on:** Milestone v3.0 complete (Admin Backoffice + Frontend Separation)
+
+### Phase 21: CI/CD Pipeline Foundation
+**Goal:** GitHub Actions workflow com jobs paralelos para backend, frontend-client e frontend-backoffice
+**Depends on:** Phase 19 (Frontend Separation)
+**Requirements:** R13.1, R13.2, R13.3, R13.4
+**Success Criteria** (what must be TRUE):
+  1. `.github/workflows/ci.yml` trigger em push para main e PRs
+  2. 3 jobs rodam em paralelo: `backend` (.NET 10 build + tests), `frontend-client` (Vinxi build + lint + type check), `frontend-backoffice` (Vinxi build + lint + type check)
+  3. Cache configurado: `~/.nuget/packages` para .NET, `node_modules/.cache` para frontend
+  4. Backend job falha se cobertura < 80% (`dotnet test /p:CollectCoverage=true`)
+  5. Frontend jobs falham se `eslint --max-warnings 0` ou `tsc --noEmit` falharem
+  6. Cada job é independente — falha em um não bloqueia execução dos outros
+**Plans:** 3 plans
+Plans:
+- [ ] 21-01-PLAN.md — GitHub Actions workflow scaffold, .NET 10 build + test job, caching strategy
+- [ ] 21-02-PLAN.md — Frontend client + backoffice jobs, Vinxi build, ESLint, TypeScript validation
+- [ ] 21-03-PLAN.md — Coverage threshold enforcement, cache optimization, independent job failure handling
+
+### Phase 22: SAST — Static Application Security Testing
+**Goal:** Semgrep + CodeQL configurados para C# e React com política de bloqueio em alertas críticos
+**Depends on:** Phase 21
+**Requirements:** R14.1, R14.2, R14.3
+**Success Criteria** (what must be TRUE):
+  1. `.semgrep/` directory com rules customizadas para C# e React (localStorage tokens, CSRF, hardcoded credentials, CPF/CNPJ validation)
+  2. `semgrep ci --config auto` roda em PRs e falha em regras ERROR
+  3. CodeQL database init para C# (`dotnet`) e JavaScript/React
+  4. CodeQL detecta: SQL Injection, XSS (`dangerouslySetInnerHTML`), insecure deserialization, path traversal
+  5. Resultados visíveis em GitHub Security Tab → Code scanning alerts
+  6. Branch protection exige CodeQL passing antes de merge
+**Plans:** 3 plans
+Plans:
+- [ ] 22-01-PLAN.md — Semgrep configuration, custom rules for C#/React, CI integration
+- [ ] 22-02-PLAN.md — CodeQL database init, C# + JavaScript queries, SARIF export
+- [ ] 22-03-PLAN.md — SAST policy enforcement, branch protection rules, alert dashboard setup
+
+### Phase 23: SCA — Software Composition Analysis
+**Goal:** Dependabot + Trivy escaneando dependências e vulnerabilidades em pacotes de terceiros
+**Depends on:** Phase 21
+**Requirements:** R15.1, R15.2, R15.3
+**Success Criteria** (what must be TRUE):
+  1. `.github/dependabot.yml` configurado para `nuget`, `npm`, `docker`, `github-actions`
+  2. Dependabot abre PRs automáticos weekly para updates de dependências
+  3. Auto-merge habilitado para patches e minors com CI passing
+  4. `trivy fs --scanners vuln .` detecta vulnerabilidades em package-lock.json e *.csproj
+  5. Trivy falha se encontrar CVEs CRITICAL ou HIGH sem fix disponível
+  6. Reports exportados em SARIF → GitHub Security Tab
+**Plans:** 2 plans
+Plans:
+- [ ] 23-01-PLAN.md — Dependabot configuration, auto-merge policy, weekly update schedule
+- [ ] 23-02-PLAN.md — Trivy filesystem scanning, SARIF export, vulnerability threshold enforcement
+
+### Phase 24: Container Security Scanning
+**Goal:** Trivy + Dockle verificando segurança de imagens Docker em cada build
+**Depends on:** Phase 21
+**Requirements:** R16.1, R16.2, R16.3
+**Success Criteria** (what must be TRUE):
+  1. CI step roda `trivy image --severity HIGH,CRITICAL onboarding-api:ci` após build da imagem
+  2. Scanning aplicado a: backend API, frontend-client, frontend-backoffice, Keycloak
+  3. Trivy falha se encontrar CVEs CRITICAL ou HIGH na imagem
+  4. `dockle onboarding-api:ci` verifica boas práticas: não root, sem `latest` tag, `.dockerignore`, healthcheck
+  5. Dockle falha em checks FATAL ou WARN
+  6. Image tags seguem semver: `onboarding-api:1.2.3`, `sha-{commit}` para builds
+**Plans:** 2 plans
+Plans:
+- [ ] 24-01-PLAN.md — Trivy image scanning, multi-image CI pipeline, SARIF report
+- [ ] 24-02-PLAN.md — Dockle best practices check, image tagging policy, registry push gating
+
+### Phase 25: IaC Scanning — Infrastructure as Code
+**Goal:** Checkov + Kubescape verificando segurança de Docker Compose e preparação para Kubernetes
+**Depends on:** Phase 21
+**Requirements:** R17.1, R17.2, R17.3
+**Success Criteria** (what must be TRUE):
+  1. `checkov --framework dockerfile --file compose.yaml` verifica: sem `privileged: true`, volumes restritos, sem secrets em ENV
+  2. Checkov falha em checks CRITICAL ou HIGH
+  3. Kubescape instalado no CI (setup-only no v4.0, scanning real quando K8s manifests existirem)
+  4. `docs/iac-policies.md` documenta regras de segurança para Docker Compose e futuros K8s manifests
+  5. Reports exportados em SARIF → GitHub Security Tab
+**Plans:** 2 plans
+Plans:
+- [ ] 25-01-PLAN.md — Checkov Docker Compose scanning, policy configuration, SARIF export
+- [ ] 25-02-PLAN.md — Kubescape setup (K8s preparation), IaC policy documentation
+
+### Phase 26: Secrets Detection
+**Goal:** Gitleaks + TruffleHog bloqueando credenciais commitadas com processo de resposta a incidentes
+**Depends on:** Phase 21
+**Requirements:** R18.1, R18.2, R18.3
+**Success Criteria** (what must be TRUE):
+  1. `.gitleaks.toml` configurado para detectar: AWS/Azure/GCP keys, JWT signing keys, DB connection strings, Keycloak secrets
+  2. Pre-commit hook local roda `gitleaks detect` antes de commit
+  3. CI step roda `gitleaks` em PRs e falha se detectar qualquer secret
+  4. `trufflehog filesystem --directory . --only-verified` verifica credenciais ativas em git history
+  5. TruffleHog falha se encontrar credencial verificada como ativa
+  6. `docs/secrets-incident-response.md` documenta processo de revogação e rotação de chaves
+**Plans:** 2 plans
+Plans:
+- [ ] 26-01-PLAN.md — Gitleaks pre-commit + CI, custom rules, allowlist configuration
+- [ ] 26-02-PLAN.md — TruffleHog active verification, SARIF export, secrets incident response documentation
+
+### Phase 27: GitHub Security Integration
+**Goal:** Security Tab dashboard, branch protection rules, PR security checks
+**Depends on:** Phase 22, Phase 23, Phase 24, Phase 25, Phase 26
+**Requirements:** R19.1, R19.2, R19.3
+**Success Criteria** (what must be TRUE):
+  1. GitHub Security Tab exibe dashboard com: Dependabot alerts, Code scanning alerts (SAST), secret scanning alerts, container vulnerabilities
+  2. Todos os reports em SARIF format (Semgrep, CodeQL, Trivy, Checkov, Gitleaks, TruffleHog)
+  3. Branch `main` protegida: PR reviews (min 1), status checks passing (9 checks), block force pushes
+  4. `.github/pull_request_template.md` inclui checklist de segurança
+  5. GitHub Actions bot comenta resumo de security scans em PRs
+  6. Alertas CRITICAL/HIGH bloqueiam merge até resolved ou waived
+**Plans:** 2 plans
+Plans:
+- [ ] 27-01-PLAN.md — Security Tab dashboard setup, SARIF aggregation, trend monitoring
+- [ ] 27-02-PLAN.md — Branch protection rules, PR template, merge blocking for critical alerts
+
+### Phase 28: Security Documentation + Hardening
+**Goal:** Documentação completa de segurança, threat model, contributing guidelines, runbooks
+**Depends on:** Phase 22, Phase 23, Phase 24, Phase 25, Phase 26, Phase 27
+**Requirements:** R20.1, R20.2, R20.3
+**Success Criteria** (what must be TRUE):
+  1. `docs/security-runbook.md` documenta: como rodar SAST localmente, interpretar alerts, processo de waiver, security owner
+  2. `CONTRIBUTING.md` inclui seção de segurança: pré-PR checks, no-commit rules, vulnerability reporting
+  3. `docs/threat-model.md` documenta: assets críticos, attack vectors, mitigações, riscos residuais (ex: ROPC grant)
+  4. Threat model revisado: aprovado por security owner, revisão agendada (6 meses)
+  5. Documentação linkada no README principal do projeto
+**Plans:** 2 plans
+Plans:
+- [ ] 28-01-PLAN.md — Security runbook, contributing guidelines, PR security checklist
+- [ ] 28-02-PLAN.md — Threat model documentation, risk register, review schedule
+
+---
+
+## Milestone Summary
+
+| Milestone | Phases | Plans | Status | Requirements |
+|-----------|--------|-------|--------|--------------|
+| **v1.0** Foundation | 1-10 | 30 | ✅ Complete | 35 requirements |
+| **v2.0** UX/UI + Production | 11-15 | 7+ | ✅ Complete | 14 requirements |
+| **v3.0** Admin Backoffice | 16-20 | 13 | ✅ Complete | 22 requirements |
+| **v4.0** CI/CD + Security | 21-28 | 20 | 📋 Planned | 25 requirements |
+| **Total** | **28 phases** | **70+ plans** | **3 milestones done** | **96 requirements** |
+
+---
+
 ## Phase Details
 
 ### Phase 1: Infrastructure

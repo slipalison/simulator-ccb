@@ -20,15 +20,27 @@ using Serilog.Enrichers.Span;
 using Serilog.Formatting.Compact;
 
 // Bootstrap logger: captures startup errors before DI is configured (Pitfall 1 from RESEARCH.md)
-Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
-    .MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
-    .Enrich.FromLogContext()
-    .Enrich.WithSpan()                                                  // OBS-01, D-03: TraceId/SpanId
-    .Destructure.With<SensitiveDataDestructuringPolicy>()               // SEC-09, D-21: global masking
-    .WriteTo.Console(new CompactJsonFormatter())                         // D-02: JSON console
-    .CreateBootstrapLogger();
+// Guard: WebApplicationFactory can run Program.cs multiple times in the same process.
+// After the first run's CloseAndFlush, the ReloadableLogger is frozen and cannot be reconfigured.
+// Catching InvalidOperationException allows subsequent test runs to proceed — UseSerilog will
+// configure logging correctly in those cases.
+try
+{
+    Log.Logger = new LoggerConfiguration()
+        .MinimumLevel.Information()
+        .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+        .MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
+        .Enrich.FromLogContext()
+        .Enrich.WithSpan()                                                  // OBS-01, D-03: TraceId/SpanId
+        .Destructure.With<SensitiveDataDestructuringPolicy>()               // SEC-09, D-21: global masking
+        .WriteTo.Console(new CompactJsonFormatter())                         // D-02: JSON console
+        .CreateBootstrapLogger();
+}
+catch (InvalidOperationException)
+{
+    // Logger already frozen from a previous WebApplicationFactory run — skip.
+    // UseSerilog inside the try block will configure logging correctly.
+}
 
 try
 {

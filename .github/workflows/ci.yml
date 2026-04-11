@@ -51,7 +51,7 @@ jobs:
       - name: Build
         run: dotnet build Onboarding.slnx --no-restore --configuration Release
 
-      - name: Test with coverage
+      - name: Test with coverage (merged)
         env:
           CI: true
           TESTCONTAINERS_CONNECT_TIMEOUT: "120"
@@ -60,11 +60,14 @@ jobs:
           --no-build
           --configuration Release
           --verbosity normal
+          -m:1
           /p:CollectCoverage=true
+          /p:CoverletOutput=${{ github.workspace }}/coverage/
+          /p:MergeWith=${{ github.workspace }}/coverage/coverage.json
+          /p:CoverletOutputFormat="cobertura,json"
           /p:Threshold=80
           /p:ThresholdType=line
           /p:ThresholdStat=total
-          /p:CoverletOutputFormat=cobertura
 
   frontend-client:
     name: Frontend Client (Vinxi)

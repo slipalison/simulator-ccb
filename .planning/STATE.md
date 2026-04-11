@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: cicd-cybersecurity
 status: in-progress
-stopped_at: Phase 22 complete — SAST (Semgrep + CodeQL) configured, PR template created
-last_updated: "2026-04-11T16:00:00.000Z"
-last_activity: 2026-04-11 -- Phase 22: Semgrep 6 rules, CodeQL config, PR template, CONTRIBUTING.md already had SAST docs
+stopped_at: Phase 23 complete — Dependabot + Trivy SCA configured
+last_updated: "2026-04-11T17:00:00.000Z"
+last_activity: 2026-04-11 -- Phase 23: Dependabot 5 ecosystems, Trivy fs scan, 6th CI job
 progress:
   total_phases: 8
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 20
-  completed_plans: 6
-  percent: 30
+  completed_plans: 8
+  percent: 40
 ---
 
 # Project State
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-04-10)
 **Current focus:** MILESTONE v4.0 — CI/CD Pipeline + Cybersecurity (ROADMAP DEFINED)
 **Last activity:** 2026-04-11 -- Milestone v4.0 roadmap created with 8 phases (21-28)
 
-Progress: [██████              ] 30% (6/20 plans - MILESTONE v4.0 IN PROGRESS)
+Progress: [████████            ] 40% (8/20 plans - MILESTONE v4.0 IN PROGRESS)
 
 ## Current Position
 
-Phase: 22 of 28 — SAST (Semgrep + CodeQL) ✅ COMPLETE (3/3 plans)
-Next: Phase 23 — SCA (Dependabot + Trivy)
+Phase: 23 of 28 — SCA (Dependabot + Trivy) ✅ COMPLETE (2/2 plans)
+Next: Phase 24 — Container Security (Trivy image + Dockle)
 
 ## Milestone Breakdown
 
@@ -44,7 +44,7 @@ Next: Phase 23 — SCA (Dependabot + Trivy)
 |-------|------|-------|--------|
 | 21 | CI/CD Pipeline Foundation | 3/3 | ✅ Complete |
 | 22 | SAST (Semgrep + CodeQL) | 3/3 | ✅ Complete |
-| 23 | SCA (Dependabot + Trivy) | 0/2 | 📋 Planned |
+| 23 | SCA (Dependabot + Trivy) | 2/2 | ✅ Complete |
 | 24 | Container Security (Trivy + Dockle) | 0/2 | 📋 Planned |
 | 25 | IaC Scanning (Checkov + Kubescape) | 0/2 | 📋 Planned |
 | 26 | Secrets Detection (Gitleaks + TruffleHog) | 0/2 | 📋 Planned |
@@ -107,20 +107,19 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-11T16:00:00.000Z
-Stopped at: Phase 22 COMPLETE — ready for Phase 23 (SCA)
+Last session: 2026-04-11T17:00:00.000Z
+Stopped at: Phase 23 COMPLETE — ready for Phase 24 (Container Security)
 Resume file: none
 
-### Phase 22 Summary
+### Phase 23 Summary
 
-All 3 plans executed:
-- **22-01:** 6 Semgrep custom rules created + tested, .semgrepignore configured, sast-semgrep job in CI
-- **22-02:** CodeQL config created (security-extended + security-and-quality), sast-codeql job in CI
-- **22-03:** PR template with SAST checklist created, CONTRIBUTING.md already had SAST docs
+Both plans executed:
+- **23-01:** `.github/dependabot.yml` created — 5 ecosystems (nuget, npm x2, docker, github-actions), weekly Monday schedule
+- **23-02:** `.trivyignore` created, `sca-trivy` job in CI — Trivy fs scan, CRITICAL/HIGH threshold, SARIF upload
 
-Semgrep rules validated: localStorage tokens rule tested and confirmed working
-CI pipeline: 5 independent parallel jobs (backend, 2 frontends, Semgrep, CodeQL)
+CI pipeline now has **6 independent parallel jobs**:
+backend, frontend-client, frontend-backoffice, sast-semgrep, sast-codeql, sca-trivy
 
-### Phase 22 Manual Follow-up Needed
-- Branch protection rules: add SAST — Semgrep and SAST — CodeQL as required checks
-- First CI run to baseline SAST findings and triage alerts
+### Manual Follow-up Needed
+- Enable Dependabot alerts + security updates in GitHub Settings → Code security
+- First CI run to baseline Trivy vulnerability findings

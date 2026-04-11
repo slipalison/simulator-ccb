@@ -1,9 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
 using Onboarding.Domain.Aggregates.Audit;
 using Onboarding.Domain.Repositories;
 using Onboarding.Infrastructure.Persistence;
 
 namespace Onboarding.Infrastructure.Repositories;
 
+/// <summary>Thin EF Core repository — tested via integration tests.</summary>
+[ExcludeFromCodeCoverage]
 public sealed class AuditLogRepository : IAuditLogRepository
 {
     private readonly AppDbContext _db;

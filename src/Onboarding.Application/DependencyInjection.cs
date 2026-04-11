@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
 using Onboarding.Application.Admin.Commands;
@@ -13,6 +14,10 @@ using Onboarding.Application.Common;
 
 namespace Onboarding.Application;
 
+/// <summary>
+/// Application layer DI registration — excluded from coverage as it's configuration code.
+/// </summary>
+[ExcludeFromCodeCoverage]
 public static class ApplicationServiceExtensions
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)

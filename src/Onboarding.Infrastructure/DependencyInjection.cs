@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Duende.AccessTokenManagement;
 using Keycloak.AuthServices.Sdk;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,11 @@ using Onboarding.Infrastructure.Repositories;
 
 namespace Onboarding.Infrastructure;
 
+/// <summary>
+/// Infrastructure DI registration — excluded from coverage as it's configuration code
+/// tested via integration tests.
+/// </summary>
+[ExcludeFromCodeCoverage]
 public static class InfrastructureServiceExtensions
 {
     public static IServiceCollection AddInfrastructure(

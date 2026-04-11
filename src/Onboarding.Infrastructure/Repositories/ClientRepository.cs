@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Onboarding.Domain.Aggregates.ClientAggregate;
 using Onboarding.Domain.Repositories;
@@ -6,6 +7,11 @@ using Onboarding.Infrastructure.Persistence;
 
 namespace Onboarding.Infrastructure.Repositories;
 
+/// <summary>
+/// Thin EF Core repository wrapper — tested via integration tests.
+/// Excluded from unit test coverage as it contains no business logic.
+/// </summary>
+[ExcludeFromCodeCoverage]
 public sealed class ClientRepository : IClientRepository
 {
     private readonly AppDbContext _db;

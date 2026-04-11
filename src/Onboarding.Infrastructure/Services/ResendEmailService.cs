@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.Extensions.Configuration;
@@ -6,6 +7,8 @@ using Onboarding.Application.Services;
 
 namespace Onboarding.Infrastructure.Services;
 
+/// <summary>Thin HTTP wrapper — tested via integration tests.</summary>
+[ExcludeFromCodeCoverage]
 public sealed class ResendEmailService : IEmailService
 {
     private readonly HttpClient _httpClient;

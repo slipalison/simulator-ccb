@@ -5,7 +5,8 @@ import { AdminSearchBar } from "@/components/molecules/AdminSearchBar";
 import { AdminStatusFilter } from "@/components/molecules/AdminStatusFilter";
 import { AdminUsersTable } from "@/components/molecules/AdminUsersTable";
 import { AdminPagination } from "@/components/molecules/AdminPagination";
-import { listUsers } from "@/lib/admin-api";
+import { DeleteDialog } from "@/components/molecules/DeleteDialog";
+import { listUsers, deleteUser } from "@/lib/admin-api";
 import { toast } from "sonner";
 import type { UserSummaryDto, PaginatedResult } from "@/lib/admin-api";
 
@@ -18,6 +19,7 @@ export function AdminUsersPage() {
   const [result, setResult] = useState<PaginatedResult<UserSummaryDto> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
@@ -59,6 +61,26 @@ export function AdminUsersPage() {
     navigate({ to: "/admin/users/$id" as any, params: { id } });
   };
 
+  const handleEdit = (id: string) => {
+    navigate({ to: "/admin/users/$id/edit" as any, params: { id } });
+  };
+
+  const handleDelete = async () => {
+    if (!deleteUserId) return;
+    try {
+      await deleteUser(deleteUserId);
+      toast.success("Usuario deletado com sucesso.");
+      setDeleteUserId(null);
+      fetchUsers();
+    } catch {
+      toast.error("Falha ao deletar usuario", {
+        description: "Tente novamente.",
+      });
+    }
+  };
+
+  const selectedUserForDelete = result?.items.find((u) => u.id === deleteUserId) ?? null;
+
   return (
     <Card>
       <CardHeader>
@@ -83,6 +105,8 @@ export function AdminUsersPage() {
         <AdminUsersTable
           users={result?.items ?? []}
           onViewDetails={handleViewDetails}
+          onEdit={handleEdit}
+          onDelete={(id) => setDeleteUserId(id)}
           isLoading={isLoading && !result}
           isEmpty={!isLoading && !isError && result?.totalCount === 0}
           isError={isError}
@@ -99,6 +123,19 @@ export function AdminUsersPage() {
           </div>
         )}
       </CardContent>
+
+      {/* Delete Dialog */}
+      {selectedUserForDelete && (
+        <DeleteDialog
+          userName={selectedUserForDelete.name}
+          userEmail={selectedUserForDelete.email}
+          userDocument={selectedUserForDelete.document}
+          onDelete={handleDelete}
+          onSuccess={() => {}}
+          onClose={() => setDeleteUserId(null)}
+          open={!!deleteUserId}
+        />
+      )}
     </Card>
   );
 }

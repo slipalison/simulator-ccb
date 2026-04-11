@@ -177,9 +177,8 @@ describe("Admin User Detail Page", () => {
     });
   });
 
-  it("shows action buttons with toast callbacks", async () => {
+  it("shows action buttons with edit navigating to edit page", async () => {
     vi.mocked(adminApi.getUserDetail).mockResolvedValue(mockUserDetail);
-    const { toast } = await import("sonner");
 
     render(<AdminUserDetailPage userId="1" />);
 
@@ -189,8 +188,9 @@ describe("Admin User Detail Page", () => {
 
     fireEvent.click(screen.getByTestId("edit-button"));
 
-    expect(toast.info).toHaveBeenCalledWith("Editar usuario", {
-      description: "Em desenvolvimento.",
+    expect(mockNavigate).toHaveBeenCalledWith({
+      to: "/admin/users/$id/edit",
+      params: { id: "1" },
     });
   });
 

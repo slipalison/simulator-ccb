@@ -10,6 +10,7 @@ import { AdminLoginPage } from "@/components/pages/AdminLoginPage";
 import { AdminAccessDeniedPage } from "@/components/pages/AdminAccessDeniedPage";
 import { AdminUsersPage } from "@/components/pages/AdminUsersPage";
 import { AdminUserDetailPage } from "@/components/pages/AdminUserDetailPage";
+import { AdminUserEditPage } from "@/components/pages/AdminUserEditPage";
 import { AdminLayout } from "@/components/templates/AdminLayout";
 import { useAdminAuth } from "@/lib/admin-auth-context";
 import { useEffect } from "react";
@@ -66,12 +67,27 @@ const adminUserDetailRoute = createRoute({
   },
 } as any);
 
+// Rota admin user edit: /admin/users/$id/edit (MUST be before detail route)
+const adminUserEditRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/users/$id/edit",
+  component: () => {
+    const { id } = adminUserEditRoute.useParams();
+    return (
+      <AdminLayout>
+        <AdminUserEditPage userId={id as string} />
+      </AdminLayout>
+    );
+  },
+} as any);
+
 // Arvore de rotas — APENAS rotas admin (sem rotas publicas)
 const routeTree = rootRoute.addChildren([
   indexRoute,
   adminLoginRoute,
   adminAccessDeniedRoute,
   adminUsersRoute,
+  adminUserEditRoute,
   adminUserDetailRoute,
 ]);
 

@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { getUserDetail } from "@/lib/admin-api";
+import { getUserDetail, blockUser, unblockUser, deleteUser } from "@/lib/admin-api";
 import { UserDetailCard } from "@/components/molecules/UserDetailCard";
+import { BlockDialog } from "@/components/molecules/BlockDialog";
+import { UnblockDialog } from "@/components/molecules/UnblockDialog";
+import { DeleteDialog } from "@/components/molecules/DeleteDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +22,9 @@ export function AdminUserDetailPage({ userId }: AdminUserDetailPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
   const [isNotFound, setIsNotFound] = useState(false);
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [unblockDialogOpen, setUnblockDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const fetchUser = async () => {
     if (!userId) return;
@@ -44,6 +50,30 @@ export function AdminUserDetailPage({ userId }: AdminUserDetailPageProps) {
     fetchUser();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
+
+  const handleEdit = () => {
+    navigate({ to: "/admin/users/$id/edit" as any, params: { id: userId } });
+  };
+
+  const handleBlock = async (reason: string) => {
+    await blockUser(userId, reason);
+    const refreshed = await getUserDetail(userId);
+    setUser(refreshed);
+    setBlockDialogOpen(false);
+  };
+
+  const handleUnblock = async (reason?: string) => {
+    await unblockUser(userId, reason);
+    const refreshed = await getUserDetail(userId);
+    setUser(refreshed);
+    setUnblockDialogOpen(false);
+  };
+
+  const handleDelete = async () => {
+    await deleteUser(userId);
+    toast.success("Usuario deletado com sucesso.");
+    navigate({ to: "/admin/users" as never });
+  };
 
   if (isLoading) {
     return (
@@ -117,11 +147,44 @@ export function AdminUserDetailPage({ userId }: AdminUserDetailPageProps) {
       {/* Detail card */}
       <UserDetailCard
         user={user}
-        onEdit={() => toast.info("Editar usuario", { description: "Em desenvolvimento." })}
-        onBlock={() => toast.info("Bloquear usuario", { description: "Em desenvolvimento." })}
-        onUnblock={() => toast.info("Desbloquear usuario", { description: "Em desenvolvimento." })}
-        onDelete={() => toast.info("Excluir usuario", { description: "Em desenvolvimento." })}
+        onEdit={handleEdit}
+        onBlock={() => setBlockDialogOpen(true)}
+        onUnblock={() => setUnblockDialogOpen(true)}
+        onDelete={() => setDeleteDialogOpen(true)}
       />
+
+      {/* Block Dialog */}
+      {user && (
+        <BlockDialog
+          userName={user.name}
+          onBlock={handleBlock}
+          onClose={() => setBlockDialogOpen(false)}
+          open={blockDialogOpen}
+        />
+      )}
+
+      {/* Unblock Dialog */}
+      {user && (
+        <UnblockDialog
+          userName={user.name}
+          onUnblock={handleUnblock}
+          onClose={() => setUnblockDialogOpen(false)}
+          open={unblockDialogOpen}
+        />
+      )}
+
+      {/* Delete Dialog */}
+      {user && (
+        <DeleteDialog
+          userName={user.name}
+          userEmail={user.email}
+          userDocument={user.document}
+          onDelete={handleDelete}
+          onSuccess={() => {}}
+          onClose={() => setDeleteDialogOpen(false)}
+          open={deleteDialogOpen}
+        />
+      )}
     </div>
   );
 }

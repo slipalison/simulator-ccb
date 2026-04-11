@@ -86,6 +86,26 @@ export async function getAdminMe(): Promise<AdminSessionResponse> {
 }
 
 // ---------------------------------------------------------------------------
+// Internal: shared request options for admin API calls
+// All requests MUST include credentials (httpOnly cookies).
+// ---------------------------------------------------------------------------
+
+function adminFetchOptions(
+  method: string,
+  body?: string
+): RequestInit & { duplex?: string } {
+  const hasBody = method !== "GET" && method !== "HEAD";
+  return {
+    method,
+    headers: hasBody
+      ? { "Content-Type": "application/json" }
+      : undefined,
+    body: hasBody ? body : undefined,
+    credentials: "include" as RequestCredentials,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Admin User Listing — GET /api/admin/users
 // ---------------------------------------------------------------------------
 
@@ -171,4 +191,118 @@ export async function getUserDetail(userId: string): Promise<UserDetailDto> {
   }
 
   return response.json() as Promise<UserDetailDto>;
+}
+
+// ---------------------------------------------------------------------------
+// Admin User Update — PUT /api/admin/users/{id}
+// ---------------------------------------------------------------------------
+
+export interface UpdateUserDto {
+  name?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+}
+
+export async function updateUser(
+  userId: string,
+  data: UpdateUserDto
+): Promise<UserDetailDto> {
+  const response = await fetch(`/api/admin/users/${userId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+    credentials: "include",
+  });
+
+  if (response.status === 404) {
+    throw new AdminApiError("Usuario nao encontrado.", 404);
+  }
+
+  if (response.status === 400) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Dados invalidos.", 400);
+  }
+
+  if (!response.ok) {
+    throw new AdminApiError("Falha ao atualizar usuario.");
+  }
+
+  return response.json() as Promise<UserDetailDto>;
+}
+
+// ---------------------------------------------------------------------------
+// Admin User Block — POST /api/admin/users/{id}/block
+// ---------------------------------------------------------------------------
+
+export async function blockUser(
+  userId: string,
+  reason: string
+): Promise<void> {
+  const response = await fetch(`/api/admin/users/${userId}/block`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason }),
+    credentials: "include",
+  });
+
+  if (response.status === 404) {
+    throw new AdminApiError("Usuario nao encontrado.", 404);
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Falha ao bloquear usuario.");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Admin User Delete — DELETE /api/admin/users/{id}
+// ---------------------------------------------------------------------------
+
+export async function deleteUser(
+  userId: string
+): Promise<void> {
+  const response = await fetch(`/api/admin/users/${userId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+
+  if (response.status === 404) {
+    throw new AdminApiError("Usuario nao encontrado.", 404);
+  }
+
+  if (response.status === 409) {
+    throw new AdminApiError("Usuario ja foi deletado.", 409);
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Falha ao deletar usuario.");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Admin User Unblock — POST /api/admin/users/{id}/unblock
+// ---------------------------------------------------------------------------
+
+export async function unblockUser(
+  userId: string,
+  reason?: string
+): Promise<void> {
+  const response = await fetch(`/api/admin/users/${userId}/unblock`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason: reason ?? null }),
+    credentials: "include",
+  });
+
+  if (response.status === 404) {
+    throw new AdminApiError("Usuario nao encontrado.", 404);
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Falha ao desbloquear usuario.");
+  }
 }

@@ -188,3 +188,86 @@ describe("Admin Users Table", () => {
     expect(screen.queryByTestId("retry-button")).not.toBeInTheDocument();
   });
 });
+
+describe("Admin Users Table - Delete and Deleted Users", () => {
+  it("Delete button disabled for deleted users", () => {
+    const onDelete = vi.fn();
+    render(
+      <AdminUsersTable users={mockUsers} onViewDetails={vi.fn()} onDelete={onDelete} />
+    );
+
+    const deleteButton = screen.getByTestId("delete-action-3");
+    expect(deleteButton).toBeDisabled();
+  });
+
+  it("Delete button enabled for non-deleted users", () => {
+    const onDelete = vi.fn();
+    render(
+      <AdminUsersTable users={mockUsers} onViewDetails={vi.fn()} onDelete={onDelete} />
+    );
+
+    const deleteButton = screen.getByTestId("delete-action-1");
+    expect(deleteButton).not.toBeDisabled();
+  });
+
+  it("Deleted badge shows for users with deletedAt", () => {
+    render(
+      <AdminUsersTable users={mockUsers} onViewDetails={vi.fn()} />
+    );
+
+    const badge = screen.getByTestId("status-badge-3");
+    expect(badge).toHaveTextContent("Deletado");
+    expect(badge).toHaveClass("bg-destructive");
+  });
+
+  it("Row styling different for deleted users (opacity reduced)", () => {
+    render(
+      <AdminUsersTable users={mockUsers} onViewDetails={vi.fn()} />
+    );
+
+    const deletedRow = screen.getByTestId("user-row-3");
+    expect(deletedRow).toHaveClass("opacity-60");
+
+    const activeRow = screen.getByTestId("user-row-1");
+    expect(activeRow).not.toHaveClass("opacity-60");
+  });
+
+  it("Edit button disabled for deleted users", () => {
+    const onEdit = vi.fn();
+    render(
+      <AdminUsersTable users={mockUsers} onViewDetails={vi.fn()} onEdit={onEdit} />
+    );
+
+    const editButton = screen.getByTestId("edit-action-3");
+    expect(editButton).toBeDisabled();
+  });
+
+  it("Block/Unblock buttons not shown for deleted users", () => {
+    render(
+      <AdminUsersTable users={mockUsers} onViewDetails={vi.fn()} onBlock={vi.fn()} onUnblock={vi.fn()} />
+    );
+
+    expect(screen.queryByTestId("block-action-3")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("unblock-action-3")).not.toBeInTheDocument();
+  });
+
+  it("calls onDelete when delete button clicked for non-deleted user", async () => {
+    const onDelete = vi.fn();
+    render(
+      <AdminUsersTable users={mockUsers} onViewDetails={vi.fn()} onDelete={onDelete} />
+    );
+
+    await userEvent.click(screen.getByTestId("delete-action-1"));
+    expect(onDelete).toHaveBeenCalledWith("1");
+  });
+
+  it("does not render delete button when onDelete prop is not provided", () => {
+    render(
+      <AdminUsersTable users={mockUsers} onViewDetails={vi.fn()} />
+    );
+
+    expect(screen.queryByTestId("delete-action-1")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("delete-action-2")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("delete-action-3")).not.toBeInTheDocument();
+  });
+});

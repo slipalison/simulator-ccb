@@ -4156,7 +4156,7 @@ async function errorHandler(error, event) {
 }
 
 const appConfig = {"name":"vinxi","routers":[{"name":"public","type":"static","dir":"./public","base":"/","root":"D:\\REPO\\keycloak-tests\\frontend\\backoffice","order":0,"outDir":"D:/REPO/keycloak-tests/frontend/backoffice/.vinxi/build/public"},{"name":"api-proxy","type":"http","handler":"server.ts","target":"server","base":"/api","root":"D:\\REPO\\keycloak-tests\\frontend\\backoffice","outDir":"D:/REPO/keycloak-tests/frontend/backoffice/.vinxi/build/api-proxy","order":1},{"name":"client","type":"spa","handler":"index.html","vite":{"server":{"host":"0.0.0.0","port":5174,"hmr":{"host":"localhost","port":5174,"clientPort":5174},"watch":{"usePolling":true,"interval":1000}}},"base":"/","root":"D:\\REPO\\keycloak-tests\\frontend\\backoffice","target":"browser","outDir":"D:/REPO/keycloak-tests/frontend/backoffice/.vinxi/build/client","order":2}],"server":{},"root":"D:\\REPO\\keycloak-tests\\frontend\\backoffice"};
-					const buildManifest = {"api-proxy":{"virtual:$vinxi/handler/api-proxy":{"file":"api-proxy.js","name":"api-proxy","src":"virtual:$vinxi/handler/api-proxy","isEntry":true}},"client":{"index.html":{"file":"assets/index-DbKsSqS-.js","name":"index","src":"index.html","isEntry":true,"css":["assets/index-CBjQgOIe.css"]}}};
+					const buildManifest = {"api-proxy":{"virtual:$vinxi/handler/api-proxy":{"file":"api-proxy.js","name":"api-proxy","src":"virtual:$vinxi/handler/api-proxy","isEntry":true}},"client":{"index.html":{"file":"assets/index-C5Uuz8Pf.js","name":"index","src":"index.html","isEntry":true,"css":["assets/index-Ds3SjYo8.css"]}}};
 
 					const routeManifest = {};
 
@@ -4520,38 +4520,38 @@ app
 const assets = {
   "/index.html": {
     "type": "text/html; charset=utf-8",
-    "etag": "\"1f7-Z8JRn6smsow4W2HdK1BqLxTqjjY\"",
-    "mtime": "2026-04-09T23:32:59.028Z",
+    "etag": "\"1f7-D6MWdTfmgfoqBzwFcEKYQcteK4o\"",
+    "mtime": "2026-04-10T12:58:25.861Z",
     "size": 503,
     "path": "../public/index.html"
-  },
-  "/assets/index-CBjQgOIe.css": {
-    "type": "text/css; charset=utf-8",
-    "etag": "\"7f49-lgShcSNpOL9qU8uc0CU6KKLESE0\"",
-    "mtime": "2026-04-09T23:32:59.028Z",
-    "size": 32585,
-    "path": "../public/assets/index-CBjQgOIe.css"
   },
   "/manifest.js": {
     "type": "text/javascript; charset=utf-8",
     "etag": "\"14-/P7Kcp6uJ/X7OiBgMvjkwMW6ViY\"",
-    "mtime": "2026-04-09T23:32:59.027Z",
+    "mtime": "2026-04-10T12:58:25.861Z",
     "size": 20,
     "path": "../public/manifest.js"
   },
   "/.vite/manifest.json": {
     "type": "application/json",
-    "etag": "\"b9-7aTVNfwBs4PP9pOpqLLSyHljHxY\"",
-    "mtime": "2026-04-09T23:32:59.028Z",
+    "etag": "\"b9-L8wl1FKpfZr/+tiPOnL/9suny5o\"",
+    "mtime": "2026-04-10T12:58:25.863Z",
     "size": 185,
     "path": "../public/.vite/manifest.json"
   },
-  "/assets/index-DbKsSqS-.js": {
+  "/assets/index-Ds3SjYo8.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"b89c-jpBpcT7oADVqT0WicQYsTkkVDPA\"",
+    "mtime": "2026-04-10T12:58:25.862Z",
+    "size": 47260,
+    "path": "../public/assets/index-Ds3SjYo8.css"
+  },
+  "/assets/index-C5Uuz8Pf.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"88163-0cLMBYoIxbu0G+yZ1E1HA0hFek8\"",
-    "mtime": "2026-04-09T23:32:59.028Z",
-    "size": 557411,
-    "path": "../public/assets/index-DbKsSqS-.js"
+    "etag": "\"8eb86-TlEo1UiwrvriDd0wAdjz+7S2qck\"",
+    "mtime": "2026-04-10T12:58:25.863Z",
+    "size": 584582,
+    "path": "../public/assets/index-C5Uuz8Pf.js"
   }
 };
 
@@ -4907,7 +4907,7 @@ const y = "http://api:8080", k = defineEventHandler(async (o) => {
   return Buffer.from(u);
 });
 
-const html = "<!DOCTYPE html>\n<html lang=\"pt-BR\" data-color-mode=\"light\" suppressHydrationWarning>\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>Onboarding — Backoffice</title>\n    <script type=\"module\" crossorigin src=\"/assets/index-DbKsSqS-.js\"></script>\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-CBjQgOIe.css\">\n    <script src=\"/manifest.js\"></script>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>\n";
+const html = "<!DOCTYPE html>\n<html lang=\"pt-BR\" data-color-mode=\"light\" suppressHydrationWarning>\n  <head>\n    <meta charset=\"UTF-8\" />\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n    <title>Onboarding — Backoffice</title>\n    <script type=\"module\" crossorigin src=\"/assets/index-C5Uuz8Pf.js\"></script>\n    <link rel=\"stylesheet\" crossorigin href=\"/assets/index-Ds3SjYo8.css\">\n    <script src=\"/manifest.js\"></script>\n  </head>\n  <body>\n    <div id=\"root\"></div>\n  </body>\n</html>\n";
 							const _NExIIH = eventHandler$1(event => {
 								return html
 							});

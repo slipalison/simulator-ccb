@@ -63,11 +63,18 @@ internal sealed class AuthTestApiFactory : WebApplicationFactory<Program>
             services.PostConfigure<JwtBearerOptions>(
                 JwtBearerDefaults.AuthenticationScheme, options =>
                 {
+                    // Provide empty OIDC config to prevent the handler from fetching
+                    // /.well-known/openid-configuration from the (unreachable) Authority URL.
+                    // Without this, token validation silently fails → 401 in CI.
+                    options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration();
+                    options.MapInboundClaims = false;
                     options.TokenValidationParameters.ValidateIssuerSigningKey = false;
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
                     options.TokenValidationParameters.ValidateLifetime = false;
                     options.TokenValidationParameters.RequireSignedTokens = false;
+                    options.TokenValidationParameters.SignatureValidator = (token, _) =>
+                        new Microsoft.IdentityModel.JsonWebTokens.JsonWebToken(token);
                 });
         });
     }

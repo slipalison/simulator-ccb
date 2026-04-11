@@ -20,27 +20,21 @@ using Serilog.Enrichers.Span;
 using Serilog.Formatting.Compact;
 
 // Bootstrap logger: captures startup errors before DI is configured (Pitfall 1 from RESEARCH.md)
-// Guard: WebApplicationFactory can run Program.cs multiple times in the same process.
-// After the first run's CloseAndFlush, the ReloadableLogger is frozen and cannot be reconfigured.
-// Catching InvalidOperationException allows subsequent test runs to proceed — UseSerilog will
-// configure logging correctly in those cases.
-try
-{
-    Log.Logger = new LoggerConfiguration()
-        .MinimumLevel.Information()
-        .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
-        .MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
-        .Enrich.FromLogContext()
-        .Enrich.WithSpan()                                                  // OBS-01, D-03: TraceId/SpanId
-        .Destructure.With<SensitiveDataDestructuringPolicy>()               // SEC-09, D-21: global masking
-        .WriteTo.Console(new CompactJsonFormatter())                         // D-02: JSON console
-        .CreateBootstrapLogger();
-}
-catch (InvalidOperationException)
-{
-    // Logger already frozen from a previous WebApplicationFactory run — skip.
-    // UseSerilog inside the try block will configure logging correctly.
-}
+// Uses CreateLogger() (not CreateBootstrapLogger()) to avoid the ReloadableLogger race condition:
+// when multiple WebApplicationFactory instances run Program.cs concurrently in tests, they share
+// the static Log.Logger. CreateBootstrapLogger() returns a ReloadableLogger; UseSerilog's AddSerilog
+// then captures it and calls Freeze() at Build() time. If two factories race, the second Freeze()
+// throws "logger is already frozen". With CreateLogger(), Log.Logger is a plain Logger — AddSerilog
+// sees no ReloadableLogger and creates a DI-only logger without any Freeze() call.
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .Enrich.WithSpan()                                                  // OBS-01, D-03: TraceId/SpanId
+    .Destructure.With<SensitiveDataDestructuringPolicy>()               // SEC-09, D-21: global masking
+    .WriteTo.Console(new CompactJsonFormatter())                         // D-02: JSON console
+    .CreateLogger();
 
 try
 {
@@ -221,9 +215,14 @@ try
     var app = builder.Build();
 
     // Apply EF Core migrations on startup — creates/updates all tables
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    // Skip in "Testing" environment: test factories mock all repositories and share a single
+    // test DB, so concurrent migration attempts race and fail with "relation already exists".
+    if (!app.Environment.IsEnvironment("Testing"))
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Database.Migrate();
+    }
 
     // Global exception handler — prevents stack trace exposure, returns standardized ProblemDetails
     app.UseGlobalExceptionHandler();

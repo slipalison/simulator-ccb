@@ -21,6 +21,7 @@ public class CookieSettingsTests
         using var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.UseEnvironment("Testing");
                 builder.UseSetting("ConnectionStrings:AppDb", "Host=localhost;Port=5432;Database=test;Username=test;Password=test");
                 builder.UseSetting("Keycloak:RealmUrl", "http://localhost:8180/realms/onboarding");
                 builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180/");
@@ -53,6 +54,7 @@ public class CookieSettingsTests
         using var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.UseEnvironment("Testing");
                 builder.UseSetting("ConnectionStrings:AppDb", "Host=localhost;Port=5432;Database=test;Username=test;Password=test");
                 builder.UseSetting("Keycloak:RealmUrl", "http://localhost:8180/realms/onboarding");
                 builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180/");
@@ -85,6 +87,7 @@ public class CookieSettingsTests
         using var factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
             {
+                builder.UseEnvironment("Testing");
                 builder.UseSetting("ConnectionStrings:AppDb", "Host=localhost;Port=5432;Database=test;Username=test;Password=test");
                 builder.UseSetting("Keycloak:RealmUrl", "http://localhost:8180/realms/onboarding");
                 builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180/");

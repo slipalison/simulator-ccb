@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: cicd-cybersecurity
 status: in-progress
-stopped_at: Phase 23 complete — Dependabot + Trivy SCA configured
-last_updated: "2026-04-11T17:00:00.000Z"
-last_activity: 2026-04-11 -- Phase 23: Dependabot 5 ecosystems, Trivy fs scan, 6th CI job
+stopped_at: Phase 24 complete — Container Security (Trivy image + Dockle) configured
+last_updated: "2026-04-11T18:00:00.000Z"
+last_activity: 2026-04-11 -- Phase 24: Trivy image scan + Dockle lint, 2 new CI jobs (total 8)
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 20
-  completed_plans: 8
-  percent: 40
+  completed_plans: 10
+  percent: 50
 ---
 
 # Project State
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-04-10)
 **Current focus:** MILESTONE v4.0 — CI/CD Pipeline + Cybersecurity (ROADMAP DEFINED)
 **Last activity:** 2026-04-11 -- Milestone v4.0 roadmap created with 8 phases (21-28)
 
-Progress: [████████            ] 40% (8/20 plans - MILESTONE v4.0 IN PROGRESS)
+Progress: [██████████          ] 50% (10/20 plans - MILESTONE v4.0 IN PROGRESS)
 
 ## Current Position
 
-Phase: 23 of 28 — SCA (Dependabot + Trivy) ✅ COMPLETE (2/2 plans)
-Next: Phase 24 — Container Security (Trivy image + Dockle)
+Phase: 24 of 28 — Container Security (Trivy image + Dockle) ✅ COMPLETE (2/2 plans)
+Next: Phase 25 — IaC Scanning (Checkov + Kubescape)
 
 ## Milestone Breakdown
 
@@ -45,7 +45,7 @@ Next: Phase 24 — Container Security (Trivy image + Dockle)
 | 21 | CI/CD Pipeline Foundation | 3/3 | ✅ Complete |
 | 22 | SAST (Semgrep + CodeQL) | 3/3 | ✅ Complete |
 | 23 | SCA (Dependabot + Trivy) | 2/2 | ✅ Complete |
-| 24 | Container Security (Trivy + Dockle) | 0/2 | 📋 Planned |
+| 24 | Container Security (Trivy + Dockle) | 2/2 | ✅ Complete |
 | 25 | IaC Scanning (Checkov + Kubescape) | 0/2 | 📋 Planned |
 | 26 | Secrets Detection (Gitleaks + TruffleHog) | 0/2 | 📋 Planned |
 | 27 | GitHub Security Integration | 0/2 | 📋 Planned |
@@ -107,19 +107,28 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-11T17:00:00.000Z
-Stopped at: Phase 23 COMPLETE — ready for Phase 24 (Container Security)
+Last session: 2026-04-11T18:00:00.000Z
+Stopped at: Phase 24 COMPLETE — ready for Phase 25 (IaC Scanning)
 Resume file: none
 
-### Phase 23 Summary
+### Phase 24 Summary
 
 Both plans executed:
-- **23-01:** `.github/dependabot.yml` created — 5 ecosystems (nuget, npm x2, docker, github-actions), weekly Monday schedule
-- **23-02:** `.trivyignore` created, `sca-trivy` job in CI — Trivy fs scan, CRITICAL/HIGH threshold, SARIF upload
+- **24-01:** `container-scan-trivy` job — builds Docker image, Trivy image scan, CRITICAL/HIGH threshold, SARIF with `category: trivy-image`
+- **24-02:** `container-lint-dockle` job — builds same image, Dockle CIS Benchmark lint, ERROR-level blocking
 
-CI pipeline now has **6 independent parallel jobs**:
-backend, frontend-client, frontend-backoffice, sast-semgrep, sast-codeql, sca-trivy
+CI pipeline now has **8 independent parallel jobs**:
+backend, frontend-client, frontend-backoffice, sast-semgrep, sast-codeql, sca-trivy, container-scan-trivy, container-lint-dockle
 
-### Manual Follow-up Needed
-- Enable Dependabot alerts + security updates in GitHub Settings → Code security
-- First CI run to baseline Trivy vulnerability findings
+### CI Pipeline Summary (All 8 Jobs)
+
+| Category | Jobs | Tool | Detects |
+|----------|------|------|---------|
+| Build/Test | backend | .NET 10 + coverlet | Coverage < 80% |
+| Frontend | frontend-client, frontend-backoffice | Vinxi | tsc/eslint/build |
+| SAST | sast-semgrep | Semgrep | Code patterns (XSS, CSRF, tokens) |
+| SAST | sast-codeql | CodeQL | Dataflow/taint analysis |
+| SCA | sca-trivy | Trivy fs | CVEs em dependências |
+| SCA | Dependabot | GitHub native | Updates automáticos semanais |
+| Container | container-scan-trivy | Trivy image | CVEs em camadas Docker |
+| Container | container-lint-dockle | Dockle | CIS Docker Benchmarks |

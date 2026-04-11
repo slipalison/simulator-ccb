@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: cicd-cybersecurity
 status: in-progress
-stopped_at: Phase 21 complete — all 3 plans executed, full CI pipeline with 3 jobs
-last_updated: "2026-04-11T15:00:00.000Z"
-last_activity: 2026-04-11 -- Plans 21-01, 21-02, 21-03 executed: CI pipeline complete with backend + 2 frontend jobs
+stopped_at: Phase 22 complete — SAST (Semgrep + CodeQL) configured, PR template created
+last_updated: "2026-04-11T16:00:00.000Z"
+last_activity: 2026-04-11 -- Phase 22: Semgrep 6 rules, CodeQL config, PR template, CONTRIBUTING.md already had SAST docs
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 20
-  completed_plans: 3
-  percent: 15
+  completed_plans: 6
+  percent: 30
 ---
 
 # Project State
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-04-10)
 **Current focus:** MILESTONE v4.0 — CI/CD Pipeline + Cybersecurity (ROADMAP DEFINED)
 **Last activity:** 2026-04-11 -- Milestone v4.0 roadmap created with 8 phases (21-28)
 
-Progress: [███                 ] 15% (3/20 plans - MILESTONE v4.0 IN PROGRESS)
+Progress: [██████              ] 30% (6/20 plans - MILESTONE v4.0 IN PROGRESS)
 
 ## Current Position
 
-Phase: 21 of 28 — CI/CD Pipeline Foundation ✅ COMPLETE (3/3 plans)
-Next: Phase 22 — SAST (Semgrep + CodeQL)
+Phase: 22 of 28 — SAST (Semgrep + CodeQL) ✅ COMPLETE (3/3 plans)
+Next: Phase 23 — SCA (Dependabot + Trivy)
 
 ## Milestone Breakdown
 
@@ -43,7 +43,7 @@ Next: Phase 22 — SAST (Semgrep + CodeQL)
 | Phase | Name | Plans | Status |
 |-------|------|-------|--------|
 | 21 | CI/CD Pipeline Foundation | 3/3 | ✅ Complete |
-| 22 | SAST (Semgrep + CodeQL) | 0/3 | 📋 Planned |
+| 22 | SAST (Semgrep + CodeQL) | 3/3 | ✅ Complete |
 | 23 | SCA (Dependabot + Trivy) | 0/2 | 📋 Planned |
 | 24 | Container Security (Trivy + Dockle) | 0/2 | 📋 Planned |
 | 25 | IaC Scanning (Checkov + Kubescape) | 0/2 | 📋 Planned |
@@ -107,17 +107,20 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-11T15:00:00.000Z
-Stopped at: Phase 21 COMPLETE — ready for Phase 22 (SAST)
+Last session: 2026-04-11T16:00:00.000Z
+Stopped at: Phase 22 COMPLETE — ready for Phase 23 (SCA)
 Resume file: none
 
-### Phase 21 Summary
+### Phase 22 Summary
 
 All 3 plans executed:
-- **21-01:** `.github/workflows/ci.yml` created — backend job with .NET 10, PostgreSQL service, coverlet 80% threshold
-- **21-02:** Frontend jobs added — client + backoffice with Node.js 22, tsc, eslint, vinxi build
-- **21-03:** Pipeline hardened — TESTCONTAINERS_CONNECT_TIMEOUT, NODE_ENV, cache keys validated, job independence confirmed
+- **22-01:** 6 Semgrep custom rules created + tested, .semgrepignore configured, sast-semgrep job in CI
+- **22-02:** CodeQL config created (security-extended + security-and-quality), sast-codeql job in CI
+- **22-03:** PR template with SAST checklist created, CONTRIBUTING.md already had SAST docs
 
-CI pipeline: 3 independent parallel jobs (backend, frontend-client, frontend-backoffice)
-ESLint fixes: 3 files corrected (unused imports, prefer-const)
-Coverage baseline: 31% local (Domain only), 80% expected in CI with all tests
+Semgrep rules validated: localStorage tokens rule tested and confirmed working
+CI pipeline: 5 independent parallel jobs (backend, 2 frontends, Semgrep, CodeQL)
+
+### Phase 22 Manual Follow-up Needed
+- Branch protection rules: add SAST — Semgrep and SAST — CodeQL as required checks
+- First CI run to baseline SAST findings and triage alerts

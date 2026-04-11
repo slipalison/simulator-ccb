@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: cicd-cybersecurity
 status: in-progress
-stopped_at: Plan 21-01 executed — CI workflow scaffold complete
-last_updated: "2026-04-11T14:00:00.000Z"
-last_activity: 2026-04-11 -- Plan 21-01 executed: .github/workflows/ci.yml created with backend job, coverlet verified, coverage baseline measured
+stopped_at: Phase 21 complete — all 3 plans executed, full CI pipeline with 3 jobs
+last_updated: "2026-04-11T15:00:00.000Z"
+last_activity: 2026-04-11 -- Plans 21-01, 21-02, 21-03 executed: CI pipeline complete with backend + 2 frontend jobs
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 20
-  completed_plans: 1
-  percent: 5
+  completed_plans: 3
+  percent: 15
 ---
 
 # Project State
@@ -24,13 +24,12 @@ See: .planning/PROJECT.md (updated 2026-04-10)
 **Current focus:** MILESTONE v4.0 — CI/CD Pipeline + Cybersecurity (ROADMAP DEFINED)
 **Last activity:** 2026-04-11 -- Milestone v4.0 roadmap created with 8 phases (21-28)
 
-Progress: [                    ] 5% (1/20 plans - MILESTONE v4.0 IN PROGRESS)
+Progress: [███                 ] 15% (3/20 plans - MILESTONE v4.0 IN PROGRESS)
 
 ## Current Position
 
-Phase: 21 of 28 — CI/CD Pipeline Foundation (1/3 plans complete)
-Plan 21-01: ✅ COMPLETE — GitHub Actions Workflow Scaffold
-Next: Plan 21-02 — Frontend jobs (client + backoffice)
+Phase: 21 of 28 — CI/CD Pipeline Foundation ✅ COMPLETE (3/3 plans)
+Next: Phase 22 — SAST (Semgrep + CodeQL)
 
 ## Milestone Breakdown
 
@@ -43,7 +42,7 @@ Next: Plan 21-02 — Frontend jobs (client + backoffice)
 
 | Phase | Name | Plans | Status |
 |-------|------|-------|--------|
-| 21 | CI/CD Pipeline Foundation | 1/3 | 🔄 In Progress |
+| 21 | CI/CD Pipeline Foundation | 3/3 | ✅ Complete |
 | 22 | SAST (Semgrep + CodeQL) | 0/3 | 📋 Planned |
 | 23 | SCA (Dependabot + Trivy) | 0/2 | 📋 Planned |
 | 24 | Container Security (Trivy + Dockle) | 0/2 | 📋 Planned |
@@ -108,19 +107,17 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-11T14:00:00.000Z
-Stopped at: Plan 21-01 executed — ready for Plan 21-02
+Last session: 2026-04-11T15:00:00.000Z
+Stopped at: Phase 21 COMPLETE — ready for Phase 22 (SAST)
 Resume file: none
 
-### Resumption Notes
+### Phase 21 Summary
 
-Plan 21-01 complete:
-- `.github/workflows/ci.yml` created with backend job (PostgreSQL service container, .NET 10, coverlet.msbuild 80% threshold)
-- Coverlet migration was already done in all 3 test projects
-- Coverage baseline: 31% locally (Domain tests only), expected 80%+ in CI with all tests
-- YAML validated, build succeeds, Domain tests 73/73 passing
+All 3 plans executed:
+- **21-01:** `.github/workflows/ci.yml` created — backend job with .NET 10, PostgreSQL service, coverlet 80% threshold
+- **21-02:** Frontend jobs added — client + backoffice with Node.js 22, tsc, eslint, vinxi build
+- **21-03:** Pipeline hardened — TESTCONTAINERS_CONNECT_TIMEOUT, NODE_ENV, cache keys validated, job independence confirmed
 
-Milestone v4.0 focuses on:
-1. CI/CD pipeline com builds paralelas (backend + 2 frontends)
-2. Cybersecurity esteira: SAST, SCA, containers, IaC, secrets scanning
-3. GitHub Actions como plataforma de CI/CD
+CI pipeline: 3 independent parallel jobs (backend, frontend-client, frontend-backoffice)
+ESLint fixes: 3 files corrected (unused imports, prefer-const)
+Coverage baseline: 31% local (Domain only), 80% expected in CI with all tests

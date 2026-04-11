@@ -53,7 +53,8 @@ jobs:
 
       - name: Test with coverage
         env:
-          CI: "true"
+          CI: true
+          TESTCONTAINERS_CONNECT_TIMEOUT: "120"
         run: >
           dotnet test Onboarding.slnx
           --no-build
@@ -64,3 +65,79 @@ jobs:
           /p:ThresholdType=line
           /p:ThresholdStat=total
           /p:CoverletOutputFormat=cobertura
+
+  frontend-client:
+    name: Frontend Client (Vinxi)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend/client
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Cache npm
+        uses: actions/cache@v5
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-client-${{ hashFiles('frontend/client/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-client-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint . --max-warnings 0
+
+      - name: Build
+        env:
+          NODE_ENV: production
+        run: npm run build
+
+  frontend-backoffice:
+    name: Frontend Backoffice (Vinxi)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend/backoffice
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Cache npm
+        uses: actions/cache@v5
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-backoffice-${{ hashFiles('frontend/backoffice/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-backoffice-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint . --max-warnings 0
+
+      - name: Build
+        env:
+          NODE_ENV: production
+        run: npm run build

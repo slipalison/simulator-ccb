@@ -97,7 +97,8 @@ export async function refreshTokenClient(
 // Registration API client
 // ---------------------------------------------------------------------------
 
-import type { PfRegistrationData, PjRegistrationData } from "@/lib/validation-schemas";
+// PfRegistrationData and PjRegistrationData types are available via validation-schemas
+// but not needed directly in this file — registration uses generic Record<string, unknown>
 
 // ---------------------------------------------------------------------------
 // Request type — matches RegisterClientRequest DTO on the server

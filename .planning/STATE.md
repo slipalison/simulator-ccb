@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: cicd-cybersecurity
-status: planning
-stopped_at: Milestone v4.0 roadmap defined — 8 phases (21-28), 20 plans
-last_updated: "2026-04-11T00:00:00.000Z"
-last_activity: 2026-04-11 -- Milestone v4.0 roadmap created with phase breakdown
+status: in-progress
+stopped_at: Plan 21-01 executed — CI workflow scaffold complete
+last_updated: "2026-04-11T14:00:00.000Z"
+last_activity: 2026-04-11 -- Plan 21-01 executed: .github/workflows/ci.yml created with backend job, coverlet verified, coverage baseline measured
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 20
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 5
 ---
 
 # Project State
@@ -24,13 +24,13 @@ See: .planning/PROJECT.md (updated 2026-04-10)
 **Current focus:** MILESTONE v4.0 — CI/CD Pipeline + Cybersecurity (ROADMAP DEFINED)
 **Last activity:** 2026-04-11 -- Milestone v4.0 roadmap created with 8 phases (21-28)
 
-Progress: [                    ] 0% (0/20 plans - MILESTONE v4.0 PLANNED)
+Progress: [                    ] 5% (1/20 plans - MILESTONE v4.0 IN PROGRESS)
 
 ## Current Position
 
-Phase: Not started (run `/gsd:plan-phase 21`)
-Milestone v4.0: Roadmap defined — 8 phases, 20 plans
-Last activity: 2026-04-11 -- Roadmap created with phase breakdown for CI/CD + Security
+Phase: 21 of 28 — CI/CD Pipeline Foundation (1/3 plans complete)
+Plan 21-01: ✅ COMPLETE — GitHub Actions Workflow Scaffold
+Next: Plan 21-02 — Frontend jobs (client + backoffice)
 
 ## Milestone Breakdown
 
@@ -43,7 +43,7 @@ Last activity: 2026-04-11 -- Roadmap created with phase breakdown for CI/CD + Se
 
 | Phase | Name | Plans | Status |
 |-------|------|-------|--------|
-| 21 | CI/CD Pipeline Foundation | 0/3 | 📋 Planned |
+| 21 | CI/CD Pipeline Foundation | 1/3 | 🔄 In Progress |
 | 22 | SAST (Semgrep + CodeQL) | 0/3 | 📋 Planned |
 | 23 | SCA (Dependabot + Trivy) | 0/2 | 📋 Planned |
 | 24 | Container Security (Trivy + Dockle) | 0/2 | 📋 Planned |
@@ -108,13 +108,19 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-10T00:00:00.000Z
-Stopped at: Milestone v4.0 initialized — defining requirements
+Last session: 2026-04-11T14:00:00.000Z
+Stopped at: Plan 21-01 executed — ready for Plan 21-02
 Resume file: none
 
 ### Resumption Notes
 
-Milestone v3.0 confirmed complete. Milestone v4.0 focuses on:
+Plan 21-01 complete:
+- `.github/workflows/ci.yml` created with backend job (PostgreSQL service container, .NET 10, coverlet.msbuild 80% threshold)
+- Coverlet migration was already done in all 3 test projects
+- Coverage baseline: 31% locally (Domain tests only), expected 80%+ in CI with all tests
+- YAML validated, build succeeds, Domain tests 73/73 passing
+
+Milestone v4.0 focuses on:
 1. CI/CD pipeline com builds paralelas (backend + 2 frontends)
 2. Cybersecurity esteira: SAST, SCA, containers, IaC, secrets scanning
 3. GitHub Actions como plataforma de CI/CD

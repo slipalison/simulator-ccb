@@ -1,0 +1,32 @@
+title = "Onboarding Secrets Detection"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "keycloak-admin-client-secret"
+description = "Keycloak admin client secret"
+regex = '''client_secret\s*=\s*["'][a-zA-Z0-9\-_]{20,}["']'''
+keywords = ["client_secret", "keycloak"]
+tags = ["keycloak", "secret"]
+
+[[rules]]
+id = "connection-string-password"
+description = "Database connection string with password"
+regex = '''Host=[^;]+;\s*Password\s*=\s*[^\s;]+'''
+keywords = ["Host=", "Password="]
+tags = ["database", "secret"]
+
+[[rules]]
+id = "jwt-signing-key"
+description = "JWT signing key or secret"
+regex = '''(?:jwt|signing)[_-]?(?:key|secret)\s*=\s*["'][a-zA-Z0-9\-_]{16,}["']'''
+keywords = ["jwt", "signing", "key", "secret"]
+tags = ["jwt", "secret"]
+
+[[rules]]
+id = "keycloak-realm-url-credentials"
+description = "Keycloak realm URL with embedded credentials"
+regex = '''https?://[^:]+:[^@]+@keycloak'''
+keywords = ["keycloak", "@"]
+tags = ["keycloak", "url-credentials"]

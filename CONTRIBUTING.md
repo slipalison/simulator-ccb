@@ -82,6 +82,29 @@ semgrep scan --config auto --config .semrep/ --error .
   public IActionResult Webhook(...) { ... }
   ```
 
+### Running Gitleaks Locally (Secrets Detection)
+
+```bash
+# Install
+brew install gitleaks  # macOS
+winget install gitleaks  # Windows
+
+# Scan current directory
+gitleaks detect --config .gitleaks.toml --source . --verbose
+
+# Scan full git history
+gitleaks detect --config .gitleaks.toml --source . --log-opts="--all" --verbose
+
+# Pre-commit hook (add to .git/hooks/pre-commit)
+#!/bin/sh
+gitleaks detect --config .gitleaks.toml --source . --staged --quiet
+```
+
+**Every commit is scanned for secrets.** If a secret is detected:
+1. CI job fails with Gitleaks/TruffleHog error
+2. Secret must be revoked immediately (see `docs/secrets-incident-response.md`)
+3. Code history must be cleaned if secret was merged to main
+
 ### Suppressing Findings
 
 Every `// nosem` comment **MUST** include a reason. Examples:

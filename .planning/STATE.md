@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v4.0
 milestone_name: cicd-cybersecurity
 status: in-progress
-stopped_at: Phase 25 complete — IaC Scanning (Checkov + Kubescape) configured
-last_updated: "2026-04-11T19:00:00.000Z"
-last_activity: 2026-04-11 -- Phase 25: Checkov compose scan + Kubescape placeholder + IaC policies doc, 2 more CI jobs (total 10)
+stopped_at: Phase 26 complete — Secrets Detection (Gitleaks + TruffleHog) configured
+last_updated: "2026-04-11T20:00:00.000Z"
+last_activity: 2026-04-11 -- Phase 26: Gitleaks custom rules + TruffleHog active verification + incident response doc, 2 more CI jobs (total 12)
 progress:
   total_phases: 8
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 20
-  completed_plans: 12
-  percent: 60
+  completed_plans: 14
+  percent: 70
 ---
 
 # Project State
@@ -24,12 +24,12 @@ See: .planning/PROJECT.md (updated 2026-04-10)
 **Current focus:** MILESTONE v4.0 — CI/CD Pipeline + Cybersecurity (ROADMAP DEFINED)
 **Last activity:** 2026-04-11 -- Milestone v4.0 roadmap created with 8 phases (21-28)
 
-Progress: [████████████        ] 60% (12/20 plans - MILESTONE v4.0 IN PROGRESS)
+Progress: [██████████████      ] 70% (14/20 plans - MILESTONE v4.0 IN PROGRESS)
 
 ## Current Position
 
-Phase: 25 of 28 — IaC Scanning (Checkov + Kubescape) ✅ COMPLETE (2/2 plans)
-Next: Phase 26 — Secrets Detection (Gitleaks + TruffleHog)
+Phase: 26 of 28 — Secrets Detection (Gitleaks + TruffleHog) ✅ COMPLETE (2/2 plans)
+Next: Phase 27 — GitHub Security Integration
 
 ## Milestone Breakdown
 
@@ -47,7 +47,7 @@ Next: Phase 26 — Secrets Detection (Gitleaks + TruffleHog)
 | 23 | SCA (Dependabot + Trivy) | 2/2 | ✅ Complete |
 | 24 | Container Security (Trivy + Dockle) | 2/2 | ✅ Complete |
 | 25 | IaC Scanning (Checkov + Kubescape) | 2/2 | ✅ Complete |
-| 26 | Secrets Detection (Gitleaks + TruffleHog) | 0/2 | 📋 Planned |
+| 26 | Secrets Detection (Gitleaks + TruffleHog) | 2/2 | ✅ Complete |
 | 27 | GitHub Security Integration | 0/2 | 📋 Planned |
 | 28 | Security Documentation + Hardening | 0/2 | 📋 Planned |
 | **Total** | **8 phases** | **0/20** | **0%** |
@@ -107,20 +107,20 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-11T19:00:00.000Z
-Stopped at: Phase 25 COMPLETE — ready for Phase 26 (Secrets Detection)
+Last session: 2026-04-11T20:00:00.000Z
+Stopped at: Phase 26 COMPLETE — ready for Phase 27 (GitHub Security Integration)
 Resume file: none
 
-### Phase 25 Summary
+### Phase 26 Summary
 
 Both plans executed:
-- **25-01:** `iac-checkov` job — Checkov scans compose.yaml with dockerfile_compose framework, CRITICAL/HIGH blocking, SARIF upload
-- **25-02:** `iac-kubescape` job — conditional K8s scanning (skips if no manifests), `docs/iac-policies.md` created with comprehensive policies
+- **26-01:** `secrets-gitleaks` job — Gitleaks scans full git history with 4 custom rules (Keycloak, DB, JWT, URL creds), `.gitleaks.toml` + `.gitleaksignore` created
+- **26-02:** `secrets-trufflehog` job — TruffleHog active verification (--only-verified), `docs/secrets-incident-response.md` with rotation procedures for all secret types
 
-CI pipeline now has **10 independent parallel jobs**:
-backend, frontend-client, frontend-backoffice, sast-semgrep, sast-codeql, sca-trivy, container-scan-trivy, container-lint-dockle, iac-checkov, iac-kubescape
+CI pipeline now has **12 independent parallel jobs**:
+backend, frontend-client, frontend-backoffice, sast-semgrep, sast-codeql, sca-trivy, container-scan-trivy, container-lint-dockle, iac-checkov, iac-kubescape, secrets-gitleaks, secrets-trufflehog
 
-### CI Pipeline Summary (All 10 Jobs)
+### CI Pipeline Summary (All 12 Jobs)
 
 | Category | Jobs | Tool | Detects |
 |----------|------|------|---------|
@@ -134,3 +134,5 @@ backend, frontend-client, frontend-backoffice, sast-semgrep, sast-codeql, sca-tr
 | Container | container-lint-dockle | Dockle | CIS Docker Benchmarks |
 | IaC | iac-checkov | Checkov | Compose/Dockerfile misconfigs |
 | IaC | iac-kubescape | Kubescape | K8s manifests (placeholder) |
+| Secrets | secrets-gitleaks | Gitleaks | Hardcoded secrets (pattern) |
+| Secrets | secrets-trufflehog | TruffleHog | Active credential verification |

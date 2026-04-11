@@ -1,0 +1,9 @@
+# Gitleaks allowlist for known false positives
+# Format: fingerprint (generated when gitleaks detects a non-secret)
+# Add fingerprints ONLY after confirming they are false positives
+#
+# To get a fingerprint, run gitleaks and copy the fingerprint from the finding:
+# gitleaks detect --config .gitleaks.toml --source .
+#
+# Example:
+# abc123def456  # Test fixture: mock Keycloak secret in integration test

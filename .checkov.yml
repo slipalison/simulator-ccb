@@ -1,7 +1,2 @@
 soft-fail: false
 compact: true
-framework:
-  - dockerfile_compose
-check:
-  - CKV_DOCKER_*
-  - CKV2_DOCKER_*

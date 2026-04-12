@@ -390,15 +390,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install Checkov
+        run: pip install checkov
+
       - name: Run Checkov IaC scan
-        uses: bridgecrew/checkov-action@master
-        with:
-          file: compose.yaml
-          framework: dockerfile_compose
-          output: cli,sarif
-          output-file-path: checkov-results.sarif
-          soft-fail: false
-          check: CKV_DOCKER_*,CKV2_DOCKER_*
+        run: |
+          checkov \
+            --file compose.yaml \
+            --framework dockerfile_compose \
+            --check CKV_DOCKER_*,CKV2_DOCKER_* \
+            --output cli \
+            --output sarif \
+            --output-file-path console,checkov-results.sarif
 
       - name: Upload Checkov SARIF
         uses: github/codeql-action/upload-sarif@v4

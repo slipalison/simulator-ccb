@@ -66,7 +66,8 @@ jobs:
           /p:CoverletOutputFormat=cobertura
           /p:CoverletOutput=${{ github.workspace }}/coverage/domain.cobertura.xml
           /p:ExcludeByAttribute=\"ExcludeFromCodeCoverage\"
-          /p:Exclude=\"[Onboarding.Infrastructure]*\"
+          /p:Exclude=\"[Onboarding.Infrastructure]*,[Onboarding.API]Program\"
+          /p:ExcludeByFile=\"**/Program.cs%2c**/*.generated.cs\"
 
       - name: Test - API
         env:
@@ -80,7 +81,8 @@ jobs:
           /p:CoverletOutputFormat=cobertura
           /p:CoverletOutput=${{ github.workspace }}/coverage/api.cobertura.xml
           /p:ExcludeByAttribute=\"ExcludeFromCodeCoverage\"
-          /p:Exclude=\"[Onboarding.Infrastructure]*\"
+          /p:Exclude=\"[Onboarding.Infrastructure]*,[Onboarding.API]Program\"
+          /p:ExcludeByFile=\"**/Program.cs%2c**/*.generated.cs\"
 
       - name: Test - Integration
         env:
@@ -95,7 +97,8 @@ jobs:
           /p:CoverletOutputFormat=cobertura
           /p:CoverletOutput=${{ github.workspace }}/coverage/integration.cobertura.xml
           /p:ExcludeByAttribute=\"ExcludeFromCodeCoverage\"
-          /p:Exclude=\"[Onboarding.Infrastructure]*\"
+          /p:Exclude=\"[Onboarding.Infrastructure]*,[Onboarding.API]Program\"
+          /p:ExcludeByFile=\"**/Program.cs%2c**/*.generated.cs\"
 
       - name: Merge coverage reports
         run: |
@@ -104,19 +107,72 @@ jobs:
 
       - name: Validate coverage threshold (80%)
         run: |
-          COVERAGE=$(python3 -c "
+          RESULT=$(python3 -c "
           import xml.etree.ElementTree as ET
           tree = ET.parse('coverage/merged.cobertura.xml')
           root = tree.getroot()
           line_rate = float(root.get('line-rate', 0))
+          branch_rate = float(root.get('branch-rate', 0))
+          lines_covered = int(root.get('lines-covered', 0))
+          lines_valid = int(root.get('lines-valid', 0))
+          branches_covered = int(root.get('branches-covered', 0))
+          branches_valid = int(root.get('branches-valid', 0))
           print(f'{line_rate * 100:.2f}')
+          print(f'{branch_rate * 100:.2f}')
+          print(f'{lines_covered}')
+          print(f'{lines_valid}')
+          print(f'{branches_covered}')
+          print(f'{branches_valid}')
+
+          # Per-package breakdown
+          for pkg in root.findall('.//package'):
+              name = pkg.get('name', 'unknown')
+              lr = float(pkg.get('line-rate', 0)) * 100
+              br = float(pkg.get('branch-rate', 0)) * 100
+              print(f'PKG|{name}|{lr:.1f}|{br:.1f}')
           ")
-          echo "Combined coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
-            echo "::error::Coverage ${COVERAGE}% is below 80% threshold"
+
+          LINE_COV=$(echo "$RESULT" | sed -n '1p')
+          BRANCH_COV=$(echo "$RESULT" | sed -n '2p')
+          LINES_HIT=$(echo "$RESULT" | sed -n '3p')
+          LINES_TOTAL=$(echo "$RESULT" | sed -n '4p')
+          BRANCHES_HIT=$(echo "$RESULT" | sed -n '5p')
+          BRANCHES_TOTAL=$(echo "$RESULT" | sed -n '6p')
+
+          echo "Combined line coverage: ${LINE_COV}%"
+          echo "Combined branch coverage: ${BRANCH_COV}%"
+
+          # Write coverage summary to GitHub Actions Job Summary
+          {
+            echo "## Code Coverage Report"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|--------|-------|"
+            echo "| **Line Coverage** | **${LINE_COV}%** |"
+            echo "| **Branch Coverage** | ${BRANCH_COV}% |"
+            echo "| Lines Covered | ${LINES_HIT} / ${LINES_TOTAL} |"
+            echo "| Branches Covered | ${BRANCHES_HIT} / ${BRANCHES_TOTAL} |"
+            echo ""
+            echo "### Per-Module Breakdown"
+            echo ""
+            echo "| Module | Line % | Branch % |"
+            echo "|--------|--------|----------|"
+            echo "$RESULT" | grep '^PKG|' | while IFS='|' read -r _ name line branch; do
+              echo "| ${name} | ${line}% | ${branch}% |"
+            done
+            echo ""
+            if (( $(echo "$LINE_COV < 80" | bc -l) )); then
+              echo "> **Status:** :x: Coverage ${LINE_COV}% is below 80% threshold"
+            else
+              echo "> **Status:** :white_check_mark: Coverage ${LINE_COV}% meets 80% threshold"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if (( $(echo "$LINE_COV < 80" | bc -l) )); then
+            echo "::error::Coverage ${LINE_COV}% is below 80% threshold"
             exit 1
           fi
-          echo "Coverage ${COVERAGE}% meets 80% threshold"
+          echo "Coverage ${LINE_COV}% meets 80% threshold"
 
   frontend-client:
     name: Frontend Client (Vinxi)

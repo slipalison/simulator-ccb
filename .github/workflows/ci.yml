@@ -269,8 +269,7 @@ jobs:
             --config .semgrep/ \
             --output semgrep.sarif \
             --sarif \
-            --error \
-            --metrics off
+            --error
 
       - name: Upload Semgrep SARIF
         uses: github/codeql-action/upload-sarif@v4

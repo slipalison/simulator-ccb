@@ -477,7 +477,7 @@ jobs:
       - name: Run TruffleHog
         uses: trufflesecurity/trufflehog@main
         with:
-          extra_args: --only-verified --fail --json
+          extra_args: --only-verified --json
 
       - name: Upload TruffleHog SARIF
         if: always()

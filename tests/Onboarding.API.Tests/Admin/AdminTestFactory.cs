@@ -73,7 +73,7 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
                     options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration();
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
-                    options.TokenValidationParameters.ValidateLifetime = false;
+                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep: jwt-tokenvalidationparameters-no-expiry-validation — test factory uses fake tokens
                     options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
                 });
 

@@ -15,4 +15,5 @@ COPY src/ ./src/
 
 WORKDIR /app/src/Onboarding.API
 EXPOSE 8080
+USER $APP_UID
 ENTRYPOINT ["dotnet", "watch", "run", "--no-launch-profile", "--urls", "http://0.0.0.0:8080"]

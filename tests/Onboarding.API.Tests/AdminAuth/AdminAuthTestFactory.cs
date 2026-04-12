@@ -70,7 +70,7 @@ public sealed class AdminAuthTestFactory : WebApplicationFactory<Program>
                     options.TokenValidationParameters.ValidateIssuerSigningKey = false;
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
-                    options.TokenValidationParameters.ValidateLifetime = false;
+                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep: jwt-tokenvalidationparameters-no-expiry-validation — test factory uses fake tokens
                     options.TokenValidationParameters.RequireSignedTokens = false;
                 });
 

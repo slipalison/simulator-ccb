@@ -2,18 +2,6 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { loginAdmin, logoutAdmin, getAdminMe } from "@/lib/admin-api";
 
 // ---------------------------------------------------------------------------
-// Module-level state (memory only — NO tokens, NO localStorage)
-// OUTSIDE any component — NOT in useState
-// ---------------------------------------------------------------------------
-
-interface AdminSession {
-  adminName: string | null;
-  adminEmail: string | null;
-}
-
-let adminSession: AdminSession = { adminName: null, adminEmail: null };
-
-// ---------------------------------------------------------------------------
 // Context definition
 // ---------------------------------------------------------------------------
 
@@ -46,7 +34,6 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     async function tryRestore() {
       try {
         const me = await getAdminMe();
-        adminSession = { adminName: me.adminName, adminEmail: me.adminEmail };
         setAdminName(me.adminName);
         setAdminEmail(me.adminEmail);
         setIsAuthenticated(true);
@@ -64,7 +51,6 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     try {
       const session = await loginAdmin(email, password);
-      adminSession = { adminName: session.adminName, adminEmail: session.adminEmail };
       setAdminName(session.adminName);
       setAdminEmail(session.adminEmail);
       setIsAuthenticated(true);
@@ -79,7 +65,6 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Best effort — clear local state regardless
     }
-    adminSession = { adminName: null, adminEmail: null };
     setAdminName(null);
     setAdminEmail(null);
     setIsAuthenticated(false);
@@ -88,13 +73,11 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   async function restoreSession(): Promise<boolean> {
     try {
       const me = await getAdminMe();
-      adminSession = { adminName: me.adminName, adminEmail: me.adminEmail };
       setAdminName(me.adminName);
       setAdminEmail(me.adminEmail);
       setIsAuthenticated(true);
       return true;
     } catch {
-      adminSession = { adminName: null, adminEmail: null };
       setAdminName(null);
       setAdminEmail(null);
       setIsAuthenticated(false);

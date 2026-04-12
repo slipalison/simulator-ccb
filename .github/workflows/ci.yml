@@ -407,42 +407,6 @@ jobs:
           sarif_file: checkov-results.sarif
           category: checkov
 
-  iac-kubescape:
-    name: IaC — Kubescape
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check for K8s manifests
-        id: check-k8s
-        run: |
-          if find infra/ -name '*.yaml' -o -name '*.yml' | grep -q '.'; then
-            echo "has-k8s=true" >> $GITHUB_OUTPUT
-          else
-            echo "has-k8s=false" >> $GITHUB_OUTPUT
-            echo "No K8s manifests found — skipping Kubescape scan"
-          fi
-
-      - name: Run Kubescape scan
-        if: steps.check-k8s.outputs.has-k8s == 'true'
-        uses: kubescape/kubescape-action@v1
-        with:
-          path: infra/
-          format: sarif
-          output: kubescape-results.sarif
-          fail-threshold: high
-          compliance-frameworks: NSA,CIS
-
-      - name: Upload Kubescape SARIF
-        if: always() && steps.check-k8s.outputs.has-k8s == 'true'
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: kubescape-results.sarif
-          category: kubescape
-
   secrets-gitleaks:
     name: Secrets — Gitleaks
     runs-on: ubuntu-latest

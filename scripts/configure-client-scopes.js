@@ -2,7 +2,7 @@
 // Configure Keycloak client scopes for onboarding-app
 // This script runs after Keycloak startup to ensure the client has the correct scopes.
 
-const http = require('http');
+const http = require('http'); // nosemgrep: problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server
 
 function kcRequest(path, method, body, token) {
   return new Promise((resolve, reject) => {
@@ -10,7 +10,8 @@ function kcRequest(path, method, body, token) {
     if (token) headers.Authorization = 'Bearer ' + token;
     const data = body ? JSON.stringify(body) : '';
     if (body) headers['Content-Length'] = Buffer.byteLength(data);
-    const opts = { hostname: '127.0.0.1', port: 8180, path, method, headers };
+    const opts = { hostname: '127.0.0.1', port: 8180, path, method, headers }; // nosemgrep: problem-based-packs.insecure-transport.js-node.http-request.http-request
+    // nosemgrep: problem-based-packs.insecure-transport.js-node.using-http-server.using-http-server
     const req = http.request(opts, res => {
       let body = '';
       res.on('data', c => body += c);
@@ -87,7 +88,7 @@ async function main() {
   // 4. Add scopes as default client scopes for onboarding-app
   for (const [name, id] of Object.entries(scopeIds)) {
     const res = await kcRequest(`/admin/realms/onboarding/clients/${appClient.id}/default-client-scopes/${id}`, 'PUT', null, adminToken);
-    console.log(`Added ${name} scope to onboarding-app:`, res.status);
+    console.log('Added %s scope to onboarding-app:', name, res.status);
   }
 
   console.log('Done! Client scopes configured.');

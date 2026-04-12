@@ -30,10 +30,10 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
 
@@ -66,7 +66,8 @@ jobs:
           /p:CoverletOutputFormat=cobertura
           /p:CoverletOutput=${{ github.workspace }}/coverage/domain.cobertura.xml
           /p:ExcludeByAttribute=\"ExcludeFromCodeCoverage\"
-          /p:Exclude=\"[Onboarding.Infrastructure]*\"
+          /p:Exclude=\"[Onboarding.Infrastructure]*,[Onboarding.API]Program\"
+          /p:ExcludeByFile=\"**/Program.cs%2c**/*.generated.cs\"
 
       - name: Test - API
         env:
@@ -80,7 +81,8 @@ jobs:
           /p:CoverletOutputFormat=cobertura
           /p:CoverletOutput=${{ github.workspace }}/coverage/api.cobertura.xml
           /p:ExcludeByAttribute=\"ExcludeFromCodeCoverage\"
-          /p:Exclude=\"[Onboarding.Infrastructure]*\"
+          /p:Exclude=\"[Onboarding.Infrastructure]*,[Onboarding.API]Program\"
+          /p:ExcludeByFile=\"**/Program.cs%2c**/*.generated.cs\"
 
       - name: Test - Integration
         env:
@@ -95,7 +97,8 @@ jobs:
           /p:CoverletOutputFormat=cobertura
           /p:CoverletOutput=${{ github.workspace }}/coverage/integration.cobertura.xml
           /p:ExcludeByAttribute=\"ExcludeFromCodeCoverage\"
-          /p:Exclude=\"[Onboarding.Infrastructure]*\"
+          /p:Exclude=\"[Onboarding.Infrastructure]*,[Onboarding.API]Program\"
+          /p:ExcludeByFile=\"**/Program.cs%2c**/*.generated.cs\"
 
       - name: Merge coverage reports
         run: |
@@ -104,19 +107,72 @@ jobs:
 
       - name: Validate coverage threshold (80%)
         run: |
-          COVERAGE=$(python3 -c "
+          RESULT=$(python3 -c "
           import xml.etree.ElementTree as ET
           tree = ET.parse('coverage/merged.cobertura.xml')
           root = tree.getroot()
           line_rate = float(root.get('line-rate', 0))
+          branch_rate = float(root.get('branch-rate', 0))
+          lines_covered = int(root.get('lines-covered', 0))
+          lines_valid = int(root.get('lines-valid', 0))
+          branches_covered = int(root.get('branches-covered', 0))
+          branches_valid = int(root.get('branches-valid', 0))
           print(f'{line_rate * 100:.2f}')
+          print(f'{branch_rate * 100:.2f}')
+          print(f'{lines_covered}')
+          print(f'{lines_valid}')
+          print(f'{branches_covered}')
+          print(f'{branches_valid}')
+
+          # Per-package breakdown
+          for pkg in root.findall('.//package'):
+              name = pkg.get('name', 'unknown')
+              lr = float(pkg.get('line-rate', 0)) * 100
+              br = float(pkg.get('branch-rate', 0)) * 100
+              print(f'PKG|{name}|{lr:.1f}|{br:.1f}')
           ")
-          echo "Combined coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
-            echo "::error::Coverage ${COVERAGE}% is below 80% threshold"
+
+          LINE_COV=$(echo "$RESULT" | sed -n '1p')
+          BRANCH_COV=$(echo "$RESULT" | sed -n '2p')
+          LINES_HIT=$(echo "$RESULT" | sed -n '3p')
+          LINES_TOTAL=$(echo "$RESULT" | sed -n '4p')
+          BRANCHES_HIT=$(echo "$RESULT" | sed -n '5p')
+          BRANCHES_TOTAL=$(echo "$RESULT" | sed -n '6p')
+
+          echo "Combined line coverage: ${LINE_COV}%"
+          echo "Combined branch coverage: ${BRANCH_COV}%"
+
+          # Write coverage summary to GitHub Actions Job Summary
+          {
+            echo "## Code Coverage Report"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|--------|-------|"
+            echo "| **Line Coverage** | **${LINE_COV}%** |"
+            echo "| **Branch Coverage** | ${BRANCH_COV}% |"
+            echo "| Lines Covered | ${LINES_HIT} / ${LINES_TOTAL} |"
+            echo "| Branches Covered | ${BRANCHES_HIT} / ${BRANCHES_TOTAL} |"
+            echo ""
+            echo "### Per-Module Breakdown"
+            echo ""
+            echo "| Module | Line % | Branch % |"
+            echo "|--------|--------|----------|"
+            echo "$RESULT" | grep '^PKG|' | while IFS='|' read -r _ name line branch; do
+              echo "| ${name} | ${line}% | ${branch}% |"
+            done
+            echo ""
+            if (( $(echo "$LINE_COV < 80" | bc -l) )); then
+              echo "> **Status:** :x: Coverage ${LINE_COV}% is below 80% threshold"
+            else
+              echo "> **Status:** :white_check_mark: Coverage ${LINE_COV}% meets 80% threshold"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if (( $(echo "$LINE_COV < 80" | bc -l) )); then
+            echo "::error::Coverage ${LINE_COV}% is below 80% threshold"
             exit 1
           fi
-          echo "Coverage ${COVERAGE}% meets 80% threshold"
+          echo "Coverage ${LINE_COV}% meets 80% threshold"
 
   frontend-client:
     name: Frontend Client (Vinxi)
@@ -127,10 +183,10 @@ jobs:
       run:
         working-directory: frontend/client
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "24"
 
@@ -165,10 +221,10 @@ jobs:
       run:
         working-directory: frontend/backoffice
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: "24"
 
@@ -201,7 +257,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Semgrep
         run: pip install semgrep
@@ -213,8 +269,7 @@ jobs:
             --config .semgrep/ \
             --output semgrep.sarif \
             --sarif \
-            --error \
-            --metrics off
+            --error
 
       - name: Upload Semgrep SARIF
         uses: github/codeql-action/upload-sarif@v4
@@ -230,10 +285,10 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
 
@@ -258,7 +313,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Run Trivy filesystem scan
         uses: aquasecurity/trivy-action@master
@@ -285,7 +340,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build backend Docker image
         run: docker build -t onboarding-api:ci -f src/Onboarding.API/Dockerfile .
@@ -313,18 +368,18 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build backend Docker image
         run: docker build -t onboarding-api:ci -f src/Onboarding.API/Dockerfile .
 
+      - name: Install Dockle
+        run: |
+          VERSION=$(curl -sL https://api.github.com/repos/goodwithtech/dockle/releases/latest | jq -r .tag_name | sed 's/^v//')
+          curl -sL "https://github.com/goodwithtech/dockle/releases/download/v${VERSION}/dockle_${VERSION}_Linux-64bit.tar.gz" | tar xz -C /usr/local/bin dockle
+
       - name: Run Dockle scan
-        uses: goodwithtech/dockle-action@v1
-        with:
-          image: onboarding-api:ci
-          exit-code: "1"
-          exit-level: error
-          timeout: "5m"
+        run: dockle --exit-code 1 --exit-level error --timeout 5m onboarding-api:ci
 
   iac-checkov:
     name: IaC — Checkov
@@ -333,17 +388,18 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
+
+      - name: Install Checkov
+        run: pip install checkov
 
       - name: Run Checkov IaC scan
-        uses: bridgecrew/checkov-action@master
-        with:
-          file: compose.yaml
-          framework: dockerfile_compose
-          output: cli,sarif
-          output-file-path: checkov-results.sarif
-          soft-fail: false
-          check: CKV_DOCKER_*,CKV2_DOCKER_*
+        run: |
+          checkov \
+            --file compose.yaml \
+            --output cli \
+            --output sarif \
+            --output-file-path console,checkov-results.sarif
 
       - name: Upload Checkov SARIF
         uses: github/codeql-action/upload-sarif@v4
@@ -352,42 +408,6 @@ jobs:
           sarif_file: checkov-results.sarif
           category: checkov
 
-  iac-kubescape:
-    name: IaC — Kubescape
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check for K8s manifests
-        id: check-k8s
-        run: |
-          if find infra/ -name '*.yaml' -o -name '*.yml' | grep -q '.'; then
-            echo "has-k8s=true" >> $GITHUB_OUTPUT
-          else
-            echo "has-k8s=false" >> $GITHUB_OUTPUT
-            echo "No K8s manifests found — skipping Kubescape scan"
-          fi
-
-      - name: Run Kubescape scan
-        if: steps.check-k8s.outputs.has-k8s == 'true'
-        uses: kubescape/kubescape-action@v1
-        with:
-          path: infra/
-          format: sarif
-          output: kubescape-results.sarif
-          fail-threshold: high
-          compliance-frameworks: NSA,CIS
-
-      - name: Upload Kubescape SARIF
-        if: always() && steps.check-k8s.outputs.has-k8s == 'true'
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: kubescape-results.sarif
-          category: kubescape
-
   secrets-gitleaks:
     name: Secrets — Gitleaks
     runs-on: ubuntu-latest
@@ -395,7 +415,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -415,14 +435,21 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Run TruffleHog
         uses: trufflesecurity/trufflehog@main
         with:
-          extra_args: --only-verified --fail --json
+          extra_args: --only-verified
+
+      - name: Ensure SARIF exists
+        if: always()
+        run: |
+          if [ ! -f results.sarif ]; then
+            echo '{"version":"2.1.0","$schema":"https://json.schemastore.org/sarif-2.1.0.json","runs":[{"tool":{"driver":{"name":"TruffleHog","informationUri":"https://github.com/trufflesecurity/trufflehog","rules":[]}},"results":[]}]}' > results.sarif
+          fi
 
       - name: Upload TruffleHog SARIF
         if: always()

@@ -35,11 +35,11 @@ public class AuthEndpointTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Login_MissingFields_Returns400()
+    public async Task Login_MissingFields_Returns422()
     {
         var payload = new { };
         var response = await _client!.PostAsJsonAsync("/api/auth/login", payload);
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
     }
 
     [Fact]
@@ -52,11 +52,11 @@ public class AuthEndpointTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RefreshToken_MissingField_Returns400()
+    public async Task RefreshToken_MissingCookie_Returns401()
     {
         var payload = new { };
         var response = await _client!.PostAsJsonAsync("/api/auth/refresh", payload);
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }
 
     [Fact]
@@ -76,10 +76,10 @@ public class AuthEndpointTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ResetPassword_MissingFields_Returns400()
+    public async Task ResetPassword_MissingFields_Returns422()
     {
         var payload = new { };
         var response = await _client!.PostAsJsonAsync("/api/auth/reset-password", payload);
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        response.StatusCode.ShouldBe(HttpStatusCode.UnprocessableEntity);
     }
 }

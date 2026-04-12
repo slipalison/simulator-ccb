@@ -9,4 +9,5 @@ RUN npm install
 COPY . .
 
 EXPOSE 5174
+USER node
 CMD ["npm", "run", "dev"]

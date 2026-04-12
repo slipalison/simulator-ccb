@@ -11,7 +11,7 @@ interface AdminSession {
   adminEmail: string | null;
 }
 
-const _adminSession: AdminSession = { adminName: null, adminEmail: null };
+let adminSession: AdminSession = { adminName: null, adminEmail: null };
 
 // ---------------------------------------------------------------------------
 // Context definition

@@ -502,6 +502,20 @@ jobs:
       contents: read
       security-events: write
       issues: write
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v6
 
@@ -510,21 +524,37 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Build backend Docker image
-        run: docker build -t onboarding-api:ci -f src/Onboarding.API/Dockerfile .
+      - name: Restore dependencies
+        run: dotnet restore Onboarding.slnx
 
-      - name: Start test stack (API + PostgreSQL)
+      - name: Build API (Release)
+        run: dotnet build src/Onboarding.API/Onboarding.API.csproj --no-restore --configuration Release
+
+      - name: Start API in background
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ASPNETCORE_HTTP_PORTS: "8080"
+          ConnectionStrings__AppDb: Host=localhost;Port=5432;Database=test;Username=test;Password=test
+          Keycloak__AuthServerUrl: http://localhost:8180
+          Keycloak__Authority: http://localhost:8180/realms/onboarding
+          Keycloak__AdminClientId: ""
+          Keycloak__AdminClientSecret: ""
+          Keycloak__RealmUrl: http://localhost:8180/realms/onboarding
+          Keycloak__ValidIssuer: http://localhost:8180/realms/onboarding
         run: |
-          docker compose -f compose.test.yml up -d api test_db
+          dotnet run --project src/Onboarding.API/Onboarding.API.csproj --no-build --urls "http://0.0.0.0:8080" &
           echo "Waiting for API health..."
           for i in $(seq 1 30); do
             if curl -sf http://localhost:8080/healthz/live > /dev/null 2>&1; then
-              echo "API is healthy"
-              break
+              echo "API is healthy after ${i} attempts"
+              exit 0
             fi
             echo "Waiting... ($i/30)"
             sleep 5
           done
+          echo "::error::API did not become healthy"
+          curl -v http://localhost:8080/healthz/live || true
+          exit 1
 
       - name: ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.15.0
@@ -539,10 +569,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: zap-report
-          path: zap_report.json
+          path: |
+            zap_report.json
+            report_json.json
+            report_html.html
           retention-days: 30
           continue-on-error: true
-
-      - name: Stop test stack
-        if: always()
-        run: docker compose -f compose.test.yml down -v

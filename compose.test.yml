@@ -1,6 +1,9 @@
 # Override for CI DAST testing — lightweight stack (API + PostgreSQL only, no Keycloak/observability)
+# Use ONLY this file in CI: docker compose -f compose.test.yml up
 # The API liveness check (/healthz/live) does not depend on external services,
 # so ZAP can scan headers, error responses, and surface vulnerabilities.
+
+name: onboarding-dast
 
 services:
   test_db:

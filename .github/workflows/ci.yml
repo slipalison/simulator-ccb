@@ -515,7 +515,7 @@ jobs:
 
       - name: Start test stack (API + PostgreSQL)
         run: |
-          docker compose -f compose.yaml -f compose.test.yml up -d api test_db
+          docker compose -f compose.test.yml up -d api test_db
           echo "Waiting for API health..."
           for i in $(seq 1 30); do
             if curl -sf http://localhost:8080/healthz/live > /dev/null 2>&1; then
@@ -545,4 +545,4 @@ jobs:
 
       - name: Stop test stack
         if: always()
-        run: docker compose -f compose.yaml -f compose.test.yml down -v
+        run: docker compose -f compose.test.yml down -v

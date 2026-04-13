@@ -8,7 +8,7 @@ Sistema de onboarding para cadastro de clientes Pessoa Física e Pessoa Jurídic
 [![Dependabot](https://img.shields.io/badge/Dependabot-enabled-green.svg)](https://docs.github.com/en/code-security/dependabot)
 [![Security Policy](https://img.shields.io/badge/Security-Policy-blue.svg)](.github/SECURITY.md)
 
-This project runs **14 independent security checks** across a multi-stage pipeline:
+This project runs **13 security checks** across a multi-stage pipeline:
 
 | Stage | Jobs | Purpose |
 |-------|------|---------|
@@ -31,6 +31,7 @@ This project runs **14 independent security checks** across a multi-stage pipeli
 **Pipeline stages:** Build → Tests (needs build) — Security runs parallel, independent.
 
 See [Security Overview](docs/security-overview.md) for complete documentation.
+See [CI Pipeline Architecture](docs/ci-pipeline.md) for multi-stage details and security tool rationale.
 
 ## Tech Stack
 

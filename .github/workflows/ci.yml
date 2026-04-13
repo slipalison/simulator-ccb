@@ -715,7 +715,7 @@ jobs:
 
       - name: Install Dockle
         run: |
-          curl -sL "https://github.com/goodwithtech/dockle/releases/latest/download/dockle_Linux-64bit.tar.gz" | tar xz -C /usr/local/bin dockle
+          curl -sL "https://github.com/aquasecurity/dockle/releases/latest/download/dockle_Linux-64bit.tar.gz" | tar xz -C /usr/local/bin dockle
 
       - name: Run Dockle Scan
         id: dockle

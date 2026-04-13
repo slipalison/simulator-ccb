@@ -351,9 +351,9 @@ Os 10 jobs de segurança rodam **em paralelo** desde o início do CI, sem depend
 
 | Pattern | Exemplo | Risco |
 |---------|---------|-------|
-| AWS/Azure/GCP keys | `AKIAIOSFODNN7EXAMPLE` | Acesso à cloud |
-| JWT signing keys | `"my-super-secret-key-123"` | Forge de tokens |
-| DB connection strings | `Host=db;Password=prod_password` | Acesso ao banco |
+| AWS/Azure/GCP keys | `AKIA...EXAMPLE` | Acesso à cloud |
+| JWT signing keys | chaves de assinatura fracas | Forge de tokens |
+| DB connection strings | strings de conexão com senha | Acesso ao banco |
 | Keycloak secrets | Client secrets do admin API | Acesso ao Keycloak |
 | Generic API keys | `sk-*`, `ghp_*`, `xoxb-*` | Acesso a APIs externas |
 

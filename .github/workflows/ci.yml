@@ -362,20 +362,26 @@ jobs:
       - name: Run Semgrep Scan
         id: semgrep
         run: |
-          # Generate both SARIF and JSON in one pass
+          # Run once with JSON for parsing
           semgrep scan \
             --config auto \
             --config .semgrep/ \
-            --output semgrep.sarif \
-            --sarif \
             --json semgrep-findings.json 2>/dev/null; SEMGREP_EXIT=$?
+
+          # Run again with SARIF for upload (uses cache, fast)
+          semgrep scan \
+            --config auto \
+            --config .semgrep/ \
+            --sarif \
+            --output semgrep.sarif \
+            --quiet 2>/dev/null || true
 
           # If no findings, create empty files
           if [ ! -f semgrep-findings.json ]; then
             echo '{"results":[],"errors":[]}' > semgrep-findings.json
           fi
           if [ ! -f semgrep.sarif ]; then
-            echo '{"version":"2.1.0","$schema":"https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json","runs":[]}' > semgrep.sarif
+            echo '{"version":"2.1.0","runs":[]}' > semgrep.sarif
           fi
 
           # Parse results for summary (single-line python)
@@ -707,17 +713,35 @@ jobs:
         run: docker build -t onboarding-api:ci -f src/Onboarding.API/Dockerfile .
 
       - name: Install Dockle
-        uses: goodwithtech/dockle-action@v1
+        run: |
+          curl -sL "https://github.com/goodwithtech/dockle/releases/latest/download/dockle_Linux-64bit.tar.gz" | tar xz -C /usr/local/bin dockle
+
+      - name: Run Dockle Scan
         id: dockle
-        with:
-          image: onboarding-api:ci
-          exit-code: "1"
-          exit-level: error
-          timeout: 5m
+        run: |
+          DOCKLE_OUTPUT=$(dockle --exit-code 1 --exit-level error --timeout 5m onboarding-api:ci 2>&1) && DOCKLE_EXIT=0 || DOCKLE_EXIT=$?
+          echo "$DOCKLE_OUTPUT" | tee dockle-output.txt
+
+          FATALS=$(echo "$DOCKLE_OUTPUT" | grep -c "^FATAL" || true)
+          ERRORS=$(echo "$DOCKLE_OUTPUT" | grep -c "^ERROR" || true)
+          WARNS=$(echo "$DOCKLE_OUTPUT" | grep -c "^WARN" || true)
+          FATALS=$(echo "$FATALS" | tr -d '[:space:]')
+          ERRORS=$(echo "$ERRORS" | tr -d '[:space:]')
+          WARNS=$(echo "$WARNS" | tr -d '[:space:]')
+          FATALS=${FATALS:-0}
+          ERRORS=${ERRORS:-0}
+          WARNS=${WARNS:-0}
+          echo "fatal=${FATALS}" >> $GITHUB_OUTPUT
+          echo "errors=${ERRORS}" >> $GITHUB_OUTPUT
+          echo "warns=${WARNS}" >> $GITHUB_OUTPUT
+          exit $DOCKLE_EXIT
 
       - name: Generate Dockle Summary
         if: always()
         run: |
+          FATALS="${{ steps.dockle.outputs.fatal || '0' }}"
+          ERRORS="${{ steps.dockle.outputs.errors || '0' }}"
+          WARNS="${{ steps.dockle.outputs.warns || '0' }}"
           {
             echo "## 🔧 Container Lint — Dockle (CIS Benchmarks)"
             echo ""
@@ -750,6 +774,13 @@ jobs:
             echo "| DKL-DI-0004 | \`.dockerignore\` present | Clean build context, no sensitive files |"
             echo ""
             echo "> **Status:** See job log for detailed findings."
+            if [ "${FATALS:-0}" -gt 0 ] 2>/dev/null || [ "${ERRORS:-0}" -gt 0 ] 2>/dev/null; then
+              echo ""
+              echo "> **${FATALS} FATAL, ${ERRORS} ERROR, ${WARNS} WARN finding(s) — merge blocked**"
+            else
+              echo ""
+              echo "> **Clean scan — image follows CIS Docker Benchmarks**"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
   security-iac-checkov:

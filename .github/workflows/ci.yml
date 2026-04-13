@@ -366,7 +366,8 @@ jobs:
           semgrep scan \
             --config auto \
             --config .semgrep/ \
-            --json semgrep-findings.json 2>/dev/null; SEMGREP_EXIT=$?
+            --json \
+            --output semgrep-findings.json 2>/dev/null; SEMGREP_EXIT=$?
 
           # Run again with SARIF for upload (uses cache, fast)
           semgrep scan \

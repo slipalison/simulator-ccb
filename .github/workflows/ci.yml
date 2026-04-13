@@ -378,38 +378,34 @@ jobs:
             echo '{"version":"2.1.0","$schema":"https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json","runs":[]}' > semgrep.sarif
           fi
 
-          # Parse results for summary
-          FINDINGS=$(python3 -c "
-          import json
-          try:
-              with open('semgrep-findings.json') as f:
-                  data = json.load(f)
-              results = data.get('results', [])
-              errors = [r for r in results if r.get('extra', {}).get('severity') == 'ERROR']
-              warnings = [r for r in results if r.get('extra', {}).get('severity') in ('WARNING', 'INFO')]
-              rules = set(r.get('check_id', 'unknown') for r in results)
-              print(f'{len(results)}|{len(errors)}|{len(warnings)}|{len(rules)}')
-          except:
-              print('0|0|0|0')
-          ")
+          # Parse results for summary (single-line python)
+          TOTAL=$(python3 -c "import json; d=json.load(open('semgrep-findings.json')); print(len(d.get('results',[])))" 2>/dev/null || echo "0")
+          ERRORS=$(python3 -c "import json; d=json.load(open('semgrep-findings.json')); print(sum(1 for r in d.get('results',[]) if r.get('extra',{}).get('severity')=='ERROR'))" 2>/dev/null || echo "0")
+          WARNINGS=$(python3 -c "import json; d=json.load(open('semgrep-findings.json')); print(sum(1 for r in d.get('results',[]) if r.get('extra',{}).get('severity') in ('WARNING','INFO')))" 2>/dev/null || echo "0")
+          RULES=$(python3 -c "import json; d=json.load(open('semgrep-findings.json')); print(len(set(r.get('check_id','unknown') for r in d.get('results',[]))))" 2>/dev/null || echo "0")
 
-          echo "total=$(echo "$FINDINGS" | cut -d'|' -f1)" >> $GITHUB_OUTPUT
-          echo "errors=$(echo "$FINDINGS" | cut -d'|' -f2)" >> $GITHUB_OUTPUT
-          echo "warnings=$(echo "$FINDINGS" | cut -d'|' -f3)" >> $GITHUB_OUTPUT
-          echo "rules=$(echo "$FINDINGS" | cut -d'|' -f4)" >> $GITHUB_OUTPUT
+          echo "total=${TOTAL}" >> $GITHUB_OUTPUT
+          echo "errors=${ERRORS}" >> $GITHUB_OUTPUT
+          echo "warnings=${WARNINGS}" >> $GITHUB_OUTPUT
+          echo "rules=${RULES}" >> $GITHUB_OUTPUT
 
           # Fail if semgrep found errors
           if [ "$SEMGREP_EXIT" -ne 0 ]; then
             exit 1
           fi
 
+      - name: Generate Semgrep Summary
+        if: always()
+        run: |
+          TOTAL="${{ steps.semgrep.outputs.total }}"
+          ERRORS="${{ steps.semgrep.outputs.errors }}"
           {
             echo "## 🔍 SAST — Semgrep Results"
             echo ""
             echo "| Metric | Value |"
             echo "|--------|-------|"
-            echo "| **Total findings** | ${{ steps.semgrep.outputs.total }} |"
-            echo "| **Errors** (block merge) | ${{ steps.semgrep.outputs.errors }} |"
+            echo "| **Total findings** | ${TOTAL} |"
+            echo "| **Errors** (block merge) | ${ERRORS} |"
             echo "| Warnings | ${{ steps.semgrep.outputs.warnings }} |"
             echo "| Custom rules active | ${{ steps.semgrep.outputs.rules }} |"
             echo ""
@@ -419,9 +415,9 @@ jobs:
             echo "known insecure patterns before they reach production."
             echo ""
             echo "**Why Semgrep (and not just CodeQL):**"
-            echo "- ⚡ Scans in ~30s vs ~2min for CodeQL"
-            echo "- 🎯 Catches obvious issues immediately (localStorage tokens, CSRF, hardcoded creds)"
-            echo "- 📝 Custom YAML rules for project-specific patterns (CPF/CNPJ validation, etc.)"
+            echo "- Scans in ~30s vs ~2min for CodeQL"
+            echo "- Catches obvious issues immediately (localStorage tokens, CSRF, hardcoded creds)"
+            echo "- Custom YAML rules for project-specific patterns (CPF/CNPJ validation, etc.)"
             echo ""
             echo "CodeQL complements this with **deep dataflow analysis** — they are complementary, not redundant."
             echo ""
@@ -437,14 +433,14 @@ jobs:
             echo "| \`no-insecure-deserialization\` | ERROR | BinaryFormatter, TypeNameHandling.Auto |"
             echo ""
 
-            if [ "${{ steps.semgrep.outputs.errors }}" -gt 0 ] 2>/dev/null; then
-              echo "> ❌ **${{ steps.semgrep.outputs.errors }} ERROR finding(s) detected — merge blocked**"
+            if [ "${ERRORS:-0}" -gt 0 ] 2>/dev/null; then
+              echo "> **${ERRORS} ERROR finding(s) detected — merge blocked**"
               echo ""
               echo "Review findings in: Security → Code scanning alerts → filter by \`semgrep\`"
-            elif [ "${{ steps.semgrep.outputs.total }}" -gt 0 ] 2>/dev/null; then
-              echo "> ✅ **No errors — warnings only (non-blocking)**"
+            elif [ "${TOTAL:-0}" -gt 0 ] 2>/dev/null; then
+              echo "> **No errors — warnings only (non-blocking)**"
             else
-              echo "> ✅ **Clean scan — no findings**"
+              echo "> **Clean scan — no findings**"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -711,51 +707,24 @@ jobs:
         run: docker build -t onboarding-api:ci -f src/Onboarding.API/Dockerfile .
 
       - name: Install Dockle
-        run: |
-          VERSION=$(curl -sL https://api.github.com/repos/goodwithtech/dockle/releases/latest | jq -r .tag_name | sed 's/^v//')
-          curl -sL "https://github.com/goodwithtech/dockle/releases/download/v${VERSION}/dockle_${VERSION}_Linux-64bit.tar.gz" | tar xz -C /usr/local/bin dockle
-
-      - name: Run Dockle scan
+        uses: goodwithtech/dockle-action@v1
         id: dockle
-        run: |
-          DOCKLE_OUTPUT=$(dockle --exit-code 1 --exit-level error --timeout 5m onboarding-api:ci 2>&1) && DOCKLE_EXIT=0 || DOCKLE_EXIT=$?
-          echo "$DOCKLE_OUTPUT" > dockle-output.txt
-
-          # Count findings by severity (grep -c returns exit 1 on no match, so use || true)
-          FATALS=$(echo "$DOCKLE_OUTPUT" | grep -c "^FATAL" || true)
-          ERRORS=$(echo "$DOCKLE_OUTPUT" | grep -c "^ERROR" || true)
-          WARNS=$(echo "$DOCKLE_OUTPUT" | grep -c "^WARN" || true)
-
-          # Trim whitespace
-          FATALS=$(echo "$FATALS" | tr -d '[:space:]')
-          ERRORS=$(echo "$ERRORS" | tr -d '[:space:]')
-          WARNS=$(echo "$WARNS" | tr -d '[:space:]')
-
-          # Default to 0 if empty
-          FATALS=${FATALS:-0}
-          ERRORS=${ERRORS:-0}
-          WARNS=${WARNS:-0}
-
-          echo "fatal=${FATALS}" >> $GITHUB_OUTPUT
-          echo "errors=${ERRORS}" >> $GITHUB_OUTPUT
-          echo "warns=${WARNS}" >> $GITHUB_OUTPUT
-          exit $DOCKLE_EXIT
+        with:
+          image: onboarding-api:ci
+          exit-code: "1"
+          exit-level: error
+          timeout: 5m
 
       - name: Generate Dockle Summary
         if: always()
         run: |
-          FATALS=${{ steps.dockle.outputs.fatal || '0' }}
-          ERRORS=${{ steps.dockle.outputs.errors || '0' }}
-          WARNS=${{ steps.dockle.outputs.warns || '0' }}
-
           {
             echo "## 🔧 Container Lint — Dockle (CIS Benchmarks)"
             echo ""
             echo "| Metric | Value |"
             echo "|--------|-------|"
-            echo "| **FATAL** (block merge) | ${FATALS} |"
-            echo "| **ERROR** (block merge) | ${ERRORS} |"
-            echo "| WARN | ${WARNS} |"
+            echo "| **Exit level** | ERROR |"
+            echo "| **Timeout** | 5 minutes |"
             echo ""
             echo "### What this check does"
             echo ""
@@ -780,12 +749,7 @@ jobs:
             echo "| DKL-LI-0001 | HEALTHCHECK defined | Orchestrators can detect unhealthy containers |"
             echo "| DKL-DI-0004 | \`.dockerignore\` present | Clean build context, no sensitive files |"
             echo ""
-
-            if [ "$FATALS" -gt 0 ] 2>/dev/null || [ "$ERRORS" -gt 0 ] 2>/dev/null; then
-              echo "> ❌ **$((FATALS + ERRORS)) FATAL/ERROR finding(s) — merge blocked**"
-            else
-              echo "> ✅ **Clean scan — image follows CIS Docker Benchmarks**"
-            fi
+            echo "> **Status:** See job log for detailed findings."
           } >> "$GITHUB_STEP_SUMMARY"
 
   security-iac-checkov:

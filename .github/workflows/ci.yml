@@ -42,27 +42,6 @@ jobs:
       - name: Build (Release)
         run: dotnet build Onboarding.slnx --no-restore --configuration Release
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-build
-          path: |
-            src/Onboarding.Domain/bin/Release/
-            src/Onboarding.Domain/obj/
-            src/Onboarding.Application/bin/Release/
-            src/Onboarding.Application/obj/
-            src/Onboarding.Infrastructure/bin/Release/
-            src/Onboarding.Infrastructure/obj/
-            src/Onboarding.API/bin/Release/
-            src/Onboarding.API/obj/
-            tests/Onboarding.Domain.Tests/bin/Release/
-            tests/Onboarding.Domain.Tests/obj/
-            tests/Onboarding.API.Tests/bin/Release/
-            tests/Onboarding.API.Tests/obj/
-            tests/Onboarding.Integration.Tests/bin/Release/
-            tests/Onboarding.Integration.Tests/obj/
-          retention-days: 1
-
   frontend-client-build:
     name: "Frontend Client › Build"
     runs-on: ubuntu-latest
@@ -94,16 +73,6 @@ jobs:
         env:
           NODE_ENV: production
         run: npm run build
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-client-build
-          path: |
-            frontend/client/.vinxi/
-            frontend/client/.output/
-            frontend/client/node_modules/
-          retention-days: 1
 
   frontend-backoffice-build:
     name: "Frontend Backoffice › Build"
@@ -137,16 +106,6 @@ jobs:
           NODE_ENV: production
         run: npm run build
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-backoffice-build
-          path: |
-            frontend/backoffice/.vinxi/
-            frontend/backoffice/.output/
-            frontend/backoffice/node_modules/
-          retention-days: 1
-
 # ─────────────────────────────────────────────────────────────────
 # Stage 2: Tests — Depends on build artifacts, runs test checks
 # ─────────────────────────────────────────────────────────────────
@@ -179,10 +138,19 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
         with:
-          name: backend-build
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore Onboarding.slnx
+
+      - name: Build (Release)
+        run: dotnet build Onboarding.slnx --no-restore --configuration Release
 
       - name: Create coverage directory
         run: mkdir -p coverage
@@ -324,10 +292,16 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
+      - name: Cache npm
+        uses: actions/cache@v5
         with:
-          name: frontend-client-build
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-client-${{ hashFiles('frontend/client/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-client-
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Type check
         run: npx tsc --noEmit
@@ -352,10 +326,16 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Download build artifacts
-        uses: actions/download-artifact@v4
+      - name: Cache npm
+        uses: actions/cache@v5
         with:
-          name: frontend-backoffice-build
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-backoffice-${{ hashFiles('frontend/backoffice/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-backoffice-
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Type check
         run: npx tsc --noEmit

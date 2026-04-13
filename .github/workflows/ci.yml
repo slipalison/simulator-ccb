@@ -457,3 +457,92 @@ jobs:
         with:
           sarif_file: results.sarif
           category: trufflehog
+
+  sbom-syft:
+    name: SBOM — Syft
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Generate SBOM (source code)
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: sbom-source.spdx.json
+          dependency-snapshot: true
+
+      - name: Build backend Docker image
+        run: docker build -t onboarding-api:ci -f src/Onboarding.API/Dockerfile .
+
+      - name: Generate SBOM (backend image)
+        uses: anchore/sbom-action@v0
+        with:
+          image: onboarding-api:ci
+          format: cyclonedx-json
+          output-file: sbom-image.cyclonedx.json
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sboms
+          path: |
+            sbom-source.spdx.json
+            sbom-image.cyclonedx.json
+          retention-days: 30
+
+  dast-zap:
+    name: DAST — OWASP ZAP Baseline
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build backend Docker image
+        run: docker build -t onboarding-api:ci -f src/Onboarding.API/Dockerfile .
+
+      - name: Start test stack (API + PostgreSQL)
+        run: |
+          docker compose -f compose.yaml -f compose.test.yml up -d api test_db
+          echo "Waiting for API health..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/healthz/live > /dev/null 2>&1; then
+              echo "API is healthy"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 5
+          done
+
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.15.0
+        with:
+          target: "http://localhost:8080"
+          fail_action: false
+          cmd_options: "-a"
+          rules_file_name: ".zap-rules.tsv"
+
+      - name: Upload ZAP Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap_report.json
+          retention-days: 30
+          continue-on-error: true
+
+      - name: Stop test stack
+        if: always()
+        run: docker compose -f compose.yaml -f compose.test.yml down -v

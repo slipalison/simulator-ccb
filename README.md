@@ -8,7 +8,7 @@ Sistema de onboarding para cadastro de clientes Pessoa Física e Pessoa Jurídic
 [![Dependabot](https://img.shields.io/badge/Dependabot-enabled-green.svg)](https://docs.github.com/en/code-security/dependabot)
 [![Security Policy](https://img.shields.io/badge/Security-Policy-blue.svg)](.github/SECURITY.md)
 
-This project runs **12 independent security checks** on every pull request:
+This project runs **14 independent security checks** on every pull request:
 
 | Category | Tools |
 |----------|-------|
@@ -16,6 +16,8 @@ This project runs **12 independent security checks** on every pull request:
 | Frontend | Vinxi (tsc, eslint, build) × 2 projects |
 | SAST | Semgrep (custom rules), CodeQL (dataflow analysis) |
 | SCA | Trivy (dependency CVEs), Dependabot (weekly updates) |
+| SBOM | Syft (source code SPDX + container CycloneDX) |
+| DAST | OWASP ZAP (baseline scan against running API) |
 | Container | Trivy (image scan), Dockle (CIS Benchmarks) |
 | IaC | Checkov (Docker Compose), Kubescape (K8s preparation) |
 | Secrets | Gitleaks (pattern detection), TruffleHog (active verification) |

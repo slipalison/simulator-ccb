@@ -542,7 +542,7 @@ jobs:
           Keycloak__RealmUrl: http://localhost:8180/realms/onboarding
           Keycloak__ValidIssuer: http://localhost:8180/realms/onboarding
         run: |
-          dotnet run --project src/Onboarding.API/Onboarding.API.csproj --no-build --urls "http://0.0.0.0:8080" &
+          dotnet run --project src/Onboarding.API/Onboarding.API.csproj --no-build --configuration Release --urls "http://0.0.0.0:8080" &
           echo "Waiting for API health..."
           for i in $(seq 1 30); do
             if curl -sf http://localhost:8080/healthz/live > /dev/null 2>&1; then

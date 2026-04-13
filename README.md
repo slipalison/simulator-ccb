@@ -8,7 +8,13 @@ Sistema de onboarding para cadastro de clientes Pessoa Física e Pessoa Jurídic
 [![Dependabot](https://img.shields.io/badge/Dependabot-enabled-green.svg)](https://docs.github.com/en/code-security/dependabot)
 [![Security Policy](https://img.shields.io/badge/Security-Policy-blue.svg)](.github/SECURITY.md)
 
-This project runs **14 independent security checks** on every pull request:
+This project runs **14 independent security checks** across a multi-stage pipeline:
+
+| Stage | Jobs | Purpose |
+|-------|------|---------|
+| **Build** | Backend, Client, Backoffice | Parallel builds with artifact caching |
+| **Tests** | Domain/API/Integration, Client checks, Backoffice checks | Coverage ≥ 80%, tsc, eslint |
+| **Security** | 10 independent jobs (SAST, SCA, SBOM, DAST, Container, IaC, Secrets) | Run in parallel, no dependencies |
 
 | Category | Tools |
 |----------|-------|
@@ -21,6 +27,8 @@ This project runs **14 independent security checks** on every pull request:
 | Container | Trivy (image scan), Dockle (CIS Benchmarks) |
 | IaC | Checkov (Docker Compose), Kubescape (K8s preparation) |
 | Secrets | Gitleaks (pattern detection), TruffleHog (active verification) |
+
+**Pipeline stages:** Build → Tests (needs build) — Security runs parallel, independent.
 
 See [Security Overview](docs/security-overview.md) for complete documentation.
 

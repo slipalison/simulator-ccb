@@ -116,7 +116,7 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-04-13 (session resumed)
-Stopped at: **MILESTONE v4.0 COMPLETE — Pipeline expandida para 14 jobs (SBOM Syft + DAST ZAP adicionados)**
+Stopped at: **MILESTONE v4.0 COMPLETE — Pipeline multi-stage: Build → Tests (needs) → Security (10 jobs independentes)**
 Resume file: none
 
 ### Milestone v4.0 — Final Summary

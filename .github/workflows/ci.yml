@@ -10,9 +10,151 @@ on:
 permissions: read-all
 
 jobs:
-  backend:
-    name: Backend (.NET 10)
+
+  # ─────────────────────────────────────────────────────────────────
+  # Stage 1: Build — Parallel builds for backend + both frontends
+  # ─────────────────────────────────────────────────────────────────
+
+  backend-build:
+    name: "Backend › Build"
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
+        run: dotnet restore Onboarding.slnx
+
+      - name: Build (Release)
+        run: dotnet build Onboarding.slnx --no-restore --configuration Release
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-build
+          path: |
+            src/Onboarding.Domain/bin/Release/
+            src/Onboarding.Domain/obj/
+            src/Onboarding.Application/bin/Release/
+            src/Onboarding.Application/obj/
+            src/Onboarding.Infrastructure/bin/Release/
+            src/Onboarding.Infrastructure/obj/
+            src/Onboarding.API/bin/Release/
+            src/Onboarding.API/obj/
+            tests/Onboarding.Domain.Tests/bin/Release/
+            tests/Onboarding.Domain.Tests/obj/
+            tests/Onboarding.API.Tests/bin/Release/
+            tests/Onboarding.API.Tests/obj/
+            tests/Onboarding.Integration.Tests/bin/Release/
+            tests/Onboarding.Integration.Tests/obj/
+          retention-days: 1
+
+  frontend-client-build:
+    name: "Frontend Client › Build"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend/client
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Cache npm
+        uses: actions/cache@v5
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-client-${{ hashFiles('frontend/client/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-client-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production
+        env:
+          NODE_ENV: production
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-client-build
+          path: |
+            frontend/client/.vinxi/
+            frontend/client/.output/
+            frontend/client/node_modules/
+          retention-days: 1
+
+  frontend-backoffice-build:
+    name: "Frontend Backoffice › Build"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: frontend/backoffice
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Cache npm
+        uses: actions/cache@v5
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-backoffice-${{ hashFiles('frontend/backoffice/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-backoffice-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production
+        env:
+          NODE_ENV: production
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-backoffice-build
+          path: |
+            frontend/backoffice/.vinxi/
+            frontend/backoffice/.output/
+            frontend/backoffice/node_modules/
+          retention-days: 1
+
+# ─────────────────────────────────────────────────────────────────
+# Stage 2: Tests — Depends on build artifacts, runs test checks
+# ─────────────────────────────────────────────────────────────────
+
+  backend-tests:
+    name: "Backend › Tests"
+    runs-on: ubuntu-latest
+    needs: backend-build
     permissions:
       contents: read
     services:
@@ -37,19 +179,10 @@ jobs:
         with:
           dotnet-version: "10.0.x"
 
-      - name: Cache NuGet packages
-        uses: actions/cache@v5
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
         with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-          restore-keys: |
-            ${{ runner.os }}-nuget-
-
-      - name: Restore dependencies
-        run: dotnet restore Onboarding.slnx
-
-      - name: Build
-        run: dotnet build Onboarding.slnx --no-restore --configuration Release
+          name: backend-build
 
       - name: Create coverage directory
         run: mkdir -p coverage
@@ -174,9 +307,10 @@ jobs:
           fi
           echo "Coverage ${LINE_COV}% meets 80% threshold"
 
-  frontend-client:
-    name: Frontend Client (Vinxi)
+  frontend-client-tests:
+    name: "Frontend Client › Tests"
     runs-on: ubuntu-latest
+    needs: frontend-client-build
     permissions:
       contents: read
     defaults:
@@ -190,16 +324,10 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Cache npm
-        uses: actions/cache@v5
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-client-${{ hashFiles('frontend/client/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-client-
-
-      - name: Install dependencies
-        run: npm ci
+          name: frontend-client-build
 
       - name: Type check
         run: npx tsc --noEmit
@@ -207,14 +335,10 @@ jobs:
       - name: Lint
         run: npx eslint . --max-warnings 0
 
-      - name: Build
-        env:
-          NODE_ENV: production
-        run: npm run build
-
-  frontend-backoffice:
-    name: Frontend Backoffice (Vinxi)
+  frontend-backoffice-tests:
+    name: "Frontend Backoffice › Tests"
     runs-on: ubuntu-latest
+    needs: frontend-backoffice-build
     permissions:
       contents: read
     defaults:
@@ -228,16 +352,10 @@ jobs:
         with:
           node-version: "24"
 
-      - name: Cache npm
-        uses: actions/cache@v5
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-backoffice-${{ hashFiles('frontend/backoffice/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-backoffice-
-
-      - name: Install dependencies
-        run: npm ci
+          name: frontend-backoffice-build
 
       - name: Type check
         run: npx tsc --noEmit
@@ -245,13 +363,12 @@ jobs:
       - name: Lint
         run: npx eslint . --max-warnings 0
 
-      - name: Build
-        env:
-          NODE_ENV: production
-        run: npm run build
+# ─────────────────────────────────────────────────────────────────
+# Stage 3: Security — All jobs independent, run in parallel
+# ─────────────────────────────────────────────────────────────────
 
-  sast-semgrep:
-    name: SAST — Semgrep
+  security-sast-semgrep:
+    name: "Security › SAST — Semgrep"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -278,8 +395,8 @@ jobs:
           sarif_file: semgrep.sarif
           category: semgrep
 
-  sast-codeql:
-    name: SAST — CodeQL
+  security-sast-codeql:
+    name: "Security › SAST — CodeQL"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -306,8 +423,8 @@ jobs:
         with:
           category: codeql
 
-  sca-trivy:
-    name: SCA — Trivy
+  security-sca-trivy:
+    name: "Security › SCA — Trivy"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -333,8 +450,8 @@ jobs:
           sarif_file: trivy-results.sarif
           category: trivy
 
-  container-scan-trivy:
-    name: Container Scan — Trivy Image
+  security-container-trivy:
+    name: "Security › Container — Trivy Image"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -362,8 +479,8 @@ jobs:
           sarif_file: trivy-image-results.sarif
           category: trivy-image
 
-  container-lint-dockle:
-    name: Container Lint — Dockle
+  security-container-dockle:
+    name: "Security › Container — Dockle"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -381,8 +498,8 @@ jobs:
       - name: Run Dockle scan
         run: dockle --exit-code 1 --exit-level error --timeout 5m onboarding-api:ci
 
-  iac-checkov:
-    name: IaC — Checkov
+  security-iac-checkov:
+    name: "Security › IaC — Checkov"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -408,8 +525,8 @@ jobs:
           sarif_file: checkov-results.sarif
           category: checkov
 
-  secrets-gitleaks:
-    name: Secrets — Gitleaks
+  security-secrets-gitleaks:
+    name: "Security › Secrets — Gitleaks"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -428,8 +545,8 @@ jobs:
           report-path: gitleaks-report.json
           verbose: true
 
-  secrets-trufflehog:
-    name: Secrets — TruffleHog
+  security-secrets-trufflehog:
+    name: "Security › Secrets — TruffleHog"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -458,8 +575,8 @@ jobs:
           sarif_file: results.sarif
           category: trufflehog
 
-  sbom-syft:
-    name: SBOM — Syft
+  security-sbom-syft:
+    name: "Security › SBOM — Syft"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -495,8 +612,8 @@ jobs:
             sbom-image.cyclonedx.json
           retention-days: 30
 
-  dast-zap:
-    name: DAST — OWASP ZAP Baseline
+  security-dast-zap:
+    name: "Security › DAST — OWASP ZAP Baseline"
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -523,6 +640,14 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
 
       - name: Restore dependencies
         run: dotnet restore Onboarding.slnx

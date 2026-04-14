@@ -44,18 +44,17 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 **Result:** 100% complete — 8/8 phases, 20/20 plans. CI pipeline com 12 jobs operacional.
 
-## Current Milestone: v5.0 Auth Code Flow + Gestão de Admins
+## Current Milestone: v5.0 Auth Code Flow (Backoffice) + Gestão de Admins
 
-**Goal:** Migrar ambos os frontends de ROPC para Authorization Code Flow (Keycloak gerencia forced password change e MFA nativamente), adicionar criação de administradores no backoffice e auditoria completa de ações.
+**Goal:** Migrar o backoffice de ROPC para Authorization Code Flow + PKCE (Keycloak gerencia forced password change nativamente), adicionar criação de administradores e auditoria completa de ações.
 
 **Target features:**
-- Migrar frontend client (usuário final) de ROPC → Auth Code Flow + PKCE (public client)
-- Migrar frontend backoffice de ROPC → Auth Code Flow (confidential client com secret)
+- Backoffice migrado de ROPC → Auth Code Flow + PKCE (confidential client, code exchange server-side)
 - Forced password change no primeiro login funciona nativamente via Keycloak requiredActions
-- Admin pode criar novos administradores no backoffice (senha temporária gerada, troca obrigatória no primeiro acesso via Keycloak)
-- Auditoria de todas as ações administrativas (quem fez o quê, quando — visível no backoffice)
+- Admin pode criar novos administradores no backoffice (senha temporária, Keycloak força troca)
+- Auditoria de todas as ações administrativas (append-only, visível com filtros no backoffice)
 
-**Key decision:** ROPC eliminado de ambos os frontends — OAuth 2.1 compliant.
+**Key decision:** Client frontend mantém ROPC + UI customizada (decisão consciente — UX priorizada). Somente backoffice migra para Auth Code Flow.
 
 **Depends on**: Milestone v4.0 completo (CI/CD Pipeline + Cybersecurity)
 

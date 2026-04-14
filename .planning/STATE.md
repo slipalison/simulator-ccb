@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
 milestone: v5.0
-milestone_name: backoffice-gestao-administradores
+milestone_name: auth-code-flow-admins-auditoria
 status: in_progress
 stopped_at: Phase 29 planned - ready to execute
-last_updated: "2026-04-14T12:30:00.000Z"
-last_activity: 2026-04-14 -- Phase 29 planned (29-01-PLAN.md created)
+last_updated: "2026-04-14T14:00:00.000Z"
+last_activity: 2026-04-14 -- Milestone v5.0 roadmap created (Phases 29-32)
 progress:
-  total_phases: 1
+  total_phases: 4
   completed_phases: 0
-  total_plans: 1
+  total_plans: 0
   completed_plans: 0
   percent: 0
 ---
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE v5.0 — Backoffice: Gestão de Administradores (requirements defined, ready to plan)
-**Last activity:** 2026-04-14 -- Milestone v5.0 requirements defined
+**Current focus:** MILESTONE v5.0 — Auth Code Flow (Backoffice) + Gestão de Admins + Auditoria
+**Last activity:** 2026-04-14 -- Roadmap created: 4 phases (29-32), 11 requirements mapped
 
 ## Current Position
 
-Phase: Ready to plan
+Phase: 29 — Keycloak Config + Auth Code Flow Backend
 Plan: —
-Status: Requirements defined — 3 requirements captured
-Last activity: 2026-04-14 — Milestone v5.0 requirements discussion complete
+Status: Roadmap created — ready to plan Phase 29
+Last activity: 2026-04-14 — Milestone v5.0 roadmap finalized
 
 ## Milestone Breakdown
 
@@ -37,7 +37,18 @@ Last activity: 2026-04-14 — Milestone v5.0 requirements discussion complete
 **Milestone v2.0 — UX/UI + Production:** ✅ COMPLETE (5/5 phases, 7+ plans)
 **Milestone v3.0 — Admin Backoffice + Frontend Separation:** ✅ COMPLETE (5/5 phases, 13/13 plans)
 **Milestone v4.0 — CI/CD Pipeline + Cybersecurity:** ✅ COMPLETE (8/8 phases, 20/20 plans)
-**Milestone v5.0 — Backoffice: Gestão de Administradores:** 🔄 IN PROGRESS (requirements phase)
+**Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** 🔄 IN PROGRESS (0/4 phases)
+
+## Milestone v5.0 Phase Breakdown
+
+| Phase | Name | Requirements | Status |
+|-------|------|--------------|--------|
+| 29 | Keycloak Config + Auth Code Flow Backend | ACF-01, ACF-02, ACF-03, ACF-04 | 📋 Planned |
+| 30 | Audit Log Backend + Admin Management Backend | AUD-01, ADM-01, ADM-02, ADM-03, ADM-04 | 📋 Planned |
+| 31 | Backoffice Auth Code Flow UI | ACF-01, ACF-02, ACF-03, ACF-04 (frontend) | 📋 Planned |
+| 32 | Backoffice Admin Management UI + Audit Log UI | ADM-01, ADM-02, ADM-03, ADM-04, AUD-02, AUD-03 | 📋 Planned |
+
+**Coverage:** 11/11 v5.0 requirements mapped ✓
 
 ## Accumulated Context
 
@@ -48,6 +59,37 @@ Recent decisions affecting current work:
 
 - [Phase 21-frontend-separation]: DECISÃO DE ARQUITETURA — Dois projetos frontend independentes (`frontend/client` e `frontend/backoffice`) são obrigatórios — nenhum compartilhamento de código, builds separadas, deploys independentes
 - [Phase 21-frontend-separation]: Regra de ouro: código duplicado é aceitável, import cruzado é proibido — cada frontend tem seu próprio ciclo de vida
+- [v5.0-auth-code-flow]: Backoffice migra para Auth Code Flow + PKCE (confidential client). Client frontend mantém ROPC (decisão consciente — UX priorizada)
+- [v5.0-keycloak-client]: Novo client Keycloak `onboarding-backoffice` (confidential, standardFlowEnabled) com redirect URIs exatos — o client `onboarding-app` (ROPC) não é modificado
+- [v5.0-audit-log]: AuditLog é append-only — nenhuma operação UPDATE ou DELETE é permitida na tabela. Nova EF Core migration em Phase 30.
+- [v5.0-temp-password]: Senha temporária é gerada pelo backend, exibida UMA VEZ na UI, e não é armazenada. Keycloak força troca via UPDATE_PASSWORD requiredAction.
+
+### Key Architecture for v5.0
+
+**Phase 29 — Auth Code Flow Infrastructure:**
+- New Keycloak client: `onboarding-backoffice` (confidential, standardFlowEnabled, exact redirect URIs)
+- Vinxi server handles authorization code exchange (server-side) using client_secret
+- Tokens written to httpOnly, Secure, SameSite=Strict cookies by Vinxi server actions
+- Existing AdminAuthController (ROPC) endpoints are retired/removed
+- Forced password change (UPDATE_PASSWORD requiredAction) is handled natively by Keycloak during Auth Code Flow — no extra backend code
+
+**Phase 30 — Backend Data + API:**
+- New `AuditLog` entity in app_db with EF Core migration (append-only)
+- `IAuditService` injected into existing admin command handlers to record actions
+- New endpoints: POST /api/admin/administrators, GET /api/admin/administrators
+- Temporary password generated via `System.Security.Cryptography.RandomNumberGenerator`
+- Keycloak.AuthServices.Sdk used for Admin API (create user + assign role + set requiredActions)
+
+**Phase 31 — Backoffice Frontend ACF:**
+- Remove AdminAuthController ROPC login form and replace with redirect flow
+- Vinxi server route `/auth/callback` handles code exchange via server action
+- Session guard middleware checks httpOnly cookie presence (using jose for JWT decode)
+- Logout: clear cookies + redirect to Keycloak OIDC logout endpoint
+
+**Phase 32 — Backoffice Frontend UI:**
+- Create Administrator form (name + email) → calls POST /api/admin/administrators → modal shows one-time password
+- Administrators list page → calls GET /api/admin/administrators
+- Audit log page: paginated table with date range / action type / actor email filters (client-side state, server-side query params)
 
 ### Pending Todos
 
@@ -58,27 +100,29 @@ Recent decisions affecting current work:
 ### Blockers/Concerns
 
 - Phase 5 (Registration API): Need a rollback/compensation strategy if Keycloak user creation fails after app_db persist — *compensation handler exists but not tested end-to-end*
-- Phase 9 (Login UI): ROPC grant is deprecated in OAuth 2.1 — document migration path — *documented in PROJECT.md, migration deferred*
+- Phase 9 (Login UI): ROPC grant is deprecated in OAuth 2.1 — document migration path — *documented in PROJECT.md, backoffice migration in v5.0*
 
 ## Session Continuity
 
 Last session: 2026-04-14
-Stopped at: Phase 29 planned - ready to execute Plan 01
+Stopped at: Roadmap created — ready to plan Phase 29
 Resume file: none
 
-### Milestone v5.0 Requirements Captured (2026-04-14)
+### Milestone v5.0 Requirements (2026-04-14)
 
-**1. Troca obrigatória de senha no primeiro login:**
-- Admin seedado (`admin@onboarding.local`) muda `"temporary": false` para `"temporary": true` no realm.json
-- Quando admin faz login pela primeira vez, sistema detecta e redireciona para tela de troca de senha
-- Novos admins criados pelo backoffice também recebem `temporary: true` via Keycloak Admin API
+**ACF — Auth Code Flow (Backoffice)** → Phase 29 (backend) + Phase 31 (frontend)
+- ACF-01: Admin login via Auth Code Flow + PKCE (confidential client, server-side code exchange)
+- ACF-02: Forced password change works natively via Keycloak requiredActions
+- ACF-03: Tokens stored in httpOnly cookies managed by Vinxi server
+- ACF-04: Logout clears cookies and redirects to Keycloak OIDC logout endpoint
 
-**2. Criação de novos admins pelo backoffice:**
-- Admin autenticado preenche nome + email do novo admin
-- Sistema gera senha temporária aleatória e cria usuário no Keycloak com role "admin"
-- Senha temporária é exibida na tela para quem criou comunicar ao novo admin
+**ADM — Gestão de Administradores** → Phase 30 (backend) + Phase 32 (frontend)
+- ADM-01: Admin can create new administrator (name + email) in backoffice
+- ADM-02: System generates temporary password displayed once to creator
+- ADM-03: New admin gets role "admin" + UPDATE_PASSWORD requiredAction in Keycloak via Admin API
+- ADM-04: Admin can list other administrators in backoffice
 
-**3. Audit log imutável + visível com filtros:**
-- Todas as ações administrativas são registradas (criação de admin, login/logout, edições, bloqueios, exclusões)
-- Audit log é append-only (imutável) no banco de dados
-- Visível no backoffice com filtros por: data, tipo de ação, usuário que realizou ação
+**AUD — Auditoria** → Phase 30 (backend) + Phase 32 (frontend)
+- AUD-01: All admin actions recorded append-only (actor, action, target, timestamp, details JSON)
+- AUD-02: Admin can view paginated audit log in backoffice
+- AUD-03: Audit log supports filters by date range, action type, and actor email

@@ -8,7 +8,7 @@
 
 **Source:** FEATURES.md + SUMMARY.md + PROJECT.md
 **Created:** 2026-04-09
-**Last Updated:** 2026-04-11
+**Last Updated:** 2026-04-14
 **Status:** DRAFT — awaiting review
 
 ---
@@ -849,17 +849,17 @@ Nenhum requisito foi explicitamente delegado para v2. Os itens abaixo foram cons
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ACF-01 — Auth Code Flow login | TBD | 📋 Planned |
-| ACF-02 — Forced password change (nativo) | TBD | 📋 Planned |
-| ACF-03 — Tokens em cookies httpOnly | TBD | 📋 Planned |
-| ACF-04 — Logout OIDC | TBD | 📋 Planned |
-| ADM-01 — Criar novo admin | TBD | 📋 Planned |
-| ADM-02 — Senha temporária gerada | TBD | 📋 Planned |
-| ADM-03 — Role + requiredActions no Keycloak | TBD | 📋 Planned |
-| ADM-04 — Listar administradores | TBD | 📋 Planned |
-| AUD-01 — Registrar ações append-only | TBD | 📋 Planned |
-| AUD-02 — Visualizar audit log paginado | TBD | 📋 Planned |
-| AUD-03 — Filtros no audit log | TBD | 📋 Planned |
+| ACF-01 — Auth Code Flow login | Phase 29 | 📋 Planned |
+| ACF-02 — Forced password change (nativo) | Phase 29 | 📋 Planned |
+| ACF-03 — Tokens em cookies httpOnly | Phase 29 | 📋 Planned |
+| ACF-04 — Logout OIDC | Phase 29 | 📋 Planned |
+| ADM-01 — Criar novo admin | Phase 30 | 📋 Planned |
+| ADM-02 — Senha temporária gerada | Phase 30 | 📋 Planned |
+| ADM-03 — Role + requiredActions no Keycloak | Phase 30 | 📋 Planned |
+| ADM-04 — Listar administradores | Phase 30 | 📋 Planned |
+| AUD-01 — Registrar ações append-only | Phase 30 | 📋 Planned |
+| AUD-02 — Visualizar audit log paginado | Phase 32 | 📋 Planned |
+| AUD-03 — Filtros no audit log | Phase 32 | 📋 Planned |
 
 ---
 

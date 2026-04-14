@@ -263,7 +263,7 @@ public sealed class KeycloakUserService : IKeycloakUserService
         // The admin role name from realm.json
         const string adminRoleName = "admin";
 
-        // First, get the realm role ID
+        // Get realm-level role ID
         var roleResponse = await _adminHttpClient.GetAsync(
             $"admin/realms/{_realm}/roles/{adminRoleName}",
             ct);
@@ -279,7 +279,7 @@ public sealed class KeycloakUserService : IKeycloakUserService
         var roleId = roleJson?.RootElement.GetProperty("id").GetString()
             ?? throw new InvalidOperationException("Admin role ID not found.");
 
-        // Assign the role to the user
+        // Assign the realm role to the user
         var roleMappingPayload = new[]
         {
             new { id = roleId, name = adminRoleName }

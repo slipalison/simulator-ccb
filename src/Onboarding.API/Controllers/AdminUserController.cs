@@ -308,7 +308,7 @@ public sealed class AdminUserController : ControllerBase
         [FromBody] CreateAdminRequest request,
         CancellationToken ct = default)
     {
-        var auditContext = GetAuditContext();
+        var auditContext = GetAuditContextSafe();
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
 
         var command = new CreateAdminCommand(request.FullName, request.Email, auditContext.Sub, auditContext.Email, ipAddress);
@@ -388,13 +388,23 @@ public sealed class AdminUserController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Extracts admin identity from JWT claims for audit logging.</summary>
+    /// <summary>Extracts admin identity from JWT claims for audit logging. Throws if claims missing.</summary>
     private (string Sub, string Email) GetAuditContext()
     {
         var sub = User.FindFirst("sub")?.Value
             ?? throw new InvalidOperationException("Missing 'sub' claim.");
         var email = User.FindFirst("email")?.Value
             ?? throw new InvalidOperationException("Missing 'email' claim.");
+        return (sub, email);
+    }
+
+    /// <summary>Extracts admin identity from JWT claims for audit logging. Falls back to email if sub missing.</summary>
+    private (string Sub, string Email) GetAuditContextSafe()
+    {
+        var email = User.FindFirst("email")?.Value ?? "unknown";
+        var sub = User.FindFirst("sub")?.Value
+            ?? User.FindFirst("preferred_username")?.Value
+            ?? email;
         return (sub, email);
     }
 }

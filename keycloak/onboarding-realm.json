@@ -99,7 +99,7 @@
       "enabled": true,
       "serviceAccountClientId": "onboarding-api-admin",
       "clientRoles": {
-        "realm-management": ["manage-users", "view-users"]
+        "realm-management": ["manage-users", "view-users", "view-realm", "manage-realm"]
       }
     }
   ],

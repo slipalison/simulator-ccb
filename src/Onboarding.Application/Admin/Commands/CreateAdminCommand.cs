@@ -45,11 +45,28 @@ public sealed class CreateAdminCommandHandler : ICommandHandler<CreateAdminComma
             command.FullName,
             ct);
 
+        // Resolve creator's Keycloak user ID for audit logging
+        // CreatorSub may be an email or username if JWT doesn't have 'sub' claim
+        var creatorKeycloakId = keycloakUserId; // fallback
+        if (Guid.TryParse(command.CreatorSub, out var creatorGuid))
+        {
+            creatorKeycloakId = creatorGuid.ToString();
+        }
+        else
+        {
+            // Try to resolve creator by email
+            var creatorUser = await _keycloakUserService.GetUserByEmailAsync(command.CreatorEmail, ct);
+            if (creatorUser != null)
+            {
+                creatorKeycloakId = creatorUser.Id;
+            }
+        }
+
         var adminId = Guid.Parse(keycloakUserId);
 
         // Create audit log entry
         var auditLog = AdminAuditLog.Create(
-            Guid.Parse(command.CreatorSub),
+            Guid.Parse(creatorKeycloakId),
             command.CreatorEmail,
             ActionType.AdminCreated,
             targetUserId: adminId,

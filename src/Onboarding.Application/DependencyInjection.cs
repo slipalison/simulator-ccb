@@ -61,6 +61,15 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IValidator<UnblockUserCommand>, UnblockUserCommandValidator>();
         services.AddScoped<IValidator<DeleteUserCommand>, DeleteUserCommandValidator>();
 
+        // Admin management commands (Phase 29 — V5.0-01, V5.0-02)
+        services.AddScoped<ICommandHandler<CreateAdminCommand, CreateAdminResult>, CreateAdminCommandHandler>();
+        services.AddScoped<ICommandHandler<ForcePasswordChangeCommand, Unit>, ForcePasswordChangeCommandHandler>();
+        services.AddScoped<IValidator<CreateAdminCommand>, CreateAdminCommandValidator>();
+        services.AddScoped<IValidator<ForcePasswordChangeCommand>, ForcePasswordChangeCommandValidator>();
+
+        // Audit log query (Phase 29 — V5.0-03)
+        services.AddScoped<IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>>, GetAuditLogQueryHandler>();
+
         return services;
     }
 }

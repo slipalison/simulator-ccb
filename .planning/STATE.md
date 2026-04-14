@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: backoffice-gestao-administradores
 status: in_progress
-stopped_at: Defining requirements
-last_updated: "2026-04-14T00:00:00.000Z"
-last_activity: 2026-04-14 -- Milestone v5.0 started
+stopped_at: Phase 29 planned - ready to execute
+last_updated: "2026-04-14T12:30:00.000Z"
+last_activity: 2026-04-14 -- Phase 29 planned (29-01-PLAN.md created)
 progress:
-  total_phases: 0
+  total_phases: 1
   completed_phases: 0
-  total_plans: 0
+  total_plans: 1
   completed_plans: 0
   percent: 0
 ---
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE v5.0 — Backoffice: Gestão de Administradores (defining requirements)
-**Last activity:** 2026-04-14 -- Milestone v5.0 started
+**Current focus:** MILESTONE v5.0 — Backoffice: Gestão de Administradores (requirements defined, ready to plan)
+**Last activity:** 2026-04-14 -- Milestone v5.0 requirements defined
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Ready to plan
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-14 — Milestone v5.0 started
+Status: Requirements defined — 3 requirements captured
+Last activity: 2026-04-14 — Milestone v5.0 requirements discussion complete
 
 ## Milestone Breakdown
 
@@ -63,5 +63,22 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-04-14
-Stopped at: Milestone v5.0 started — requirements definition in progress
+Stopped at: Phase 29 planned - ready to execute Plan 01
 Resume file: none
+
+### Milestone v5.0 Requirements Captured (2026-04-14)
+
+**1. Troca obrigatória de senha no primeiro login:**
+- Admin seedado (`admin@onboarding.local`) muda `"temporary": false` para `"temporary": true` no realm.json
+- Quando admin faz login pela primeira vez, sistema detecta e redireciona para tela de troca de senha
+- Novos admins criados pelo backoffice também recebem `temporary: true` via Keycloak Admin API
+
+**2. Criação de novos admins pelo backoffice:**
+- Admin autenticado preenche nome + email do novo admin
+- Sistema gera senha temporária aleatória e cria usuário no Keycloak com role "admin"
+- Senha temporária é exibida na tela para quem criou comunicar ao novo admin
+
+**3. Audit log imutável + visível com filtros:**
+- Todas as ações administrativas são registradas (criação de admin, login/logout, edições, bloqueios, exclusões)
+- Audit log é append-only (imutável) no banco de dados
+- Visível no backoffice com filtros por: data, tipo de ação, usuário que realizou ação

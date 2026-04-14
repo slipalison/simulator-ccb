@@ -306,3 +306,101 @@ export async function unblockUser(
     throw new AdminApiError(body.detail || "Falha ao desbloquear usuario.");
   }
 }
+
+// ---------------------------------------------------------------------------
+// Admin Management — Phase 29 (Milestone v5.0)
+// ---------------------------------------------------------------------------
+
+// POST /api/admin/users — Create new admin
+export interface CreateAdminResult {
+  adminId: string;
+  temporaryPassword: string;
+}
+
+export async function createAdmin(
+  fullName: string,
+  email: string
+): Promise<CreateAdminResult> {
+  const response = await fetch("/api/admin/users", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fullName, email }),
+    credentials: "include",
+  });
+
+  if (response.status === 409) {
+    throw new AdminApiError("Email ja cadastrado.", 409);
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Falha ao criar admin.");
+  }
+
+  return response.json() as Promise<CreateAdminResult>;
+}
+
+// PUT /api/admin/me/password — Force password change
+export async function forcePasswordChange(
+  newPassword: string
+): Promise<void> {
+  const response = await fetch("/api/admin/me/password", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ newPassword }),
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Falha ao alterar senha.");
+  }
+}
+
+// GET /api/admin/audit-log — Paginated audit log with filters
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  adminUserId: string;
+  adminUserName: string;
+  actionType: string;
+  targetUserId: string | null;
+  targetUserName: string | null;
+  details: string | null;
+  ipAddress: string | null;
+}
+
+export interface GetAuditLogParams {
+  page?: number;
+  pageSize?: number;
+  startDate?: string;
+  endDate?: string;
+  actionType?: string;
+  adminUserName?: string;
+}
+
+export async function getAuditLog(
+  params: GetAuditLogParams = {}
+): Promise<PaginatedResult<AuditLogEntry>> {
+  const searchParams = new URLSearchParams();
+  if (params.page) searchParams.set("page", String(params.page));
+  if (params.pageSize) searchParams.set("pageSize", String(params.pageSize));
+  if (params.startDate) searchParams.set("startDate", params.startDate);
+  if (params.endDate) searchParams.set("endDate", params.endDate);
+  if (params.actionType) searchParams.set("actionType", params.actionType);
+  if (params.adminUserName) searchParams.set("adminUserName", params.adminUserName);
+
+  const queryString = searchParams.toString();
+  const url = queryString ? `/api/admin/audit-log?${queryString}` : "/api/admin/audit-log";
+
+  const response = await fetch(url, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new AdminApiError("Falha ao carregar audit log.");
+  }
+
+  return response.json() as Promise<PaginatedResult<AuditLogEntry>>;
+}

@@ -87,9 +87,10 @@
         {
           "type": "password",
           "value": "Admin@123!",
-          "temporary": false
+          "temporary": true
         }
       ],
+      "requiredActions": ["UPDATE_PASSWORD"],
       "realmRoles": ["admin"]
     },
     {

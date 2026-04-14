@@ -19,6 +19,16 @@ public interface IKeycloakUserService
         CancellationToken ct = default);
 
     /// <summary>
+    /// Creates an admin user in Keycloak with a temporary password and admin role.
+    /// Returns the Keycloak user ID (UUID string).
+    /// </summary>
+    Task<string> CreateAdminUserAsync(
+        string email,
+        string temporaryPassword,
+        string fullName,
+        CancellationToken ct = default);
+
+    /// <summary>
     /// Deletes a Keycloak user by email address. Used as compensation step if app_db
     /// persist fails after Keycloak user was already created (Phase 5 rollback path).
     /// No-op if no user with the given email exists.
@@ -38,9 +48,29 @@ public interface IKeycloakUserService
     Task<KeycloakUser?> GetUserByEmailAsync(string email, CancellationToken ct = default);
 
     /// <summary>
+    /// Gets a Keycloak user by ID. Returns null if not found.
+    /// </summary>
+    Task<KeycloakUserDetails?> GetUserByIdAsync(string userId, CancellationToken ct = default);
+
+    /// <summary>
     /// Updates the password for a Keycloak user by their ID.
     /// </summary>
     Task UpdateUserPasswordAsync(string userId, string newPassword, CancellationToken ct = default);
+
+    /// <summary>
+    /// Sets the temporary password flag and UPDATE_PASSWORD required action for a user.
+    /// </summary>
+    Task SetTemporaryPasswordFlagAsync(string userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes the UPDATE_PASSWORD required action from a user after they change their password.
+    /// </summary>
+    Task RemoveUpdatePasswordRequiredActionAsync(string userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Assigns the admin role to a user.
+    /// </summary>
+    Task AssignAdminRoleAsync(string userId, CancellationToken ct = default);
 
     /// <summary>
     /// Blocks a user in Keycloak by setting Enabled = false.
@@ -58,3 +88,8 @@ public interface IKeycloakUserService
 /// Minimal representation of a Keycloak user.
 /// </summary>
 public sealed record KeycloakUser(string Id, string Email, bool Enabled = true, bool EmailVerified = true);
+
+/// <summary>
+/// Extended Keycloak user details including required actions.
+/// </summary>
+public sealed record KeycloakUserDetails(string Id, string Email, bool Enabled, bool EmailVerified, IReadOnlyList<string> RequiredActions);

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Onboarding.Application.Common;
 using Onboarding.Domain.Exceptions;
 using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace Onboarding.Infrastructure.Keycloak;
 
@@ -85,6 +86,62 @@ public sealed class KeycloakUserService : IKeycloakUserService
         return userId;
     }
 
+    public async Task<string> CreateAdminUserAsync(
+        string email,
+        string temporaryPassword,
+        string fullName,
+        CancellationToken ct = default)
+    {
+        var user = new UserRepresentation
+        {
+            Username = email,
+            Email = email,
+            FirstName = fullName,
+            LastName = "-",
+            Enabled = true,
+            EmailVerified = true,
+            RequiredActions = ["UPDATE_PASSWORD"],
+        };
+
+        try
+        {
+            await _keycloakUserClient.CreateUserAsync(_realm, user, ct);
+        }
+        catch (Exception ex) when (IsConflictException(ex))
+        {
+            throw new DuplicateKeycloakUserException(
+                $"A Keycloak user with email '{email}' already exists.", ex);
+        }
+
+        var users = await _keycloakUserClient.GetUsersAsync(
+            _realm,
+            new GetUsersRequestParameters { Email = email, Exact = true },
+            ct);
+
+        var userId = users.First().Id
+            ?? throw new InvalidOperationException(
+                $"Keycloak created user for email but returned no ID.");
+
+        // Set temporary password with temporary = true
+        var passwordPayload = new { type = "password", value = temporaryPassword, temporary = true };
+        var response = await _adminHttpClient.PutAsJsonAsync(
+            $"admin/realms/{_realm}/users/{userId}/reset-password",
+            passwordPayload,
+            ct);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException(
+                $"Keycloak rejected password set for admin user '{userId}': {body}");
+        }
+
+        // Assign admin role
+        await AssignAdminRoleAsync(userId, ct);
+
+        return userId;
+    }
+
     public async Task DeleteUserByEmailAsync(string email, CancellationToken ct = default)
     {
         var users = await _keycloakUserClient.GetUsersAsync(
@@ -159,6 +216,89 @@ public sealed class KeycloakUserService : IKeycloakUserService
 
         user.Enabled = true;
         await _keycloakUserClient.UpdateUserAsync(_realm, keycloakUserId, user, ct);
+    }
+
+    public async Task<KeycloakUserDetails?> GetUserByIdAsync(string userId, CancellationToken ct = default)
+    {
+        var user = await _keycloakUserClient.GetUserAsync(_realm, userId, cancellationToken: ct);
+        if (user == null) return null;
+
+        return new KeycloakUserDetails(
+            user.Id!,
+            user.Email ?? string.Empty,
+            user.Enabled ?? true,
+            user.EmailVerified ?? false,
+            (user.RequiredActions ?? []).ToList().AsReadOnly());
+    }
+
+    public async Task SetTemporaryPasswordFlagAsync(string userId, CancellationToken ct = default)
+    {
+        var user = await _keycloakUserClient.GetUserAsync(_realm, userId, cancellationToken: ct)
+            ?? throw new InvalidOperationException($"Keycloak user '{userId}' not found.");
+
+        var requiredActions = user.RequiredActions?.ToList() ?? [];
+        if (!requiredActions.Contains("UPDATE_PASSWORD"))
+        {
+            requiredActions.Add("UPDATE_PASSWORD");
+            user.RequiredActions = requiredActions;
+            await _keycloakUserClient.UpdateUserAsync(_realm, userId, user, ct);
+        }
+    }
+
+    public async Task RemoveUpdatePasswordRequiredActionAsync(string userId, CancellationToken ct = default)
+    {
+        var user = await _keycloakUserClient.GetUserAsync(_realm, userId, cancellationToken: ct)
+            ?? throw new InvalidOperationException($"Keycloak user '{userId}' not found.");
+
+        var requiredActions = user.RequiredActions?.ToList() ?? [];
+        if (requiredActions.Remove("UPDATE_PASSWORD"))
+        {
+            user.RequiredActions = requiredActions;
+            await _keycloakUserClient.UpdateUserAsync(_realm, userId, user, ct);
+        }
+    }
+
+    public async Task AssignAdminRoleAsync(string userId, CancellationToken ct = default)
+    {
+        // The admin role name from realm.json
+        const string adminRoleName = "admin";
+
+        // First, get the realm role ID
+        var roleResponse = await _adminHttpClient.GetAsync(
+            $"admin/realms/{_realm}/roles/{adminRoleName}",
+            ct);
+
+        if (!roleResponse.IsSuccessStatusCode)
+        {
+            var body = await roleResponse.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException(
+                $"Failed to get admin role '{adminRoleName}': {body}");
+        }
+
+        var roleJson = await roleResponse.Content.ReadFromJsonAsync<JsonDocument>(ct);
+        var roleId = roleJson?.RootElement.GetProperty("id").GetString()
+            ?? throw new InvalidOperationException("Admin role ID not found.");
+
+        // Assign the role to the user
+        var roleMappingPayload = new[]
+        {
+            new { id = roleId, name = adminRoleName }
+        };
+
+        var assignResponse = await _adminHttpClient.PostAsJsonAsync(
+            $"admin/realms/{_realm}/users/{userId}/role-mappings/realm",
+            roleMappingPayload,
+            ct);
+
+        if (!assignResponse.IsSuccessStatusCode && assignResponse.StatusCode != System.Net.HttpStatusCode.Conflict)
+        {
+            var body = await assignResponse.Content.ReadAsStringAsync(ct);
+            // If role already assigned, ignore
+            if (body.Contains("already exists", StringComparison.OrdinalIgnoreCase))
+                return;
+            throw new InvalidOperationException(
+                $"Failed to assign admin role to user '{userId}': {body}");
+        }
     }
 
     /// <summary>

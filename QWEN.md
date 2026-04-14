@@ -151,3 +151,5 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 
 ## Qwen Added Memories
 - Fase 22 (SAST) completa — pendência: branch protection rules precisam ser configuradas manualmente no GitHub UI (Settings → Branches → Edit main → adicionar 5 status checks: Backend (.NET 10), Frontend Client (Vinxi), Frontend Backoffice (Vinxi), SAST — Semgrep, SAST — CodeQL). Detalhes completos em docs/branch-protection-setup.md. Precisa primeiro push para main e CI rodar pelo menos uma vez para os checks ficarem disponíveis.
+- Milestone v5.0 - Usuário admin já está sendo cadastrado automaticamente no sistema atual. Não precisa de seed manual ou script de bootstrap - o cadastro de admin já existe e funciona.
+- Milestone v5.0 - Criação de novos admins: Opção A - Admin preenche nome+email, sistema gera senha temporária e exibe na tela para quem criou. Audit log: imutável (append-only) e visível com filtros no backoffice.

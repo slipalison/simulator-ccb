@@ -38,27 +38,23 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 **Depends on**: Milestone v2.0 completo (15 phases delivered)
 
-## Current Milestone: v4.0 CI/CD Pipeline + Cybersecurity
+## Previous Milestone: v4.0 CI/CD Pipeline + Cybersecurity ✅ COMPLETE
 
 **Goal:** Pipeline de integração contínua com builds paralelas (backend + 2 frontends) e esteira completa de segurança (SAST, SCA, containers, IaC, secrets).
 
-**Target features:**
-- GitHub Actions workflow com execução paralela por projeto
-  - Backend: build + testes unitários + validação de cobertura
-  - Frontend client: build + lint + type check
-  - Frontend backoffice: build + lint + type check
-- Validação de cobertura de testes (threshold mínimo)
-- Pipeline de segurança automatizada no CI:
-  - **SAST**: Semgrep (rápido, regras C#, customizável) + CodeQL (profundo, nativo GitHub)
-  - **SCA**: Dependabot (zero config) + Trivy (dependências + containers + IaC + secrets)
-  - **Container**: Trivy (imagem Docker) + Dockle (boas práticas Dockerfile)
-  - **IaC**: Checkov (Terraform, K8s, Docker Compose) + Kubescape (Kubernetes)
-  - **Secrets**: Gitleaks (credenciais commitadas) + TruffleHog (verificação ativa)
-- Relatórios de segurança visíveis no GitHub Security Tab
-- Bloqueio de merge em falha crítica de segurança
-- Documentação de segurança para contribuidores
+**Result:** 100% complete — 8/8 phases, 20/20 plans. CI pipeline com 12 jobs operacional.
 
-**Depends on**: Milestone v3.0 completo (Admin Backoffice + Frontend Separation)
+## Current Milestone: v5.0 Backoffice — Gestão de Administradores
+
+**Goal:** Expandir o portal de backoffice com gestão de administradores, troca obrigatória de senha no primeiro login e auditoria completa de todas as ações administrativas.
+
+**Target features:**
+- Troca obrigatória de senha no primeiro login (admin@onboarding.local e qualquer novo admin criado pelo sistema)
+- Admin pode criar novos administradores diretamente no backoffice
+- Sistema gera senha temporária para novos admins (força troca no primeiro acesso)
+- Auditoria de todas as ações no backoffice (quem fez o quê, quando)
+
+**Depends on**: Milestone v4.0 completo (CI/CD Pipeline + Cybersecurity)
 
 ## Requirements
 
@@ -71,18 +67,15 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 ### Active
 
-- [ ] GitHub Actions workflow com jobs paralelos (backend, frontend client, frontend backoffice)
-- [ ] Build + testes unitários + cobertura para backend .NET 10
-- [ ] Build + lint + type check para frontend client (Vinxi)
-- [ ] Build + lint + type check para frontend backoffice (Vinxi)
-- [ ] SAST: Semgrep + CodeQL configurados para C# e React
-- [ ] SCA: Dependabot + Trivy escaneando dependências
-- [ ] Container scanning: Trivy + Dockle nas imagens Docker
-- [ ] IaC scanning: Checkov + Kubescape para compose.yaml e futuros K8s manifests
-- [ ] Secrets scanning: Gitleaks + TruffleHog bloqueando credenciais commitadas
-- [ ] Relatórios de segurança no GitHub Security Tab
-- [ ] Policy de branch protection bloqueando merge em falha crítica
-- [ ] Documentação de segurança para contribuidores
+- [ ] Troca obrigatória de senha no primeiro login para admin@onboarding.local
+- [ ] Troca obrigatória de senha no primeiro login para novos admins criados pelo sistema
+- [ ] Admin autenticado pode criar novos administradores no backoffice
+- [ ] Sistema gera senha temporária para novos admins e força troca no primeiro acesso
+- [ ] Novos admins recebem role "admin" no Keycloak automaticamente
+- [ ] Auditoria de criação de administrador (quem criou, quando, email do novo admin)
+- [ ] Auditoria de login/logout de admins no backoffice
+- [ ] Auditoria de ações sobre usuários finais (editar, bloquear, desbloquear, excluir)
+- [ ] Log de auditoria visível para admins no portal de backoffice
 
 ### Out of Scope
 
@@ -167,4 +160,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 — Milestone v4.0 started: CI/CD Pipeline + Cybersecurity (parallel builds, SAST, SCA, container/IaC/secrets scanning)*
+*Last updated: 2026-04-14 — Milestone v5.0 started: Backoffice — Gestão de Administradores (first-login password change, admin creation, audit log)*

@@ -12,8 +12,14 @@ RUN dotnet build
 
 # Copy source
 COPY src/ ./src/
+COPY entrypoint.sh /app/entrypoint.sh
+
+# Fix permissions for non-root user
+RUN chown -R $APP_UID:$APP_UID /app
+
+RUN chmod +x /app/entrypoint.sh
 
 WORKDIR /app/src/Onboarding.API
 EXPOSE 8080
 USER $APP_UID
-ENTRYPOINT ["dotnet", "watch", "run", "--no-launch-profile", "--urls", "http://0.0.0.0:8080"]
+ENTRYPOINT ["dotnet", "run", "--no-launch-profile", "--urls", "http://0.0.0.0:8080"]

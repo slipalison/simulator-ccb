@@ -8,6 +8,9 @@ RUN npm install
 # Copy source (bind mount in compose.yaml will override in dev)
 COPY . .
 
+# Fix permissions so node user can write to /app (needed for Vinxi dev mode)
+RUN chown -R node:node /app
+
 EXPOSE 5174
 USER node
 CMD ["npm", "run", "dev"]

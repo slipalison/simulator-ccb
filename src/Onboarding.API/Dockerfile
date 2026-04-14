@@ -1,7 +1,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS dev
 WORKDIR /app
 
-# Copy only .NET files — skip node_modules, .git, etc.
+# Copy solution and project files for layer caching
 COPY Onboarding.slnx .
 COPY src/Onboarding.Domain/Onboarding.Domain.csproj src/Onboarding.Domain/
 COPY src/Onboarding.Application/Onboarding.Application.csproj src/Onboarding.Application/
@@ -10,15 +10,17 @@ COPY src/Onboarding.API/Onboarding.API.csproj src/Onboarding.API/
 COPY tests/Onboarding.Domain.Tests/Onboarding.Domain.Tests.csproj tests/Onboarding.Domain.Tests/
 COPY tests/Onboarding.API.Tests/Onboarding.API.Tests.csproj tests/Onboarding.API.Tests/
 COPY tests/Onboarding.Integration.Tests/Onboarding.Integration.Tests.csproj tests/Onboarding.Integration.Tests/
-RUN dotnet build
 
-# Copy source
-COPY src/ ./src/
-COPY tests/ ./tests/
-COPY entrypoint.sh /app/entrypoint.sh
+# Restore only (no build yet — source not copied)
+RUN dotnet restore
 
-# Fix permissions for non-root user — only .NET dirs, skip node_modules
-RUN find /app -name node_modules -prune -o -exec chown $APP_UID:$APP_UID {} + 2>/dev/null || true
+# Copy all source code
+COPY --chown=$APP_UID:$APP_UID src/ ./src/
+COPY --chown=$APP_UID:$APP_UID tests/ ./tests/
+COPY --chown=$APP_UID:$APP_UID entrypoint.sh /app/entrypoint.sh
+
+# Build with source code present
+RUN dotnet build --no-restore
 
 RUN chmod +x /app/entrypoint.sh
 

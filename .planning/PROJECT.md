@@ -44,15 +44,18 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 **Result:** 100% complete — 8/8 phases, 20/20 plans. CI pipeline com 12 jobs operacional.
 
-## Current Milestone: v5.0 Backoffice — Gestão de Administradores
+## Current Milestone: v5.0 Auth Code Flow + Gestão de Admins
 
-**Goal:** Expandir o portal de backoffice com gestão de administradores, troca obrigatória de senha no primeiro login e auditoria completa de todas as ações administrativas.
+**Goal:** Migrar ambos os frontends de ROPC para Authorization Code Flow (Keycloak gerencia forced password change e MFA nativamente), adicionar criação de administradores no backoffice e auditoria completa de ações.
 
 **Target features:**
-- Troca obrigatória de senha no primeiro login (admin@onboarding.local e qualquer novo admin criado pelo sistema)
-- Admin pode criar novos administradores diretamente no backoffice
-- Sistema gera senha temporária para novos admins (força troca no primeiro acesso)
-- Auditoria de todas as ações no backoffice (quem fez o quê, quando)
+- Migrar frontend client (usuário final) de ROPC → Auth Code Flow + PKCE (public client)
+- Migrar frontend backoffice de ROPC → Auth Code Flow (confidential client com secret)
+- Forced password change no primeiro login funciona nativamente via Keycloak requiredActions
+- Admin pode criar novos administradores no backoffice (senha temporária gerada, troca obrigatória no primeiro acesso via Keycloak)
+- Auditoria de todas as ações administrativas (quem fez o quê, quando — visível no backoffice)
+
+**Key decision:** ROPC eliminado de ambos os frontends — OAuth 2.1 compliant.
 
 **Depends on**: Milestone v4.0 completo (CI/CD Pipeline + Cybersecurity)
 
@@ -67,15 +70,16 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 ### Active
 
-- [ ] Troca obrigatória de senha no primeiro login para admin@onboarding.local
-- [ ] Troca obrigatória de senha no primeiro login para novos admins criados pelo sistema
+- [ ] Frontend client migrado de ROPC para Authorization Code Flow + PKCE (public client)
+- [ ] Frontend backoffice migrado de ROPC para Authorization Code Flow (confidential client)
+- [ ] Keycloak realm configurado com redirect URIs para Auth Code Flow em ambos os clientes
+- [ ] Backend endpoints de ROPC (login, refresh) substituídos ou adaptados para Auth Code Flow
+- [ ] Forced password change no primeiro login via Keycloak requiredActions (funciona nativamente com Auth Code Flow)
 - [ ] Admin autenticado pode criar novos administradores no backoffice
-- [ ] Sistema gera senha temporária para novos admins e força troca no primeiro acesso
+- [ ] Sistema gera senha temporária para novos admins (Keycloak força troca via requiredActions)
 - [ ] Novos admins recebem role "admin" no Keycloak automaticamente
-- [ ] Auditoria de criação de administrador (quem criou, quando, email do novo admin)
-- [ ] Auditoria de login/logout de admins no backoffice
-- [ ] Auditoria de ações sobre usuários finais (editar, bloquear, desbloquear, excluir)
-- [ ] Log de auditoria visível para admins no portal de backoffice
+- [ ] Auditoria de ações administrativas (criação de admin, bloqueio, exclusão, edição de usuários)
+- [ ] Log de auditoria visível no portal de backoffice com filtros por data, tipo e ator
 
 ### Out of Scope
 
@@ -84,7 +88,7 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 - Edição de dados cadastrais pelo usuário final — v1 é somente leitura
 - Mobile app — web-first
 - Notificações push/email — sem necessidade no v1
-- Migração de ROPC para Auth Code + PKCE — documentado para v4
+- Migração de ROPC para Auth Code + PKCE — implementado em v5.0
 
 ## Context
 
@@ -133,7 +137,7 @@ O login usa tela custom no React autenticando via Keycloak (Resource Owner Passw
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Login custom (ROPC Grant) | Usuário quer controle total da UI de login | ⚠️ Revisit — deprecated no OAuth2.1 |
+| Login custom (ROPC Grant) | Usuário quer controle total da UI de login | ✓ Migrado para Auth Code Flow + PKCE em v5.0 |
 | Formulário de cadastro custom | Cadastro via Admin API do Keycloak — maior controle do fluxo | — Pending |
 | Sem validação de email no v1 | Simplificar fluxo inicial — cadastrou, já pode logar | — Pending |
 | Atomic Design no frontend | Facilitar mudanças futuras de layout com componentes reutilizáveis | — Pending |

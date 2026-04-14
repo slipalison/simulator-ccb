@@ -56,6 +56,14 @@ public static class AdminSessionMiddleware
                 return;
             }
 
+            // Read admin email from cookie (for audit logging when JWT lacks email claim)
+            context.Request.Cookies.TryGetValue("adminEmail", out var adminEmail);
+            if (!string.IsNullOrEmpty(adminEmail))
+            {
+                // Store in Items for downstream controllers to use
+                context.Items["AdminEmail"] = adminEmail;
+            }
+
             logger.LogInformation("AdminSessionMiddleware: found refresh token, exchanging...");
 
             // Exchange refresh token for access + refresh tokens

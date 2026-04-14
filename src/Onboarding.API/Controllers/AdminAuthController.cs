@@ -20,6 +20,7 @@ namespace Onboarding.API.Controllers;
 public sealed class AdminAuthController : ControllerBase
 {
     private const string AdminCookieName = "adminRefreshToken";
+    private const string AdminEmailCookieName = "adminEmail";
     private const string AdminCookiePath = "/api/admin";
 
     private readonly ICommandHandler<AdminLoginCommand, AdminSessionResponse> _loginHandler;
@@ -70,6 +71,16 @@ public sealed class AdminAuthController : ControllerBase
 
             // Set refresh token as httpOnly cookie
             Response.Cookies.Append(AdminCookieName, session.RefreshToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = _cookieSettings.Value.Secure,
+                SameSite = SameSiteMode.Strict,
+                Path = AdminCookiePath,
+                Expires = DateTimeOffset.UtcNow.AddSeconds(session.RefreshExpiresIn),
+            });
+
+            // Set email cookie for audit logging (JWT may not have email claim)
+            Response.Cookies.Append(AdminEmailCookieName, session.AdminEmail, new CookieOptions
             {
                 HttpOnly = true,
                 Secure = _cookieSettings.Value.Secure,

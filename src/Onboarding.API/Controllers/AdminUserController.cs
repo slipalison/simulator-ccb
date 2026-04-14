@@ -28,6 +28,7 @@ public sealed class AdminUserController : ControllerBase
     private readonly ICommandHandler<CreateAdminCommand, CreateAdminResult> _createAdminHandler;
     private readonly ICommandHandler<ForcePasswordChangeCommand, Unit> _forcePasswordChangeHandler;
     private readonly IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>> _auditLogQueryHandler;
+    private readonly IKeycloakUserService _keycloakUserService;
     private readonly IValidator<UpdateUserCommand> _updateValidator;
     private readonly IValidator<DeleteUserCommand> _deleteValidator;
     private readonly IValidator<CreateAdminCommand> _createAdminValidator;
@@ -44,6 +45,7 @@ public sealed class AdminUserController : ControllerBase
         ICommandHandler<CreateAdminCommand, CreateAdminResult> createAdminHandler,
         ICommandHandler<ForcePasswordChangeCommand, Unit> forcePasswordChangeHandler,
         IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>> auditLogQueryHandler,
+        IKeycloakUserService keycloakUserService,
         IValidator<UpdateUserCommand> updateValidator,
         IValidator<DeleteUserCommand> deleteValidator,
         IValidator<CreateAdminCommand> createAdminValidator,
@@ -59,6 +61,7 @@ public sealed class AdminUserController : ControllerBase
         _createAdminHandler = createAdminHandler;
         _forcePasswordChangeHandler = forcePasswordChangeHandler;
         _auditLogQueryHandler = auditLogQueryHandler;
+        _keycloakUserService = keycloakUserService;
         _updateValidator = updateValidator;
         _deleteValidator = deleteValidator;
         _createAdminValidator = createAdminValidator;
@@ -346,11 +349,17 @@ public sealed class AdminUserController : ControllerBase
         [FromBody] ForcePasswordChangeRequest request,
         CancellationToken ct = default)
     {
-        var keycloakUserId = User.FindFirst("sub")?.Value
-            ?? throw new InvalidOperationException("Missing 'sub' claim.");
-        var adminEmail = User.FindFirst("email")?.Value
-            ?? throw new InvalidOperationException("Missing 'email' claim.");
+        // Get admin email from cookie (JWT may not have email claim)
+        var adminEmail = HttpContext.Items["AdminEmail"] as string
+            ?? User.FindFirst("email")?.Value
+            ?? User.FindFirst("preferred_username")?.Value
+            ?? throw new InvalidOperationException("Missing admin email context.");
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        // Resolve Keycloak user ID from email
+        var keycloakUser = await _keycloakUserService.GetUserByEmailAsync(adminEmail, ct)
+            ?? throw new InvalidOperationException($"Keycloak user not found for email: {adminEmail}");
+        var keycloakUserId = keycloakUser.Id;
 
         var command = new ForcePasswordChangeCommand(keycloakUserId, adminEmail, request.NewPassword, ipAddress);
 
@@ -398,10 +407,12 @@ public sealed class AdminUserController : ControllerBase
         return (sub, email);
     }
 
-    /// <summary>Extracts admin identity from JWT claims for audit logging. Falls back to email if sub missing.</summary>
+    /// <summary>Extracts admin identity from JWT claims for audit logging. Falls back to cookie if claims missing.</summary>
     private (string Sub, string Email) GetAuditContextSafe()
     {
-        var email = User.FindFirst("email")?.Value ?? "unknown";
+        var email = HttpContext.Items["AdminEmail"] as string
+            ?? User.FindFirst("email")?.Value
+            ?? "unknown";
         var sub = User.FindFirst("sub")?.Value
             ?? User.FindFirst("preferred_username")?.Value
             ?? email;

@@ -11,13 +11,6 @@ export default createApp({
       dir: "./public",
     },
     {
-      name: "auth",
-      type: "http",
-      handler: "./auth-server.ts",
-      target: "server",
-      base: "/auth",
-    },
-    {
       name: "api-proxy",
       type: "http",
       handler: "./server.ts",

@@ -10,6 +10,13 @@ export interface AdminSessionResponse {
   adminEmail: string;
 }
 
+export class AdminLoginError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AdminLoginError";
+  }
+}
+
 export class AdminApiError extends Error {
   public status?: number;
   constructor(message: string, status?: number) {
@@ -20,11 +27,53 @@ export class AdminApiError extends Error {
 }
 
 // ---------------------------------------------------------------------------
-// GET /auth/me — Vinxi server action (reads httpOnly access_token cookie)
+// POST /api/admin/auth/login
+// ---------------------------------------------------------------------------
+
+export async function loginAdmin(
+  email: string,
+  password: string
+): Promise<AdminSessionResponse> {
+  const response = await fetch("/api/admin/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+    credentials: "include",
+  });
+
+  if (response.ok) {
+    return response.json() as Promise<AdminSessionResponse>;
+  }
+
+  if (response.status === 401) {
+    throw new AdminLoginError("Credenciais invalidas.");
+  }
+
+  const body = await response.json().catch(() => ({}));
+  throw new AdminApiError(body.detail || "Login falhou.");
+}
+
+// ---------------------------------------------------------------------------
+// POST /api/admin/auth/logout
+// ---------------------------------------------------------------------------
+
+export async function logoutAdmin(): Promise<void> {
+  const response = await fetch("/api/admin/auth/logout", {
+    method: "POST",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new AdminApiError("Logout falhou.");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/auth/me
 // ---------------------------------------------------------------------------
 
 export async function getAdminMe(): Promise<AdminSessionResponse> {
-  const response = await fetch("/auth/me", {
+  const response = await fetch("/api/admin/auth/me", {
     method: "GET",
     credentials: "include",
   });

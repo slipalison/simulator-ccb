@@ -20,7 +20,7 @@ namespace Onboarding.API.Middleware;
 /// </summary>
 public static class AdminSessionMiddleware
 {
-    private const string AdminCookieName = "backoffice_refresh_token";
+    private const string AdminCookieName = "adminRefreshToken";
 
     public static IApplicationBuilder UseAdminSession(this IApplicationBuilder app)
     {
@@ -99,7 +99,7 @@ public static class AdminSessionMiddleware
                         HttpOnly = true,
                         Secure = false, // Development — set true in production via config
                         SameSite = SameSiteMode.Strict,
-                        Path = "/",
+                        Path = "/api/admin",
                         Expires = DateTimeOffset.UtcNow.AddSeconds(tokens.RefreshExpiresIn),
                     });
                     return Task.CompletedTask;
@@ -109,7 +109,7 @@ public static class AdminSessionMiddleware
             {
                 // Token expired/invalid — clear cookie and let downstream return 401
                 logger.LogWarning(ex, "AdminSessionMiddleware: Keycloak auth exception");
-                context.Response.Cookies.Delete(AdminCookieName, new CookieOptions { Path = "/" });
+                context.Response.Cookies.Delete(AdminCookieName, new CookieOptions { Path = "/api/admin" });
             }
             catch (Exception ex)
             {

@@ -59,41 +59,6 @@
       "protocol": "openid-connect",
       "defaultClientScopes": [],
       "optionalClientScopes": []
-    },
-    {
-      "clientId": "onboarding-backoffice",
-      "name": "Onboarding Backoffice (Confidential)",
-      "enabled": true,
-      "publicClient": false,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "backoffice-secret-dev-change-in-prod-2026",
-      "standardFlowEnabled": true,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
-      "authorizationServicesEnabled": false,
-      "redirectUris": ["http://localhost:5174/auth/callback"],
-      "webOrigins": ["http://localhost:5174"],
-      "protocol": "openid-connect",
-      "frontchannelLogout": true,
-      "fullScopeAllowed": false,
-      "defaultClientScopes": ["profile", "email", "roles"],
-      "optionalClientScopes": ["offline_access"],
-      "protocolMappers": [
-        {
-          "name": "backoffice-roles",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-usermodel-realm-role-mapper",
-          "consentRequired": false,
-          "config": {
-            "multivalued": "true",
-            "user.attribute": "foo",
-            "access.token.claim": "true",
-            "claim.name": "roles",
-            "jsonType.label": "String"
-          }
-        }
-      ]
     }
   ],
 

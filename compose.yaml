@@ -75,7 +75,6 @@ services:
       Keycloak__AdminClientSecret: ${KC_ADMIN_CLIENT_SECRET}
       Keycloak__RealmUrl: http://keycloak:8080/realms/onboarding
       Keycloak__ValidIssuer: http://localhost:8180/realms/onboarding
-      Keycloak__ManagementUrl: http://keycloak:9000
       Frontend__BaseUrl: ${FRONTEND_BASE_URL:-http://localhost:5173}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4317
       OTEL_SERVICE_NAME: onboarding-api
@@ -123,18 +122,10 @@ services:
       - ./frontend/backoffice/src:/app/src
       - ./frontend/backoffice/public:/app/public
       - ./frontend/backoffice/server.ts:/app/server.ts
-      - ./frontend/backoffice/auth-server.ts:/app/auth-server.ts
       - ./frontend/backoffice/app.config.ts:/app/app.config.ts
     environment:
       VITE_API_URL: http://localhost:8080
       VITE_KEYCLOAK_URL: http://localhost:8180
-      KEYCLOAK_EXTERNAL_URL: http://localhost:8180
-      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
-      KEYCLOAK_REALM: onboarding
-      KEYCLOAK_BACKOFFICE_CLIENT_ID: onboarding-backoffice
-      KEYCLOAK_BACKOFFICE_CLIENT_SECRET: ${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}
-      BACKOFFICE_REDIRECT_URI: http://localhost:5174/auth/callback
-      BACKOFFICE_POST_LOGOUT_REDIRECT_URI: http://localhost:5174/auth/login
     ports:
       - "127.0.0.1:5174:5174"
     depends_on:

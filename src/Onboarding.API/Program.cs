@@ -81,8 +81,9 @@ try
             .AddOtlpExporter());                                        // D-12: reads OTEL_EXPORTER_OTLP_ENDPOINT
 
     // Health checks — split live/ready (OBS-05, D-22 through D-26)
-    var keycloakRealmUrl = builder.Configuration["Keycloak:RealmUrl"] ?? "http://keycloak:8080/realms/onboarding";
-    var keycloakHealthUrl = keycloakRealmUrl.TrimEnd('/').Replace("/realms/onboarding", "") + "/health/ready";
+    // Keycloak 22+ exposes /health/ready on the management port (9000), not the HTTP port (8080).
+    var keycloakManagementUrl = builder.Configuration["Keycloak:ManagementUrl"] ?? "http://keycloak:9000";
+    var keycloakHealthUrl = keycloakManagementUrl.TrimEnd('/') + "/health/ready";
 
     builder.Services.AddHealthChecks()
         .AddNpgSql(

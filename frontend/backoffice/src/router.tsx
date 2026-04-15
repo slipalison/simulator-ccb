@@ -6,6 +6,7 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import { NotFoundPage } from "@/components/pages/NotFoundPage";
+import { AdminLoginPage } from "@/components/pages/AdminLoginPage";
 import { AdminAccessDeniedPage } from "@/components/pages/AdminAccessDeniedPage";
 import { AdminUsersPage } from "@/components/pages/AdminUsersPage";
 import { AdminUserDetailPage } from "@/components/pages/AdminUserDetailPage";
@@ -13,50 +14,27 @@ import { AdminUserEditPage } from "@/components/pages/AdminUserEditPage";
 import { CreateAdminPage } from "@/components/pages/CreateAdminPage";
 import { PasswordChangePage } from "@/components/pages/PasswordChangePage";
 import { AuditLogPage } from "@/components/pages/AuditLogPage";
-import { AuthLoginPage } from "@/components/pages/AuthLoginPage";
-import { AuthCallbackPage } from "@/components/pages/AuthCallbackPage";
-import { AuthErrorPage } from "@/components/pages/AuthErrorPage";
 import { AdminLayout } from "@/components/templates/AdminLayout";
-import { useAdminAuth } from "@/lib/admin-auth-context";
 import { useEffect } from "react";
 
-// Root route
+// Root route com notFoundComponent para roteamento type-safe de 404
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
   notFoundComponent: NotFoundPage,
 });
 
-// ---------------------------------------------------------------------------
-// Auth routes (public — no guard)
-// ---------------------------------------------------------------------------
-
-const authLoginRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/auth/login",
-  component: AuthLoginPage,
-});
-
-const authCallbackRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/auth/callback",
-  component: AuthCallbackPage,
-});
-
-const authErrorRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/auth/error",
-  component: AuthErrorPage,
-});
-
-// ---------------------------------------------------------------------------
-// Protected admin routes
-// ---------------------------------------------------------------------------
-
-// Rota index: / -> redirect para /admin/users
+// Rota index: / -> redirect para /admin/login
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: IndexRoute,
+});
+
+// Rota admin login: /admin/login
+const adminLoginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/login",
+  component: AdminLoginPage,
 });
 
 // Rota admin access denied: /admin/access-denied
@@ -71,11 +49,9 @@ const adminUsersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/users",
   component: () => (
-    <ProtectedRoute>
-      <AdminLayout>
-        <AdminUsersPage />
-      </AdminLayout>
-    </ProtectedRoute>
+    <AdminLayout>
+      <AdminUsersPage />
+    </AdminLayout>
   ),
 } as any);
 
@@ -86,27 +62,23 @@ const adminUserDetailRoute = createRoute({
   component: () => {
     const { id } = adminUserDetailRoute.useParams();
     return (
-      <ProtectedRoute>
-        <AdminLayout>
-          <AdminUserDetailPage userId={id as string} />
-        </AdminLayout>
-      </ProtectedRoute>
+      <AdminLayout>
+        <AdminUserDetailPage userId={id as string} />
+      </AdminLayout>
     );
   },
 } as any);
 
-// Rota admin user edit: /admin/users/$id/edit
+// Rota admin user edit: /admin/users/$id/edit (MUST be before detail route)
 const adminUserEditRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/users/$id/edit",
   component: () => {
     const { id } = adminUserEditRoute.useParams();
     return (
-      <ProtectedRoute>
-        <AdminLayout>
-          <AdminUserEditPage userId={id as string} />
-        </AdminLayout>
-      </ProtectedRoute>
+      <AdminLayout>
+        <AdminUserEditPage userId={id as string} />
+      </AdminLayout>
     );
   },
 } as any);
@@ -116,11 +88,9 @@ const adminCreateRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/create",
   component: () => (
-    <ProtectedRoute>
-      <AdminLayout>
-        <CreateAdminPage />
-      </AdminLayout>
-    </ProtectedRoute>
+    <AdminLayout>
+      <CreateAdminPage />
+    </AdminLayout>
   ),
 });
 
@@ -129,11 +99,9 @@ const adminPasswordChangeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/password-change",
   component: () => (
-    <ProtectedRoute>
-      <AdminLayout>
-        <PasswordChangePage />
-      </AdminLayout>
-    </ProtectedRoute>
+    <AdminLayout>
+      <PasswordChangePage />
+    </AdminLayout>
   ),
 });
 
@@ -142,20 +110,16 @@ const adminAuditLogRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/audit-log",
   component: () => (
-    <ProtectedRoute>
-      <AdminLayout>
-        <AuditLogPage />
-      </AdminLayout>
-    </ProtectedRoute>
+    <AdminLayout>
+      <AuditLogPage />
+    </AdminLayout>
   ),
 });
 
-// Arvore de rotas
+// Arvore de rotas — APENAS rotas admin (sem rotas publicas)
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  authLoginRoute,
-  authCallbackRoute,
-  authErrorRoute,
+  adminLoginRoute,
   adminAccessDeniedRoute,
   adminUsersRoute,
   adminUserEditRoute,
@@ -176,44 +140,15 @@ declare module "@tanstack/react-router" {
 }
 
 // ---------------------------------------------------------------------------
-// IndexRoute: redirect to /admin/users (ProtectedRoute handles auth check)
+// IndexRoute: redirects to /admin/login
 // ---------------------------------------------------------------------------
 
 function IndexRoute() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    navigate({ to: "/admin/users" as any, replace: true });
+    navigate({ to: "/admin/login" as any, replace: true });
   }, [navigate]);
 
   return null;
-}
-
-// ---------------------------------------------------------------------------
-// ProtectedRoute: redirect to /auth/login if not authenticated
-// ---------------------------------------------------------------------------
-
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { admin, login } = useAdminAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!admin.isLoading && !admin.isAuthenticated) {
-      login();
-    }
-  }, [admin.isLoading, admin.isAuthenticated, login, navigate]);
-
-  if (admin.isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-muted-foreground">Carregando...</p>
-      </div>
-    );
-  }
-
-  if (!admin.isAuthenticated) {
-    return null;
-  }
-
-  return <>{children}</>;
 }

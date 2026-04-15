@@ -37,18 +37,19 @@ Last activity: 2026-04-15 — Phase 29-01 executed (4 tasks, 149 tests passing, 
 **Milestone v2.0 — UX/UI + Production:** ✅ COMPLETE (5/5 phases, 7+ plans)
 **Milestone v3.0 — Admin Backoffice + Frontend Separation:** ✅ COMPLETE (5/5 phases, 13/13 plans)
 **Milestone v4.0 — CI/CD Pipeline + Cybersecurity:** ✅ COMPLETE (8/8 phases, 20/20 plans)
-**Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** 🔄 IN PROGRESS (1/4 phases)
+**Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** 🔄 IN PROGRESS (1/5 phases)
 
 ## Milestone v5.0 Phase Breakdown
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 29 | Keycloak Config + Auth Code Flow Backend | ACF-01, ACF-02, ACF-03, ACF-04 | ✅ Complete |
+| 29 | Keycloak Config + Auth Code Flow Backend | ACF-01, ACF-02, ACF-03, ACF-04 | ⏸ Reverted (ROPC restaurado) |
 | 30 | Audit Log Backend + Admin Management Backend | AUD-01, ADM-01, ADM-02, ADM-03, ADM-04 | 📋 Planned |
 | 31 | Backoffice Auth Code Flow UI | ACF-01, ACF-02, ACF-03, ACF-04 (frontend) | 📋 Planned |
 | 32 | Backoffice Admin Management UI + Audit Log UI | ADM-01, ADM-02, ADM-03, ADM-04, AUD-02, AUD-03 | 📋 Planned |
+| 33 | PKCE + Custom Keycloak Themes (Backoffice + Client) | PKC-01..PKC-06 | 📋 Planned |
 
-**Coverage:** 11/11 v5.0 requirements mapped ✓
+**Coverage:** 11/11 v5.0 requirements + Phase 33 (PKC) adicionada ✓
 
 ## Accumulated Context
 
@@ -96,6 +97,10 @@ Recent decisions affecting current work:
 - Phase 14 (E2E Testing): Playwright installation, E2E tests for registration → auto-login → profile, login → profile → F5 → session restored, direct /profile → redirect /login — *deferred*
 - Admin user seed: Need admin user in Keycloak with "admin" role for manual testing — *needed for manual testing*
 - GitHub UI follow-ups (v4.0): branch protection on `main`, Dependabot alerts, first CI run, review security findings
+
+### Roadmap Evolution
+
+- Phase 33 adicionada: PKCE + Custom Keycloak Themes para Backoffice e Client (2026-04-15) — ROPC descartado por impossibilidade de 2FA; ACF+PKCE com custom themes substitui abordagem anterior
 
 ### Blockers/Concerns
 

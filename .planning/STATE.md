@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: auth-code-flow-admins-auditoria
 status: in_progress
-stopped_at: Phase 29 planned - ready to execute
-last_updated: "2026-04-14T14:00:00.000Z"
-last_activity: 2026-04-14 -- Milestone v5.0 roadmap created (Phases 29-32)
+stopped_at: Phase 29-01 complete (Auth Code Flow + PKCE backoffice migration)
+last_updated: "2026-04-15T09:05:00.000Z"
+last_activity: 2026-04-15 -- Phase 29-01 executed (ACF+PKCE migration, 149 tests passing)
 progress:
   total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 1
+  completed_plans: 1
+  percent: 25
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: .planning/PROJECT.md (updated 2026-04-14)
 ## Current Position
 
 Phase: 29 — Keycloak Config + Auth Code Flow Backend
-Plan: —
-Status: Roadmap created — ready to plan Phase 29
-Last activity: 2026-04-14 — Milestone v5.0 roadmap finalized
+Plan: 29-01 (Auth Code Flow Backend) — ✅ Complete
+Status: Phase 29-01 complete — ACF+PKCE migration executed and verified
+Last activity: 2026-04-15 — Phase 29-01 executed (4 tasks, 149 tests passing, tsc clean, dotnet build clean)
 
 ## Milestone Breakdown
 
@@ -37,13 +37,13 @@ Last activity: 2026-04-14 — Milestone v5.0 roadmap finalized
 **Milestone v2.0 — UX/UI + Production:** ✅ COMPLETE (5/5 phases, 7+ plans)
 **Milestone v3.0 — Admin Backoffice + Frontend Separation:** ✅ COMPLETE (5/5 phases, 13/13 plans)
 **Milestone v4.0 — CI/CD Pipeline + Cybersecurity:** ✅ COMPLETE (8/8 phases, 20/20 plans)
-**Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** 🔄 IN PROGRESS (0/4 phases)
+**Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** 🔄 IN PROGRESS (1/4 phases)
 
 ## Milestone v5.0 Phase Breakdown
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 29 | Keycloak Config + Auth Code Flow Backend | ACF-01, ACF-02, ACF-03, ACF-04 | 📋 Planned |
+| 29 | Keycloak Config + Auth Code Flow Backend | ACF-01, ACF-02, ACF-03, ACF-04 | ✅ Complete |
 | 30 | Audit Log Backend + Admin Management Backend | AUD-01, ADM-01, ADM-02, ADM-03, ADM-04 | 📋 Planned |
 | 31 | Backoffice Auth Code Flow UI | ACF-01, ACF-02, ACF-03, ACF-04 (frontend) | 📋 Planned |
 | 32 | Backoffice Admin Management UI + Audit Log UI | ADM-01, ADM-02, ADM-03, ADM-04, AUD-02, AUD-03 | 📋 Planned |

@@ -36,6 +36,7 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IAdminRepository, AdminRepository>();
         services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
+        services.AddScoped<IAuditService, AuditService>();
 
         // Keycloak Admin API — service account CC grant (REG-06)
         var keycloakBaseUrl = configuration["Keycloak:AuthServerUrl"]

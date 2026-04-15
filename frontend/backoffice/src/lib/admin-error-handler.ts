@@ -44,7 +44,7 @@ export function checkAdminResponse(response: Response): boolean {
     toast.error("Sessao expirada", {
       description: "Faca login novamente.",
     });
-    window.location.href = "/admin/login?expired=true";
+    window.location.href = "/auth/login";
     throw new SessionExpiredError();
   }
 

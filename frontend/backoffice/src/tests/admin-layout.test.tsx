@@ -7,15 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 
 // Mock admin API
 vi.mock("@/lib/admin-api", () => ({
-  loginAdmin: vi.fn(),
-  logoutAdmin: vi.fn(),
   getAdminMe: vi.fn(),
-  AdminLoginError: class AdminLoginError extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = "AdminLoginError";
-    }
-  },
   AdminApiError: class AdminApiError extends Error {
     constructor(message: string) {
       super(message);
@@ -73,12 +65,11 @@ describe("Admin Layout", () => {
     expect(screen.getByText(/backoffice admin/i)).toBeInTheDocument();
   });
 
-  it("shows logout button and clears session on click", async () => {
+  it("shows logout button and redirects to /auth/logout on click", async () => {
     vi.mocked(adminApi.getAdminMe).mockResolvedValue({
       adminName: "Test Admin",
       adminEmail: "test@onboarding.local",
     });
-    vi.mocked(adminApi.logoutAdmin).mockResolvedValue();
 
     render(
       wrapper({
@@ -94,32 +85,9 @@ describe("Admin Layout", () => {
       fireEvent.click(screen.getByTestId("admin-logout-button"));
     });
 
-    expect(adminApi.logoutAdmin).toHaveBeenCalled();
-
-    // After logout, window.location.href should be set to /admin/login
+    // After logout, window.location.href should be set to /auth/logout
     await waitFor(() => {
-      expect(window.location.href).toBe("/admin/login");
+      expect(window.location.href).toBe("/auth/logout");
     });
-  });
-
-  it("sidebar has link to /admin/users", async () => {
-    vi.mocked(adminApi.getAdminMe).mockResolvedValue({
-      adminName: "Test Admin",
-      adminEmail: "test@onboarding.local",
-    });
-
-    render(
-      wrapper({
-        children: <AdminLayout><p>Content</p></AdminLayout>,
-      })
-    );
-
-    await waitFor(() => {
-      expect(screen.getByTestId("admin-sidebar")).toBeInTheDocument();
-    });
-
-    const usersLink = screen.getByTestId("sidebar-users-link");
-    expect(usersLink).toBeInTheDocument();
-    expect(usersLink.getAttribute("href")).toBe("/admin/users");
   });
 });

@@ -66,10 +66,8 @@ function AdminSidebar() {
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { admin, logout } = useAdminAuth();
 
-  async function handleLogout() {
-    await logout();
-    toast.success("Logout realizado", { description: "Ate logo!" });
-    window.location.href = "/admin/login";
+  function handleLogout() {
+    logout();
   }
 
   return (

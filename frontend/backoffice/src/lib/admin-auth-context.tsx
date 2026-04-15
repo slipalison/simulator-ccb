@@ -1,5 +1,11 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { loginAdmin, logoutAdmin, getAdminMe } from "@/lib/admin-api";
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  type ReactNode,
+} from "react";
+import { getAdminMe } from "@/lib/admin-api";
 
 // ---------------------------------------------------------------------------
 // Context definition
@@ -12,8 +18,8 @@ interface AdminAuthValue {
     adminName: string | null;
     adminEmail: string | null;
   };
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  login: () => void;
+  logout: () => void;
   restoreSession: () => Promise<boolean>;
 }
 
@@ -29,7 +35,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [adminName, setAdminName] = useState<string | null>(null);
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
 
-  // Session restoration on mount
+  // Session check on mount via /auth/me (Vinxi server action)
   useEffect(() => {
     async function tryRestore() {
       try {
@@ -38,7 +44,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         setAdminEmail(me.adminEmail);
         setIsAuthenticated(true);
       } catch {
-        // Session invalid — admin needs to login
+        // No valid session — admin must go through Auth Code Flow
       } finally {
         setIsLoading(false);
       }
@@ -47,27 +53,12 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     tryRestore();
   }, []);
 
-  async function login(email: string, password: string): Promise<void> {
-    setIsLoading(true);
-    try {
-      const session = await loginAdmin(email, password);
-      setAdminName(session.adminName);
-      setAdminEmail(session.adminEmail);
-      setIsAuthenticated(true);
-    } finally {
-      setIsLoading(false);
-    }
+  function login(): void {
+    window.location.href = "/auth/login";
   }
 
-  async function logout(): Promise<void> {
-    try {
-      await logoutAdmin();
-    } catch {
-      // Best effort — clear local state regardless
-    }
-    setAdminName(null);
-    setAdminEmail(null);
-    setIsAuthenticated(false);
+  function logout(): void {
+    window.location.href = "/auth/logout";
   }
 
   async function restoreSession(): Promise<boolean> {

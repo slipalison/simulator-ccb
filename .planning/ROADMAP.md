@@ -753,7 +753,10 @@ Backend-first ordering ensures API contracts exist before UI is built.
   3. POST `/api/admin/administrators` creates a new Keycloak user with role `admin` and `UPDATE_PASSWORD` requiredAction, returns the one-time temporary password in the response body
   4. GET `/api/admin/administrators` returns all users with role `admin` in Keycloak — the list includes the actor admin and newly created admins
   5. Both endpoints require `[Authorize(Roles = "admin")]` — non-admin callers receive 403
-**Plans:** TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 30-01-PLAN.md — IAuditService + AuditService, migração dos 5 handlers, remoção do legado AuditLog, migration DropAuditLogs
+- [ ] 30-02-PLAN.md — AdminUserDto, GetAdministratorsQuery, GetUsersByRoleAsync, POST /administrators + GET /administrators, frontend admin-api.ts
 
 ### Phase 31: Backoffice Auth Code Flow UI
 **Goal:** The backoffice frontend replaces the ROPC login form with an Auth Code Flow redirect — Keycloak handles the login screen and forced password change natively
@@ -780,6 +783,86 @@ Backend-first ordering ensures API contracts exist before UI is built.
 **Plans:** TBD
 **UI hint**: yes
 
+### Phase 33: PKCE + Custom Keycloak Themes para Backoffice e Client
+**Goal:** Ambas as aplicações (backoffice e client) autenticam via Authorization Code Flow com PKCE. Cada uma possui um Custom Keycloak Theme dedicado que replica fielmente a identidade visual da aplicação — o usuário nunca percebe a transição para o Keycloak. 2FA, `UPDATE_PASSWORD` e demais required actions são tratados nativamente pelo Keycloak sem código custom nas apps.
+**Depends on:** Phase 28 (Security Documentation)
+**Requirements:** PKC-01, PKC-02, PKC-03, PKC-04, PKC-05, PKC-06
+
+**Contexto arquitetural:**
+
+ROPC (Resource Owner Password Credentials) foi descartado por duas razões fundamentais:
+1. **Sem suporte a 2FA** — TOTP/WebAuthn exigem interação do usuário no Keycloak; ROPC bypassa esse fluxo completamente.
+2. **Credenciais passam pela aplicação** — violação do princípio de separação. OAuth 2.1 depreca ROPC explicitamente.
+
+A solução adotada é **Authorization Code Flow com PKCE** (RFC 7636), onde o usuário é redirecionado para o Keycloak mas percebe uma experiência nativa graças ao Custom Theme. Não há iframes nem `keycloak-js` — o redirect é a garantia de segurança.
+
+**Estratégia de Custom Themes:**
+
+| App | Theme Name | Identidade Visual | Experiência |
+|-----|-----------|-------------------|-------------|
+| `frontend/client` | `onboarding-client` | Branding do produto (cores primárias, logo do produto) | Formulário de login de cliente final: email + senha, mensagens amigáveis, link para cadastro |
+| `frontend/backoffice` | `onboarding-backoffice` | Estilo administrativo (neutro, profissional, dark-friendly) | Formulário de login de admin: sem link de cadastro, mensagem de acesso restrito |
+
+Cada theme é um diretório Keycloak com templates FreeMarker + CSS (sem framework JS externo):
+```
+keycloak/themes/
+  onboarding-client/
+    login/
+      login.ftl          ← formulário de login customizado
+      login-reset-password.ftl
+      login-update-password.ftl   ← tela de troca de senha obrigatória
+      login-otp.ftl      ← 2FA (TOTP)
+      template.ftl       ← layout base
+      theme.properties   ← herda de 'keycloak' como fallback
+      resources/
+        css/styles.css
+  onboarding-backoffice/
+    login/
+      login.ftl
+      login-reset-password.ftl
+      login-update-password.ftl
+      login-otp.ftl
+      template.ftl
+      theme.properties
+      resources/
+        css/styles.css
+```
+
+**Fluxo PKCE por aplicação:**
+
+```
+[Client App]
+  1. Usuário acessa rota protegida → redirect para Keycloak (onboarding-client theme)
+  2. Keycloak autentica → redirect de volta com ?code=...
+  3. Backend BFF troca o code por tokens (PKCE verify)
+  4. Tokens armazenados em httpOnly cookies → JS nunca acessa
+
+[Backoffice App]
+  1. Admin acessa rota protegida → redirect para Keycloak (onboarding-backoffice theme)
+  2. Keycloak autentica → se UPDATE_PASSWORD pendente, exibe tela nativa de troca de senha
+  3. Redirect de volta com ?code=...
+  4. Backend BFF troca o code por tokens
+  5. Session via httpOnly cookies
+```
+
+**Clients Keycloak necessários:**
+
+| Client ID | App | Grant | PKCE | Redirect URIs |
+|-----------|-----|-------|------|---------------|
+| `onboarding-app` | Client (frontend/client) | Authorization Code | obrigatório (S256) | `http://localhost:3000/callback` |
+| `onboarding-backoffice` | Backoffice | Authorization Code | obrigatório (S256) | `http://localhost:4000/admin/callback` |
+
+**Success Criteria** (what must be TRUE):
+  1. Um usuário cliente que acessa `/profile` sem sessão é redirecionado para o Keycloak com o theme `onboarding-client` — o formulário de login exibe o branding do produto e não o tema padrão do Keycloak
+  2. Um admin que acessa `/admin/users` sem sessão é redirecionado para o Keycloak com o theme `onboarding-backoffice` — o formulário exibe identidade administrativa, sem link de cadastro, com mensagem de acesso restrito
+  3. Um admin com `UPDATE_PASSWORD` requiredAction é apresentado à tela nativa de troca de senha do Keycloak (template `login-update-password.ftl` customizado) antes de acessar o backoffice — zero código de troca de senha nas aplicações
+  4. Após login bem-sucedido, o authorization code é trocado por tokens no backend (BFF); nenhum token aparece em localStorage, sessionStorage ou no corpo de respostas JSON acessíveis ao JavaScript
+  5. Logout em qualquer app limpa os cookies httpOnly E invoca o OIDC logout endpoint do Keycloak (`/protocol/openid-connect/logout?id_token_hint=...`) — a sessão SSO do Keycloak é encerrada
+  6. O realm JSON (`keycloak/onboarding-realm.json`) referencia os themes `onboarding-client` e `onboarding-backoffice` nos respectivos clients — o ambiente sobe via `docker compose up` sem configuração manual adicional
+
+**Plans:** TBD
+**UI hint**: yes (Custom Keycloak Themes são a entrega central desta fase)
+
 ---
 
 ## Milestone v5.0 — Progress
@@ -790,6 +873,7 @@ Backend-first ordering ensures API contracts exist before UI is built.
 | 30. Audit Log Backend + Admin Management Backend | 0/TBD | 📋 Planned | — |
 | 31. Backoffice Auth Code Flow UI | 0/TBD | 📋 Planned | — |
 | 32. Backoffice Admin Management UI + Audit Log UI | 0/TBD | 📋 Planned | — |
+| 33. PKCE + Custom Keycloak Themes (Backoffice + Client) | 0/TBD | 📋 Planned | — |
 
 ---
 
@@ -799,14 +883,15 @@ Backend-first ordering ensures API contracts exist before UI is built.
 
 **▶ Recommended Next Actions:**
 
-1. **`/gsd:plan-phase 29`** — Start planning Phase 29 (Keycloak Config + Auth Code Flow Backend)
-2. **`/gsd:plan-phase 30`** — Phase 30 (Audit Log Backend + Admin Management Backend)
-3. **`/gsd:plan-phase 31`** — Phase 31 (Backoffice Auth Code Flow UI)
-4. **`/gsd:plan-phase 32`** — Phase 32 (Backoffice Admin Management UI + Audit Log UI)
+1. **`/gsd:plan-phase 33`** — Planejar Phase 33 (PKCE + Custom Keycloak Themes)
+2. **`/gsd:plan-phase 29`** — Phase 29 (Keycloak Config + Auth Code Flow Backend)
+3. **`/gsd:plan-phase 30`** — Phase 30 (Audit Log Backend + Admin Management Backend)
+4. **`/gsd:plan-phase 31`** — Phase 31 (Backoffice Auth Code Flow UI)
+5. **`/gsd:plan-phase 32`** — Phase 32 (Backoffice Admin Management UI + Audit Log UI)
 
 **Deferred:**
-- Phase 14 (E2E Testing from v2.0) — can be done in parallel or deferred until after v5.0
+- Phase 14 (E2E Testing from v2.0) — pode ser feito em paralelo ou após v5.0
 
 ---
 
-*Last updated: 2026-04-14 — Milestone v5.0 roadmap created with 4 new phases (29-32)*
+*Last updated: 2026-04-15 — Phase 33 adicionada: PKCE + Custom Keycloak Themes para Backoffice e Client*

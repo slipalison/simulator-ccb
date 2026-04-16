@@ -311,7 +311,7 @@ export async function unblockUser(
 // Admin Management — Phase 29 (Milestone v5.0)
 // ---------------------------------------------------------------------------
 
-// POST /api/admin/users — Create new admin
+// POST /api/admin/administrators — Create new admin
 export interface CreateAdminResult {
   adminId: string;
   temporaryPassword: string;
@@ -321,7 +321,7 @@ export async function createAdmin(
   fullName: string,
   email: string
 ): Promise<CreateAdminResult> {
-  const response = await fetch("/api/admin/users", {
+  const response = await fetch("/api/admin/administrators", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ fullName, email }),

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Header } from "@/components/organisms/Header";
@@ -15,9 +15,7 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 });
 
 // Mock auth context
-const mockLogout = vi.fn(() => {
-  window.location.href = "/auth/logout";
-});
+const mockLogout = vi.fn();
 vi.mock("@/lib/auth-context", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/auth-context")>();
   return {
@@ -26,25 +24,11 @@ vi.mock("@/lib/auth-context", async (importOriginal) => {
       auth: { isAuthenticated: true, isLoading: false },
       logout: mockLogout,
       login: vi.fn(),
+      refreshIfNeeded: vi.fn(),
+      getAccessToken: () => "fake-token",
     }),
     AuthProvider: ({ children }: { children: React.ReactNode }) => children,
   };
-});
-
-// Mock window.location
-const originalLocation = window.location;
-beforeEach(() => {
-  vi.clearAllMocks();
-  Object.defineProperty(window, "location", {
-    writable: true,
-    value: { href: "" },
-  });
-});
-afterEach(() => {
-  Object.defineProperty(window, "location", {
-    writable: true,
-    value: originalLocation,
-  });
 });
 
 function renderHeader() {
@@ -108,8 +92,7 @@ describe("Header", () => {
 
     await waitFor(() => {
       expect(mockLogout).toHaveBeenCalled();
-      // logout() does window.location.href = "/auth/logout"
-      expect(window.location.href).toBe("/auth/logout");
+      expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/login" }));
     });
   });
 });

@@ -19,7 +19,7 @@ interface DeleteDialogProps {
   userName: string;
   userEmail: string;
   userDocument?: string;
-  onDelete: (confirmEmail: string) => Promise<void>;
+  onDelete: () => Promise<void>;
   onSuccess: () => void;
   onClose: () => void;
   open: boolean;
@@ -43,7 +43,7 @@ export function DeleteDialog({
     if (!emailMatches) return;
     setIsSubmitting(true);
     try {
-      await onDelete(emailInput.trim());
+      await onDelete();
       toast.success("Usuario deletado com sucesso.");
       setEmailInput("");
       onSuccess();

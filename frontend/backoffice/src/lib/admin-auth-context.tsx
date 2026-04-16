@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { loginAdmin, logoutAdmin, getAdminMe } from "@/lib/admin-api";
 
 // ---------------------------------------------------------------------------
 // Context definition
@@ -11,10 +12,9 @@ interface AdminAuthValue {
     adminName: string | null;
     adminEmail: string | null;
   };
-  /** Redirects to /auth/login (Vinxi server → Keycloak ACF) */
-  login: () => void;
-  /** Redirects to /auth/logout (Vinxi server clears cookies → Keycloak OIDC logout) */
-  logout: () => void;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  restoreSession: () => Promise<boolean>;
 }
 
 const AdminAuthContext = createContext<AdminAuthValue | null>(null);
@@ -29,21 +29,14 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [adminName, setAdminName] = useState<string | null>(null);
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
 
-  // Session restoration on mount via /auth/me
+  // Session restoration on mount
   useEffect(() => {
     async function tryRestore() {
       try {
-        const res = await fetch("/auth/me", { credentials: "include" });
-        if (res.ok) {
-          const data = (await res.json()) as {
-            adminName: string;
-            email: string;
-            isAuthenticated: boolean;
-          };
-          setAdminName(data.adminName);
-          setAdminEmail(data.email);
-          setIsAuthenticated(data.isAuthenticated);
-        }
+        const me = await getAdminMe();
+        setAdminName(me.adminName);
+        setAdminEmail(me.adminEmail);
+        setIsAuthenticated(true);
       } catch {
         // Session invalid — admin needs to login
       } finally {
@@ -54,12 +47,42 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     tryRestore();
   }, []);
 
-  function login(): void {
-    window.location.href = "/auth/login";
+  async function login(email: string, password: string): Promise<void> {
+    setIsLoading(true);
+    try {
+      const session = await loginAdmin(email, password);
+      setAdminName(session.adminName);
+      setAdminEmail(session.adminEmail);
+      setIsAuthenticated(true);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  function logout(): void {
-    window.location.href = "/auth/logout";
+  async function logout(): Promise<void> {
+    try {
+      await logoutAdmin();
+    } catch {
+      // Best effort — clear local state regardless
+    }
+    setAdminName(null);
+    setAdminEmail(null);
+    setIsAuthenticated(false);
+  }
+
+  async function restoreSession(): Promise<boolean> {
+    try {
+      const me = await getAdminMe();
+      setAdminName(me.adminName);
+      setAdminEmail(me.adminEmail);
+      setIsAuthenticated(true);
+      return true;
+    } catch {
+      setAdminName(null);
+      setAdminEmail(null);
+      setIsAuthenticated(false);
+      return false;
+    }
   }
 
   return (
@@ -68,6 +91,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         admin: { isAuthenticated, isLoading, adminName, adminEmail },
         login,
         logout,
+        restoreSession,
       }}
     >
       {children}

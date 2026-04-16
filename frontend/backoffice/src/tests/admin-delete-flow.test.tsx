@@ -95,7 +95,7 @@ describe("Admin Delete Flow Integration", () => {
     fireEvent.click(screen.getByTestId("confirm-delete-button"));
 
     await waitFor(() => {
-      expect(adminApi.deleteUser).toHaveBeenCalledWith("1", "joao@example.com");
+      expect(adminApi.deleteUser).toHaveBeenCalledWith("1");
     });
 
     await waitFor(() => {
@@ -171,7 +171,7 @@ describe("Admin Delete Flow Integration", () => {
     fireEvent.click(screen.getByTestId("confirm-delete-button"));
 
     await waitFor(() => {
-      expect(adminApi.deleteUser).toHaveBeenCalledWith("1", "joao@example.com");
+      expect(adminApi.deleteUser).toHaveBeenCalledWith("1");
     });
 
     await waitFor(() => {

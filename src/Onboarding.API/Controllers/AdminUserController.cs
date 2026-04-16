@@ -331,7 +331,7 @@ public sealed class AdminUserController : ControllerBase
         try
         {
             var result = await _createAdminHandler.HandleAsync(command, ct);
-            return Ok(result);
+            return CreatedAtAction(nameof(CreateAdmin), new { id = result.AdminId }, result);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
         {

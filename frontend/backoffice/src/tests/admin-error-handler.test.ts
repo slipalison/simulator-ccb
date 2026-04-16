@@ -47,12 +47,12 @@ describe("admin-error-handler.ts", () => {
       expect(checkAdminResponse(response)).toBe(true);
     });
 
-    it("401 throws SessionExpiredError, shows toast, redirects to /auth/login", () => {
+    it("401 throws SessionExpiredError, shows toast, redirects to login", () => {
       const response = new Response(null, { status: 401 });
 
       expect(() => checkAdminResponse(response)).toThrow(SessionExpiredError);
       expect(toast.error).toHaveBeenCalledWith("Sessao expirada", expect.any(Object));
-      expect(window.location.href).toBe("/auth/login");
+      expect(window.location.href).toBe("/admin/login?expired=true");
     });
 
     it("403 throws AccessDeniedError, redirects to access-denied", () => {

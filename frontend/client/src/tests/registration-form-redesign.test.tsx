@@ -174,6 +174,6 @@ describe("RegistrationForm (shadcn redesign)", () => {
 
     const loginLink = screen.getByRole("link", { name: /Fazer login/ });
     expect(loginLink).toBeInTheDocument();
-    expect(loginLink).toHaveAttribute("href", "/auth/login");
+    expect(loginLink).toHaveAttribute("href", "/login");
   });
 });

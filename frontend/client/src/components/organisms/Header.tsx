@@ -15,8 +15,9 @@ export function Header() {
   const { logout } = useAuth()
   const navigate = useNavigate()
 
-  function handleLogout() {
-    logout() // redirects to /auth/logout
+  async function handleLogout() {
+    await logout()
+    navigate({ to: "/login" as any })
   }
 
   return (

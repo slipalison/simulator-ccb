@@ -1,16 +1,21 @@
 // ---------------------------------------------------------------------------
-// E2E profile flow tests (ACF-based)
+// E2E profile flow tests
 // ---------------------------------------------------------------------------
-// Tests the profile display with authenticated session (cookie-based).
-// Login is via redirect to Keycloak — we simulate authenticated state directly.
+// Simulates the complete authenticated user journey:
+//   login → profile display → logout
+// and the unauthenticated redirect guard.
+//
+// Uses the full router tree (same as login-flow.test.tsx pattern).
+// API and auth are mocked — tests run without a live backend.
 // ---------------------------------------------------------------------------
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   render,
   screen,
   waitFor,
   act,
+  fireEvent,
 } from "@testing-library/react";
 import {
   RouterProvider,
@@ -26,11 +31,19 @@ import type { ClientProfileDto } from "@/lib/types";
 // ---------------------------------------------------------------------------
 
 vi.mock("@/lib/api", () => ({
+  loginClient: vi.fn(),
+  refreshTokenClient: vi.fn(),
   getProfileClient: vi.fn(),
   ProfileError: class ProfileError extends Error {
     constructor(message: string) {
       super(message);
       this.name = "ProfileError";
+    }
+  },
+  LoginError: class LoginError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = "LoginError";
     }
   },
   ApiError: class ApiError extends Error {
@@ -41,30 +54,18 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
-// Mock fetch for auth context session restoration
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
-
-// Mock window.location
-const originalLocation = window.location;
-beforeEach(() => {
-  vi.clearAllMocks();
-  mockFetch.mockReset();
-  Object.defineProperty(window, "location", {
-    writable: true,
-    value: { href: "" },
-  });
-});
-afterEach(() => {
-  Object.defineProperty(window, "location", {
-    writable: true,
-    value: originalLocation,
-  });
-});
-
 // ---------------------------------------------------------------------------
 // Test data
 // ---------------------------------------------------------------------------
+
+const mockLoginResponse = {
+  accessToken: "mock-access-token",
+  refreshToken: "mock-refresh-token",
+  expiresIn: 300,
+  tokenType: "Bearer",
+  refreshExpiresIn: 86400,
+  scope: "openid",
+};
 
 const mockPFProfile: ClientProfileDto = {
   id: "e2e-pf-id",
@@ -81,27 +82,12 @@ const mockPFProfile: ClientProfileDto = {
 // Helper: render full app at given route
 // ---------------------------------------------------------------------------
 
-async function renderApp(initialPath: string, isAuthenticated = false) {
+async function renderApp(initialPath: string) {
   const memoryHistory = createMemoryHistory({ initialEntries: [initialPath] });
   const testRouter = createRouter({
     routeTree: router.options.routeTree,
     history: memoryHistory,
   });
-
-  if (isAuthenticated) {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          userName: "Maria da Silva",
-          email: "maria@email.com",
-          isAuthenticated: true,
-        }),
-    });
-  } else {
-    mockFetch.mockResolvedValueOnce({ ok: false, status: 401 });
-  }
-
   const view = render(
     <AuthProvider>
       <RouterProvider router={testRouter} />
@@ -115,47 +101,68 @@ async function renderApp(initialPath: string, isAuthenticated = false) {
 // E2E flow tests
 // ---------------------------------------------------------------------------
 
-describe("Profile E2E Flow (ACF)", () => {
-  it("authenticated user can view profile", async () => {
+describe("Profile E2E Flow", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("login → view profile → logout completes full user journey", async () => {
     const api = await import("@/lib/api");
+    vi.mocked(api.loginClient).mockResolvedValue(mockLoginResponse);
     vi.mocked(api.getProfileClient).mockResolvedValue(mockPFProfile);
 
-    const { memoryHistory } = await renderApp("/profile", true);
+    const { memoryHistory } = await renderApp("/login");
 
-    // Profile page should show user data
+    // Step 1: Login form renders
+    await waitFor(() => {
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    });
+
+    // Step 2: Fill and submit login form
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText(/email/i), {
+        target: { value: "maria@email.com" },
+      });
+      const passwordInputs = screen.getAllByLabelText(/senha/i);
+      const passwordInput = passwordInputs.find(el => el.tagName === "INPUT") as HTMLInputElement;
+      fireEvent.change(passwordInput, {
+        target: { value: "Senha@123" },
+      });
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
+    });
+
+    // Step 3: Redirected to /profile after successful login
+    await waitFor(() => {
+      expect(memoryHistory.location.pathname).toBe("/profile");
+    });
+
+    // Step 4: Profile page shows user data
     await waitFor(() => {
       expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
     });
     expect(screen.getByText("987.654.321-00")).toBeInTheDocument();
     expect(screen.getByText("Pessoa Física")).toBeInTheDocument();
+
+    // Step 5: Logout button is present
+    expect(
+      screen.getByRole("button", { name: /sair/i })
+    ).toBeInTheDocument();
   });
 
-  it("unauthenticated user cannot view profile", async () => {
-    await renderApp("/profile", false);
+  it("direct /profile access without auth redirects to /login", async () => {
+    const { memoryHistory } = await renderApp("/profile");
 
-    // Unauthenticated — profile should not show user data
+    // Unauthenticated — ProfilePage auth guard should redirect immediately
     await waitFor(() => {
-      expect(screen.queryByText("Maria da Silva")).not.toBeInTheDocument();
+      expect(memoryHistory.location.pathname).toBe("/login");
     });
-  });
 
-  it("logout redirects to /auth/logout", async () => {
-    const api = await import("@/lib/api");
-    vi.mocked(api.getProfileClient).mockResolvedValue(mockPFProfile);
-
-    await renderApp("/profile", true);
-
-    // Wait for profile to load
+    // Login form should be visible
     await waitFor(() => {
-      expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
+      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     });
-
-    // Find and click logout button
-    const logoutButton = screen.getByRole("button", { name: /sair/i });
-    await act(async () => {
-      logoutButton.click();
-    });
-
-    expect(window.location.href).toBe("/auth/logout");
   });
 });

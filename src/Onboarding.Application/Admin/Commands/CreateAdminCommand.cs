@@ -81,7 +81,6 @@ public sealed class CreateAdminCommandHandler : ICommandHandler<CreateAdminComma
     /// - 14 characters
     /// - Guaranteed: 2 uppercase, 2 lowercase, 2 digits, 2 special chars
     /// - Remaining 6 chars randomly selected from all categories
-    /// - Uses RandomNumberGenerator.GetInt32 (no allocation, no modulo bias)
     /// </summary>
     private static string GenerateTemporaryPassword()
     {
@@ -89,7 +88,6 @@ public sealed class CreateAdminCommandHandler : ICommandHandler<CreateAdminComma
         const string lowerChars = "abcdefghijklmnopqrstuvwxyz";
         const string digits = "0123456789";
         const string specialChars = "!@#$%^&*";
-        const string allChars = upperChars + lowerChars + digits + specialChars;
 
         var chars = new char[14];
 
@@ -104,15 +102,18 @@ public sealed class CreateAdminCommandHandler : ICommandHandler<CreateAdminComma
         chars[7] = GetRandomChar(specialChars);
 
         // Random remaining characters
+        const string allChars = upperChars + lowerChars + digits + specialChars;
         for (int i = 8; i < chars.Length; i++)
         {
             chars[i] = GetRandomChar(allChars);
         }
 
-        // Bias-free Fisher-Yates shuffle using RandomNumberGenerator.GetInt32
+        // Shuffle the array using Fisher-Yates with cryptographic randomness
         for (int i = chars.Length - 1; i > 0; i--)
         {
-            int j = RandomNumberGenerator.GetInt32(i + 1);
+            var randomBytes = new byte[1];
+            System.Security.Cryptography.RandomNumberGenerator.Create().GetBytes(randomBytes);
+            int j = randomBytes[0] % (i + 1);
             (chars[i], chars[j]) = (chars[j], chars[i]);
         }
 
@@ -120,5 +121,9 @@ public sealed class CreateAdminCommandHandler : ICommandHandler<CreateAdminComma
     }
 
     private static char GetRandomChar(string charSet)
-        => charSet[RandomNumberGenerator.GetInt32(charSet.Length)];
+    {
+        var randomBytes = new byte[1];
+        System.Security.Cryptography.RandomNumberGenerator.Create().GetBytes(randomBytes);
+        return charSet[randomBytes[0] % charSet.Length];
+    }
 }

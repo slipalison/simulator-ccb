@@ -321,7 +321,7 @@ export async function createAdmin(
   fullName: string,
   email: string
 ): Promise<CreateAdminResult> {
-  const response = await fetch("/api/admin/users", {
+  const response = await fetch("/api/admin/administrators", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ fullName, email }),

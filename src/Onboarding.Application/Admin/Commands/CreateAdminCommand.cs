@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Logging;
 using Onboarding.Application.Common;
 using Onboarding.Domain.Aggregates.Audit;
+using Onboarding.Domain.Repositories;
 using System.Security.Cryptography;
 
 namespace Onboarding.Application.Admin.Commands;
@@ -18,12 +20,12 @@ public sealed record CreateAdminResult(Guid AdminId, string TemporaryPassword);
 public sealed class CreateAdminCommandHandler : ICommandHandler<CreateAdminCommand, CreateAdminResult>
 {
     private readonly IKeycloakUserService _keycloakUserService;
-    private readonly IAuditService _auditService;
+    private readonly IAdminAuditLogRepository _adminAuditLogRepository;
 
-    public CreateAdminCommandHandler(IKeycloakUserService keycloakUserService, IAuditService auditService)
+    public CreateAdminCommandHandler(IKeycloakUserService keycloakUserService, IAdminAuditLogRepository adminAuditLogRepository)
     {
         _keycloakUserService = keycloakUserService;
-        _auditService = auditService;
+        _adminAuditLogRepository = adminAuditLogRepository;
     }
 
     public async Task<CreateAdminResult> HandleAsync(CreateAdminCommand command, CancellationToken ct = default)
@@ -62,16 +64,18 @@ public sealed class CreateAdminCommandHandler : ICommandHandler<CreateAdminComma
 
         var adminId = Guid.Parse(keycloakUserId);
 
-        // Audit log via IAuditService
-        await _auditService.RecordAsync(
-            actorSub: command.CreatorSub,
-            actorEmail: command.CreatorEmail,
-            action: ActionType.AdminCreated,
+        // Create audit log entry
+        var auditLog = AdminAuditLog.Create(
+            Guid.Parse(creatorKeycloakId),
+            command.CreatorEmail,
+            ActionType.AdminCreated,
             targetUserId: adminId,
             targetUserName: command.FullName,
             details: $"{{\"email\": \"{command.Email}\"}}",
-            ipAddress: command.IpAddress,
-            ct: ct);
+            ipAddress: command.IpAddress);
+
+        await _adminAuditLogRepository.AddAsync(auditLog, ct);
+        await _adminAuditLogRepository.SaveChangesAsync(ct);
 
         return new CreateAdminResult(adminId, temporaryPassword);
     }

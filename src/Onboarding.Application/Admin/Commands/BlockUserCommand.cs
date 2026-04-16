@@ -17,18 +17,18 @@ public sealed record BlockUserCommand(
 public sealed class BlockUserCommandHandler : ICommandHandler<BlockUserCommand, Unit>
 {
     private readonly IAdminRepository _adminRepository;
-    private readonly IAuditService _auditService;
+    private readonly IAuditLogRepository _auditLogRepository;
     private readonly IKeycloakUserService _keycloakUserService;
     private readonly ILogger<BlockUserCommandHandler> _logger;
 
     public BlockUserCommandHandler(
         IAdminRepository adminRepository,
-        IAuditService auditService,
+        IAuditLogRepository auditLogRepository,
         IKeycloakUserService keycloakUserService,
         ILogger<BlockUserCommandHandler> logger)
     {
         _adminRepository = adminRepository;
-        _auditService = auditService;
+        _auditLogRepository = auditLogRepository;
         _keycloakUserService = keycloakUserService;
         _logger = logger;
     }
@@ -46,13 +46,20 @@ public sealed class BlockUserCommandHandler : ICommandHandler<BlockUserCommand, 
         await _keycloakUserService.BlockUserAsync(kcUser.Id, ct);
 
         // Audit log
-        await _auditService.RecordAsync(
-            actorSub: command.AdminSub,
-            actorEmail: command.AdminEmail,
-            action: ActionType.UserBlocked,
-            targetUserId: command.UserId,
-            targetUserName: client.Email.Value,
-            ct: ct);
+        var auditLog = AuditLog.Create(
+            command.AdminSub,
+            command.AdminEmail,
+            AuditActions.UserBlocked,
+            command.UserId,
+            client.Email.Value,
+            "{ \"Enabled\": true }",
+            "{ \"Enabled\": false }",
+            null,
+            null
+        );
+
+        await _auditLogRepository.AddAsync(auditLog, ct);
+        await _auditLogRepository.SaveChangesAsync(ct);
 
         return Unit.Value;
     }

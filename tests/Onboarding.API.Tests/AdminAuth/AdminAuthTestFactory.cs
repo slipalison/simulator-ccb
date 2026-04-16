@@ -27,7 +27,7 @@ public sealed class AdminAuthTestFactory : WebApplicationFactory<Program>
     public IPasswordResetTokenRepository TokenRepositoryMock { get; } = Substitute.For<IPasswordResetTokenRepository>();
     public IEmailService EmailServiceMock { get; } = Substitute.For<IEmailService>();
     public IAdminRepository AdminRepositoryMock { get; } = Substitute.For<IAdminRepository>();
-    public IAuditService AuditServiceMock { get; } = Substitute.For<IAuditService>();
+    public IAuditLogRepository AuditLogRepositoryMock { get; } = Substitute.For<IAuditLogRepository>();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -61,7 +61,7 @@ public sealed class AdminAuthTestFactory : WebApplicationFactory<Program>
             services.AddScoped<IPasswordResetTokenRepository>(_ => TokenRepositoryMock);
             services.AddScoped<IEmailService>(_ => EmailServiceMock);
             services.AddScoped<IAdminRepository>(_ => AdminRepositoryMock);
-            services.AddScoped<IAuditService>(_ => AuditServiceMock);
+            services.AddScoped<IAuditLogRepository>(_ => AuditLogRepositoryMock);
 
             // Disable JWT validation for tests
             services.PostConfigure<JwtBearerOptions>(

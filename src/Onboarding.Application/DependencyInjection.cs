@@ -70,11 +70,6 @@ public static class ApplicationServiceExtensions
         // Audit log query (Phase 29 — V5.0-03)
         services.AddScoped<IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>>, GetAuditLogQueryHandler>();
 
-        // Admin administrators query (Phase 30 — ADM-04)
-        services.AddScoped<
-            IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>>,
-            GetAdministratorsQueryHandler>();
-
         return services;
     }
 }

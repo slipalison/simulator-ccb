@@ -19,18 +19,18 @@ public sealed record DeleteUserCommand(
 public sealed class DeleteUserCommandHandler : ICommandHandler<DeleteUserCommand, Unit>
 {
     private readonly IAdminRepository _adminRepository;
-    private readonly IAuditService _auditService;
+    private readonly IAuditLogRepository _auditLogRepository;
     private readonly IKeycloakUserService _keycloakUserService;
     private readonly ILogger<DeleteUserCommandHandler> _logger;
 
     public DeleteUserCommandHandler(
         IAdminRepository adminRepository,
-        IAuditService auditService,
+        IAuditLogRepository auditLogRepository,
         IKeycloakUserService keycloakUserService,
         ILogger<DeleteUserCommandHandler> logger)
     {
         _adminRepository = adminRepository;
-        _auditService = auditService;
+        _auditLogRepository = auditLogRepository;
         _keycloakUserService = keycloakUserService;
         _logger = logger;
     }
@@ -93,14 +93,20 @@ public sealed class DeleteUserCommandHandler : ICommandHandler<DeleteUserCommand
         });
 
         // Audit log
-        await _auditService.RecordAsync(
-            actorSub: command.AdminSub,
-            actorEmail: command.AdminEmail,
-            action: ActionType.UserDeleted,
-            targetUserId: command.UserId,
-            targetUserName: originalEmail,
-            details: JsonSerializer.Serialize(new { Before = before, After = after }),
-            ct: ct);
+        var auditLog = AuditLog.Create(
+            command.AdminSub,
+            command.AdminEmail,
+            AuditActions.UserDeleted,
+            command.UserId,
+            originalEmail,
+            before,
+            after,
+            null,
+            null
+        );
+
+        await _auditLogRepository.AddAsync(auditLog, ct);
+        await _auditLogRepository.SaveChangesAsync(ct);
 
         return Unit.Value;
     }

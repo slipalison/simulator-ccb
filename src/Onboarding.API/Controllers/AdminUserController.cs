@@ -28,7 +28,6 @@ public sealed class AdminUserController : ControllerBase
     private readonly ICommandHandler<CreateAdminCommand, CreateAdminResult> _createAdminHandler;
     private readonly ICommandHandler<ForcePasswordChangeCommand, Unit> _forcePasswordChangeHandler;
     private readonly IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>> _auditLogQueryHandler;
-    private readonly IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>> _administratorsHandler;
     private readonly IKeycloakUserService _keycloakUserService;
     private readonly IValidator<UpdateUserCommand> _updateValidator;
     private readonly IValidator<DeleteUserCommand> _deleteValidator;
@@ -46,7 +45,6 @@ public sealed class AdminUserController : ControllerBase
         ICommandHandler<CreateAdminCommand, CreateAdminResult> createAdminHandler,
         ICommandHandler<ForcePasswordChangeCommand, Unit> forcePasswordChangeHandler,
         IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>> auditLogQueryHandler,
-        IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>> administratorsHandler,
         IKeycloakUserService keycloakUserService,
         IValidator<UpdateUserCommand> updateValidator,
         IValidator<DeleteUserCommand> deleteValidator,
@@ -63,7 +61,6 @@ public sealed class AdminUserController : ControllerBase
         _createAdminHandler = createAdminHandler;
         _forcePasswordChangeHandler = forcePasswordChangeHandler;
         _auditLogQueryHandler = auditLogQueryHandler;
-        _administratorsHandler = administratorsHandler;
         _keycloakUserService = keycloakUserService;
         _updateValidator = updateValidator;
         _deleteValidator = deleteValidator;
@@ -305,8 +302,8 @@ public sealed class AdminUserController : ControllerBase
         }
     }
 
-    /// <summary>POST /api/admin/administrators — Create a new admin user with a temporary password.</summary>
-    [HttpPost("administrators")]
+    /// <summary>POST /api/admin/users — Create a new admin user with a temporary password.</summary>
+    [HttpPost("users")]
     [ProducesResponseType(typeof(CreateAdminResult), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
@@ -340,33 +337,6 @@ public sealed class AdminUserController : ControllerBase
                 Title = "Conflict",
                 Status = StatusCodes.Status409Conflict,
                 Detail = ex.Message
-            });
-        }
-    }
-
-    /// <summary>
-    /// GET /api/admin/administrators — Lista todos os administradores via Keycloak.
-    /// Inclui ativos (IsEnabled=true) e bloqueados (IsEnabled=false).
-    /// HasTemporaryPassword=true indica que o admin ainda nao trocou a senha temporaria inicial.
-    /// </summary>
-    [HttpGet("administrators")]
-    [ProducesResponseType(typeof(IReadOnlyList<AdminUserDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> GetAdministrators(CancellationToken ct = default)
-    {
-        try
-        {
-            var result = await _administratorsHandler.HandleAsync(new GetAdministratorsQuery(), ct);
-            return Ok(result);
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "Keycloak unavailable when listing administrators");
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails
-            {
-                Title = "Service Unavailable",
-                Status = StatusCodes.Status503ServiceUnavailable,
-                Detail = "Unable to retrieve administrators from identity provider."
             });
         }
     }

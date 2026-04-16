@@ -82,14 +82,6 @@ public interface IKeycloakUserService
     /// Unblocks a user in Keycloak by setting Enabled = true.
     /// </summary>
     Task UnblockUserAsync(string keycloakUserId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Retorna todos os usuarios com a role especificada no Keycloak.
-    /// Fonte: GET /admin/realms/{realm}/roles/{roleName}/users
-    /// Inclui ativos (Enabled=true) e bloqueados (Enabled=false).
-    /// HasTemporaryPassword deriva da presenca de "UPDATE_PASSWORD" nos requiredActions.
-    /// </summary>
-    Task<IReadOnlyList<AdminUserDto>> GetUsersByRoleAsync(string roleName, CancellationToken ct = default);
 }
 
 /// <summary>

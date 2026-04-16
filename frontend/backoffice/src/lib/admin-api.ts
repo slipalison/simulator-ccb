@@ -321,7 +321,7 @@ export async function createAdmin(
   fullName: string,
   email: string
 ): Promise<CreateAdminResult> {
-  const response = await fetch("/api/admin/administrators", {
+  const response = await fetch("/api/admin/users", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ fullName, email }),
@@ -403,4 +403,28 @@ export async function getAuditLog(
   }
 
   return response.json() as Promise<PaginatedResult<AuditLogEntry>>;
+}
+
+// ---------------------------------------------------------------------------
+// Admin Administrators — Phase 30 (Milestone v5.0) — ADM-04
+// ---------------------------------------------------------------------------
+
+// GET /api/admin/administrators — Lista todos os administradores
+export interface AdminUserDto {
+  id: string;
+  email: string;
+  fullName: string;
+  isEnabled: boolean;
+  hasTemporaryPassword: boolean;
+}
+
+export async function getAdministrators(): Promise<AdminUserDto[]> {
+  const response = await fetch("/api/admin/administrators", {
+    method: "GET",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new AdminApiError("Falha ao carregar administradores.");
+  }
+  return response.json() as Promise<AdminUserDto[]>;
 }

@@ -3,8 +3,10 @@ import {
   loginAdmin,
   logoutAdmin,
   getAdminMe,
+  getAdministrators,
   AdminLoginError,
   AdminApiError,
+  type AdminUserDto,
 } from "@/lib/admin-api";
 
 // ---------------------------------------------------------------------------
@@ -137,6 +139,70 @@ describe("admin-api.ts", () => {
       mockFetch.mockResolvedValueOnce({ ok: false, status: 401 });
 
       await expect(getAdminMe()).rejects.toThrow(AdminApiError);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // getAdministrators
+  // ---------------------------------------------------------------------------
+
+  describe("getAdministrators", () => {
+    it("calls GET /api/admin/administrators with credentials: include and returns AdminUserDto[]", async () => {
+      const mockAdmins: AdminUserDto[] = [
+        {
+          id: "abc-123",
+          email: "admin@onboarding.local",
+          fullName: "Admin Principal",
+          isEnabled: true,
+          hasTemporaryPassword: false,
+        },
+        {
+          id: "def-456",
+          email: "novo@onboarding.local",
+          fullName: "Novo Admin",
+          isEnabled: true,
+          hasTemporaryPassword: true,
+        },
+      ];
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockAdmins),
+      });
+
+      const result = await getAdministrators();
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/admin/administrators",
+        expect.objectContaining({
+          method: "GET",
+          credentials: "include",
+        })
+      );
+      expect(result).toHaveLength(2);
+      expect(result[0].email).toBe("admin@onboarding.local");
+      expect(result[1].hasTemporaryPassword).toBe(true);
+    });
+
+    it("throws AdminApiError when response is not ok", async () => {
+      mockFetch.mockResolvedValue({ ok: false, status: 503 });
+
+      await expect(getAdministrators()).rejects.toThrow(AdminApiError);
+      await expect(getAdministrators()).rejects.toThrow(
+        "Falha ao carregar administradores."
+      );
+    });
+
+    it("returns empty array when backend returns []", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([]),
+      });
+
+      const result = await getAdministrators();
+
+      expect(result).toHaveLength(0);
     });
   });
 });

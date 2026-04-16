@@ -4,7 +4,6 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using NSubstitute;
 using Onboarding.API.Tests.Authentication;
-using Onboarding.Domain.Aggregates.Audit;
 using Onboarding.Domain.Aggregates.ClientAggregate;
 using Shouldly;
 
@@ -125,21 +124,15 @@ public sealed class AdminFullFlowTests : IAsyncLifetime
         // Verify Keycloak deleted
         await _factory.KeycloakUserServiceMock.Received(1).DeleteUserByEmailAsync(testEmail, Arg.Any<CancellationToken>());
 
-        // 9. Verify audit trail — all actions logged via IAuditService
-        await _factory!.AuditServiceMock.Received(1).RecordAsync(
-            Arg.Any<string>(), Arg.Any<string>(), ActionType.UserBlocked,
-            clientId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        // 9. Verify audit trail — all actions logged in order
+        var auditCalls = _factory.AuditLogRepositoryMock.ReceivedCalls()
+            .Where(c => c.GetArguments().First() is Onboarding.Domain.Aggregates.Audit.AuditLog)
+            .Select(c => (Onboarding.Domain.Aggregates.Audit.AuditLog)c.GetArguments().First())
+            .ToList();
 
-        await _factory.AuditServiceMock.Received(1).RecordAsync(
-            Arg.Any<string>(), Arg.Any<string>(), ActionType.UserUnblocked,
-            clientId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-
-        await _factory.AuditServiceMock.Received(1).RecordAsync(
-            Arg.Any<string>(), Arg.Any<string>(), ActionType.UserUpdated,
-            clientId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
-
-        await _factory.AuditServiceMock.Received(1).RecordAsync(
-            Arg.Any<string>(), Arg.Any<string>(), ActionType.UserDeleted,
-            clientId, Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        auditCalls.ShouldContain(l => l.Action == "USER_BLOCKED");
+        auditCalls.ShouldContain(l => l.Action == "USER_UNBLOCKED");
+        auditCalls.ShouldContain(l => l.Action == "USER_UPDATED");
+        auditCalls.ShouldContain(l => l.Action == "USER_DELETED");
     }
 }

@@ -3,7 +3,6 @@ using System.Net.Http.Headers;
 using Microsoft.AspNetCore.Mvc.Testing;
 using NSubstitute;
 using Onboarding.API.Tests.Authentication;
-using Onboarding.Domain.Aggregates.Audit;
 using Onboarding.Domain.Aggregates.ClientAggregate;
 using Onboarding.Domain.Repositories;
 using Shouldly;
@@ -62,14 +61,8 @@ public sealed class AdminUserBlockTests : IAsyncLifetime
         await _factory.KeycloakUserServiceMock.Received(1).BlockUserAsync("kc-uuid", Arg.Any<CancellationToken>());
 
         // Verify audit log
-        await _factory.AuditServiceMock.Received(1).RecordAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<ActionType>(),
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
+        await _factory.AuditLogRepositoryMock.Received(1).AddAsync(
+            Arg.Any<Onboarding.Domain.Aggregates.Audit.AuditLog>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -100,14 +93,8 @@ public sealed class AdminUserBlockTests : IAsyncLifetime
         await _factory.KeycloakUserServiceMock.Received(1).UnblockUserAsync("kc-uuid", Arg.Any<CancellationToken>());
 
         // Verify audit log
-        await _factory.AuditServiceMock.Received(1).RecordAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<ActionType>(),
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
+        await _factory.AuditLogRepositoryMock.Received(1).AddAsync(
+            Arg.Any<Onboarding.Domain.Aggregates.Audit.AuditLog>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -176,24 +163,13 @@ public sealed class AdminUserBlockTests : IAsyncLifetime
         await _client!.PostAsync($"/api/admin/users/{clientId}/block", null);
         await _client.PostAsync($"/api/admin/users/{clientId}/unblock", null);
 
-        // Assert — two audit log entries (block + unblock)
-        await _factory.AuditServiceMock.Received(1).RecordAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            ActionType.UserBlocked,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
-        await _factory.AuditServiceMock.Received(1).RecordAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            ActionType.UserUnblocked,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+        // Assert — two audit log entries
+        var auditCalls = _factory.AuditLogRepositoryMock.ReceivedCalls()
+            .Where(c => c.GetArguments().First() is Onboarding.Domain.Aggregates.Audit.AuditLog)
+            .Select(c => (Onboarding.Domain.Aggregates.Audit.AuditLog)c.GetArguments().First())
+            .ToList();
+
+        auditCalls.ShouldContain(log => log.Action == "USER_BLOCKED");
+        auditCalls.ShouldContain(log => log.Action == "USER_UNBLOCKED");
     }
 }

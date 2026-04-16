@@ -69,8 +69,8 @@ export function AdminUserDetailPage({ userId }: AdminUserDetailPageProps) {
     setUnblockDialogOpen(false);
   };
 
-  const handleDelete = async () => {
-    await deleteUser(userId);
+  const handleDelete = async (confirmEmail: string) => {
+    await deleteUser(userId, confirmEmail);
     toast.success("Usuario deletado com sucesso.");
     navigate({ to: "/admin/users" as never });
   };

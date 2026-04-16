@@ -65,11 +65,10 @@ export function AdminUsersPage() {
     navigate({ to: "/admin/users/$id/edit", params: { id } } as any);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = async (confirmEmail: string) => {
     if (!deleteUserId) return;
     try {
-      await deleteUser(deleteUserId);
-      toast.success("Usuario deletado com sucesso.");
+      await deleteUser(deleteUserId, confirmEmail);
       setDeleteUserId(null);
       fetchUsers();
     } catch {

@@ -261,10 +261,13 @@ export async function blockUser(
 // ---------------------------------------------------------------------------
 
 export async function deleteUser(
-  userId: string
+  userId: string,
+  confirmEmail: string
 ): Promise<void> {
   const response = await fetch(`/api/admin/users/${userId}`, {
     method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ confirmEmail }),
     credentials: "include",
   });
 
@@ -274,6 +277,11 @@ export async function deleteUser(
 
   if (response.status === 409) {
     throw new AdminApiError("Usuario ja foi deletado.", 409);
+  }
+
+  if (response.status === 400) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Email de confirmacao invalido.", 400);
   }
 
   if (!response.ok) {

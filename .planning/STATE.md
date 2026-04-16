@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: auth-code-flow-admins-auditoria
 status: in_progress
-stopped_at: Phase 31 complete (Backoffice Auth Code Flow UI)
-last_updated: "2026-04-16T20:00:00.000Z"
-last_activity: 2026-04-16 -- Phase 31 complete (ACF+PKCE migration, 149 tests passing)
+stopped_at: Phase 32 complete (Admin Management UI + Audit Log UI tests)
+last_updated: "2026-04-16T21:00:00.000Z"
+last_activity: 2026-04-16 -- Phase 32 complete (30 new tests, 179 total passing)
 progress:
   total_phases: 5
-  completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
-  percent: 60
+  completed_phases: 4
+  total_plans: 8
+  completed_plans: 8
+  percent: 80
 ---
 
 # Project State
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-04-14)
 
 ## Current Position
 
-Phase: 31
-Plan: 31-01 — Complete
-Status: Phase 31 complete — ACF+PKCE migration executed and verified
-Last activity: 2026-04-16 -- Phase 31 executed (3 tasks, 149 tests passing, tsc clean)
+Phase: 32
+Plan: 32-01 — Complete
+Status: Phase 32 complete — Admin Management UI + Audit Log UI tests added and verified
+Last activity: 2026-04-16 -- Phase 32 executed (4 tasks, 30 new tests, 179 total passing, tsc clean)
 
 ## Milestone Breakdown
 
@@ -37,7 +37,7 @@ Last activity: 2026-04-16 -- Phase 31 executed (3 tasks, 149 tests passing, tsc 
 **Milestone v2.0 — UX/UI + Production:** ✅ COMPLETE (5/5 phases, 7+ plans)
 **Milestone v3.0 — Admin Backoffice + Frontend Separation:** ✅ COMPLETE (5/5 phases, 13/13 plans)
 **Milestone v4.0 — CI/CD Pipeline + Cybersecurity:** ✅ COMPLETE (8/8 phases, 20/20 plans)
-**Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** 🔄 IN PROGRESS (2/5 phases)
+**Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** 🔄 IN PROGRESS (3/5 phases)
 
 ## Milestone v5.0 Phase Breakdown
 
@@ -46,7 +46,7 @@ Last activity: 2026-04-16 -- Phase 31 executed (3 tasks, 149 tests passing, tsc 
 | 29 | Keycloak Config + Auth Code Flow Backend | ACF-01, ACF-02, ACF-03, ACF-04 | ⏸ Reverted (ROPC restaurado) |
 | 30 | Audit Log Backend + Admin Management Backend | AUD-01, ADM-01, ADM-02, ADM-03, ADM-04 | ✅ Complete (5/5 plans, 9/9 verified + 3 CR fixes) |
 | 31 | Backoffice Auth Code Flow UI | ACF-01, ACF-02, ACF-03, ACF-04 (frontend) | ✅ Complete (1/1 plan, 149 tests passing) |
-| 32 | Backoffice Admin Management UI + Audit Log UI | ADM-01, ADM-02, ADM-03, ADM-04, AUD-02, AUD-03 | 📋 Planned |
+| 32 | Backoffice Admin Management UI + Audit Log UI | ADM-01, ADM-02, ADM-03, ADM-04, AUD-02, AUD-03 | ✅ Complete (1/1 plan, 179 tests passing) |
 | 33 | PKCE + Custom Keycloak Themes (Backoffice + Client) | PKC-01..PKC-06 | 📋 Planned |
 
 **Coverage:** 11/11 v5.0 requirements + Phase 33 (PKC) adicionada ✓

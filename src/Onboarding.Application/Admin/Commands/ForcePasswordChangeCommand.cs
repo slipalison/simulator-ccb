@@ -1,6 +1,5 @@
 using Onboarding.Application.Common;
 using Onboarding.Domain.Aggregates.Audit;
-using Onboarding.Domain.Repositories;
 
 namespace Onboarding.Application.Admin.Commands;
 
@@ -16,14 +15,14 @@ public sealed record ForcePasswordChangeCommand(
 public sealed class ForcePasswordChangeCommandHandler : ICommandHandler<ForcePasswordChangeCommand, Unit>
 {
     private readonly IKeycloakUserService _keycloakUserService;
-    private readonly IAdminAuditLogRepository _adminAuditLogRepository;
+    private readonly IAuditService _auditService;
 
     public ForcePasswordChangeCommandHandler(
         IKeycloakUserService keycloakUserService,
-        IAdminAuditLogRepository adminAuditLogRepository)
+        IAuditService auditService)
     {
         _keycloakUserService = keycloakUserService;
-        _adminAuditLogRepository = adminAuditLogRepository;
+        _auditService = auditService;
     }
 
     public async Task<Unit> HandleAsync(ForcePasswordChangeCommand command, CancellationToken ct = default)
@@ -34,16 +33,14 @@ public sealed class ForcePasswordChangeCommandHandler : ICommandHandler<ForcePas
         // Remove UPDATE_PASSWORD required action
         await _keycloakUserService.RemoveUpdatePasswordRequiredActionAsync(command.KeycloakUserId, ct);
 
-        // Create audit log entry
-        var auditLog = AdminAuditLog.Create(
-            Guid.Parse(command.KeycloakUserId),
-            command.AdminEmail,
-            ActionType.AdminPasswordChanged,
+        // Audit log via IAuditService
+        await _auditService.RecordAsync(
+            actorSub: command.KeycloakUserId,
+            actorEmail: command.AdminEmail,
+            action: ActionType.AdminPasswordChanged,
             details: "{\"action\": \"password_changed\"}",
-            ipAddress: command.IpAddress);
-
-        await _adminAuditLogRepository.AddAsync(auditLog, ct);
-        await _adminAuditLogRepository.SaveChangesAsync(ct);
+            ipAddress: command.IpAddress,
+            ct: ct);
 
         return Unit.Value;
     }

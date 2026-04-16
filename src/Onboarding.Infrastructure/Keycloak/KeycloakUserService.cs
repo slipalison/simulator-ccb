@@ -301,6 +301,39 @@ public sealed class KeycloakUserService : IKeycloakUserService
         }
     }
 
+    public async Task<IReadOnlyList<AdminUserDto>> GetUsersByRoleAsync(
+        string roleName, CancellationToken ct = default)
+    {
+        var response = await _adminHttpClient.GetAsync(
+            $"admin/realms/{_realm}/roles/{Uri.EscapeDataString(roleName)}/users", ct);
+        response.EnsureSuccessStatusCode();
+
+        var users = await response.Content.ReadFromJsonAsync<List<KeycloakUserRepresentation>>(
+            cancellationToken: ct) ?? [];
+
+        return users.Select(u => new AdminUserDto(
+            Id: u.Id ?? string.Empty,
+            Email: u.Email ?? u.Username ?? string.Empty,
+            FullName: BuildFullName(u.FirstName, u.LastName),
+            IsEnabled: u.Enabled ?? true,
+            HasTemporaryPassword: u.RequiredActions?.Contains("UPDATE_PASSWORD") ?? false
+        )).ToList().AsReadOnly();
+    }
+
+    private static string BuildFullName(string? firstName, string? lastName)
+        => string.Join(" ", new[] { firstName, lastName }
+            .Where(s => !string.IsNullOrWhiteSpace(s) && s != "-")).Trim();
+
+    private sealed record KeycloakUserRepresentation(
+        string? Id,
+        string? Username,
+        string? Email,
+        string? FirstName,
+        string? LastName,
+        bool? Enabled,
+        [property: System.Text.Json.Serialization.JsonPropertyName("requiredActions")]
+        List<string>? RequiredActions);
+
     /// <summary>
     /// Detects if an exception indicates a 409 Conflict from Keycloak.
     /// The SDK may wrap the original HttpResponseMessage or throw HttpRequestException.

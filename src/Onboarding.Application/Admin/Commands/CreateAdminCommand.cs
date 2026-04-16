@@ -1,7 +1,5 @@
-using Microsoft.Extensions.Logging;
 using Onboarding.Application.Common;
 using Onboarding.Domain.Aggregates.Audit;
-using Onboarding.Domain.Repositories;
 using System.Security.Cryptography;
 
 namespace Onboarding.Application.Admin.Commands;
@@ -20,12 +18,12 @@ public sealed record CreateAdminResult(Guid AdminId, string TemporaryPassword);
 public sealed class CreateAdminCommandHandler : ICommandHandler<CreateAdminCommand, CreateAdminResult>
 {
     private readonly IKeycloakUserService _keycloakUserService;
-    private readonly IAdminAuditLogRepository _adminAuditLogRepository;
+    private readonly IAuditService _auditService;
 
-    public CreateAdminCommandHandler(IKeycloakUserService keycloakUserService, IAdminAuditLogRepository adminAuditLogRepository)
+    public CreateAdminCommandHandler(IKeycloakUserService keycloakUserService, IAuditService auditService)
     {
         _keycloakUserService = keycloakUserService;
-        _adminAuditLogRepository = adminAuditLogRepository;
+        _auditService = auditService;
     }
 
     public async Task<CreateAdminResult> HandleAsync(CreateAdminCommand command, CancellationToken ct = default)
@@ -64,18 +62,16 @@ public sealed class CreateAdminCommandHandler : ICommandHandler<CreateAdminComma
 
         var adminId = Guid.Parse(keycloakUserId);
 
-        // Create audit log entry
-        var auditLog = AdminAuditLog.Create(
-            Guid.Parse(creatorKeycloakId),
-            command.CreatorEmail,
-            ActionType.AdminCreated,
+        // Audit log via IAuditService
+        await _auditService.RecordAsync(
+            actorSub: command.CreatorSub,
+            actorEmail: command.CreatorEmail,
+            action: ActionType.AdminCreated,
             targetUserId: adminId,
             targetUserName: command.FullName,
             details: $"{{\"email\": \"{command.Email}\"}}",
-            ipAddress: command.IpAddress);
-
-        await _adminAuditLogRepository.AddAsync(auditLog, ct);
-        await _adminAuditLogRepository.SaveChangesAsync(ct);
+            ipAddress: command.IpAddress,
+            ct: ct);
 
         return new CreateAdminResult(adminId, temporaryPassword);
     }

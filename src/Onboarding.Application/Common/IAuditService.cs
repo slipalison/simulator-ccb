@@ -18,3 +18,14 @@ public interface IAuditService
         string? ipAddress = null,
         CancellationToken ct = default);
 }
+
+/// <summary>
+/// DTO para representacao de um administrador na listagem GET /api/admin/administrators.
+/// HasTemporaryPassword=true quando UPDATE_PASSWORD esta nos requiredActions do Keycloak.
+/// </summary>
+public sealed record AdminUserDto(
+    string Id,
+    string Email,
+    string FullName,
+    bool IsEnabled,
+    bool HasTemporaryPassword);

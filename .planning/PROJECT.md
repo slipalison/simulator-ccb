@@ -163,4 +163,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-14 — Milestone v5.0 started: Backoffice — Gestão de Administradores (first-login password change, admin creation, audit log)*
+*Last updated: 2026-04-16 — Phase 30 complete: audit log unificado (IAuditService), GET/POST /api/admin/administrators, AdminAdministratorsPage frontend. Próxima: Phase 33 (pkce-keycloak-custom-themes)*

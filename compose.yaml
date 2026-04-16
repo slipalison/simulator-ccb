@@ -103,11 +103,15 @@ services:
       - ./frontend/client/public:/app/public
       - ./frontend/client/server.ts:/app/server.ts
       - ./frontend/client/app.config.ts:/app/app.config.ts
+      - ./frontend/client/auth-server.ts:/app/auth-server.ts:ro
     environment:
       VITE_API_URL: http://localhost:8080
       VITE_KEYCLOAK_URL: http://localhost:8180
-      VITE_KEYCLOAK_REALM: onboarding
-      VITE_KEYCLOAK_CLIENT_ID: onboarding-app
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: onboarding
+      KEYCLOAK_CLIENT_ACF_CLIENT_ID: ${KEYCLOAK_CLIENT_ACF_CLIENT_ID}
+      KEYCLOAK_CLIENT_ACF_CLIENT_SECRET: ${KEYCLOAK_CLIENT_ACF_CLIENT_SECRET}
+      FRONTEND_URL: http://localhost:5173
     ports:
       - "127.0.0.1:5173:5173"
     depends_on:

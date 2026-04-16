@@ -142,15 +142,9 @@ describe("ProfileCard", () => {
 // ---------------------------------------------------------------------------
 // getProfileClient tests
 // ---------------------------------------------------------------------------
-// getProfileClient() uses dynamic import('./auth-context') to get getAccessToken.
-// We mock the module at the top of vi.mock so the dynamic import resolves the mock.
+// getProfileClient() now uses httpOnly cookies (credentials: "include") — no Bearer token.
+// We mock fetch directly to test the cookie-based flow.
 // ---------------------------------------------------------------------------
-
-vi.mock("@/lib/auth-context", () => ({
-  useAuth: vi.fn(),
-  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
-  getAccessToken: vi.fn(() => null),
-}));
 
 describe("getProfileClient", () => {
   beforeEach(() => {
@@ -161,8 +155,7 @@ describe("getProfileClient", () => {
     vi.restoreAllMocks();
   });
 
-  it("fetches profile with Bearer token", async () => {
-    const mockToken = "fake-jwt-token";
+  it("fetches profile with credentials: include (cookie-based auth)", async () => {
     const mockProfile: ClientProfileDto = {
       id: "test-id",
       name: "Test User",
@@ -173,10 +166,6 @@ describe("getProfileClient", () => {
       cnpj: null,
       razaoSocial: null,
     };
-
-    // Set getAccessToken to return our mock token
-    const authContext = await import("@/lib/auth-context");
-    vi.mocked(authContext.getAccessToken).mockReturnValue(mockToken);
 
     // Mock fetch
     global.fetch = vi.fn().mockResolvedValue({
@@ -190,28 +179,27 @@ describe("getProfileClient", () => {
     expect(result).toEqual(mockProfile);
     expect(global.fetch).toHaveBeenCalledWith("/api/clients/me", {
       method: "GET",
+      credentials: "include",
       headers: {
-        Authorization: `Bearer ${mockToken}`,
         "Content-Type": "application/json",
       },
     });
   });
 
-  it("throws ProfileError when no token available", async () => {
-    const authContext = await import("@/lib/auth-context");
-    vi.mocked(authContext.getAccessToken).mockReturnValue(null);
+  it("throws ProfileError on 401 response", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+    });
 
     const { getProfileClient, ProfileError } = await import("@/lib/api");
     await expect(getProfileClient()).rejects.toThrow(ProfileError);
   });
 
-  it("throws ProfileError on 401 response", async () => {
-    const authContext = await import("@/lib/auth-context");
-    vi.mocked(authContext.getAccessToken).mockReturnValue("expired-token");
-
+  it("throws ProfileError on 500 response", async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
-      status: 401,
+      status: 500,
     });
 
     const { getProfileClient, ProfileError } = await import("@/lib/api");

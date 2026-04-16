@@ -6,7 +6,6 @@ import * as api from "@/lib/api";
 // Mock API
 vi.mock("@/lib/api", () => ({
   registerClient: vi.fn(),
-  loginClient: vi.fn(),
   RegistrationValidationError: class extends Error {
     constructor(public errors: Record<string, string[]>) {
       super("Validation failed");
@@ -21,9 +20,6 @@ vi.mock("@/lib/api", () => ({
   },
   ApiError: class extends Error {
     constructor(message: string) { super(message); this.name = "ApiError"; }
-  },
-  LoginError: class extends Error {
-    constructor(message: string) { super(message); this.name = "LoginError"; }
   },
 }));
 
@@ -167,17 +163,8 @@ describe("RegistrationForm", () => {
     expect(api.registerClient).not.toHaveBeenCalled();
   });
 
-  it("auto-login after successful registration", async () => {
+  it("redirects to /auth/login after successful registration", async () => {
     vi.mocked(api.registerClient).mockResolvedValue({ id: "test-id" });
-    vi.mocked(api.loginClient).mockResolvedValue({
-      accessToken: "test-token",
-      refreshToken: "test-refresh",
-      expiresIn: 3600,
-      tokenType: "Bearer",
-      refreshExpiresIn: 7200,
-      scope: "openid",
-    });
-    mockLogin.mockResolvedValue(undefined);
 
     render(<RegistrationForm />);
 
@@ -197,12 +184,15 @@ describe("RegistrationForm", () => {
     await waitFor(() => {
       expect(api.registerClient).toHaveBeenCalled();
     });
+
+    // After registration, should navigate to /auth/login
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith({ to: "/auth/login" as any, replace: true });
+    });
   });
 
-  it("falls back to /login if auto-login fails", async () => {
-    vi.mocked(api.registerClient).mockResolvedValue({ id: "test-id" });
-    vi.mocked(api.loginClient).mockRejectedValue(new Error("Login failed"));
-    mockLogin.mockRejectedValue(new Error("Login failed"));
+  it("shows error toast on registration failure", async () => {
+    vi.mocked(api.registerClient).mockRejectedValue(new api.ApiError("Registration failed"));
 
     render(<RegistrationForm />);
 

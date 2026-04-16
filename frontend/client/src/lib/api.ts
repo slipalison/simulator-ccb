@@ -1,107 +1,12 @@
 // ---------------------------------------------------------------------------
-// Login API client
+// Client API functions
 // ---------------------------------------------------------------------------
-// Typed client for POST /api/auth/login and POST /api/auth/refresh.
-// Uses native fetch — no external dependencies.
+// Uses httpOnly cookies managed by Vinxi auth-server (/auth/* routes).
+// All requests MUST include credentials: 'include'.
 // ---------------------------------------------------------------------------
-
-// ---------------------------------------------------------------------------
-// Response type — mirrors backend TokenResponse
-// ---------------------------------------------------------------------------
-
-export interface LoginResponse {
-  accessToken: string;
-  refreshToken: string;
-  expiresIn: number;
-  tokenType: string;
-  refreshExpiresIn: number;
-  scope: string;
-}
-
-// ---------------------------------------------------------------------------
-// Refresh token request type
-// ---------------------------------------------------------------------------
-
-export interface RefreshTokenRequest {
-  refreshToken: string;
-}
-
-// ---------------------------------------------------------------------------
-// Custom error classes for auth
-// ---------------------------------------------------------------------------
-
-export class LoginError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "LoginError";
-  }
-}
-
-export class RefreshTokenError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "RefreshTokenError";
-  }
-}
-
-// ---------------------------------------------------------------------------
-// API functions
-// ---------------------------------------------------------------------------
-
-export async function loginClient(
-  email: string,
-  password: string
-): Promise<LoginResponse> {
-  const response = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-    credentials: "include", // Allow httpOnly cookies
-  });
-
-  if (response.status === 200) {
-    return (await response.json()) as LoginResponse;
-  }
-
-  if (response.status === 422) {
-    throw new LoginError("Validation failed");
-  }
-
-  if (response.status === 401) {
-    throw new LoginError("Invalid credentials.");
-  }
-
-  throw new ApiError("An unexpected error occurred.");
-}
-
-export async function refreshTokenClient(
-  _refreshToken: string
-): Promise<LoginResponse> {
-  const response = await fetch("/api/auth/refresh", {
-    method: "POST",
-    credentials: "include", // Send httpOnly cookie with refresh token
-  });
-
-  if (response.status === 200) {
-    return (await response.json()) as LoginResponse;
-  }
-
-  if (response.status === 401) {
-    throw new RefreshTokenError("Invalid or expired refresh token.");
-  }
-
-  throw new ApiError("An unexpected error occurred.");
-}
 
 // ---------------------------------------------------------------------------
 // Registration API client
-// ---------------------------------------------------------------------------
-
-// PfRegistrationData and PjRegistrationData types are available via validation-schemas
-// but not needed directly in this file — registration uses generic Record<string, unknown>
-
-// ---------------------------------------------------------------------------
-// Request type — matches RegisterClientRequest DTO on the server
 // ---------------------------------------------------------------------------
 
 export interface RegisterClientRequest {
@@ -113,10 +18,6 @@ export interface RegisterClientRequest {
   phone?: string;
   password?: string;
 }
-
-// ---------------------------------------------------------------------------
-// Custom error classes
-// ---------------------------------------------------------------------------
 
 export class RegistrationValidationError extends Error {
   constructor(public errors: Record<string, string[]>) {
@@ -145,10 +46,6 @@ export class ApiError extends Error {
     this.name = "ApiError";
   }
 }
-
-// ---------------------------------------------------------------------------
-// API function
-// ---------------------------------------------------------------------------
 
 export async function registerClient(
   data: RegisterClientRequest
@@ -193,7 +90,6 @@ export async function registerClient(
     );
   }
 
-  // Fallback for any other error
   throw new ApiError("An unexpected error occurred.");
 }
 
@@ -203,10 +99,6 @@ export async function registerClient(
 
 import type { ClientProfileDto } from "@/lib/types";
 
-// ---------------------------------------------------------------------------
-// Custom error class for profile fetch failures
-// ---------------------------------------------------------------------------
-
 export class ProfileError extends Error {
   constructor(message: string) {
     super(message);
@@ -214,23 +106,15 @@ export class ProfileError extends Error {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Fetch current user's profile using Bearer token from AuthContext
-// Dynamic import avoids circular dependency: api.ts → auth-context.tsx → api.ts
-// ---------------------------------------------------------------------------
-
+/**
+ * Fetch current user's profile using httpOnly cookie.
+ * No Bearer token needed — auth is via cookie (ACF).
+ */
 export async function getProfileClient(): Promise<ClientProfileDto> {
-  const { getAccessToken } = await import("./auth-context");
-  const token = getAccessToken();
-
-  if (!token) {
-    throw new ProfileError("No authentication token available");
-  }
-
   const response = await fetch("/api/clients/me", {
     method: "GET",
+    credentials: "include",
     headers: {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
   });
@@ -246,7 +130,7 @@ export async function getProfileClient(): Promise<ClientProfileDto> {
 }
 
 // ---------------------------------------------------------------------------
-// Forgot/Reset Password API clients — Phase 11 UX-05
+// Forgot/Reset Password API clients
 // ---------------------------------------------------------------------------
 
 export class ForgotPasswordError extends Error {
@@ -286,7 +170,6 @@ export async function forgotPasswordClient(
     throw new ForgotPasswordError(error.title || "Email invalido.");
   }
 
-  // Always returns success (no info disclosure)
   if (response.status === 200) {
     return (await response.json()) as ForgotPasswordResponse;
   }

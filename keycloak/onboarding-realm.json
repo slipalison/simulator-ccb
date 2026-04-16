@@ -87,6 +87,34 @@
         "access.token.lifespan": "300",
         "client.session.max.lifespan": "28800"
       }
+    },
+    {
+      "clientId": "onboarding-client-acf",
+      "name": "Onboarding Client (Confidential, ACF+PKCE)",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "secret": "client-acf-secret-dev-change-in-prod-2026",
+      "redirectUris": [
+        "http://localhost:5173/auth/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email"],
+      "optionalClientScopes": ["offline_access"],
+      "frontchannelLogout": true,
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "access.token.lifespan": "300",
+        "client.session.max.lifespan": "28800"
+      }
     }
   ],
 

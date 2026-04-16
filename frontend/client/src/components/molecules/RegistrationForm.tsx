@@ -30,15 +30,13 @@ import {
   RegistrationUnavailable,
   ApiError,
 } from "@/lib/api";
-import { useAuth } from "@/lib/auth-context";
 
 /**
  * RegistrationForm: unified PF/PJ registration form with shadcn/ui
- * Auto-login after successful registration
+ * Redirects to ACF login after successful registration
  */
 export function RegistrationForm() {
   const navigate = useNavigate();
-  const { login } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]> | null>(null);
@@ -110,14 +108,8 @@ export function RegistrationForm() {
         password: data.password,
       });
 
-      // Auto-login after successful registration
-      try {
-        await login(data.email, data.password);
-        navigate({ to: "/profile" as any, replace: true });
-      } catch {
-        // Fallback to login page if auto-login fails
-        navigate({ to: "/login" as any, state: { message: "Cadastro criado. Faça login." } as any });
-      }
+      // After successful registration, redirect to login
+      navigate({ to: "/auth/login" as any, replace: true });
     } catch (err) {
       if (err instanceof RegistrationValidationError) {
         setFieldErrors(err.errors);
@@ -370,7 +362,7 @@ export function RegistrationForm() {
           {/* Footer link */}
           <div className="mt-6 text-center text-sm text-muted-foreground">
             Ja tem conta?{" "}
-            <a href="/login" className="text-primary hover:underline font-medium">
+            <a href="/auth/login" className="text-primary hover:underline font-medium">
               Fazer login &rarr;
             </a>
           </div>

@@ -35,7 +35,7 @@ vi.mock("@/lib/api", () => ({
 
 const mockLogout = vi.fn();
 const mockUseAuth = vi.fn(() => ({
-  auth: { isAuthenticated: true, isLoading: false, userName: "Test User", email: "test@example.com" },
+  auth: { isAuthenticated: true, isLoading: false, userName: "Test User" as string | null, email: "test@example.com" as string | null },
   login: vi.fn(),
   logout: mockLogout,
 }));
@@ -107,7 +107,7 @@ describe("ProfilePage", () => {
 
   it("redirects to /auth/login when not authenticated", async () => {
     mockUseAuth.mockReturnValue({
-      auth: { isAuthenticated: false, isLoading: false, userName: null, email: null },
+      auth: { isAuthenticated: false, isLoading: false, userName: null as string | null, email: null as string | null },
       login: vi.fn(),
       logout: mockLogout,
     });

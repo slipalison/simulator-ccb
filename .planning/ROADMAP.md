@@ -722,7 +722,7 @@ Backend-first ordering ensures API contracts exist before UI is built.
 ### Phases
 
 - [ ] **Phase 29: Keycloak Config + Auth Code Flow Backend** - New Keycloak client provisioned, .NET backend handles code exchange and cookie issuance (ACF-01, ACF-02, ACF-03, ACF-04)
-- [ ] **Phase 30: Audit Log Backend + Admin Management Backend** - AuditLog entity + migration, admin creation endpoint, admin listing endpoint (AUD-01, ADM-01, ADM-02, ADM-03, ADM-04)
+- [x] **Phase 30: Audit Log Backend + Admin Management Backend** - AuditLog entity + migration, admin creation endpoint, admin listing endpoint (AUD-01, ADM-01, ADM-02, ADM-03, ADM-04) (completed 2026-04-16)
 - [ ] **Phase 31: Backoffice Auth Code Flow UI** - Vinxi server-side code exchange, login redirect, logout, forced password change handled natively by Keycloak (ACF-01, ACF-02, ACF-03, ACF-04 frontend side)
 - [ ] **Phase 32: Backoffice Admin Management UI + Audit Log UI** - Create admin form with one-time password display, admin list page, paginated audit log with filters (ADM-01, ADM-02, ADM-03, ADM-04, AUD-02, AUD-03)
 
@@ -753,10 +753,10 @@ Backend-first ordering ensures API contracts exist before UI is built.
   3. POST `/api/admin/administrators` creates a new Keycloak user with role `admin` and `UPDATE_PASSWORD` requiredAction, returns the one-time temporary password in the response body
   4. GET `/api/admin/administrators` returns all users with role `admin` in Keycloak — the list includes the actor admin and newly created admins
   5. Both endpoints require `[Authorize(Roles = "admin")]` — non-admin callers receive 403
-**Plans:** 2 plans
+**Plans:** 4/4 plans complete
 Plans:
-- [ ] 30-01-PLAN.md — IAuditService + AuditService, migração dos 5 handlers, remoção do legado AuditLog, migration DropAuditLogs
-- [ ] 30-02-PLAN.md — AdminUserDto, GetAdministratorsQuery, GetUsersByRoleAsync, POST /administrators + GET /administrators, frontend admin-api.ts
+- [x] 30-01-PLAN.md — IAuditService + AuditService, migração dos 5 handlers, remoção do legado AuditLog, migration DropAuditLogs
+- [x] 30-02-PLAN.md — AdminUserDto, GetAdministratorsQuery, GetUsersByRoleAsync, POST /administrators + GET /administrators, frontend admin-api.ts
 
 ### Phase 31: Backoffice Auth Code Flow UI
 **Goal:** The backoffice frontend replaces the ROPC login form with an Auth Code Flow redirect — Keycloak handles the login screen and forced password change natively
@@ -870,7 +870,7 @@ keycloak/themes/
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 29. Keycloak Config + Auth Code Flow Backend | 0/TBD | 📋 Planned | — |
-| 30. Audit Log Backend + Admin Management Backend | 0/TBD | 📋 Planned | — |
+| 30. Audit Log Backend + Admin Management Backend | 4/4 | Complete    | 2026-04-16 |
 | 31. Backoffice Auth Code Flow UI | 0/TBD | 📋 Planned | — |
 | 32. Backoffice Admin Management UI + Audit Log UI | 0/TBD | 📋 Planned | — |
 | 33. PKCE + Custom Keycloak Themes (Backoffice + Client) | 0/TBD | 📋 Planned | — |

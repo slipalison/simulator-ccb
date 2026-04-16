@@ -1,17 +1,17 @@
 ---
 gsd_state_version: 1.0
-milestone: v5.0
-milestone_name: auth-code-flow-admins-auditoria
-status: in_progress
-stopped_at: Phase 29-01 complete (Auth Code Flow + PKCE backoffice migration)
-last_updated: "2026-04-15T09:05:00.000Z"
-last_activity: 2026-04-15 -- Phase 29-01 executed (ACF+PKCE migration, 149 tests passing)
+milestone: v1.0
+milestone_name: — Foundation
+status: executing
+stopped_at: Roadmap created — ready to plan Phase 29
+last_updated: "2026-04-16T18:11:13.584Z"
+last_activity: 2026-04-16
 progress:
-  total_phases: 4
-  completed_phases: 1
-  total_plans: 1
-  completed_plans: 1
-  percent: 25
+  total_phases: 35
+  completed_phases: 28
+  total_plans: 72
+  completed_plans: 68
+  percent: 94
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** MILESTONE v5.0 — Auth Code Flow (Backoffice) + Gestão de Admins + Auditoria
-**Last activity:** 2026-04-14 -- Roadmap created: 4 phases (29-32), 11 requirements mapped
+**Current focus:** Phase 30 — audit-log-admin-backend
+**Last activity:** 2026-04-16
 
 ## Current Position
 
-Phase: 29 — Keycloak Config + Auth Code Flow Backend
-Plan: 29-01 (Auth Code Flow Backend) — ✅ Complete
-Status: Phase 29-01 complete — ACF+PKCE migration executed and verified
-Last activity: 2026-04-15 — Phase 29-01 executed (4 tasks, 149 tests passing, tsc clean, dotnet build clean)
+Phase: 33
+Plan: Not started
+Status: Executing Phase 30
+Last activity: 2026-04-16 -- Phase 30 execution started
 
 ## Milestone Breakdown
 
@@ -68,6 +68,7 @@ Recent decisions affecting current work:
 ### Key Architecture for v5.0
 
 **Phase 29 — Auth Code Flow Infrastructure:**
+
 - New Keycloak client: `onboarding-backoffice` (confidential, standardFlowEnabled, exact redirect URIs)
 - Vinxi server handles authorization code exchange (server-side) using client_secret
 - Tokens written to httpOnly, Secure, SameSite=Strict cookies by Vinxi server actions
@@ -75,6 +76,7 @@ Recent decisions affecting current work:
 - Forced password change (UPDATE_PASSWORD requiredAction) is handled natively by Keycloak during Auth Code Flow — no extra backend code
 
 **Phase 30 — Backend Data + API:**
+
 - New `AuditLog` entity in app_db with EF Core migration (append-only)
 - `IAuditService` injected into existing admin command handlers to record actions
 - New endpoints: POST /api/admin/administrators, GET /api/admin/administrators
@@ -82,12 +84,14 @@ Recent decisions affecting current work:
 - Keycloak.AuthServices.Sdk used for Admin API (create user + assign role + set requiredActions)
 
 **Phase 31 — Backoffice Frontend ACF:**
+
 - Remove AdminAuthController ROPC login form and replace with redirect flow
 - Vinxi server route `/auth/callback` handles code exchange via server action
 - Session guard middleware checks httpOnly cookie presence (using jose for JWT decode)
 - Logout: clear cookies + redirect to Keycloak OIDC logout endpoint
 
 **Phase 32 — Backoffice Frontend UI:**
+
 - Create Administrator form (name + email) → calls POST /api/admin/administrators → modal shows one-time password
 - Administrators list page → calls GET /api/admin/administrators
 - Audit log page: paginated table with date range / action type / actor email filters (client-side state, server-side query params)
@@ -116,18 +120,21 @@ Resume file: none
 ### Milestone v5.0 Requirements (2026-04-14)
 
 **ACF — Auth Code Flow (Backoffice)** → Phase 29 (backend) + Phase 31 (frontend)
+
 - ACF-01: Admin login via Auth Code Flow + PKCE (confidential client, server-side code exchange)
 - ACF-02: Forced password change works natively via Keycloak requiredActions
 - ACF-03: Tokens stored in httpOnly cookies managed by Vinxi server
 - ACF-04: Logout clears cookies and redirects to Keycloak OIDC logout endpoint
 
 **ADM — Gestão de Administradores** → Phase 30 (backend) + Phase 32 (frontend)
+
 - ADM-01: Admin can create new administrator (name + email) in backoffice
 - ADM-02: System generates temporary password displayed once to creator
 - ADM-03: New admin gets role "admin" + UPDATE_PASSWORD requiredAction in Keycloak via Admin API
 - ADM-04: Admin can list other administrators in backoffice
 
 **AUD — Auditoria** → Phase 30 (backend) + Phase 32 (frontend)
+
 - AUD-01: All admin actions recorded append-only (actor, action, target, timestamp, details JSON)
 - AUD-02: Admin can view paginated audit log in backoffice
 - AUD-03: Audit log supports filters by date range, action type, and actor email

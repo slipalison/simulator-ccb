@@ -1,0 +1,100 @@
+/* Onboarding Client Theme - Custom Keycloak Login Styles */
+
+:root {
+  --primary-color: #3b82f6;
+  --primary-hover: #2563eb;
+  --background: #ffffff;
+  --text: #1f2937;
+  --text-muted: #6b7280;
+  --border: #e5e7eb;
+  --error: #ef4444;
+  --success: #22c55e;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #f9fafb;
+  color: var(--text);
+}
+
+#kc-header {
+  display: none;
+}
+
+#kc-content {
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+#kc-form {
+  background: var(--background);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  padding: 2rem;
+}
+
+#kc-form-login input,
+#kc-register-form input,
+#kc-reset-password-form input {
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease-in-out;
+}
+
+#kc-form-login input:focus,
+#kc-register-form input:focus,
+#kc-reset-password-form input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+#kc-form-buttons input[type="submit"],
+#kc-register-form input[type="submit"],
+#kc-reset-password-form input[type="submit"] {
+  background-color: var(--primary-color);
+  border: none;
+  color: white;
+  padding: 0.625rem 1.25rem;
+  border-radius: 0.5rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out;
+}
+
+#kc-form-buttons input[type="submit"]:hover,
+#kc-register-form input[type="submit"]:hover,
+#kc-reset-password-form input[type="submit"]:hover {
+  background-color: var(--primary-hover);
+}
+
+#kc-registration {
+  text-align: center;
+  margin-top: 1.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+#kc-registration a {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+#kc-registration a:hover {
+  text-decoration: underline;
+}
+
+.alert-error {
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: var(--error);
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}

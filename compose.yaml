@@ -48,6 +48,7 @@ services:
       KC_SPI_LOGIN_PROTOCOL__OPENID_CONNECT__REQUEST_URI_ENABLED: "false"
     volumes:
       - ./keycloak/onboarding-realm.json:/opt/keycloak/data/import/onboarding-realm.json:ro
+      - ./keycloak/themes:/opt/keycloak/themes:ro
     ports:
       - "127.0.0.1:8180:8080"
       - "127.0.0.1:9000:9000"   # Keycloak management port (health endpoints)

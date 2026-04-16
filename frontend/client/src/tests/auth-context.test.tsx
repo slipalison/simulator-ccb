@@ -1,27 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { AuthProvider, useAuth } from "@/lib/auth-context";
-import * as api from "@/lib/api";
 
-// Mock the entire API module
-vi.mock("@/lib/api", () => ({
-  loginClient: vi.fn(),
-  refreshTokenClient: vi.fn(),
-  LoginError: class LoginError extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = "LoginError";
-    }
-  },
-  ApiError: class ApiError extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = "ApiError";
-    }
-  },
-}));
-
-// Mock fetch for session restoration
+// Mock fetch for /auth/me calls
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
@@ -29,154 +10,107 @@ function wrapper({ children }: { children: React.ReactNode }) {
   return <AuthProvider>{children}</AuthProvider>;
 }
 
-describe("Auth persistence: session restoration via httpOnly cookies", () => {
+describe("AuthContext — ACF redirect-based auth", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetch.mockReset();
+    // Default: /auth/me returns 401 (not authenticated)
+    mockFetch.mockResolvedValue({ ok: false, status: 401 });
   });
 
-  it("restoreSession returns false when no session exists", async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 401,
-    });
-
+  it("starts loading and resolves to unauthenticated when /auth/me returns 401", async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    // Wait for initial loading to complete
+    expect(result.current.auth.isLoading).toBe(true);
+
     await waitFor(() => {
       expect(result.current.auth.isLoading).toBe(false);
     });
 
     expect(result.current.auth.isAuthenticated).toBe(false);
-
-    // Try to restore session
-    const restored = await act(async () => {
-      return await result.current.restoreSession();
-    });
-
-    expect(restored).toBe(false);
-    expect(result.current.auth.isAuthenticated).toBe(false);
+    expect(result.current.auth.userName).toBeNull();
+    expect(result.current.auth.email).toBeNull();
   });
 
-  it("restoreSession returns true and sets tokens when session is valid", async () => {
-    // First mock: initial session restoration on mount (fails)
+  it("sets isAuthenticated + userName + email when /auth/me returns 200", async () => {
     mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 401,
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          isAuthenticated: true,
+          userName: "João Silva",
+          email: "joao@example.com",
+          sub: "user-123",
+        }),
     });
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    // Wait for initial loading to complete
     await waitFor(() => {
       expect(result.current.auth.isLoading).toBe(false);
     });
 
-    // Second mock: manual restoreSession call (succeeds)
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          accessToken: "restored-access-token",
-          expiresIn: 300,
-        }),
-    });
-
-    // Restore session
-    const restored = await act(async () => {
-      return await result.current.restoreSession();
-    });
-
-    expect(restored).toBe(true);
     expect(result.current.auth.isAuthenticated).toBe(true);
-    expect(result.current.getAccessToken()).toBe("restored-access-token");
+    expect(result.current.auth.userName).toBe("João Silva");
+    expect(result.current.auth.email).toBe("joao@example.com");
   });
 
-  it("login stores accessToken from response (refreshToken in httpOnly cookie)", async () => {
-    const mockResponse = {
-      accessToken: "mock-access-token",
-      refreshToken: "mock-refresh-token", // Not stored in memory anymore
-      expiresIn: 300,
-      tokenType: "Bearer",
-      refreshExpiresIn: 86400,
-      scope: "openid",
-    };
-    vi.mocked(api.loginClient).mockResolvedValue(mockResponse);
-
-    const { result } = renderHook(() => useAuth(), { wrapper });
-
-    await act(async () => {
-      await result.current.login("test@example.com", "password123");
+  it("login() redirects to /auth/login", async () => {
+    const assignSpy = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { href: "" },
+      writable: true,
     });
-
-    expect(result.current.auth.isAuthenticated).toBe(true);
-    expect(result.current.getAccessToken()).toBe("mock-access-token");
-  });
-
-  it("logout calls backend to clear httpOnly cookie", async () => {
-    const mockResponse = {
-      accessToken: "mock-access-token",
-      refreshToken: "mock-refresh-token",
-      expiresIn: 300,
-      tokenType: "Bearer",
-      refreshExpiresIn: 86400,
-      scope: "openid",
-    };
-    vi.mocked(api.loginClient).mockResolvedValue(mockResponse);
-
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          accessToken: "restored-access-token",
-          expiresIn: 300,
-        }),
+    Object.defineProperty(window.location, "href", {
+      set: assignSpy,
+      configurable: true,
     });
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    // Login first
-    await act(async () => {
-      await result.current.login("test@example.com", "password123");
-    });
-    expect(result.current.auth.isAuthenticated).toBe(true);
-
-    // Restore session to set initial loading to false
-    await act(async () => {
-      await result.current.restoreSession();
+    await waitFor(() => {
+      expect(result.current.auth.isLoading).toBe(false);
     });
 
-    // Mock logout fetch
-    mockFetch.mockResolvedValueOnce({ ok: true });
-
-    // Then logout
-    await act(async () => {
-      await result.current.logout();
+    act(() => {
+      result.current.login();
     });
 
-    expect(result.current.auth.isAuthenticated).toBe(false);
-    expect(result.current.getAccessToken()).toBeNull();
+    expect(assignSpy).toHaveBeenCalledWith("/auth/login");
+  });
+
+  it("logout() redirects to /auth/logout", async () => {
+    const assignSpy = vi.fn();
+    Object.defineProperty(window, "location", {
+      value: { href: "" },
+      writable: true,
+    });
+    Object.defineProperty(window.location, "href", {
+      set: assignSpy,
+      configurable: true,
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.auth.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.logout();
+    });
+
+    expect(assignSpy).toHaveBeenCalledWith("/auth/logout");
   });
 
   it("tokens are NOT written to localStorage", async () => {
     const getItemSpy = vi.spyOn(Storage.prototype, "getItem");
     const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
 
-    const mockResponse = {
-      accessToken: "mock-access-token",
-      refreshToken: "mock-refresh-token",
-      expiresIn: 300,
-      tokenType: "Bearer",
-      refreshExpiresIn: 86400,
-      scope: "openid",
-    };
-    vi.mocked(api.loginClient).mockResolvedValue(mockResponse);
-
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    await act(async () => {
-      await result.current.login("test@example.com", "password123");
+    await waitFor(() => {
+      expect(result.current.auth.isLoading).toBe(false);
     });
 
     expect(getItemSpy).not.toHaveBeenCalled();
@@ -186,30 +120,15 @@ describe("Auth persistence: session restoration via httpOnly cookies", () => {
     setItemSpy.mockRestore();
   });
 
-  it("tokens are NOT written to sessionStorage", async () => {
-    const getSessionItemSpy = vi.spyOn(Storage.prototype, "getItem");
-    const setSessionItemSpy = vi.spyOn(Storage.prototype, "setItem");
-
-    const mockResponse = {
-      accessToken: "mock-access-token",
-      refreshToken: "mock-refresh-token",
-      expiresIn: 300,
-      tokenType: "Bearer",
-      refreshExpiresIn: 86400,
-      scope: "openid",
-    };
-    vi.mocked(api.loginClient).mockResolvedValue(mockResponse);
+  it("handles /auth/me fetch error gracefully", async () => {
+    mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    await act(async () => {
-      await result.current.login("test@example.com", "password123");
+    await waitFor(() => {
+      expect(result.current.auth.isLoading).toBe(false);
     });
 
-    expect(getSessionItemSpy).not.toHaveBeenCalled();
-    expect(setSessionItemSpy).not.toHaveBeenCalled();
-
-    getSessionItemSpy.mockRestore();
-    setSessionItemSpy.mockRestore();
+    expect(result.current.auth.isAuthenticated).toBe(false);
   });
 });

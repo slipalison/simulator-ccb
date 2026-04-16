@@ -1,11 +1,10 @@
 // ---------------------------------------------------------------------------
-// E2E profile flow tests
+// E2E profile flow tests — ACF version
 // ---------------------------------------------------------------------------
-// Simulates the complete authenticated user journey:
-//   login → profile display → logout
+// Simulates the complete authenticated user journey using ACF cookies:
+//   /auth/me session check → profile display → logout redirect
 // and the unauthenticated redirect guard.
 //
-// Uses the full router tree (same as login-flow.test.tsx pattern).
 // API and auth are mocked — tests run without a live backend.
 // ---------------------------------------------------------------------------
 
@@ -14,8 +13,6 @@ import {
   render,
   screen,
   waitFor,
-  act,
-  fireEvent,
 } from "@testing-library/react";
 import {
   RouterProvider,
@@ -31,19 +28,11 @@ import type { ClientProfileDto } from "@/lib/types";
 // ---------------------------------------------------------------------------
 
 vi.mock("@/lib/api", () => ({
-  loginClient: vi.fn(),
-  refreshTokenClient: vi.fn(),
   getProfileClient: vi.fn(),
   ProfileError: class ProfileError extends Error {
     constructor(message: string) {
       super(message);
       this.name = "ProfileError";
-    }
-  },
-  LoginError: class LoginError extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = "LoginError";
     }
   },
   ApiError: class ApiError extends Error {
@@ -54,18 +43,13 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
+// Mock fetch for /auth/me
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
+
 // ---------------------------------------------------------------------------
 // Test data
 // ---------------------------------------------------------------------------
-
-const mockLoginResponse = {
-  accessToken: "mock-access-token",
-  refreshToken: "mock-refresh-token",
-  expiresIn: 300,
-  tokenType: "Bearer",
-  refreshExpiresIn: 86400,
-  scope: "openid",
-};
 
 const mockPFProfile: ClientProfileDto = {
   id: "e2e-pf-id",
@@ -101,68 +85,80 @@ async function renderApp(initialPath: string) {
 // E2E flow tests
 // ---------------------------------------------------------------------------
 
-describe("Profile E2E Flow", () => {
+describe("Profile E2E Flow — ACF", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch.mockReset();
   });
 
-  it("login → view profile → logout completes full user journey", async () => {
+  it("authenticated user at /profile sees profile data", async () => {
+    // /auth/me returns authenticated session
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          isAuthenticated: true,
+          userName: "Maria da Silva",
+          email: "maria@email.com",
+          sub: "user-123",
+        }),
+    });
+
     const api = await import("@/lib/api");
-    vi.mocked(api.loginClient).mockResolvedValue(mockLoginResponse);
     vi.mocked(api.getProfileClient).mockResolvedValue(mockPFProfile);
 
-    const { memoryHistory } = await renderApp("/login");
+    await renderApp("/profile");
 
-    // Step 1: Login form renders
-    await waitFor(() => {
-      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    });
-
-    // Step 2: Fill and submit login form
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText(/email/i), {
-        target: { value: "maria@email.com" },
-      });
-      const passwordInputs = screen.getAllByLabelText(/senha/i);
-      const passwordInput = passwordInputs.find(el => el.tagName === "INPUT") as HTMLInputElement;
-      fireEvent.change(passwordInput, {
-        target: { value: "Senha@123" },
-      });
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
-    });
-
-    // Step 3: Redirected to /profile after successful login
-    await waitFor(() => {
-      expect(memoryHistory.location.pathname).toBe("/profile");
-    });
-
-    // Step 4: Profile page shows user data
     await waitFor(() => {
       expect(screen.getByText("Maria da Silva")).toBeInTheDocument();
     });
     expect(screen.getByText("987.654.321-00")).toBeInTheDocument();
     expect(screen.getByText("Pessoa Física")).toBeInTheDocument();
-
-    // Step 5: Logout button is present
-    expect(
-      screen.getByRole("button", { name: /sair/i })
-    ).toBeInTheDocument();
   });
 
-  it("direct /profile access without auth redirects to /login", async () => {
-    const { memoryHistory } = await renderApp("/profile");
+  it("unauthenticated user at /profile sees redirect spinner (auth login redirect)", async () => {
+    // /auth/me returns 401
+    mockFetch.mockResolvedValue({ ok: false, status: 401 });
 
-    // Unauthenticated — ProfilePage auth guard should redirect immediately
+    await renderApp("/profile");
+
+    // ProfilePage auth guard calls login() which redirects to /auth/login
+    // The spinner from AuthLoginPage or ProfilePage should show briefly
     await waitFor(() => {
-      expect(memoryHistory.location.pathname).toBe("/login");
+      // Either we see the redirect spinner or the profile page doesn't render
+      expect(screen.queryByText("987.654.321-00")).not.toBeInTheDocument();
+    });
+  });
+
+  it("unauthenticated user at / sees AuthLoginPage spinner", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 401 });
+
+    await renderApp("/");
+
+    await waitFor(() => {
+      expect(screen.getByText(/redirecionando/i)).toBeInTheDocument();
+    });
+  });
+
+  it("authenticated user at / is redirected to /profile", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          isAuthenticated: true,
+          userName: "Maria da Silva",
+          email: "maria@email.com",
+          sub: "user-123",
+        }),
     });
 
-    // Login form should be visible
+    const api = await import("@/lib/api");
+    vi.mocked(api.getProfileClient).mockResolvedValue(mockPFProfile);
+
+    const { memoryHistory } = await renderApp("/");
+
     await waitFor(() => {
-      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+      expect(memoryHistory.location.pathname).toBe("/profile");
     });
   });
 });

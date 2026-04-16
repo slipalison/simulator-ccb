@@ -70,7 +70,7 @@ export function ForgotPasswordPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button className="w-full" onClick={() => navigate({ to: "/login" as any })}>
+            <Button className="w-full" onClick={() => navigate({ to: "/auth/login" as any })}>
               Voltar para login
             </Button>
           </CardContent>
@@ -121,7 +121,7 @@ export function ForgotPasswordPage() {
           </Form>
 
           <div className="mt-4 text-center text-sm">
-            <a href="/login" className="text-primary hover:underline">
+            <a href="/auth/login" className="text-primary hover:underline">
               Voltar para login &rarr;
             </a>
           </div>

@@ -98,7 +98,7 @@ describe("ResetPasswordPage (shadcn redesign)", () => {
     await user.click(screen.getByRole("button", { name: /alterar senha/i }));
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/login" }));
+      expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/auth/login" }));
     });
   });
 });

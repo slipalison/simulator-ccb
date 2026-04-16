@@ -6,8 +6,6 @@ import { ResetPasswordPage } from "@/components/pages/ResetPasswordPage";
 
 // Mock API module
 vi.mock("@/lib/api", () => ({
-  loginClient: vi.fn(),
-  refreshTokenClient: vi.fn(),
   getProfileClient: vi.fn(),
   forgotPasswordClient: vi.fn(),
   resetPasswordClient: vi.fn(),

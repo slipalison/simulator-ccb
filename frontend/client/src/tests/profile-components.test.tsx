@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // GREEN tests — Profile components and API client
 // ---------------------------------------------------------------------------
-// Implemented in plan 10-03: turned all RED stubs to GREEN.
+// Updated in plan 33-01: getProfileClient now uses cookies (no Bearer token).
 // ---------------------------------------------------------------------------
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -140,19 +140,13 @@ describe("ProfileCard", () => {
 });
 
 // ---------------------------------------------------------------------------
-// getProfileClient tests
+// getProfileClient tests — cookie-based ACF version
 // ---------------------------------------------------------------------------
-// getProfileClient() uses dynamic import('./auth-context') to get getAccessToken.
-// We mock the module at the top of vi.mock so the dynamic import resolves the mock.
+// getProfileClient() uses credentials: "include" (httpOnly cookie auth).
+// No Bearer token needed — auth is handled by Vinxi auth-server via cookies.
 // ---------------------------------------------------------------------------
 
-vi.mock("@/lib/auth-context", () => ({
-  useAuth: vi.fn(),
-  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
-  getAccessToken: vi.fn(() => null),
-}));
-
-describe("getProfileClient", () => {
+describe("getProfileClient — cookie-based ACF", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -161,8 +155,7 @@ describe("getProfileClient", () => {
     vi.restoreAllMocks();
   });
 
-  it("fetches profile with Bearer token", async () => {
-    const mockToken = "fake-jwt-token";
+  it("fetches profile with credentials: include (cookie auth)", async () => {
     const mockProfile: ClientProfileDto = {
       id: "test-id",
       name: "Test User",
@@ -174,11 +167,6 @@ describe("getProfileClient", () => {
       razaoSocial: null,
     };
 
-    // Set getAccessToken to return our mock token
-    const authContext = await import("@/lib/auth-context");
-    vi.mocked(authContext.getAccessToken).mockReturnValue(mockToken);
-
-    // Mock fetch
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockProfile),
@@ -190,28 +178,25 @@ describe("getProfileClient", () => {
     expect(result).toEqual(mockProfile);
     expect(global.fetch).toHaveBeenCalledWith("/api/clients/me", {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${mockToken}`,
-        "Content-Type": "application/json",
-      },
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
     });
   });
 
-  it("throws ProfileError when no token available", async () => {
-    const authContext = await import("@/lib/auth-context");
-    vi.mocked(authContext.getAccessToken).mockReturnValue(null);
+  it("throws ProfileError on 401 response", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 401,
+    });
 
     const { getProfileClient, ProfileError } = await import("@/lib/api");
     await expect(getProfileClient()).rejects.toThrow(ProfileError);
   });
 
-  it("throws ProfileError on 401 response", async () => {
-    const authContext = await import("@/lib/auth-context");
-    vi.mocked(authContext.getAccessToken).mockReturnValue("expired-token");
-
+  it("throws ProfileError on non-401 error response", async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
-      status: 401,
+      status: 500,
     });
 
     const { getProfileClient, ProfileError } = await import("@/lib/api");

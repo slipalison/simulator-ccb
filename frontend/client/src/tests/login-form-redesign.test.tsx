@@ -1,163 +1,120 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import { LoginPage } from "@/components/pages/LoginPage";
+import { render, screen, waitFor } from "@testing-library/react";
+import { AuthLoginPage } from "@/components/pages/AuthLoginPage";
+import { AuthCallbackPage } from "@/components/pages/AuthCallbackPage";
+import { AuthErrorPage } from "@/components/pages/AuthErrorPage";
 import { AuthProvider } from "@/lib/auth-context";
 
-// Mock API
-vi.mock("@/lib/api", () => ({
-  loginClient: vi.fn(),
-  LoginError: class extends Error {
-    constructor(message: string) { super(message); this.name = "LoginError"; }
-  },
-  ApiError: class extends Error {
-    constructor(message: string) { super(message); this.name = "ApiError"; }
-  },
-}));
+// Mock fetch for /auth/me
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 // Mock auth context
 const mockLogin = vi.fn();
 vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({
     login: mockLogin,
-    auth: { isAuthenticated: false, isLoading: false },
+    auth: { isAuthenticated: false, isLoading: false, userName: null, email: null },
     logout: vi.fn(),
-    refreshIfNeeded: vi.fn(),
-    getAccessToken: () => null,
   }),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-// Mock router
-const mockNavigate = vi.fn();
-vi.mock("@tanstack/react-router", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@tanstack/react-router")>();
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
-
-function renderLoginPage() {
-  return render(
-    <AuthProvider>
-      <LoginPage />
-    </AuthProvider>
-  );
-}
-
-describe("LoginForm (shadcn redesign)", () => {
+describe("AuthLoginPage — redirect-only component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch.mockReset();
   });
 
-  it("renders with shadcn Card container", () => {
-    renderLoginPage();
-
-    // Card should have the header text centered
-    expect(screen.getByText("Bem-vindo de volta!")).toBeInTheDocument();
-  });
-
-  it("renders email input with shadcn Input", () => {
-    renderLoginPage();
-
-    const emailInput = screen.getByLabelText(/email/i);
-    expect(emailInput).toBeInTheDocument();
-    expect(emailInput).toHaveAttribute("placeholder", "seu@email.com");
-  });
-
-  it("renders password field with show/hide toggle", () => {
-    renderLoginPage();
-
-    // Password input should exist (use getAllByLabelText since there are multiple "senha" references)
-    const passwordInputs = screen.getAllByLabelText(/senha/i);
-    const passwordInput = passwordInputs.find(el => el.tagName === "INPUT") as HTMLInputElement;
-    expect(passwordInput).toBeInTheDocument();
-
-    // Toggle button should exist
-    const toggleButton = screen.getByRole("button", { name: /mostrar senha/i });
-    expect(toggleButton).toBeInTheDocument();
-  });
-
-  it("renders submit button with text 'Entrar'", () => {
-    renderLoginPage();
-
-    const submitButton = screen.getByRole("button", { name: /entrar/i });
-    expect(submitButton).toBeInTheDocument();
-  });
-
-  it("shows loading spinner when submitting", async () => {
-    // Make login hang so we can see the loading state
-    mockLogin.mockImplementation(
-      () => new Promise((resolve) => setTimeout(resolve, 5000))
+  it("renders loading spinner", async () => {
+    render(
+      <AuthProvider>
+        <AuthLoginPage />
+      </AuthProvider>
     );
 
-    renderLoginPage();
-
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /entrar/i })).toBeInTheDocument();
-    });
-
-    const emailInput = screen.getByLabelText(/email/i);
-    const passwordInputs = screen.getAllByLabelText(/senha/i);
-    const passwordInput = passwordInputs.find(el => el.tagName === "INPUT") as HTMLInputElement;
-
-    await act(async () => {
-      fireEvent.change(emailInput, { target: { value: "test@example.com" } });
-      fireEvent.change(passwordInput, { target: { value: "password123" } });
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
-    });
-
-    // Button should be disabled during submit
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /entrar/i })).toBeDisabled();
+      expect(screen.getByText(/redirecionando/i)).toBeInTheDocument();
     });
   });
 
-  it("shows error alert on invalid credentials", async () => {
-    mockLogin.mockRejectedValue(new Error("Invalid credentials"));
-
-    renderLoginPage();
+  it("calls login() to redirect to /auth/login when not authenticated", async () => {
+    render(
+      <AuthProvider>
+        <AuthLoginPage />
+      </AuthProvider>
+    );
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /entrar/i })).toBeInTheDocument();
-    });
-
-    const emailInput = screen.getByLabelText(/email/i);
-    const passwordInputs = screen.getAllByLabelText(/senha/i);
-    const passwordInput = passwordInputs.find(el => el.tagName === "INPUT") as HTMLInputElement;
-
-    await act(async () => {
-      fireEvent.change(emailInput, { target: { value: "wrong@example.com" } });
-      fireEvent.change(passwordInput, { target: { value: "wrongpassword" } });
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
-    });
-
-    // Error message should appear
-    await waitFor(() => {
-      const alert = screen.getByRole("alert");
-      expect(alert).toBeInTheDocument();
+      expect(mockLogin).toHaveBeenCalled();
     });
   });
+});
 
-  it('shows "Esqueceu a senha?" link', () => {
-    renderLoginPage();
-
-    const forgotLink = screen.getByRole("link", { name: /esqueceu a senha/i });
-    expect(forgotLink).toBeInTheDocument();
-    expect(forgotLink).toHaveAttribute("href", "/forgot-password");
+describe("AuthCallbackPage — session polling component", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockFetch.mockReset();
   });
 
-  it('shows "Criar conta" link', () => {
-    renderLoginPage();
+  it("renders loading spinner while polling", () => {
+    mockFetch.mockImplementation(() => new Promise(() => {}));
 
-    const createLink = screen.getByRole("link", { name: /criar conta/i });
-    expect(createLink).toBeInTheDocument();
-    expect(createLink).toHaveAttribute("href", "/register");
+    render(<AuthCallbackPage />);
+
+    expect(screen.getByText(/concluindo/i)).toBeInTheDocument();
+  });
+
+  it("shows error card after max polling attempts fail", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 401 });
+
+    render(<AuthCallbackPage />);
+
+    await waitFor(
+      () => {
+        expect(screen.getByText(/falha ao estabelecer/i)).toBeInTheDocument();
+      },
+      { timeout: 5000 }
+    );
+
+    expect(screen.getByRole("link", { name: /voltar ao login/i })).toBeInTheDocument();
+  });
+});
+
+describe("AuthErrorPage — error display component", () => {
+  it("renders error title and link back to login", () => {
+    Object.defineProperty(window, "location", {
+      value: { search: "?error=access_denied" },
+      writable: true,
+    });
+
+    render(<AuthErrorPage />);
+
+    expect(screen.getByText(/erro de autenticação/i)).toBeInTheDocument();
+    const link = screen.getByRole("link", { name: /tentar novamente/i });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute("href", "/auth/login");
+  });
+
+  it("displays decoded error message from URL param", () => {
+    Object.defineProperty(window, "location", {
+      value: { search: "?error=acesso%20negado" },
+      writable: true,
+    });
+
+    render(<AuthErrorPage />);
+
+    expect(screen.getByText("acesso negado")).toBeInTheDocument();
+  });
+
+  it("shows fallback message when no error param", () => {
+    Object.defineProperty(window, "location", {
+      value: { search: "" },
+      writable: true,
+    });
+
+    render(<AuthErrorPage />);
+
+    expect(screen.getByText(/ocorreu um erro/i)).toBeInTheDocument();
   });
 });

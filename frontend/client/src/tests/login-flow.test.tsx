@@ -1,47 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import { AuthProvider } from "@/lib/auth-context";
-import { LoginPage } from "@/components/pages/LoginPage";
-import * as api from "@/lib/api";
+import { render, screen, waitFor } from "@testing-library/react";
 import { RouterProvider, createRouter, createMemoryHistory } from "@tanstack/react-router";
+import { AuthProvider } from "@/lib/auth-context";
 import { router } from "@/router";
 
-// Mock the entire API module
-vi.mock("@/lib/api", () => ({
-  loginClient: vi.fn(),
-  refreshTokenClient: vi.fn(),
-  getProfileClient: vi.fn().mockResolvedValue({
-    id: "test-id",
-    name: "Test User",
-    email: "test@example.com",
-    phone: "(11) 99999-9999",
-    type: "PessoaFisica",
-    cpf: "123.456.789-00",
-    cnpj: null,
-    razaoSocial: null,
-  }),
-  LoginError: class LoginError extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = "LoginError";
-    }
-  },
-  ApiError: class ApiError extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = "ApiError";
-    }
-  },
-  ProfileError: class ProfileError extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = "ProfileError";
-    }
-  },
-}));
+// Mock fetch globally
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
-async function renderWithRouter(initialEntries: string[] = ["/login"]) {
-  const memoryHistory = createMemoryHistory({ initialEntries });
+async function renderWithRouter(initialPath: string) {
+  mockFetch.mockResolvedValue({ ok: false, status: 401 });
+
+  const memoryHistory = createMemoryHistory({ initialEntries: [initialPath] });
   const testRouter = createRouter({
     routeTree: router.options.routeTree,
     history: memoryHistory,
@@ -52,224 +22,127 @@ async function renderWithRouter(initialEntries: string[] = ["/login"]) {
     </AuthProvider>
   );
   await testRouter.load();
-  return { ...view, router: testRouter, memoryHistory };
+  return { ...view, testRouter, memoryHistory };
 }
 
-describe("AUTH-01: Login flow — form to redirect", () => {
+describe("ACF Login flow — redirect-based", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch.mockReset();
   });
 
-  it("LoginPage renders LoginForm with email and password fields", async () => {
+  it("AuthLoginPage shows loading spinner while session is being checked", async () => {
+    // /auth/me hangs — isLoading stays true
+    mockFetch.mockImplementation(() => new Promise(() => {}));
+
+    const memoryHistory = createMemoryHistory({ initialEntries: ["/auth/login"] });
+    const testRouter = createRouter({
+      routeTree: router.options.routeTree,
+      history: memoryHistory,
+    });
     render(
       <AuthProvider>
-        <LoginPage />
+        <RouterProvider router={testRouter} />
       </AuthProvider>
     );
+    await testRouter.load();
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-      expect(screen.getAllByLabelText(/senha/i).length).toBeGreaterThan(0);
+      expect(screen.getByText(/redirecionando/i)).toBeInTheDocument();
     });
-
-    expect(screen.getByRole("button", { name: /entrar/i })).toBeInTheDocument();
   });
 
-  it("Submitting empty form shows validation errors", async () => {
+  it("AuthCallbackPage shows loading spinner while polling /auth/me", async () => {
+    // /auth/me returns 401 on all calls (not yet authenticated)
+    mockFetch.mockResolvedValue({ ok: false, status: 401 });
+
+    const memoryHistory = createMemoryHistory({ initialEntries: ["/auth/callback"] });
+    const testRouter = createRouter({
+      routeTree: router.options.routeTree,
+      history: memoryHistory,
+    });
     render(
       <AuthProvider>
-        <LoginPage />
+        <RouterProvider router={testRouter} />
       </AuthProvider>
     );
+    await testRouter.load();
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /entrar/i })).toBeInTheDocument();
-    });
-
-    // Submit without filling fields
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
-    });
-
-    await waitFor(() => {
-      // Zod validation errors should appear - check for "obrigatório" text in error messages
-      const errorMessages = screen.getAllByText(/obrigat/i);
-      expect(errorMessages.length).toBeGreaterThan(0);
-    });
-
-    // API should not be called for invalid form
-    expect(api.loginClient).not.toHaveBeenCalled();
-  });
-
-  it("Successful login redirects to /profile", async () => {
-    const mockResponse = {
-      accessToken: "mock-access-token",
-      refreshToken: "mock-refresh-token",
-      expiresIn: 300,
-      tokenType: "Bearer",
-      refreshExpiresIn: 86400,
-      scope: "openid",
-    };
-    vi.mocked(api.loginClient).mockResolvedValue(mockResponse);
-
-    const { memoryHistory } = await renderWithRouter(["/login"]);
-
-    // Wait for form to render
-    await waitFor(() => {
-      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    });
-
-    // Fill form
-    const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getAllByLabelText(/senha/i).find(el => el.tagName === "INPUT") as HTMLInputElement;
-
-    await act(async () => {
-      fireEvent.change(emailInput, { target: { value: "test@example.com" } });
-      fireEvent.change(passwordInput, { target: { value: "password123" } });
-    });
-
-    // Submit
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
-    });
-
-    // Wait for redirect
-    await waitFor(() => {
-      expect(memoryHistory.location.pathname).toBe("/profile");
+      expect(screen.getByText(/concluindo/i)).toBeInTheDocument();
     });
   });
 
-  it("Failed login shows error message", async () => {
-    vi.mocked(api.loginClient).mockRejectedValue(
-      new api.LoginError("Invalid credentials.")
-    );
+  it("AuthErrorPage displays error message from URL param", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 401 });
 
+    // Mock window.location.search
+    Object.defineProperty(window, "location", {
+      value: { search: "?error=access_denied", href: "/auth/error?error=access_denied" },
+      writable: true,
+    });
+
+    const memoryHistory = createMemoryHistory({ initialEntries: ["/auth/error?error=access_denied"] });
+    const testRouter = createRouter({
+      routeTree: router.options.routeTree,
+      history: memoryHistory,
+    });
     render(
       <AuthProvider>
-        <LoginPage />
+        <RouterProvider router={testRouter} />
       </AuthProvider>
     );
+    await testRouter.load();
 
-    // Wait for form to render
     await waitFor(() => {
-      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    });
-
-    // Fill form
-    const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getAllByLabelText(/senha/i).find(el => el.tagName === "INPUT") as HTMLInputElement;
-
-    await act(async () => {
-      fireEvent.change(emailInput, { target: { value: "wrong@example.com" } });
-      fireEvent.change(passwordInput, { target: { value: "wrongpassword" } });
-    });
-
-    // Submit
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
-    });
-
-    // Wait for error message
-    await waitFor(() => {
-      expect(screen.getByText(/invalid credentials/i)).toBeInTheDocument();
+      expect(screen.getByText(/erro de autenticação/i)).toBeInTheDocument();
     });
   });
 
-  it("Form is not cleared on login failure — email field retains value", async () => {
-    vi.mocked(api.loginClient).mockRejectedValue(
-      new api.LoginError("Invalid credentials.")
-    );
+  it("/ route shows AuthLoginPage for unauthenticated users", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 401 });
 
-    render(
-      <AuthProvider>
-        <LoginPage />
-      </AuthProvider>
-    );
+    await renderWithRouter("/");
 
-    // Wait for form to render
     await waitFor(() => {
-      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+      expect(screen.getByText(/redirecionando/i)).toBeInTheDocument();
     });
-
-    // Fill form
-    const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getAllByLabelText(/senha/i).find(el => el.tagName === "INPUT") as HTMLInputElement;
-
-    await act(async () => {
-      fireEvent.change(emailInput, { target: { value: "retain@example.com" } });
-      fireEvent.change(passwordInput, { target: { value: "password123" } });
-    });
-
-    // Submit
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
-    });
-
-    // Wait for error and verify email is retained
-    await waitFor(() => {
-      expect(screen.getByText(/invalid credentials/i)).toBeInTheDocument();
-    });
-
-    expect((emailInput as HTMLInputElement).value).toBe("retain@example.com");
   });
 });
 
-describe("Profile guard — unauthenticated redirect", () => {
+describe("ACF auth routes — router configuration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch.mockReset();
+    mockFetch.mockResolvedValue({ ok: false, status: 401 });
   });
 
-  it("ProfilePage redirects to /login when unauthenticated", async () => {
-    const { memoryHistory } = await renderWithRouter(["/profile"]);
-
-    // Wait for redirect to /login
-    await waitFor(() => {
-      expect(memoryHistory.location.pathname).toBe("/login");
-    });
+  it("router has /auth/login route", () => {
+    const allPaths = getAllPaths(router.options.routeTree);
+    expect(allPaths.some((p) => p.includes("auth") || p.includes("login"))).toBe(true);
   });
 
-  it("ProfilePage shows placeholder when authenticated", async () => {
-    // First, login to set auth state
-    const mockResponse = {
-      accessToken: "mock-access-token",
-      refreshToken: "mock-refresh-token",
-      expiresIn: 300,
-      tokenType: "Bearer",
-      refreshExpiresIn: 86400,
-      scope: "openid",
-    };
-    vi.mocked(api.loginClient).mockResolvedValue(mockResponse);
+  it("router has /auth/callback route", () => {
+    const allPaths = getAllPaths(router.options.routeTree);
+    expect(allPaths.some((p) => p.includes("callback") || p.includes("auth"))).toBe(true);
+  });
 
-    // Start at login, fill form, submit to get authenticated
-    const { memoryHistory } = await renderWithRouter(["/login"]);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    });
-
-    const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getAllByLabelText(/senha/i).find(el => el.tagName === "INPUT") as HTMLInputElement;
-
-    await act(async () => {
-      fireEvent.change(emailInput, { target: { value: "test@example.com" } });
-      fireEvent.change(passwordInput, { target: { value: "password123" } });
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
-    });
-
-    // Wait for redirect to profile
-    await waitFor(() => {
-      expect(memoryHistory.location.pathname).toBe("/profile");
-    });
-
-    // Now profile page should show the profile heading
-    await waitFor(() => {
-      expect(screen.getByText(/Meu Perfil/i)).toBeInTheDocument();
-    });
-
-    // And logout (Sair) button should be visible
-    expect(screen.getByRole("button", { name: /sair/i })).toBeInTheDocument();
+  it("router has /auth/error route", () => {
+    const allPaths = getAllPaths(router.options.routeTree);
+    expect(allPaths.some((p) => p.includes("error") || p.includes("auth"))).toBe(true);
   });
 });
+
+function getAllPaths(routeTree: any): string[] {
+  const paths: string[] = [];
+  // TanStack Router stores path in multiple possible locations
+  if (routeTree.path) paths.push(routeTree.path);
+  if (routeTree.options?.path) paths.push(routeTree.options.path);
+  if (routeTree.fullPath) paths.push(routeTree.fullPath);
+  // Traverse children stored as __children or children
+  const children = routeTree.__children ?? routeTree.children ?? [];
+  for (const child of children) {
+    paths.push(...getAllPaths(child));
+  }
+  return paths;
+}

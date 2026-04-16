@@ -6,7 +6,6 @@ import * as api from "@/lib/api";
 // Mock API
 vi.mock("@/lib/api", () => ({
   registerClient: vi.fn(),
-  loginClient: vi.fn(),
   RegistrationValidationError: class extends Error {
     constructor(public errors: Record<string, string[]>) {
       super("Validation failed");
@@ -22,20 +21,15 @@ vi.mock("@/lib/api", () => ({
   ApiError: class extends Error {
     constructor(message: string) { super(message); this.name = "ApiError"; }
   },
-  LoginError: class extends Error {
-    constructor(message: string) { super(message); this.name = "LoginError"; }
-  },
 }));
 
-// Mock auth context
+// Mock auth context — ACF version
 const mockLogin = vi.fn();
 vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({
     login: mockLogin,
-    auth: { isAuthenticated: false, isLoading: false },
+    auth: { isAuthenticated: false, isLoading: false, userName: null, email: null },
     logout: vi.fn(),
-    refreshIfNeeded: vi.fn(),
-    getAccessToken: () => null,
   }),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
@@ -174,6 +168,6 @@ describe("RegistrationForm (shadcn redesign)", () => {
 
     const loginLink = screen.getByRole("link", { name: /Fazer login/ });
     expect(loginLink).toBeInTheDocument();
-    expect(loginLink).toHaveAttribute("href", "/login");
+    expect(loginLink).toHaveAttribute("href", "/auth/login");
   });
 });

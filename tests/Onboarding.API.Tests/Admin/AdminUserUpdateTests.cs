@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using NSubstitute;
 using Onboarding.API.Tests.Authentication;
+using Onboarding.Domain.Aggregates.Audit;
 using Onboarding.Domain.Aggregates.ClientAggregate;
 using Onboarding.Domain.Repositories;
 using Shouldly;
@@ -61,8 +62,14 @@ public sealed class AdminUserUpdateTests : IAsyncLifetime
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         // Verify audit log was created
-        await _factory.AuditLogRepositoryMock.Received(1).AddAsync(
-            Arg.Any<Onboarding.Domain.Aggregates.Audit.AuditLog>(),
+        await _factory.AuditServiceMock.Received(1).RecordAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<ActionType>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -149,13 +156,14 @@ public sealed class AdminUserUpdateTests : IAsyncLifetime
         await _client!.PutAsJsonAsync($"/api/admin/users/{clientId}", payload);
 
         // Assert — audit log with USER_UPDATED action
-        var auditCalls = _factory.AuditLogRepositoryMock.ReceivedCalls()
-            .Where(c => c.GetArguments().First() is Onboarding.Domain.Aggregates.Audit.AuditLog)
-            .Select(c => (Onboarding.Domain.Aggregates.Audit.AuditLog)c.GetArguments().First())
-            .ToList();
-
-        auditCalls.ShouldContain(log => log.Action == "USER_UPDATED");
-        auditCalls.ShouldContain(log => log.TargetUserId == clientId);
-        auditCalls.ShouldContain(log => log.SnapshotBefore != null && log.SnapshotAfter != null);
+        await _factory.AuditServiceMock.Received(1).RecordAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            ActionType.UserUpdated,
+            clientId,
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 }

@@ -34,7 +34,6 @@ public static class InfrastructureServiceExtensions
 
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IAdminRepository, AdminRepository>();
-        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
         services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
         services.AddScoped<IAuditService, AuditService>();
 

@@ -25,7 +25,7 @@ namespace Onboarding.API.Tests.Admin;
 internal sealed class AdminTestFactory : WebApplicationFactory<Program>
 {
     public IAdminRepository AdminRepositoryMock { get; } = Substitute.For<IAdminRepository>();
-    public IAuditLogRepository AuditLogRepositoryMock { get; } = Substitute.For<IAuditLogRepository>();
+    public IAuditService AuditServiceMock { get; } = Substitute.For<IAuditService>();
     public IClientRepository ClientRepositoryMock { get; } = Substitute.For<IClientRepository>();
     public IKeycloakUserService KeycloakUserServiceMock { get; } = Substitute.For<IKeycloakUserService>();
     public IPasswordResetTokenRepository TokenRepositoryMock { get; } = Substitute.For<IPasswordResetTokenRepository>();
@@ -60,7 +60,7 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
 
             // Replace all infrastructure with mocks
             services.AddScoped<IAdminRepository>(_ => AdminRepositoryMock);
-            services.AddScoped<IAuditLogRepository>(_ => AuditLogRepositoryMock);
+            services.AddScoped<IAuditService>(_ => AuditServiceMock);
             services.AddScoped<IClientRepository>(_ => ClientRepositoryMock);
             services.AddScoped<IKeycloakUserService>(_ => KeycloakUserServiceMock);
             services.AddScoped<IPasswordResetTokenRepository>(_ => TokenRepositoryMock);

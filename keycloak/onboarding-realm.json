@@ -85,7 +85,8 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
-        "client.session.max.lifespan": "28800"
+        "client.session.max.lifespan": "28800",
+        "login_theme": "onboarding-backoffice"
       }
     },
     {
@@ -113,7 +114,8 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
-        "client.session.max.lifespan": "28800"
+        "client.session.max.lifespan": "28800",
+        "login_theme": "onboarding-client"
       }
     }
   ],

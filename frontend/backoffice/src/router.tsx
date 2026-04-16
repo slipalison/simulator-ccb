@@ -6,7 +6,9 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import { NotFoundPage } from "@/components/pages/NotFoundPage";
-import { AdminLoginPage } from "@/components/pages/AdminLoginPage";
+import { AuthLoginPage } from "@/components/pages/AuthLoginPage";
+import { AuthCallbackPage } from "@/components/pages/AuthCallbackPage";
+import { AuthErrorPage } from "@/components/pages/AuthErrorPage";
 import { AdminAccessDeniedPage } from "@/components/pages/AdminAccessDeniedPage";
 import { AdminUsersPage } from "@/components/pages/AdminUsersPage";
 import { AdminUserDetailPage } from "@/components/pages/AdminUserDetailPage";
@@ -24,18 +26,32 @@ const rootRoute = createRootRoute({
   notFoundComponent: NotFoundPage,
 });
 
-// Rota index: / -> redirect para /admin/login
+// Rota index: / -> redirect para /auth/login
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: IndexRoute,
 });
 
-// Rota admin login: /admin/login
-const adminLoginRoute = createRoute({
+// Auth login (redirect-only): /auth/login
+const authLoginRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/admin/login",
-  component: AdminLoginPage,
+  path: "/auth/login",
+  component: AuthLoginPage,
+});
+
+// Auth callback: /auth/callback
+const authCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/callback",
+  component: AuthCallbackPage,
+});
+
+// Auth error: /auth/error
+const authErrorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/error",
+  component: AuthErrorPage,
 });
 
 // Rota admin access denied: /admin/access-denied
@@ -128,10 +144,12 @@ const adminAdministratorsRoute = createRoute({
   ),
 });
 
-// Arvore de rotas — APENAS rotas admin (sem rotas publicas)
+// Arvore de rotas
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  adminLoginRoute,
+  authLoginRoute,
+  authCallbackRoute,
+  authErrorRoute,
   adminAccessDeniedRoute,
   adminUsersRoute,
   adminUserEditRoute,
@@ -153,14 +171,14 @@ declare module "@tanstack/react-router" {
 }
 
 // ---------------------------------------------------------------------------
-// IndexRoute: redirects to /admin/login
+// IndexRoute: redirects to /auth/login
 // ---------------------------------------------------------------------------
 
 function IndexRoute() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    navigate({ to: "/admin/login" as any, replace: true });
+    navigate({ to: "/auth/login" as any, replace: true });
   }, [navigate]);
 
   return null;

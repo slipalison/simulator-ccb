@@ -59,6 +59,34 @@
       "protocol": "openid-connect",
       "defaultClientScopes": [],
       "optionalClientScopes": []
+    },
+    {
+      "clientId": "onboarding-backoffice",
+      "name": "Onboarding Backoffice (Confidential, ACF+PKCE)",
+      "enabled": true,
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "authorizationServicesEnabled": false,
+      "secret": "backoffice-secret-dev-change-in-prod-2026",
+      "redirectUris": [
+        "http://localhost:5174/auth/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:5174"
+      ],
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email"],
+      "optionalClientScopes": ["offline_access"],
+      "frontchannelLogout": true,
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "access.token.lifespan": "300",
+        "client.session.max.lifespan": "28800"
+      }
     }
   ],
 

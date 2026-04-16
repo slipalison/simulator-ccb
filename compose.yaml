@@ -123,9 +123,15 @@ services:
       - ./frontend/backoffice/public:/app/public
       - ./frontend/backoffice/server.ts:/app/server.ts
       - ./frontend/backoffice/app.config.ts:/app/app.config.ts
+      - ./frontend/backoffice/auth-server.ts:/app/auth-server.ts:ro
     environment:
       VITE_API_URL: http://localhost:8080
       VITE_KEYCLOAK_URL: http://localhost:8180
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: onboarding
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_BACKOFFICE_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}
+      FRONTEND_URL: http://localhost:5174
     ports:
       - "127.0.0.1:5174:5174"
     depends_on:

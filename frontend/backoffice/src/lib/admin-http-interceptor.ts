@@ -27,18 +27,9 @@ export async function adminFetch(
   const response = await fetch(url, fetchOptions);
 
   if (response.status === 401) {
-    // Session expired — try to restore/refresh
-    const { getAdminMe } = await import("./admin-api");
-
-    try {
-      await getAdminMe();
-      // Session restored — retry original request
-      return fetch(url, fetchOptions);
-    } catch {
-      // Refresh failed — redirect to login
-      window.location.href = "/admin/login?expired=true";
-      throw new Error("Session expired");
-    }
+    // Session expired — redirect to auth login
+    window.location.href = "/auth/login";
+    throw new Error("Session expired");
   }
 
   return response;

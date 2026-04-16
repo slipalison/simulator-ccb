@@ -1,10 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
-  loginAdmin,
-  logoutAdmin,
   getAdminMe,
   getAdministrators,
-  AdminLoginError,
+  deleteUser,
   AdminApiError,
   type AdminUserDto,
 } from "@/lib/admin-api";
@@ -23,107 +21,25 @@ describe("admin-api.ts", () => {
   });
 
   // ---------------------------------------------------------------------------
-  // loginAdmin
-  // ---------------------------------------------------------------------------
-
-  describe("loginAdmin", () => {
-    it("calls POST /api/admin/auth/login with credentials: include", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            adminName: "Admin User",
-            adminEmail: "admin@onboarding.local",
-          }),
-      });
-
-      const result = await loginAdmin("admin@onboarding.local", "SecureP@ss123");
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/admin/auth/login",
-        expect.objectContaining({
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: "admin@onboarding.local",
-            password: "SecureP@ss123",
-          }),
-          credentials: "include",
-        })
-      );
-      expect(result).toEqual({
-        adminName: "Admin User",
-        adminEmail: "admin@onboarding.local",
-      });
-    });
-
-    it("throws AdminLoginError on 401", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 401 });
-
-      await expect(
-        loginAdmin("wrong@bad.com", "wrong")
-      ).rejects.toThrow(AdminLoginError);
-    });
-
-    it("throws AdminApiError on other failures", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({ detail: "Internal error" }),
-      });
-
-      await expect(
-        loginAdmin("admin@onboarding.local", "pass")
-      ).rejects.toThrow(AdminApiError);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
-  // logoutAdmin
-  // ---------------------------------------------------------------------------
-
-  describe("logoutAdmin", () => {
-    it("calls POST /api/admin/auth/logout with credentials: include", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true });
-
-      await logoutAdmin();
-
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/admin/auth/logout",
-        expect.objectContaining({
-          method: "POST",
-          credentials: "include",
-        })
-      );
-    });
-
-    it("throws AdminApiError on failure", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
-
-      await expect(logoutAdmin()).rejects.toThrow(AdminApiError);
-    });
-  });
-
-  // ---------------------------------------------------------------------------
   // getAdminMe
   // ---------------------------------------------------------------------------
 
   describe("getAdminMe", () => {
-    it("calls GET /api/admin/auth/me with credentials: include", async () => {
+    it("calls GET /auth/me with credentials: include", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () =>
           Promise.resolve({
             adminName: "Test Admin",
-            adminEmail: "test@onboarding.local",
+            email: "test@onboarding.local",
+            isAuthenticated: true,
           }),
       });
 
       const result = await getAdminMe();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "/api/admin/auth/me",
+        "/auth/me",
         expect.objectContaining({
           method: "GET",
           credentials: "include",
@@ -131,7 +47,8 @@ describe("admin-api.ts", () => {
       );
       expect(result).toEqual({
         adminName: "Test Admin",
-        adminEmail: "test@onboarding.local",
+        email: "test@onboarding.local",
+        isAuthenticated: true,
       });
     });
 
@@ -203,6 +120,48 @@ describe("admin-api.ts", () => {
       const result = await getAdministrators();
 
       expect(result).toHaveLength(0);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // deleteUser
+  // ---------------------------------------------------------------------------
+
+  describe("deleteUser", () => {
+    it("sends DELETE with confirmEmail body and credentials: include", async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, status: 204 });
+
+      await deleteUser("user-123", "target@example.com");
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/admin/users/user-123",
+        expect.objectContaining({
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ confirmEmail: "target@example.com" }),
+          credentials: "include",
+        })
+      );
+    });
+
+    it("throws AdminApiError with 400 when confirmEmail is invalid", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: () => Promise.resolve({ detail: "Email de confirmacao invalido." }),
+      });
+
+      await expect(deleteUser("user-123", "wrong@email.com")).rejects.toThrow(
+        AdminApiError
+      );
+    });
+
+    it("throws AdminApiError with 404 when user not found", async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, status: 404 });
+
+      await expect(deleteUser("nonexistent", "x@y.com")).rejects.toThrow(
+        AdminApiError
+      );
     });
   });
 });

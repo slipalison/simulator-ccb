@@ -53,7 +53,20 @@ function AdminSidebar() {
         >
           Usuarios
         </a>
-        {/* Future: Audit Log, Settings */}
+        <a
+          href="/admin/administrators"
+          className="block py-2 px-3 text-sm rounded-md hover:bg-accent transition-colors"
+          data-testid="sidebar-administrators-link"
+        >
+          Administradores
+        </a>
+        <a
+          href="/admin/audit-log"
+          className="block py-2 px-3 text-sm rounded-md hover:bg-accent transition-colors"
+          data-testid="sidebar-audit-log-link"
+        >
+          Audit Log
+        </a>
       </nav>
     </aside>
   );

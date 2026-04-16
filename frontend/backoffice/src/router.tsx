@@ -14,6 +14,7 @@ import { AdminUserEditPage } from "@/components/pages/AdminUserEditPage";
 import { CreateAdminPage } from "@/components/pages/CreateAdminPage";
 import { PasswordChangePage } from "@/components/pages/PasswordChangePage";
 import { AuditLogPage } from "@/components/pages/AuditLogPage";
+import { AdminAdministratorsPage } from "@/components/pages/AdminAdministratorsPage";
 import { AdminLayout } from "@/components/templates/AdminLayout";
 import { useEffect } from "react";
 
@@ -116,6 +117,17 @@ const adminAuditLogRoute = createRoute({
   ),
 });
 
+// Rota admin administrators: /admin/administrators
+const adminAdministratorsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/administrators",
+  component: () => (
+    <AdminLayout>
+      <AdminAdministratorsPage />
+    </AdminLayout>
+  ),
+});
+
 // Arvore de rotas — APENAS rotas admin (sem rotas publicas)
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -127,6 +139,7 @@ const routeTree = rootRoute.addChildren([
   adminCreateRoute,
   adminPasswordChangeRoute,
   adminAuditLogRoute,
+  adminAdministratorsRoute,
 ]);
 
 // Instancia do router

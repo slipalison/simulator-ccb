@@ -22,7 +22,7 @@ See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
 **Current focus:** Phase 30 — audit-log-admin-backend
-**Last activity:** 2026-04-17 - Completed quick task 260416-vq1: fix keycloak hostname in frontend ACF redirect
+**Last activity:** 2026-04-17 - Completed quick task 260417-eu6: fix backoffice ACF token exchange — remove offline_access from requested scope
 
 ## Current Position
 
@@ -111,6 +111,7 @@ Recent decisions affecting current work:
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260416-vq1 | fix keycloak hostname in frontend ACF redirect — use localhost instead of docker internal hostname | 2026-04-17 | f3005e5 | [260416-vq1-fix-keycloak-hostname-in-frontend-acf-re](./quick/260416-vq1-fix-keycloak-hostname-in-frontend-acf-re/) |
+| 260417-eu6 | fix backoffice ACF token exchange — remove offline_access from requested scope | 2026-04-17 | 54b3995 | [260417-eu6-fix-backoffice-acf-token-exchange-remove](./quick/260417-eu6-fix-backoffice-acf-token-exchange-remove/) |
 
 ### Blockers/Concerns
 

@@ -22,7 +22,7 @@ See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
 **Current focus:** Phase 30 — audit-log-admin-backend
-**Last activity:** 2026-04-17
+**Last activity:** 2026-04-17 - Completed quick task 260416-vq1: fix keycloak hostname in frontend ACF redirect
 
 ## Current Position
 
@@ -105,6 +105,12 @@ Recent decisions affecting current work:
 ### Roadmap Evolution
 
 - Phase 33 adicionada: PKCE + Custom Keycloak Themes para Backoffice e Client (2026-04-15) — ROPC descartado por impossibilidade de 2FA; ACF+PKCE com custom themes substitui abordagem anterior
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260416-vq1 | fix keycloak hostname in frontend ACF redirect — use localhost instead of docker internal hostname | 2026-04-17 | f3005e5 | [260416-vq1-fix-keycloak-hostname-in-frontend-acf-re](./quick/260416-vq1-fix-keycloak-hostname-in-frontend-acf-re/) |
 
 ### Blockers/Concerns
 

@@ -860,7 +860,7 @@ keycloak/themes/
   5. Logout em qualquer app limpa os cookies httpOnly E invoca o OIDC logout endpoint do Keycloak (`/protocol/openid-connect/logout?id_token_hint=...`) — a sessão SSO do Keycloak é encerrada
   6. O realm JSON (`keycloak/onboarding-realm.json`) referencia os themes `onboarding-client` e `onboarding-backoffice` nos respectivos clients — o ambiente sobe via `docker compose up` sem configuração manual adicional
 
-**Plans:** TBD
+**Plans:** 1/0 plans complete
 **UI hint**: yes (Custom Keycloak Themes são a entrega central desta fase)
 
 ---
@@ -873,7 +873,7 @@ keycloak/themes/
 | 30. Audit Log Backend + Admin Management Backend | 4/4 | Complete    | 2026-04-16 |
 | 31. Backoffice Auth Code Flow UI | 0/TBD | 📋 Planned | — |
 | 32. Backoffice Admin Management UI + Audit Log UI | 0/TBD | 📋 Planned | — |
-| 33. PKCE + Custom Keycloak Themes (Backoffice + Client) | 0/TBD | 📋 Planned | — |
+| 33. PKCE + Custom Keycloak Themes (Backoffice + Client) | 1/0 | Complete    | 2026-04-17 |
 
 ---
 

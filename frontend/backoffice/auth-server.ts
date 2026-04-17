@@ -20,6 +20,7 @@ const router = createRouter();
 
 // ── Config ──────────────────────────────────────────────────────────────
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL || "http://keycloak:8080";
+const KEYCLOAK_PUBLIC_URL = process.env.KEYCLOAK_PUBLIC_URL || "http://localhost:8180";
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "onboarding";
 const CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || "onboarding-backoffice";
 const CLIENT_SECRET = process.env.KEYCLOAK_CLIENT_SECRET || "";
@@ -51,7 +52,7 @@ router.get(
     });
 
     const authUrl = buildAuthorizationUrl({
-      keycloakUrl: KEYCLOAK_URL,
+      keycloakUrl: KEYCLOAK_PUBLIC_URL,
       realm: KEYCLOAK_REALM,
       clientId: CLIENT_ID,
       redirectUri: REDIRECT_URI,
@@ -145,7 +146,7 @@ router.get(
     deleteCookie(event, "backoffice_access_token", { path: "/" });
     deleteCookie(event, "backoffice_refresh_token", { path: "/" });
 
-    const logoutUrl = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/logout`;
+    const logoutUrl = `${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/logout`;
     const postLogoutRedirectUri = `${FRONTEND_URL}/auth/login`;
     const fullUrl = `${logoutUrl}?post_logout_redirect_uri=${encodeURIComponent(postLogoutRedirectUri)}&client_id=${encodeURIComponent(CLIENT_ID)}`;
 

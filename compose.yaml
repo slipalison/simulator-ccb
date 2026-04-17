@@ -109,6 +109,7 @@ services:
       VITE_API_URL: http://localhost:8080
       VITE_KEYCLOAK_URL: http://localhost:8180
       KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:8180
       KEYCLOAK_REALM: onboarding
       KEYCLOAK_CLIENT_ACF_CLIENT_ID: ${KEYCLOAK_CLIENT_ACF_CLIENT_ID}
       KEYCLOAK_CLIENT_ACF_CLIENT_SECRET: ${KEYCLOAK_CLIENT_ACF_CLIENT_SECRET}
@@ -133,6 +134,7 @@ services:
       VITE_API_URL: http://localhost:8080
       VITE_KEYCLOAK_URL: http://localhost:8180
       KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:8180
       KEYCLOAK_REALM: onboarding
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_BACKOFFICE_CLIENT_ID}
       KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}

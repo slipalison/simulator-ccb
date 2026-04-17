@@ -27,59 +27,34 @@ export class AdminApiError extends Error {
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/admin/auth/login
+// GET /auth/logout — redirect to Keycloak OIDC logout (clears cookies)
 // ---------------------------------------------------------------------------
 
-export async function loginAdmin(
-  email: string,
-  password: string
-): Promise<AdminSessionResponse> {
-  const response = await fetch("/api/admin/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-    credentials: "include",
-  });
-
-  if (response.ok) {
-    return response.json() as Promise<AdminSessionResponse>;
-  }
-
-  if (response.status === 401) {
-    throw new AdminLoginError("Credenciais invalidas.");
-  }
-
-  const body = await response.json().catch(() => ({}));
-  throw new AdminApiError(body.detail || "Login falhou.");
+export function logoutAdmin(): void {
+  window.location.href = "/auth/logout";
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/admin/auth/logout
-// ---------------------------------------------------------------------------
-
-export async function logoutAdmin(): Promise<void> {
-  const response = await fetch("/api/admin/auth/logout", {
-    method: "POST",
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    throw new AdminApiError("Logout falhou.");
-  }
-}
-
-// ---------------------------------------------------------------------------
-// GET /api/admin/auth/me
+// GET /auth/me — returns session info from httpOnly cookie (Vinxi server)
 // ---------------------------------------------------------------------------
 
 export async function getAdminMe(): Promise<AdminSessionResponse> {
-  const response = await fetch("/api/admin/auth/me", {
+  const response = await fetch("/auth/me", {
     method: "GET",
     credentials: "include",
   });
 
   if (response.ok) {
-    return response.json() as Promise<AdminSessionResponse>;
+    const data = (await response.json()) as {
+      isAuthenticated: boolean;
+      adminName: string;
+      email: string;
+      sub: string;
+    };
+    if (!data.isAuthenticated) {
+      throw new AdminApiError("Session invalid");
+    }
+    return { adminName: data.adminName, adminEmail: data.email };
   }
 
   throw new AdminApiError("Session invalid");

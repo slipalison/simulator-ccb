@@ -8,6 +8,7 @@ import {
 import { NotFoundPage } from "@/components/pages/NotFoundPage";
 import { AdminLoginPage } from "@/components/pages/AdminLoginPage";
 import { AdminAccessDeniedPage } from "@/components/pages/AdminAccessDeniedPage";
+import { AuthErrorPage } from "@/components/pages/AuthErrorPage";
 import { AdminUsersPage } from "@/components/pages/AdminUsersPage";
 import { AdminUserDetailPage } from "@/components/pages/AdminUserDetailPage";
 import { AdminUserEditPage } from "@/components/pages/AdminUserEditPage";
@@ -43,6 +44,13 @@ const adminAccessDeniedRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/access-denied",
   component: AdminAccessDeniedPage,
+});
+
+// Rota auth error: /auth/error (exibida pelo SPA quando callback retorna erro)
+const authErrorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/error",
+  component: AuthErrorPage,
 });
 
 // Rota admin users: /admin/users
@@ -133,6 +141,7 @@ const routeTree = rootRoute.addChildren([
   indexRoute,
   adminLoginRoute,
   adminAccessDeniedRoute,
+  authErrorRoute,
   adminUsersRoute,
   adminUserEditRoute,
   adminUserDetailRoute,

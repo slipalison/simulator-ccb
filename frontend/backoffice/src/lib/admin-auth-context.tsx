@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { loginAdmin, logoutAdmin, getAdminMe } from "@/lib/admin-api";
+import { logoutAdmin, getAdminMe } from "@/lib/admin-api";
 
 // ---------------------------------------------------------------------------
 // Context definition
@@ -12,8 +12,7 @@ interface AdminAuthValue {
     adminName: string | null;
     adminEmail: string | null;
   };
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => void;
   restoreSession: () => Promise<boolean>;
 }
 
@@ -47,27 +46,11 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     tryRestore();
   }, []);
 
-  async function login(email: string, password: string): Promise<void> {
-    setIsLoading(true);
-    try {
-      const session = await loginAdmin(email, password);
-      setAdminName(session.adminName);
-      setAdminEmail(session.adminEmail);
-      setIsAuthenticated(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function logout(): Promise<void> {
-    try {
-      await logoutAdmin();
-    } catch {
-      // Best effort — clear local state regardless
-    }
+  function logout(): void {
     setAdminName(null);
     setAdminEmail(null);
     setIsAuthenticated(false);
+    logoutAdmin();
   }
 
   async function restoreSession(): Promise<boolean> {
@@ -89,7 +72,6 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     <AdminAuthContext.Provider
       value={{
         admin: { isAuthenticated, isLoading, adminName, adminEmail },
-        login,
         logout,
         restoreSession,
       }}

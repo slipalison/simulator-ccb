@@ -18,7 +18,7 @@ import {
 const router = createRouter();
 
 // ── Config ──────────────────────────────────────────────────────────────
-const KEYCLOAK_URL = process.env.KEYCLOAK_URL || "http://keycloak:8080";
+const KEYCLOAK_URL = process.env.KEYCLOAK_URL || "http://localhost:8180";
 const KEYCLOAK_PUBLIC_URL = process.env.KEYCLOAK_PUBLIC_URL || "http://localhost:8180";
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "onboarding";
 const CLIENT_ID = process.env.KEYCLOAK_CLIENT_ACF_CLIENT_ID || "onboarding-client-acf";

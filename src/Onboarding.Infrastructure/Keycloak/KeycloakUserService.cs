@@ -101,6 +101,10 @@ public sealed class KeycloakUserService : IKeycloakUserService
             Enabled = true,
             EmailVerified = true,
             RequiredActions = ["UPDATE_PASSWORD"],
+            Attributes = new Dictionary<string, ICollection<string>>
+            {
+                ["isFirstLogin"] = new[] { "true" }
+            },
         };
 
         try
@@ -299,6 +303,26 @@ public sealed class KeycloakUserService : IKeycloakUserService
             throw new InvalidOperationException(
                 $"Failed to assign admin role to user '{userId}': {body}");
         }
+    }
+
+    public async Task ClearFirstLoginFlagAsync(string userId, CancellationToken ct = default)
+    {
+        var user = await _keycloakUserClient.GetUserAsync(_realm, userId, cancellationToken: ct)
+            ?? throw new InvalidOperationException($"Keycloak user '{userId}' not found.");
+
+        var attributes = user.Attributes;
+
+        // Idempotency: if attribute is absent or already "false" → no-op
+        if (attributes is null
+            || !attributes.TryGetValue("isFirstLogin", out var current)
+            || current.FirstOrDefault() != "true")
+        {
+            return;
+        }
+
+        attributes["isFirstLogin"] = new[] { "false" };
+        user.Attributes = attributes;
+        await _keycloakUserClient.UpdateUserAsync(_realm, userId, user, ct);
     }
 
     public async Task<IReadOnlyList<AdminUserDto>> GetUsersByRoleAsync(

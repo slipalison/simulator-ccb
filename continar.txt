@@ -1,0 +1,7 @@
+ ◼ Task 1: Backend isFirstLogin + endpoint
+  ◻ Task 2: Keycloak mapper + Vinxi callback
+  ◻ Create SUMMARY.md for quick task
+
+
+  claude --dangerously-skip-permissions --resume 03480c7d-4fb3-4add-9ac7-187ae3475207
+

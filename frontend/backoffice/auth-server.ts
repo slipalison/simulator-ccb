@@ -127,6 +127,50 @@ router.get(
       deleteCookie(event, "pkce_code_verifier", { path: "/auth" });
       deleteCookie(event, "pkce_state", { path: "/auth" });
 
+      // Detect first login via isFirstLogin claim in access token
+      let isFirstLogin = false;
+      try {
+        const parts = tokens.accessToken.split(".");
+        if (parts.length >= 2) {
+          const payload = JSON.parse(
+            Buffer.from(parts[1], "base64").toString("utf-8")
+          ) as Record<string, unknown>;
+          isFirstLogin =
+            payload.isFirstLogin === "true" || payload.isFirstLogin === true;
+        }
+      } catch {
+        // Token invalid/undecodable → treat as non-first-login (normal flow)
+        isFirstLogin = false;
+      }
+
+      if (isFirstLogin) {
+        // Best-effort: call backend to clear the flag.
+        // Even if it fails, we proceed with cookie cleanup + redirect to /admin/login
+        // (self-healing: next login repeats the cycle if the flag wasn't cleared).
+        const backendUrl = "http://api:8080";
+        try {
+          await fetch(`${backendUrl}/api/admin/me/complete-first-login`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${tokens.accessToken}`,
+              "Content-Type": "application/json",
+            },
+          });
+        } catch (err) {
+          // Log only — don't block the redirect
+          console.error(
+            "[auth/callback] Failed to clear isFirstLogin flag:",
+            err
+          );
+        }
+
+        // Clear session cookies to force re-login with the new password
+        deleteCookie(event, "backoffice_access_token", { path: "/" });
+        deleteCookie(event, "backoffice_refresh_token", { path: "/" });
+
+        return sendRedirect(event, "/admin/login", 302);
+      }
+
       return sendRedirect(event, "/admin/users", 302);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Token exchange failed";

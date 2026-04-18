@@ -90,6 +90,12 @@ public interface IKeycloakUserService
     /// HasTemporaryPassword deriva da presenca de "UPDATE_PASSWORD" nos requiredActions.
     /// </summary>
     Task<IReadOnlyList<AdminUserDto>> GetUsersByRoleAsync(string roleName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Clears the isFirstLogin user attribute in Keycloak (sets to "false"). Idempotent:
+    /// if the attribute is absent or already "false", the method is a no-op.
+    /// </summary>
+    Task ClearFirstLoginFlagAsync(string userId, CancellationToken ct = default);
 }
 
 /// <summary>

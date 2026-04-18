@@ -82,6 +82,22 @@
       "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email"],
       "optionalClientScopes": ["offline_access"],
       "frontchannelLogout": true,
+      "protocolMappers": [
+        {
+          "name": "isFirstLogin",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "isFirstLogin",
+            "claim.name": "isFirstLogin",
+            "jsonType.label": "String",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",

@@ -406,6 +406,24 @@ public sealed class AdminUserController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>POST /api/admin/me/complete-first-login — Clears isFirstLogin flag after admin finished first login + password change.</summary>
+    [HttpPost("me/complete-first-login")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> CompleteFirstLogin(CancellationToken ct = default)
+    {
+        var adminEmail = HttpContext.Items["AdminEmail"] as string
+            ?? User.FindFirst("email")?.Value
+            ?? User.FindFirst("preferred_username")?.Value
+            ?? throw new InvalidOperationException("Missing admin email context.");
+
+        var keycloakUser = await _keycloakUserService.GetUserByEmailAsync(adminEmail, ct)
+            ?? throw new InvalidOperationException($"Keycloak user not found for email: {adminEmail}");
+
+        await _keycloakUserService.ClearFirstLoginFlagAsync(keycloakUser.Id, ct);
+        _logger.LogInformation("Admin {AdminEmail} completed first login; isFirstLogin flag cleared.", adminEmail);
+        return NoContent();
+    }
+
     /// <summary>GET /api/admin/audit-log — Paginated audit log with filters.</summary>
     [HttpGet("audit-log")]
     [ProducesResponseType(typeof(PaginatedResult<AdminAuditLogDto>), StatusCodes.Status200OK)]

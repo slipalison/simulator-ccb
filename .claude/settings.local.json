@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -f __TRACKED_VAR__/.claude/cache/gsd-update-check.json ./.claude/cache/gsd-update-check.json)",
+      "Bash([ -f \"$HOME/.claude/get-shit-done/gsd-local-patches/backup-meta.json\" ])"
+    ]
+  }
+}

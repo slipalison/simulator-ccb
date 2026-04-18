@@ -22,7 +22,7 @@ See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
 **Current focus:** Phase 30 — audit-log-admin-backend
-**Last activity:** 2026-04-18 - Completed quick task 260418-d25: fix admin API 401 by reading backoffice_access_token cookie + remove ROPC legacy controller
+**Last activity:** 2026-04-18 - Completed quick task 260418-dwi: force re-login after first password change (isFirstLogin flag + callback detection)
 
 ## Current Position
 
@@ -113,6 +113,7 @@ Recent decisions affecting current work:
 | 260416-vq1 | fix keycloak hostname in frontend ACF redirect — use localhost instead of docker internal hostname | 2026-04-17 | f3005e5 | [260416-vq1-fix-keycloak-hostname-in-frontend-acf-re](./quick/260416-vq1-fix-keycloak-hostname-in-frontend-acf-re/) |
 | 260417-eu6 | fix backoffice ACF token exchange — remove offline_access from requested scope | 2026-04-17 | 54b3995 | [260417-eu6-fix-backoffice-acf-token-exchange-remove](./quick/260417-eu6-fix-backoffice-acf-token-exchange-remove/) |
 | 260418-d25 | fix admin API 401 by reading backoffice_access_token cookie + remove ROPC legacy controller | 2026-04-18 | f771642 | [260418-d25-fix-admin-api-401-by-reading-backoffice-](./quick/260418-d25-fix-admin-api-401-by-reading-backoffice-/) |
+| 260418-dwi | force re-login after first password change (isFirstLogin flag + callback detection) | 2026-04-18 | fa4ef9b | [260418-dwi-force-re-login-after-first-password-chan](./quick/260418-dwi-force-re-login-after-first-password-chan/) |
 
 ### Blockers/Concerns
 

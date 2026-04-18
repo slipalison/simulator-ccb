@@ -41,10 +41,6 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IValidator<ForgotPasswordCommand>, ForgotPasswordCommandValidator>();
         services.AddScoped<IValidator<ResetPasswordCommand>, ResetPasswordCommandValidator>();
 
-        // Admin login command (Phase 17 — ADMIN-06)
-        services.AddScoped<ICommandHandler<AdminLoginCommand, AdminSessionResponse>, AdminLoginCommandHandler>();
-        services.AddScoped<IValidator<AdminLoginCommand>, AdminLoginCommandValidator>();
-
         // Admin queries (Phase 16 — ADMIN-01, ADMIN-02)
         services.AddScoped<IQueryHandler<GetPaginatedUsersQuery, PaginatedResult<UserSummaryDto>>, GetPaginatedUsersHandler>();
         services.AddScoped<IQueryHandler<GetUserDetailsQuery, UserDetailDto>, GetUserDetailsHandler>();

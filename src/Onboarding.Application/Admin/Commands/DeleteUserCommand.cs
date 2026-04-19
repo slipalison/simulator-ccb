@@ -71,7 +71,7 @@ public sealed class DeleteUserCommandHandler : ICommandHandler<DeleteUserCommand
         // Delete from Keycloak — use ORIGINAL email
         try
         {
-            await _keycloakUserService.DeleteUserByEmailAsync(originalEmail, ct);
+            await _keycloakUserService.DeleteUserByEmailAsync("client", originalEmail, ct);
         }
         catch (Exception ex)
         {

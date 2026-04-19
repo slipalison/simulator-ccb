@@ -23,13 +23,13 @@ public class CookieSettingsTests
             {
                 builder.UseEnvironment("Testing");
                 builder.UseSetting("ConnectionStrings:AppDb", "Host=localhost;Port=5432;Database=test;Username=test;Password=test");
-                builder.UseSetting("Keycloak:RealmUrl", "http://localhost:8180/realms/onboarding");
+                builder.UseSetting("Keycloak:RealmUrl", "http://localhost:8180/realms/backoffice");
                 builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180/");
                 builder.UseSetting("Keycloak:AdminClientId", "onboarding-api-admin");
                 builder.UseSetting("Keycloak:AdminClientSecret", "test-secret");
-                builder.UseSetting("Keycloak:Realm", "onboarding");
+                builder.UseSetting("Keycloak:Realm", "backoffice");
                 builder.UseSetting("Keycloak:PublicClientId", "onboarding-app");
-                builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/onboarding");
+                builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/backoffice");
                 builder.UseSetting("CookieSettings:Secure", "false");
                 builder.ConfigureTestServices(services =>
                 {
@@ -56,13 +56,13 @@ public class CookieSettingsTests
             {
                 builder.UseEnvironment("Testing");
                 builder.UseSetting("ConnectionStrings:AppDb", "Host=localhost;Port=5432;Database=test;Username=test;Password=test");
-                builder.UseSetting("Keycloak:RealmUrl", "http://localhost:8180/realms/onboarding");
+                builder.UseSetting("Keycloak:RealmUrl", "http://localhost:8180/realms/backoffice");
                 builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180/");
                 builder.UseSetting("Keycloak:AdminClientId", "onboarding-api-admin");
                 builder.UseSetting("Keycloak:AdminClientSecret", "test-secret");
-                builder.UseSetting("Keycloak:Realm", "onboarding");
+                builder.UseSetting("Keycloak:Realm", "backoffice");
                 builder.UseSetting("Keycloak:PublicClientId", "onboarding-app");
-                builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/onboarding");
+                builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/backoffice");
                 builder.UseSetting("CookieSettings:Secure", "true");
                 builder.ConfigureTestServices(services =>
                 {
@@ -89,13 +89,13 @@ public class CookieSettingsTests
             {
                 builder.UseEnvironment("Testing");
                 builder.UseSetting("ConnectionStrings:AppDb", "Host=localhost;Port=5432;Database=test;Username=test;Password=test");
-                builder.UseSetting("Keycloak:RealmUrl", "http://localhost:8180/realms/onboarding");
+                builder.UseSetting("Keycloak:RealmUrl", "http://localhost:8180/realms/backoffice");
                 builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180/");
                 builder.UseSetting("Keycloak:AdminClientId", "onboarding-api-admin");
                 builder.UseSetting("Keycloak:AdminClientSecret", "test-secret");
-                builder.UseSetting("Keycloak:Realm", "onboarding");
+                builder.UseSetting("Keycloak:Realm", "backoffice");
                 builder.UseSetting("Keycloak:PublicClientId", "onboarding-app");
-                builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/onboarding");
+                builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/backoffice");
                 builder.ConfigureTestServices(services =>
                 {
                     var healthCheckType = typeof(IConfigureOptions<HealthCheckServiceOptions>);

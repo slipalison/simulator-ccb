@@ -48,8 +48,9 @@ Last activity: 2026-04-16 -- Phase 30 execution started
 | 31 | Backoffice Auth Code Flow UI | ACF-01, ACF-02, ACF-03, ACF-04 (frontend) | 📋 Planned |
 | 32 | Backoffice Admin Management UI + Audit Log UI | ADM-01, ADM-02, ADM-03, ADM-04, AUD-02, AUD-03 | 📋 Planned |
 | 33 | PKCE + Custom Keycloak Themes (Backoffice + Client) | PKC-01..PKC-06 | 📋 Planned |
+| 34 | Isolar Backoffice e Client em Realms Separados | ARCH-04 | 📋 Planned |
 
-**Coverage:** 11/11 v5.0 requirements + Phase 33 (PKC) adicionada ✓
+**Coverage:** 11/11 v5.0 requirements + Phase 33 (PKC) + Phase 34 (realms) adicionadas ✓
 
 ## Accumulated Context
 
@@ -105,6 +106,7 @@ Recent decisions affecting current work:
 ### Roadmap Evolution
 
 - Phase 33 adicionada: PKCE + Custom Keycloak Themes para Backoffice e Client (2026-04-15) — ROPC descartado por impossibilidade de 2FA; ACF+PKCE com custom themes substitui abordagem anterior
+- Phase 34 added: Isolar Backoffice e Client em Realms Separados
 
 ### Quick Tasks Completed
 

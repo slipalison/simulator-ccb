@@ -39,11 +39,11 @@ public sealed class BlockUserCommandHandler : ICommandHandler<BlockUserCommand, 
             ?? throw new KeyNotFoundException("User not found.");
 
         // Get Keycloak user
-        var kcUser = await _keycloakUserService.GetUserByEmailAsync(client.Email.Value, ct)
+        var kcUser = await _keycloakUserService.GetUserByEmailAsync("client", client.Email.Value, ct)
             ?? throw new InvalidOperationException("Keycloak user not found.");
 
         // Block via Keycloak service abstraction
-        await _keycloakUserService.BlockUserAsync(kcUser.Id, ct);
+        await _keycloakUserService.BlockUserAsync("client", kcUser.Id, ct);
 
         // Audit log
         await _auditService.RecordAsync(

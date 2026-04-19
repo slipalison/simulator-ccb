@@ -60,12 +60,13 @@ public class RegistrationErrorPathTests : IAsyncLifetime
         {
             builder.UseEnvironment("Testing");
             builder.UseSetting("ConnectionStrings:AppDb", "Host=localhost;Port=5432;Database=test;Username=test;Password=test");
-            builder.UseSetting("Keycloak:RealmUrl", "http://localhost:8180/realms/onboarding");
+            builder.UseSetting("Keycloak:RealmUrl", "http://localhost:8180/realms/client");
             builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180/");
             builder.UseSetting("Keycloak:AdminClientId", "onboarding-api-admin");
             builder.UseSetting("Keycloak:AdminClientSecret", "test-secret");
-            builder.UseSetting("Keycloak:Realm", "onboarding");
+            builder.UseSetting("Keycloak:Realm", "client");
             builder.UseSetting("Keycloak:PublicClientId", "onboarding-app");
+            builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/client");
 
             builder.ConfigureTestServices(services =>
             {
@@ -94,7 +95,7 @@ public class RegistrationErrorPathTests : IAsyncLifetime
     public async Task Register_KeycloakTransientError_Returns503()
     {
         _keycloakMock!
-            .CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .CreateUserAsync("client", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Keycloak unreachable"));
 
         var response = await _client!.PostAsJsonAsync("/api/registration", ValidPfPayload);
@@ -105,7 +106,7 @@ public class RegistrationErrorPathTests : IAsyncLifetime
     public async Task Register_DuplicateKeycloakUser_Returns409()
     {
         _keycloakMock!
-            .CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .CreateUserAsync("client", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new DuplicateKeycloakUserException("User already exists in Keycloak"));
 
         var response = await _client!.PostAsJsonAsync("/api/registration", ValidPfPayload);

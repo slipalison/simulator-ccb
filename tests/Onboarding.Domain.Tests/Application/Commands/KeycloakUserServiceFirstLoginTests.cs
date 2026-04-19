@@ -39,16 +39,16 @@ public sealed class KeycloakUserServiceFirstLoginTests
         };
 
         _keycloakUserClientMock
-            .GetUserAsync("onboarding", userId, cancellationToken: Arg.Any<CancellationToken>())
+            .GetUserAsync("backoffice", userId, cancellationToken: Arg.Any<CancellationToken>())
             .Returns(user);
 
         // Act
-        await _sut.ClearFirstLoginFlagAsync(userId);
+        await _sut.ClearFirstLoginFlagAsync("backoffice", userId);
 
         // Assert — UpdateUserAsync called with isFirstLogin = "false"
         await _keycloakUserClientMock.Received(1)
             .UpdateUserAsync(
-                "onboarding",
+                "backoffice",
                 userId,
                 Arg.Is<UserRepresentation>(u =>
                     u.Attributes != null &&
@@ -69,11 +69,11 @@ public sealed class KeycloakUserServiceFirstLoginTests
         };
 
         _keycloakUserClientMock
-            .GetUserAsync("onboarding", userId, cancellationToken: Arg.Any<CancellationToken>())
+            .GetUserAsync("backoffice", userId, cancellationToken: Arg.Any<CancellationToken>())
             .Returns(user);
 
         // Act
-        await _sut.ClearFirstLoginFlagAsync(userId);
+        await _sut.ClearFirstLoginFlagAsync("backoffice", userId);
 
         // Assert — UpdateUserAsync NOT called (idempotent no-op)
         await _keycloakUserClientMock.DidNotReceive()
@@ -99,11 +99,11 @@ public sealed class KeycloakUserServiceFirstLoginTests
         };
 
         _keycloakUserClientMock
-            .GetUserAsync("onboarding", userId, cancellationToken: Arg.Any<CancellationToken>())
+            .GetUserAsync("backoffice", userId, cancellationToken: Arg.Any<CancellationToken>())
             .Returns(user);
 
         // Act
-        await _sut.ClearFirstLoginFlagAsync(userId);
+        await _sut.ClearFirstLoginFlagAsync("backoffice", userId);
 
         // Assert — UpdateUserAsync NOT called (idempotent no-op)
         await _keycloakUserClientMock.DidNotReceive()

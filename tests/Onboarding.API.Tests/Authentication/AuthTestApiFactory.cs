@@ -31,12 +31,13 @@ internal sealed class AuthTestApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:AppDb",
             "Host=localhost;Port=5432;Database=test;Username=test;Password=test");
         builder.UseSetting("Keycloak:RealmUrl",
-            "http://localhost:8180/realms/onboarding");
+            "http://localhost:8180/realms/client");
         builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180/");
         builder.UseSetting("Keycloak:AdminClientId", "onboarding-api-admin");
         builder.UseSetting("Keycloak:AdminClientSecret", "test-secret");
-        builder.UseSetting("Keycloak:Realm", "onboarding");
+        builder.UseSetting("Keycloak:Realm", "client");
         builder.UseSetting("Keycloak:PublicClientId", "onboarding-app");
+        builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/client");
 
         builder.ConfigureTestServices(services =>
         {
@@ -66,12 +67,29 @@ internal sealed class AuthTestApiFactory : WebApplicationFactory<Program>
                     // Provide empty OIDC config to prevent the handler from fetching
                     // /.well-known/openid-configuration from the (unreachable) Authority URL.
                     // Without this, token validation silently fails → 401 in CI.
-                    options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration();
-                    options.MapInboundClaims = false;
+                    options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
+                    {
+                        Issuer = "http://localhost:8180/realms/client",
+                    };
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
-                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep: jwt-tokenvalidationparameters-no-expiry-validation — test factory uses fake tokens
+                    options.TokenValidationParameters.ValidateLifetime = false;
                     options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
+                    options.TokenValidationParameters.ValidateIssuerSigningKey = true;
+                });
+
+            services.PostConfigure<JwtBearerOptions>(
+                "BearerClient", options =>
+                {
+                    options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
+                    {
+                        Issuer = "http://localhost:8180/realms/client",
+                    };
+                    options.TokenValidationParameters.ValidateIssuer = false;
+                    options.TokenValidationParameters.ValidateAudience = false;
+                    options.TokenValidationParameters.ValidateLifetime = false;
+                    options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
+                    options.TokenValidationParameters.ValidateIssuerSigningKey = true;
                 });
         });
     }

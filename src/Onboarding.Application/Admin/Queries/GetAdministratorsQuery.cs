@@ -18,5 +18,5 @@ public sealed class GetAdministratorsQueryHandler
 
     public async Task<IReadOnlyList<AdminUserDto>> HandleAsync(
         GetAdministratorsQuery query, CancellationToken ct = default)
-        => await _keycloakUserService.GetUsersByRoleAsync("admin", ct);
+        => await _keycloakUserService.GetUsersByRoleAsync("backoffice", "admin", ct);
 }

@@ -39,7 +39,7 @@ public sealed class ForgotPasswordCommandHandler : ICommandHandler<ForgotPasswor
     public async Task<Unit> HandleAsync(ForgotPasswordCommand command, CancellationToken ct = default)
     {
         // 1. Check if email exists (without revealing it)
-        var userExists = await _keycloakService.UserExistsByEmailAsync(command.Email, ct);
+        var userExists = await _keycloakService.UserExistsByEmailAsync("client", command.Email, ct);
 
         // 2. If exists, create token + send email
         if (userExists)

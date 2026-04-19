@@ -41,10 +41,10 @@ public class ResetPasswordEndpointTests : IAsyncLifetime
             .GetByTokenAsync(validToken.Token, Arg.Any<CancellationToken>())
             .Returns(validToken);
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "user@example.com", Arg.Any<CancellationToken>())
             .Returns(new KeycloakUser("test-user-id", "user@example.com"));
         _factory.KeycloakUserServiceMock
-            .UpdateUserPasswordAsync("test-user-id", "Str0ng@Pass!", Arg.Any<CancellationToken>())
+            .UpdateUserPasswordAsync("client", "test-user-id", "Str0ng@Pass!", Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         var payload = new { token = validToken.Token, newPassword = "Str0ng@Pass!" };
@@ -131,10 +131,10 @@ public class ResetPasswordEndpointTests : IAsyncLifetime
             .GetByTokenAsync(validToken.Token, Arg.Any<CancellationToken>())
             .Returns(validToken);
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "user@example.com", Arg.Any<CancellationToken>())
             .Returns(new KeycloakUser("test-user-id", "user@example.com"));
         _factory.KeycloakUserServiceMock
-            .UpdateUserPasswordAsync("test-user-id", "NewStr0ng@Pass!", Arg.Any<CancellationToken>())
+            .UpdateUserPasswordAsync("client", "test-user-id", "NewStr0ng@Pass!", Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         // Reset password

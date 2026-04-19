@@ -36,12 +36,12 @@ public sealed class AdminFirstLoginEndpointTests : IAsyncLifetime
 
         // Setup mock: GetUserByEmailAsync returns a valid user so the endpoint can resolve user ID
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("backoffice", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<KeycloakUser?>(new KeycloakUser("user-uuid", "admin@test.com")));
 
         // Setup mock: ClearFirstLoginFlagAsync is a no-op (returns completed task)
         _factory.KeycloakUserServiceMock
-            .ClearFirstLoginFlagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .ClearFirstLoginFlagAsync("backoffice", Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
         return Task.CompletedTask;
@@ -87,6 +87,6 @@ public sealed class AdminFirstLoginEndpointTests : IAsyncLifetime
 
         // Assert — ClearFirstLoginFlagAsync was called with the resolved user ID
         await _factory!.KeycloakUserServiceMock.Received(1)
-            .ClearFirstLoginFlagAsync("user-uuid", Arg.Any<CancellationToken>());
+            .ClearFirstLoginFlagAsync("backoffice", "user-uuid", Arg.Any<CancellationToken>());
     }
 }

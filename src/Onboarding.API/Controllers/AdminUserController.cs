@@ -16,7 +16,7 @@ namespace Onboarding.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin")]
-[Authorize(Roles = "admin")]
+[Authorize(AuthenticationSchemes = "BearerBackoffice", Roles = "admin")]
 public sealed class AdminUserController : ControllerBase
 {
     private readonly IQueryHandler<GetPaginatedUsersQuery, PaginatedResult<UserSummaryDto>> _paginatedHandler;
@@ -387,7 +387,7 @@ public sealed class AdminUserController : ControllerBase
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
 
         // Resolve Keycloak user ID from email
-        var keycloakUser = await _keycloakUserService.GetUserByEmailAsync(adminEmail, ct)
+        var keycloakUser = await _keycloakUserService.GetUserByEmailAsync("backoffice", adminEmail, ct)
             ?? throw new InvalidOperationException($"Keycloak user not found for email: {adminEmail}");
         var keycloakUserId = keycloakUser.Id;
 
@@ -416,10 +416,10 @@ public sealed class AdminUserController : ControllerBase
             ?? User.FindFirst("preferred_username")?.Value
             ?? throw new InvalidOperationException("Missing admin email context.");
 
-        var keycloakUser = await _keycloakUserService.GetUserByEmailAsync(adminEmail, ct)
+        var keycloakUser = await _keycloakUserService.GetUserByEmailAsync("backoffice", adminEmail, ct)
             ?? throw new InvalidOperationException($"Keycloak user not found for email: {adminEmail}");
 
-        await _keycloakUserService.ClearFirstLoginFlagAsync(keycloakUser.Id, ct);
+        await _keycloakUserService.ClearFirstLoginFlagAsync("backoffice", keycloakUser.Id, ct);
         _logger.LogInformation("Admin {AdminEmail} completed first login; isFirstLogin flag cleared.", adminEmail);
         return NoContent();
     }

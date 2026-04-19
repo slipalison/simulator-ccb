@@ -23,21 +23,21 @@ public sealed class GetAdministratorsQueryHandlerTests
         }.AsReadOnly();
 
         _keycloakMock
-            .GetUsersByRoleAsync("admin", Arg.Any<CancellationToken>())
+            .GetUsersByRoleAsync("backoffice", "admin", Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AdminUserDto>>(expected));
 
         var result = await _sut.HandleAsync(new GetAdministratorsQuery());
 
         result.Count.ShouldBe(1);
         result[0].Email.ShouldBe("admin@test.com");
-        await _keycloakMock.Received(1).GetUsersByRoleAsync("admin", Arg.Any<CancellationToken>());
+        await _keycloakMock.Received(1).GetUsersByRoleAsync("backoffice", "admin", Arg.Any<CancellationToken>());
     }
 
     [Fact]
     public async Task HandleAsync_WhenNoAdmins_ReturnsEmptyList()
     {
         _keycloakMock
-            .GetUsersByRoleAsync("admin", Arg.Any<CancellationToken>())
+            .GetUsersByRoleAsync("backoffice", "admin", Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AdminUserDto>>(new List<AdminUserDto>().AsReadOnly()));
 
         var result = await _sut.HandleAsync(new GetAdministratorsQuery());

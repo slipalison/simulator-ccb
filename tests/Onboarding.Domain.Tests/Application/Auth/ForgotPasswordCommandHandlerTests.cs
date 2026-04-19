@@ -31,7 +31,7 @@ public class ForgotPasswordCommandHandlerTests
     public async Task HandleAsync_UserExists_SendsEmailAndCreatesToken()
     {
         // Arrange
-        _keycloakService.UserExistsByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
+        _keycloakService.UserExistsByEmailAsync("client", "user@example.com", Arg.Any<CancellationToken>())
             .Returns(true);
         _tokenRepo.CountRecentTokensAsync("user@example.com", TimeSpan.FromHours(1), Arg.Any<CancellationToken>())
             .Returns(0);
@@ -54,7 +54,7 @@ public class ForgotPasswordCommandHandlerTests
     public async Task HandleAsync_UserDoesNotExist_ReturnsSuccessWithoutSendingEmail()
     {
         // Arrange - user doesn't exist
-        _keycloakService.UserExistsByEmailAsync("nobody@example.com", Arg.Any<CancellationToken>())
+        _keycloakService.UserExistsByEmailAsync("client", "nobody@example.com", Arg.Any<CancellationToken>())
             .Returns(false);
 
         var handler = CreateHandler();
@@ -73,7 +73,7 @@ public class ForgotPasswordCommandHandlerTests
     public async Task HandleAsync_RateLimitExceeded_ThrowsException()
     {
         // Arrange - 3 recent tokens (rate limit reached)
-        _keycloakService.UserExistsByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
+        _keycloakService.UserExistsByEmailAsync("client", "user@example.com", Arg.Any<CancellationToken>())
             .Returns(true);
         _tokenRepo.CountRecentTokensAsync("user@example.com", TimeSpan.FromHours(1), Arg.Any<CancellationToken>())
             .Returns(3);
@@ -89,7 +89,7 @@ public class ForgotPasswordCommandHandlerTests
     public async Task HandleAsync_UsesDefaultBaseUrlWhenConfigMissing()
     {
         // Arrange
-        _keycloakService.UserExistsByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
+        _keycloakService.UserExistsByEmailAsync("client", "user@example.com", Arg.Any<CancellationToken>())
             .Returns(true);
         _tokenRepo.CountRecentTokensAsync("user@example.com", TimeSpan.FromHours(1), Arg.Any<CancellationToken>())
             .Returns(0);

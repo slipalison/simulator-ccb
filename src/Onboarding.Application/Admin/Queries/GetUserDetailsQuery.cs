@@ -30,7 +30,7 @@ public sealed class GetUserDetailsHandler
         var client = await _adminRepository.GetByIdAsync(query.UserId, ct)
             ?? throw new KeyNotFoundException("User not found.");
 
-        var kcUser = await _keycloakUserService.GetUserByEmailAsync(client.Email.Value, ct);
+        var kcUser = await _keycloakUserService.GetUserByEmailAsync("client", client.Email.Value, ct);
 
         var document = client.Type.ToString() == "PessoaFisica"
             ? FormatCpf(client.Cpf?.Value)

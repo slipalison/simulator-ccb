@@ -37,13 +37,13 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:AppDb",
             "Host=localhost;Port=5432;Database=test;Username=test;Password=test");
         builder.UseSetting("Keycloak:RealmUrl",
-            "http://localhost:8180/realms/onboarding");
+            "http://localhost:8180/realms/backoffice");
         builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180/");
         builder.UseSetting("Keycloak:AdminClientId", "onboarding-api-admin");
         builder.UseSetting("Keycloak:AdminClientSecret", "test-secret");
-        builder.UseSetting("Keycloak:Realm", "onboarding");
+        builder.UseSetting("Keycloak:Realm", "backoffice");
         builder.UseSetting("Keycloak:PublicClientId", "onboarding-app");
-        builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/onboarding");
+        builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/backoffice");
 
         builder.ConfigureTestServices(services =>
         {
@@ -70,11 +70,29 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
             services.PostConfigure<JwtBearerOptions>(
                 JwtBearerDefaults.AuthenticationScheme, options =>
                 {
-                    options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration();
+                    options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
+                    {
+                        Issuer = "http://localhost:8180/realms/backoffice",
+                    };
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
-                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep: jwt-tokenvalidationparameters-no-expiry-validation — test factory uses fake tokens
+                    options.TokenValidationParameters.ValidateLifetime = false;
                     options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
+                    options.TokenValidationParameters.ValidateIssuerSigningKey = true;
+                });
+
+            services.PostConfigure<JwtBearerOptions>(
+                "BearerClient", options =>
+                {
+                    options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
+                    {
+                        Issuer = "http://localhost:8180/realms/client",
+                    };
+                    options.TokenValidationParameters.ValidateIssuer = false;
+                    options.TokenValidationParameters.ValidateAudience = false;
+                    options.TokenValidationParameters.ValidateLifetime = false;
+                    options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
+                    options.TokenValidationParameters.ValidateIssuerSigningKey = true;
                 });
 
             // Replace all IClaimsTransformation implementations with our test version.

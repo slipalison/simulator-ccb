@@ -27,7 +27,7 @@ public class ForgotPasswordBaseUrlTests
             .AndDoes(ci => capturedLink = ci.ArgAt<string>(1));
 
         var keycloakMock = Substitute.For<IKeycloakUserService>();
-        keycloakMock.UserExistsByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
+        keycloakMock.UserExistsByEmailAsync("client", "user@example.com", Arg.Any<CancellationToken>())
             .Returns(true);
 
         var tokenRepoMock = Substitute.For<IPasswordResetTokenRepository>();
@@ -64,7 +64,7 @@ public class ForgotPasswordBaseUrlTests
             .AndDoes(ci => capturedLink = ci.ArgAt<string>(1));
 
         var keycloakMock = Substitute.For<IKeycloakUserService>();
-        keycloakMock.UserExistsByEmailAsync("fallback@example.com", Arg.Any<CancellationToken>())
+        keycloakMock.UserExistsByEmailAsync("client", "fallback@example.com", Arg.Any<CancellationToken>())
             .Returns(true);
 
         var tokenRepoMock = Substitute.For<IPasswordResetTokenRepository>();

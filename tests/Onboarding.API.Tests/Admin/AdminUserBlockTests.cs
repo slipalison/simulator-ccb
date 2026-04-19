@@ -49,7 +49,7 @@ public sealed class AdminUserBlockTests : IAsyncLifetime
             .Returns(client);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("joao@test.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
             .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
 
         // Act
@@ -59,7 +59,7 @@ public sealed class AdminUserBlockTests : IAsyncLifetime
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         // Verify Keycloak block was called
-        await _factory.KeycloakUserServiceMock.Received(1).BlockUserAsync("kc-uuid", Arg.Any<CancellationToken>());
+        await _factory.KeycloakUserServiceMock.Received(1).BlockUserAsync("client", "kc-uuid", Arg.Any<CancellationToken>());
 
         // Verify audit log
         await _factory.AuditServiceMock.Received(1).RecordAsync(
@@ -87,7 +87,7 @@ public sealed class AdminUserBlockTests : IAsyncLifetime
             .Returns(client);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("joao@test.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
             .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
 
         // Act
@@ -97,7 +97,7 @@ public sealed class AdminUserBlockTests : IAsyncLifetime
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         // Verify Keycloak unblock was called
-        await _factory.KeycloakUserServiceMock.Received(1).UnblockUserAsync("kc-uuid", Arg.Any<CancellationToken>());
+        await _factory.KeycloakUserServiceMock.Received(1).UnblockUserAsync("client", "kc-uuid", Arg.Any<CancellationToken>());
 
         // Verify audit log
         await _factory.AuditServiceMock.Received(1).RecordAsync(
@@ -125,7 +125,7 @@ public sealed class AdminUserBlockTests : IAsyncLifetime
             .Returns(client);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("joao@test.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
             .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
 
         // First block
@@ -169,7 +169,7 @@ public sealed class AdminUserBlockTests : IAsyncLifetime
             .Returns(client);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("joao@test.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
             .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
 
         // Act — block then unblock

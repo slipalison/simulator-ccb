@@ -51,7 +51,7 @@ public sealed class AdminUserDetailsTests : IAsyncLifetime
             .Returns(client);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("joao@test.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
             .Returns(new KeycloakUser("kc-uuid", "joao@test.com"));
 
         // Act
@@ -96,7 +96,7 @@ public sealed class AdminUserDetailsTests : IAsyncLifetime
             .Returns(client);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("joao@test.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
             .Returns(new KeycloakUser("kc-uuid", "joao@test.com"));
 
         // Act
@@ -124,7 +124,7 @@ public sealed class AdminUserDetailsTests : IAsyncLifetime
             .Returns(client);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("empresa@test.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "empresa@test.com", Arg.Any<CancellationToken>())
             .Returns(new KeycloakUser("kc-uuid", "empresa@test.com"));
 
         // Act

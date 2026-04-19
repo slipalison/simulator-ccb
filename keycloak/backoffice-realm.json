@@ -1,12 +1,11 @@
 {
-  "realm": "onboarding",
+  "realm": "backoffice",
   "enabled": true,
-  "displayName": "Onboarding",
+  "displayName": "Backoffice",
   "registrationAllowed": false,
   "resetPasswordAllowed": false,
   "rememberMe": false,
   "sslRequired": "external",
-
   "bruteForceProtected": true,
   "permanentLockout": false,
   "failureFactor": 5,
@@ -15,34 +14,11 @@
   "minimumQuickLoginWaitSeconds": 60,
   "quickLoginCheckMilliSeconds": 1000,
   "maxDeltaTimeSeconds": 43200,
-
   "passwordPolicy": "length(8) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1)",
-
   "accessTokenLifespan": 300,
   "ssoSessionMaxLifespan": 28800,
   "ssoSessionIdleTimeout": 1800,
-
   "clients": [
-    {
-      "clientId": "onboarding-app",
-      "name": "Onboarding App (Public)",
-      "enabled": true,
-      "publicClient": true,
-      "standardFlowEnabled": false,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": true,
-      "serviceAccountsEnabled": false,
-      "authorizationServicesEnabled": false,
-      "redirectUris": [
-        "http://localhost:5173/login/callback"
-      ],
-      "webOrigins": [
-        "http://localhost:5173"
-      ],
-      "protocol": "openid-connect",
-      "defaultClientScopes": ["profile", "email", "roles"],
-      "optionalClientScopes": []
-    },
     {
       "clientId": "onboarding-api-admin",
       "name": "Onboarding API Admin (Confidential)",
@@ -80,8 +56,16 @@
       ],
       "protocol": "openid-connect",
       "fullScopeAllowed": true,
-      "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email"],
-      "optionalClientScopes": ["offline_access"],
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "offline_access"
+      ],
       "frontchannelLogout": true,
       "protocolMappers": [
         {
@@ -105,38 +89,8 @@
         "client.session.max.lifespan": "28800",
         "login_theme": "onboarding-backoffice"
       }
-    },
-    {
-      "clientId": "onboarding-client-acf",
-      "name": "Onboarding Client (Confidential, ACF+PKCE)",
-      "enabled": true,
-      "publicClient": false,
-      "standardFlowEnabled": true,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "serviceAccountsEnabled": false,
-      "authorizationServicesEnabled": false,
-      "secret": "client-acf-secret-dev-change-in-prod-2026",
-      "redirectUris": [
-        "http://localhost:5173/auth/callback"
-      ],
-      "webOrigins": [
-        "http://localhost:5173"
-      ],
-      "protocol": "openid-connect",
-      "fullScopeAllowed": true,
-      "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email"],
-      "optionalClientScopes": ["offline_access"],
-      "frontchannelLogout": true,
-      "attributes": {
-        "pkce.code.challenge.method": "S256",
-        "access.token.lifespan": "300",
-        "client.session.max.lifespan": "28800",
-        "login_theme": "onboarding-client"
-      }
     }
   ],
-
   "roles": {
     "realm": [
       {
@@ -144,12 +98,11 @@
         "description": "Admin backoffice access role",
         "composite": false,
         "clientRole": false,
-        "containerId": "onboarding"
+        "containerId": "backoffice"
       }
     ],
     "client": {}
   },
-
   "users": [
     {
       "username": "admin@onboarding.local",
@@ -165,8 +118,12 @@
           "temporary": true
         }
       ],
-      "requiredActions": ["UPDATE_PASSWORD"],
-      "realmRoles": ["admin"]
+      "requiredActions": [
+        "UPDATE_PASSWORD"
+      ],
+      "realmRoles": [
+        "admin"
+      ]
     },
     {
       "username": "service-account-onboarding-api-admin",
@@ -174,11 +131,15 @@
       "enabled": true,
       "serviceAccountClientId": "onboarding-api-admin",
       "clientRoles": {
-        "realm-management": ["manage-users", "view-users", "view-realm", "manage-realm"]
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "view-realm",
+          "manage-realm"
+        ]
       }
     }
   ],
-
   "clientScopes": [
     {
       "name": "openid",
@@ -293,16 +254,17 @@
       ]
     }
   ],
-
   "clientScopeMappings": {
     "realm-management": [
       {
         "client": "onboarding-api-admin",
-        "roles": ["manage-users", "view-users"]
+        "roles": [
+          "manage-users",
+          "view-users"
+        ]
       }
     ]
   },
-
   "clientProfiles": {
     "profiles": [
       {
@@ -324,7 +286,6 @@
       }
     ]
   },
-
   "clientPolicies": {
     "policies": [
       {
@@ -337,8 +298,11 @@
             "config": {}
           }
         ],
-        "profiles": ["no-wildcard-redirects"]
+        "profiles": [
+          "no-wildcard-redirects"
+        ]
       }
     ]
-  }
+  },
+  "id": "backoffice"
 }

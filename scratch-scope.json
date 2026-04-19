@@ -1,0 +1,9 @@
+[
+  {
+    "client": "onboarding-api-admin",
+    "roles": [
+      "manage-users",
+      "view-users"
+    ]
+  }
+]

@@ -39,11 +39,11 @@ public sealed class UnblockUserCommandHandler : ICommandHandler<UnblockUserComma
             ?? throw new KeyNotFoundException("User not found.");
 
         // Get Keycloak user
-        var kcUser = await _keycloakUserService.GetUserByEmailAsync(client.Email.Value, ct)
+        var kcUser = await _keycloakUserService.GetUserByEmailAsync("client", client.Email.Value, ct)
             ?? throw new InvalidOperationException("Keycloak user not found.");
 
         // Unblock via Keycloak service abstraction
-        await _keycloakUserService.UnblockUserAsync(kcUser.Id, ct);
+        await _keycloakUserService.UnblockUserAsync("client", kcUser.Id, ct);
 
         // Audit log
         await _auditService.RecordAsync(

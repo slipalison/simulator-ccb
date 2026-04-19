@@ -50,7 +50,7 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
             .Returns(client);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("joao@test.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
             .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
 
         var payload = new { confirmEmail = "joao@test.com" };
@@ -153,7 +153,7 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
             .Returns(client);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("joao@test.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
             .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
 
         var payload = new { confirmEmail = "joao@test.com" };
@@ -166,7 +166,7 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
         var response = await _client!.SendAsync(request);
 
         // Assert — Keycloak delete was called with original email
-        await _factory.KeycloakUserServiceMock.Received(1).DeleteUserByEmailAsync("joao@test.com", Arg.Any<CancellationToken>());
+        await _factory.KeycloakUserServiceMock.Received(1).DeleteUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>());
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
@@ -184,7 +184,7 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
             .Returns(client);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("joao@test.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
             .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
 
         var payload = new { confirmEmail = "joao@test.com" };

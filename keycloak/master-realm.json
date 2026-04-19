@@ -1,0 +1,13 @@
+{
+  "realm": "master",
+  "clients": [
+    {
+      "clientId": "onboarding-api-admin",
+      "secret": "2A1333E4-4D46-4B81-AEB2-5BAF688F8071",
+      "enabled": true,
+      "publicClient": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect"
+    }
+  ]
+}

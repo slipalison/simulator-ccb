@@ -43,7 +43,7 @@ public class IdempotencyFilterTests : IAsyncLifetime
                       Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
         _factory.KeycloakMock
-            .CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            .CreateUserAsync("client", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                              Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("fake-keycloak-id");
         _client = _factory.CreateClient();
@@ -127,7 +127,7 @@ public class IdempotencyFilterTests : IAsyncLifetime
                       Arg.Any<CancellationToken>());
         await _factory.KeycloakMock
             .DidNotReceive()
-            .CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            .CreateUserAsync("client", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                              Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 

@@ -69,7 +69,7 @@ public sealed class AdminFullFlowTests : IAsyncLifetime
             .GetByIdAsync(clientId, Arg.Any<CancellationToken>())
             .Returns(client);
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync(testEmail, Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", testEmail, Arg.Any<CancellationToken>())
             .Returns(new Application.Common.KeycloakUser("kc-uuid", testEmail));
 
         var detailsResponse = await _client!.GetAsync($"/api/admin/users/{clientId}");
@@ -77,17 +77,17 @@ public sealed class AdminFullFlowTests : IAsyncLifetime
 
         // 5. Block user — verify Keycloak disabled
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync(testEmail, Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", testEmail, Arg.Any<CancellationToken>())
             .Returns(new Application.Common.KeycloakUser("kc-uuid", testEmail));
 
         var blockResponse = await _client!.PostAsync($"/api/admin/users/{clientId}/block", null);
         blockResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-        await _factory.KeycloakUserServiceMock.Received(1).BlockUserAsync("kc-uuid", Arg.Any<CancellationToken>());
+        await _factory.KeycloakUserServiceMock.Received(1).BlockUserAsync("client", "kc-uuid", Arg.Any<CancellationToken>());
 
         // 6. Unblock user — verify Keycloak re-enabled
         var unblockResponse = await _client!.PostAsync($"/api/admin/users/{clientId}/unblock", null);
         unblockResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-        await _factory.KeycloakUserServiceMock.Received(1).UnblockUserAsync("kc-uuid", Arg.Any<CancellationToken>());
+        await _factory.KeycloakUserServiceMock.Received(1).UnblockUserAsync("client", "kc-uuid", Arg.Any<CancellationToken>());
 
         // Collect audit trail at each step — don't clear so we can verify the full trail
         // 7. Update user name — verify changed
@@ -106,7 +106,7 @@ public sealed class AdminFullFlowTests : IAsyncLifetime
             .GetByIdAsync(clientId, Arg.Any<CancellationToken>())
             .Returns(client);
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync(testEmail, Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", testEmail, Arg.Any<CancellationToken>())
             .Returns(new Application.Common.KeycloakUser("kc-uuid", testEmail));
 
         var deletePayload = new { confirmEmail = testEmail };
@@ -123,7 +123,7 @@ public sealed class AdminFullFlowTests : IAsyncLifetime
         client.DeletedAt.ShouldNotBeNull();
 
         // Verify Keycloak deleted
-        await _factory.KeycloakUserServiceMock.Received(1).DeleteUserByEmailAsync(testEmail, Arg.Any<CancellationToken>());
+        await _factory.KeycloakUserServiceMock.Received(1).DeleteUserByEmailAsync("client", testEmail, Arg.Any<CancellationToken>());
 
         // 9. Verify audit trail — all actions logged via IAuditService
         await _factory!.AuditServiceMock.Received(1).RecordAsync(

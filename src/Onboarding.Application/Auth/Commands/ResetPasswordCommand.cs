@@ -49,11 +49,11 @@ public sealed class ResetPasswordCommandHandler : ICommandHandler<ResetPasswordC
                 "1 maiuscula, 1 minuscula, 1 numero, 1 caractere especial.");
 
         // 3. Update password in Keycloak via Admin API
-        var user = await _keycloakService.GetUserByEmailAsync(resetToken.Email, ct);
+        var user = await _keycloakService.GetUserByEmailAsync("client", resetToken.Email, ct);
         if (user == null)
             throw new BadRequestException("Usuario nao encontrado no Keycloak.");
 
-        await _keycloakService.UpdateUserPasswordAsync(user.Id, command.NewPassword, ct);
+        await _keycloakService.UpdateUserPasswordAsync("client", user.Id, command.NewPassword, ct);
 
         // 4. Mark token as used
         resetToken.MarkAsUsed();

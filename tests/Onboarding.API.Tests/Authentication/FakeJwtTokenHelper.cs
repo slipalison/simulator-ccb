@@ -28,8 +28,8 @@ public static class FakeJwtTokenHelper
         };
 
         var token = new JwtSecurityToken(
-            issuer: "http://localhost",
-            audience: "http://localhost",
+            issuer: "http://localhost:8180/realms/client",
+            audience: "onboarding-app",
             claims: claims,
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: Credentials);
@@ -52,8 +52,8 @@ public static class FakeJwtTokenHelper
         };
 
         var token = new JwtSecurityToken(
-            issuer: "http://localhost",
-            audience: "http://localhost",
+            issuer: "http://localhost:8180/realms/backoffice",
+            audience: "http://localhost:8180/realms/backoffice",
             claims: claims,
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: Credentials);
@@ -74,8 +74,8 @@ public static class FakeJwtTokenHelper
         };
 
         var token = new JwtSecurityToken(
-            issuer: "http://localhost",
-            audience: "http://localhost",
+            issuer: "http://localhost:8180/realms/backoffice",
+            audience: "http://localhost:8180/realms/backoffice",
             claims: claims,
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: Credentials);

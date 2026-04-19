@@ -29,7 +29,7 @@ public class ResetPasswordCommandHandlerTests
         var resetToken = PasswordResetToken.Create("user@example.com");
         _tokenRepo.GetByTokenAsync(resetToken.Token, Arg.Any<CancellationToken>())
             .Returns(resetToken);
-        _keycloakService.GetUserByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
+        _keycloakService.GetUserByEmailAsync("client", "user@example.com", Arg.Any<CancellationToken>())
             .Returns(new KeycloakUser("kc-id-123", "user@example.com"));
 
         var handler = CreateHandler();
@@ -41,7 +41,7 @@ public class ResetPasswordCommandHandlerTests
         // Assert
         result.ShouldBe(Unit.Value);
         resetToken.IsUsed.ShouldBeTrue();
-        await _keycloakService.Received(1).UpdateUserPasswordAsync("kc-id-123", "NewStr0ng@Pass", Arg.Any<CancellationToken>());
+        await _keycloakService.Received(1).UpdateUserPasswordAsync("client", "kc-id-123", "NewStr0ng@Pass", Arg.Any<CancellationToken>());
         await _tokenRepo.Received(1).UpdateAsync(resetToken, Arg.Any<CancellationToken>());
     }
 
@@ -131,7 +131,7 @@ public class ResetPasswordCommandHandlerTests
         var resetToken = PasswordResetToken.Create("user@example.com");
         _tokenRepo.GetByTokenAsync(resetToken.Token, Arg.Any<CancellationToken>())
             .Returns(resetToken);
-        _keycloakService.GetUserByEmailAsync("user@example.com", Arg.Any<CancellationToken>())
+        _keycloakService.GetUserByEmailAsync("client", "user@example.com", Arg.Any<CancellationToken>())
             .Returns((KeycloakUser?)null);
 
         var handler = CreateHandler();

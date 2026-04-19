@@ -29,7 +29,7 @@ public sealed class CreateAdminCommandHandler : ICommandHandler<CreateAdminComma
     public async Task<CreateAdminResult> HandleAsync(CreateAdminCommand command, CancellationToken ct = default)
     {
         // Check if email already exists
-        var existing = await _keycloakUserService.GetUserByEmailAsync(command.Email, ct);
+        var existing = await _keycloakUserService.GetUserByEmailAsync("backoffice", command.Email, ct);
         if (existing != null)
             throw new InvalidOperationException($"An user with email '{command.Email}' already exists.");
 
@@ -37,7 +37,7 @@ public sealed class CreateAdminCommandHandler : ICommandHandler<CreateAdminComma
         var temporaryPassword = GenerateTemporaryPassword();
 
         // Create admin user in Keycloak with temporary password and admin role
-        var keycloakUserId = await _keycloakUserService.CreateAdminUserAsync(
+        var keycloakUserId = await _keycloakUserService.CreateAdminUserAsync("backoffice", 
             command.Email,
             temporaryPassword,
             command.FullName,
@@ -53,7 +53,7 @@ public sealed class CreateAdminCommandHandler : ICommandHandler<CreateAdminComma
         else
         {
             // Try to resolve creator by email
-            var creatorUser = await _keycloakUserService.GetUserByEmailAsync(command.CreatorEmail, ct);
+            var creatorUser = await _keycloakUserService.GetUserByEmailAsync("backoffice", command.CreatorEmail, ct);
             if (creatorUser != null)
             {
                 creatorKeycloakId = creatorUser.Id;

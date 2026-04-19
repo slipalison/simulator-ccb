@@ -28,10 +28,10 @@ public sealed class ForcePasswordChangeCommandHandler : ICommandHandler<ForcePas
     public async Task<Unit> HandleAsync(ForcePasswordChangeCommand command, CancellationToken ct = default)
     {
         // Update password in Keycloak (temporary = false since this is the permanent password)
-        await _keycloakUserService.UpdateUserPasswordAsync(command.KeycloakUserId, command.NewPassword, ct);
+        await _keycloakUserService.UpdateUserPasswordAsync("client", command.KeycloakUserId, command.NewPassword, ct);
 
         // Remove UPDATE_PASSWORD required action
-        await _keycloakUserService.RemoveUpdatePasswordRequiredActionAsync(command.KeycloakUserId, ct);
+        await _keycloakUserService.RemoveUpdatePasswordRequiredActionAsync("client", command.KeycloakUserId, ct);
 
         // Audit log via IAuditService
         await _auditService.RecordAsync(

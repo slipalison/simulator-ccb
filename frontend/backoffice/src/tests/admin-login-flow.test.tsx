@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { AdminLoginPage } from "@/components/pages/AdminLoginPage";
 import { AdminAuthProvider } from "@/lib/admin-auth-context";
@@ -9,15 +9,8 @@ import { Toaster } from "@/components/ui/sonner";
 
 // Mock admin API
 vi.mock("@/lib/admin-api", () => ({
-  loginAdmin: vi.fn(),
   logoutAdmin: vi.fn(),
   getAdminMe: vi.fn(),
-  AdminLoginError: class AdminLoginError extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = "AdminLoginError";
-    }
-  },
   AdminApiError: class AdminApiError extends Error {
     constructor(message: string) {
       super(message);
@@ -34,6 +27,21 @@ function wrapper({ children }: { children: React.ReactNode }) {
     </AdminAuthProvider>
   );
 }
+
+// Mock window.location
+const originalLocation = window.location;
+beforeEach(() => {
+  Object.defineProperty(window, "location", {
+    writable: true,
+    value: { href: "" },
+  });
+});
+afterEach(() => {
+  Object.defineProperty(window, "location", {
+    writable: true,
+    value: originalLocation,
+  });
+});
 
 async function renderWithRouter(initialEntries: string[] = ["/admin/login"]) {
   const memoryHistory = createMemoryHistory({ initialEntries });
@@ -56,7 +64,7 @@ describe("Admin Login Flow", () => {
     vi.clearAllMocks();
   });
 
-  it("renders admin login form with email and password fields", async () => {
+  it("renders admin login page", async () => {
     vi.mocked(adminApi.getAdminMe).mockRejectedValue(new Error("No session"));
 
     render(wrapper({ children: <AdminLoginPage /> }));
@@ -65,48 +73,11 @@ describe("Admin Login Flow", () => {
       expect(screen.getByText(/admin backoffice/i)).toBeInTheDocument();
     });
 
-    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/senha/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /entrar/i })).toBeInTheDocument();
   });
 
-  it("submits form and redirects to /admin/users on success", async () => {
-    // Initial mount: no session
-    vi.mocked(adminApi.getAdminMe).mockRejectedValueOnce(new Error("No session"));
-    // Login: success
-    vi.mocked(adminApi.loginAdmin).mockResolvedValue({
-      adminName: "Admin User",
-      adminEmail: "admin@onboarding.local",
-    });
-
-    const { memoryHistory } = await renderWithRouter(["/admin/login"]);
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /entrar/i })).toBeInTheDocument();
-    });
-
-    // Fill form
-    const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/senha/i);
-
-    await act(async () => {
-      fireEvent.change(emailInput, { target: { value: "admin@onboarding.local" } });
-      fireEvent.change(passwordInput, { target: { value: "SecureP@ss123" } });
-    });
-
-    // Submit
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
-    });
-
-    // Wait for redirect to /admin/users
-    await waitFor(() => {
-      expect(memoryHistory.location.pathname).toBe("/admin/users");
-    });
-  });
-
-  it("shows validation error for invalid email", async () => {
-    vi.mocked(adminApi.getAdminMe).mockRejectedValueOnce(new Error("No session"));
+  it("clicks login button and redirects to /auth/login", async () => {
+    vi.mocked(adminApi.getAdminMe).mockRejectedValue(new Error("No session"));
 
     render(wrapper({ children: <AdminLoginPage /> }));
 
@@ -114,71 +85,11 @@ describe("Admin Login Flow", () => {
       expect(screen.getByRole("button", { name: /entrar/i })).toBeInTheDocument();
     });
 
-    // Fill with invalid email, submit
-    const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/senha/i);
-
     await act(async () => {
-      fireEvent.change(emailInput, { target: { value: "not-an-email" } });
-      fireEvent.change(passwordInput, { target: { value: "somepass" } });
       fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
     });
 
-    await waitFor(() => {
-      expect(screen.getByText(/email invalido/i)).toBeInTheDocument();
-    });
-
-    expect(adminApi.loginAdmin).not.toHaveBeenCalled();
-  });
-
-  it("shows validation error for empty password", async () => {
-    vi.mocked(adminApi.getAdminMe).mockRejectedValueOnce(new Error("No session"));
-
-    render(wrapper({ children: <AdminLoginPage /> }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /entrar/i })).toBeInTheDocument();
-    });
-
-    // Only fill email, leave password empty
-    const emailInput = screen.getByLabelText(/email/i);
-    await act(async () => {
-      fireEvent.change(emailInput, { target: { value: "admin@onboarding.local" } });
-      fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
-    });
-
-    await waitFor(() => {
-      const errors = screen.getAllByText(/obrigator/i);
-      expect(errors.length).toBeGreaterThan(0);
-    });
-
-    expect(adminApi.loginAdmin).not.toHaveBeenCalled();
-  });
-
-  it("shows error toast when login fails", async () => {
-    vi.mocked(adminApi.getAdminMe).mockRejectedValueOnce(new Error("No session"));
-    vi.mocked(adminApi.loginAdmin).mockRejectedValue(
-      new adminApi.AdminLoginError("Credenciais invalidas.")
-    );
-
-    render(wrapper({ children: <AdminLoginPage /> }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /entrar/i })).toBeInTheDocument();
-    });
-
-    const emailInput = screen.getByLabelText(/email/i);
-    const passwordInput = screen.getByLabelText(/senha/i);
-
-    await act(async () => {
-      fireEvent.change(emailInput, { target: { value: "admin@onboarding.local" } });
-      fireEvent.change(passwordInput, { target: { value: "wrongpass" } });
-      fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText(/credenciais invalidas/i)).toBeInTheDocument();
-    });
+    expect(window.location.href).toBe("/auth/login");
   });
 
   it("redirects to /admin/users if already authenticated", async () => {

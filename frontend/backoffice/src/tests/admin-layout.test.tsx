@@ -7,7 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 
 // Mock admin API
 vi.mock("@/lib/admin-api", () => ({
-  loginAdmin: vi.fn(),
+
   logoutAdmin: vi.fn(),
   getAdminMe: vi.fn(),
   AdminLoginError: class AdminLoginError extends Error {

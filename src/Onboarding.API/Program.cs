@@ -230,8 +230,9 @@ try
 
     app.UseSerilogRequestLogging();     // D-05: per-request log with method/path/status/duration
     app.UseCors("AllowFrontendWithCredentials"); // Must come before UseAuthentication
-    app.UseAdminSession();       // Convert admin refresh token cookie → JWT access token
-    app.UseAuthentication();   // D-04: populate HttpContext.User — MUST come after admin session
+    app.UseAdminSession();       // Convert backoffice_access_token cookie → Bearer header for /api/admin/*
+    app.UseClientSession();      // Convert client_access_token cookie → Bearer header for /api/* (non-admin)
+    app.UseAuthentication();   // D-04: populate HttpContext.User — MUST come after session middleware
     app.UseAuthorization();    // D-06: enforce [Authorize] attributes — MUST come after UseAuthentication
 
     // Liveness: process is alive — no dependency checks (D-26: used by Docker Compose healthcheck)

@@ -1,146 +1,423 @@
-/* Onboarding Backoffice Login Theme */
-/* Admin-oriented theme with a professional dark accent palette */
+/* ═══════════════════════════════════════════════════════════════
+   Onboarding Backoffice – Keycloak Login Theme
+   Design System: shadcn/ui alignment (admin-oriented)
+   ═══════════════════════════════════════════════════════════════ */
 
+/* ── Design Tokens ────────────────────────────────────────────── */
 :root {
-  --color-primary: #7c3aed;
-  --color-primary-hover: #6d28d9;
-  --color-background: #f1f5f9;
-  --color-card: #ffffff;
-  --color-text: #1e293b;
-  --color-muted: #64748b;
-  --color-border: #cbd5e1;
-  --color-error: #dc2626;
-  --color-accent-bar: #7c3aed;
+  --kc-bg: #0f0f11;
+  --kc-bg-subtle: #18181b;
+  --kc-card: #1c1c21;
+  --kc-card-foreground: #fafafa;
+  --kc-primary: #fafafa;
+  --kc-primary-hover: #e4e4e7;
+  --kc-primary-foreground: #18181b;
+  --kc-secondary: #27272a;
+  --kc-secondary-foreground: #fafafa;
+  --kc-muted: #27272a;
+  --kc-muted-foreground: #a1a1aa;
+  --kc-border: #27272a;
+  --kc-input: #3f3f46;
+  --kc-input-focus: #71717a;
+  --kc-ring: #fafafa;
+  --kc-destructive: #f87171;
+  --kc-destructive-bg: rgba(239, 68, 68, 0.1);
+  --kc-destructive-border: rgba(239, 68, 68, 0.2);
+  --kc-success: #4ade80;
+  --kc-success-bg: rgba(34, 197, 94, 0.1);
+  --kc-success-border: rgba(34, 197, 94, 0.2);
+  --kc-info-color: #60a5fa;
+  --kc-info-bg: rgba(59, 130, 246, 0.1);
+  --kc-info-border: rgba(59, 130, 246, 0.2);
+  --kc-accent: #818cf8;
+  --kc-accent-secondary: #a78bfa;
+  --kc-radius: 0.625rem;
+  --kc-radius-md: calc(var(--kc-radius) - 2px);
+  --kc-radius-lg: calc(var(--kc-radius) + 2px);
+  --kc-shadow: 0 1px 2px 0 rgba(0,0,0,.3), 0 1px 6px -1px rgba(0,0,0,.2);
+  --kc-shadow-md: 0 4px 6px -1px rgba(0,0,0,.4), 0 2px 4px -2px rgba(0,0,0,.3);
+  --kc-shadow-lg: 0 10px 15px -3px rgba(0,0,0,.4), 0 4px 6px -4px rgba(0,0,0,.3);
+  --kc-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --kc-transition: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Global Reset ─────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
 }
 
 body {
-  background-color: var(--color-background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: var(--color-text);
+  font-family: var(--kc-font);
+  background-color: var(--kc-bg);
+  color: var(--kc-card-foreground);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.5;
 }
 
-/* Accent bar at top */
-body::before {
-  content: "";
-  display: block;
-  height: 4px;
-  background: linear-gradient(90deg, var(--color-accent-bar), #a78bfa);
+/* ── Accent Bar ───────────────────────────────────────────────── */
+.kc-accent-bar {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--kc-accent), var(--kc-accent-secondary), var(--kc-accent));
+  background-size: 200% 100%;
+  animation: kc-shimmer 3s ease-in-out infinite;
   z-index: 100;
 }
 
-/* Login card */
-#kc-content {
-  background-color: var(--color-card);
-  border-radius: 0.75rem;
-  border: 1px solid var(--color-border);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+@keyframes kc-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 
-/* Header */
-#kc-header {
+/* ── Subtle Grid Pattern (background texture) ─────────────────── */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(circle at 1px 1px, rgba(255,255,255,0.03) 1px, transparent 0);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Layout Container ─────────────────────────────────────────── */
+.kc-login-container {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+/* ── Card ──────────────────────────────────────────────────────── */
+.kc-login-card {
+  background: var(--kc-card);
+  border: 1px solid var(--kc-border);
+  border-radius: var(--kc-radius-lg);
+  box-shadow: var(--kc-shadow-lg);
+  width: 100%;
+  max-width: 26rem;
+  overflow: hidden;
+  animation: kc-fade-in 0.4s ease-out;
+}
+
+@keyframes kc-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ── Card Header ──────────────────────────────────────────────── */
+.kc-card-header {
+  padding: 2rem 2rem 0;
   text-align: center;
-  padding: 2rem 0 1rem;
 }
 
-#kc-header-wrapper {
+.kc-card-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--color-text);
+  color: var(--kc-card-foreground);
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  margin: 0;
 }
 
-/* Admin badge below title */
-#kc-header-wrapper::after {
-  content: "Área Administrativa";
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-primary);
+.kc-card-description {
+  font-size: 0.875rem;
+  color: var(--kc-muted-foreground);
+  margin-top: 0.375rem;
+  line-height: 1.4;
+}
+
+/* ── Admin Badge ──────────────────────────────────────────────── */
+.kc-admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.75rem;
+  background: linear-gradient(135deg, rgba(129, 140, 248, 0.12), rgba(167, 139, 250, 0.12));
+  border: 1px solid rgba(129, 140, 248, 0.2);
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--kc-accent);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  margin-top: 0.25rem;
+  margin-bottom: 1rem;
 }
 
-/* Form labels */
-#kc-form-login .form-group label,
-#kc-form-login label {
-  font-weight: 500;
-  color: var(--color-text);
+.kc-admin-badge svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ── Card Content ─────────────────────────────────────────────── */
+.kc-card-content {
+  padding: 1.5rem 2rem 2rem;
+}
+
+/* ── Card Footer ──────────────────────────────────────────────── */
+.kc-card-footer {
+  padding: 0 2rem 2rem;
+}
+
+/* ── Footer Text (realm branding) ─────────────────────────────── */
+.kc-footer-text {
+  margin-top: 1.5rem;
+  font-size: 0.75rem;
+  color: var(--kc-muted-foreground);
+  text-align: center;
+  opacity: 0.5;
+}
+
+/* ── Form Groups ──────────────────────────────────────────────── */
+.kc-form-group {
+  margin-bottom: 1rem;
+}
+
+.kc-form-group:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Labels ───────────────────────────────────────────────────── */
+.kc-label {
+  display: block;
   font-size: 0.875rem;
-}
-
-/* Inputs */
-#kc-form-login input[type="text"],
-#kc-form-login input[type="password"],
-#kc-form-login input[type="email"] {
-  border: 1px solid var(--color-border);
-  border-radius: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  width: 100%;
-  box-sizing: border-box;
-  transition: border-color 0.15s;
-}
-
-#kc-form-login input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
-}
-
-/* Submit button */
-#kc-login,
-.btn-primary {
-  background-color: var(--color-primary);
-  border-color: var(--color-primary);
-  border-radius: 0.375rem;
   font-weight: 500;
-  padding: 0.5rem 1rem;
-  width: 100%;
-  cursor: pointer;
-  transition: background-color 0.15s;
+  color: var(--kc-card-foreground);
+  margin-bottom: 0.375rem;
+  line-height: 1;
 }
 
-#kc-login:hover,
-.btn-primary:hover {
-  background-color: var(--color-primary-hover);
-  border-color: var(--color-primary-hover);
+.kc-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.375rem;
 }
 
-/* Links */
-#kc-form-options a,
-.instruction a {
-  color: var(--color-primary);
+/* ── Forgot Password Link ─────────────────────────────────────── */
+.kc-forgot-link {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--kc-muted-foreground);
   text-decoration: none;
+  transition: color var(--kc-transition);
 }
 
-#kc-form-options a:hover {
+.kc-forgot-link:hover {
+  color: var(--kc-accent);
   text-decoration: underline;
 }
 
-/* Muted text */
-#kc-info-message,
-.instruction {
-  color: var(--color-muted);
+/* ── Inputs ───────────────────────────────────────────────────── */
+.kc-input {
+  display: flex;
+  width: 100%;
+  height: 2.5rem;
+  padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
+  font-family: var(--kc-font);
+  color: var(--kc-card-foreground);
+  background-color: var(--kc-bg-subtle);
+  border: 1px solid var(--kc-input);
+  border-radius: var(--kc-radius-md);
+  outline: none;
+  transition: border-color var(--kc-transition), box-shadow var(--kc-transition), background-color var(--kc-transition);
+  -webkit-appearance: none;
 }
 
-/* Error alerts */
-.alert-error,
-#kc-error-message {
-  background-color: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 0.375rem;
-  color: var(--color-error);
+.kc-input::placeholder {
+  color: var(--kc-muted-foreground);
+  opacity: 0.5;
+}
+
+.kc-input:focus {
+  border-color: var(--kc-input-focus);
+  background-color: var(--kc-bg);
+  box-shadow: 0 0 0 2px rgba(250, 250, 250, 0.06);
+}
+
+.kc-input[aria-invalid="true"] {
+  border-color: var(--kc-destructive);
+}
+
+.kc-input[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.15);
+}
+
+/* ── Input Wrapper (password toggle) ──────────────────────────── */
+.kc-input-wrapper {
+  position: relative;
+}
+
+.kc-input-wrapper .kc-input {
+  padding-right: 2.75rem;
+}
+
+/* ── Password Toggle Button ───────────────────────────────────── */
+.kc-password-toggle {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  bottom: 1px;
+  width: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 0 var(--kc-radius-md) var(--kc-radius-md) 0;
+  cursor: pointer;
+  color: var(--kc-muted-foreground);
+  transition: color var(--kc-transition);
+}
+
+.kc-password-toggle:hover {
+  color: var(--kc-card-foreground);
+}
+
+.kc-password-toggle svg {
+  pointer-events: none;
+}
+
+/* ── Primary Button ───────────────────────────────────────────── */
+.kc-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  height: 2.5rem;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: var(--kc-font);
+  border-radius: var(--kc-radius-md);
+  cursor: pointer;
+  transition: background-color var(--kc-transition), border-color var(--kc-transition), color var(--kc-transition), opacity var(--kc-transition);
+  border: 1px solid transparent;
+  -webkit-appearance: none;
+  outline: none;
+}
+
+.kc-button:focus-visible {
+  outline: 2px solid var(--kc-accent);
+  outline-offset: 2px;
+}
+
+.kc-button-primary {
+  background-color: var(--kc-primary);
+  border-color: var(--kc-primary);
+  color: var(--kc-primary-foreground);
+  box-shadow: 0 1px 2px 0 rgba(0,0,0,.3);
+}
+
+.kc-button-primary:hover {
+  background-color: var(--kc-primary-hover);
+  border-color: var(--kc-primary-hover);
+}
+
+.kc-button-primary:active {
+  background-color: #d4d4d8;
+}
+
+/* ── Form Buttons ─────────────────────────────────────────────── */
+.kc-form-buttons {
+  margin-top: 1.5rem !important;
+}
+
+/* ── Alerts ───────────────────────────────────────────────────── */
+.kc-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
   padding: 0.75rem;
-  font-size: 0.875rem;
+  border-radius: var(--kc-radius-md);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  margin-bottom: 1rem;
+  border: 1px solid transparent;
 }
 
-/* Hide registration link — backoffice users are created by admins */
-#kc-registration,
-.login-pf-signup {
-  display: none;
+.kc-alert-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.kc-alert-error {
+  background-color: var(--kc-destructive-bg);
+  border-color: var(--kc-destructive-border);
+  color: var(--kc-destructive);
+}
+
+.kc-alert-success {
+  background-color: var(--kc-success-bg);
+  border-color: var(--kc-success-border);
+  color: var(--kc-success);
+}
+
+.kc-alert-info,
+.kc-alert-warning {
+  background-color: var(--kc-info-bg);
+  border-color: var(--kc-info-border);
+  color: var(--kc-info-color);
+}
+
+/* ── Field-Level Errors ───────────────────────────────────────── */
+.kc-input-error {
+  display: block;
+  color: var(--kc-destructive);
+  font-size: 0.8125rem;
+  margin-top: 0.375rem;
+  line-height: 1.4;
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .kc-login-card {
+    max-width: 100%;
+    border-radius: var(--kc-radius);
+  }
+
+  .kc-card-header {
+    padding: 1.5rem 1.5rem 0;
+  }
+
+  .kc-card-content {
+    padding: 1.25rem 1.5rem 1.5rem;
+  }
+
+  .kc-card-footer {
+    padding: 0 1.5rem 1.5rem;
+  }
+}
+
+/* ── Hide any leaked Keycloak default elements ────────────────── */
+#kc-header,
+.login-pf-page-header,
+.pf-c-login__header,
+.pf-c-brand,
+#kc-locale {
+  display: none !important;
 }

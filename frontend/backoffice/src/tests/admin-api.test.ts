@@ -1,10 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
-  loginAdmin,
   logoutAdmin,
   getAdminMe,
   getAdministrators,
-  AdminLoginError,
   AdminApiError,
   type AdminUserDto,
 } from "@/lib/admin-api";
@@ -20,63 +18,6 @@ describe("admin-api.ts", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetch.mockReset();
-  });
-
-  // ---------------------------------------------------------------------------
-  // loginAdmin
-  // ---------------------------------------------------------------------------
-
-  describe("loginAdmin", () => {
-    it("calls POST /api/admin/auth/login with credentials: include", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({
-            adminName: "Admin User",
-            adminEmail: "admin@onboarding.local",
-          }),
-      });
-
-      const result = await loginAdmin("admin@onboarding.local", "SecureP@ss123");
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/admin/auth/login",
-        expect.objectContaining({
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: "admin@onboarding.local",
-            password: "SecureP@ss123",
-          }),
-          credentials: "include",
-        })
-      );
-      expect(result).toEqual({
-        adminName: "Admin User",
-        adminEmail: "admin@onboarding.local",
-      });
-    });
-
-    it("throws AdminLoginError on 401", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 401 });
-
-      await expect(
-        loginAdmin("wrong@bad.com", "wrong")
-      ).rejects.toThrow(AdminLoginError);
-    });
-
-    it("throws AdminApiError on other failures", async () => {
-      mockFetch.mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        json: () => Promise.resolve({ detail: "Internal error" }),
-      });
-
-      await expect(
-        loginAdmin("admin@onboarding.local", "pass")
-      ).rejects.toThrow(AdminApiError);
-    });
   });
 
   // ---------------------------------------------------------------------------

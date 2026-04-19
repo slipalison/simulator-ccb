@@ -1,14 +1,15 @@
 <#import "template.ftl" as layout>
 <@layout.registrationLayout displayMessage=!messagesPerField.existsError('username','password') displayInfo=false; section>
     <#if section = "header">
-        ${msg("loginAccountTitle")}
+        Entrar
     <#elseif section = "form">
         <div id="kc-form">
             <div id="kc-form-wrapper">
                 <#if realm.password>
-                    <form id="kc-form-login" onsubmit="return true;" action="${url.loginAction}" method="post">
-                        <div class="${properties.kcFormGroupClass!}">
-                            <label for="username" class="${properties.kcLabelClass!}">
+                    <form id="kc-form-login" onsubmit="return true;" action="${url.loginAction}" method="post" novalidate>
+                        <!-- Username / Email -->
+                        <div class="kc-form-group">
+                            <label for="username" class="kc-label">
                                 <#if !realm.loginWithEmailAllowed>
                                     ${msg("username")}
                                 <#elseif !realm.registrationEmailAsUsername>
@@ -20,58 +21,61 @@
                             <input
                                 tabindex="1"
                                 id="username"
-                                class="${properties.kcInputClass!}"
+                                class="kc-input"
                                 name="username"
                                 value="${(login.username!'')}"
                                 type="text"
                                 autofocus
                                 autocomplete="off"
+                                placeholder="<#if !realm.loginWithEmailAllowed>nome de usuário<#elseif !realm.registrationEmailAsUsername>email ou usuário<#else>admin@empresa.com</#if>"
                                 aria-invalid="<#if messagesPerField.existsError('username','password')>true</#if>"
                             />
                             <#if messagesPerField.existsError('username','password')>
-                                <span id="input-error" class="${properties.kcInputErrorMessageClass!}" aria-live="polite">
+                                <span class="kc-input-error" aria-live="polite">
                                     ${kcSanitize(messagesPerField.getFirstError('username','password'))?no_esc}
                                 </span>
                             </#if>
                         </div>
 
-                        <div class="${properties.kcFormGroupClass!}">
-                            <label for="password" class="${properties.kcLabelClass!}">${msg("password")}</label>
-                            <div class="${properties.kcInputGroup!}">
+                        <!-- Password -->
+                        <div class="kc-form-group">
+                            <div class="kc-label-row">
+                                <label for="password" class="kc-label">${msg("password")}</label>
+                                <#if realm.resetPasswordAllowed>
+                                    <a tabindex="3" class="kc-forgot-link" href="${url.loginResetCredentialsUrl}">${msg("doForgotPassword")}</a>
+                                </#if>
+                            </div>
+                            <div class="kc-input-wrapper">
                                 <input
                                     tabindex="2"
                                     id="password"
-                                    class="${properties.kcInputClass!}"
+                                    class="kc-input"
                                     name="password"
                                     type="password"
                                     autocomplete="off"
+                                    placeholder="••••••••"
                                     aria-invalid="<#if messagesPerField.existsError('username','password')>true</#if>"
                                 />
-                                <button class="${properties.kcFormPasswordVisibilityButtonClass!}" type="button" aria-label="${msg('showPassword')}"
+                                <button class="kc-password-toggle" type="button" aria-label="${msg('showPassword')}"
                                         aria-controls="password" data-password-toggle
-                                        data-icon-show="${properties.kcFormPasswordVisibilityIconShow!}" data-icon-hide="${properties.kcFormPasswordVisibilityIconHide!}"
+                                        data-icon-show="" data-icon-hide=""
                                         data-label-show="${msg('showPassword')}" data-label-hide="${msg('hidePassword')}">
-                                    <i class="${properties.kcFormPasswordVisibilityIconShow!}" aria-hidden="true"></i>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
                                 </button>
                             </div>
                         </div>
 
-                        <div class="${properties.kcFormGroupClass!} ${properties.kcFormSettingClass!}">
-                            <div id="kc-form-options">
-                                <#-- No "remember me" for backoffice — shorter sessions enforced by Keycloak -->
-                            </div>
-                            <div class="${properties.kcFormOptionsWrapperClass!}">
-                                <#if realm.resetPasswordAllowed>
-                                    <span>
-                                        <a tabindex="3" href="${url.loginResetCredentialsUrl}">${msg("doForgotPassword")}</a>
-                                    </span>
-                                </#if>
-                            </div>
-                        </div>
+                        <#-- No "remember me" for backoffice — shorter sessions enforced by Keycloak -->
 
-                        <div id="kc-form-buttons" class="${properties.kcFormGroupClass!}">
+                        <!-- Submit -->
+                        <div class="kc-form-group kc-form-buttons">
                             <input type="hidden" id="id-hidden-input" name="credentialId" <#if auth.selectedCredential?has_content>value="${auth.selectedCredential}"</#if>/>
-                            <input tabindex="4" class="${properties.kcButtonClass!} ${properties.kcButtonPrimaryClass!} ${properties.kcButtonBlockClass!} ${properties.kcButtonLargeClass!}" name="login" id="kc-login" type="submit" value="${msg("doLogIn")}"/>
+                            <button tabindex="4" class="kc-button kc-button-primary" name="login" id="kc-login" type="submit">
+                                ${msg("doLogIn")}
+                            </button>
                         </div>
                     </form>
                 </#if>

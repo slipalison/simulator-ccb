@@ -52,7 +52,7 @@ export function PasswordChangePage() {
       toast.success("Senha alterada com sucesso!", {
         description: "Voce ja pode acessar o sistema normalmente.",
       });
-    } catch (err: any) {
+    } catch (_err: any) {
       toast.error("Falha ao alterar senha", {
         description: "Tente novamente.",
       });

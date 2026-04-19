@@ -68,12 +68,8 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
 
             // Disable JWT validation for tests — PostConfigure overrides app configuration
             services.PostConfigure<JwtBearerOptions>(
-                JwtBearerDefaults.AuthenticationScheme, options =>
+                "BearerBackoffice", options =>
                 {
-                    options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
-                    {
-                        Issuer = "http://localhost:8180/realms/backoffice",
-                    };
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
                     options.TokenValidationParameters.ValidateLifetime = false;
@@ -84,10 +80,6 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
             services.PostConfigure<JwtBearerOptions>(
                 "BearerClient", options =>
                 {
-                    options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
-                    {
-                        Issuer = "http://localhost:8180/realms/client",
-                    };
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
                     options.TokenValidationParameters.ValidateLifetime = false;

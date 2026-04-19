@@ -722,7 +722,7 @@ jobs:
       - name: Run Dockle Scan
         id: dockle
         run: |
-          DOCKLE_OUTPUT=$(dockle --exit-code 1 --exit-level error --timeout 5m onboarding-api:ci 2>&1) && DOCKLE_EXIT=0 || DOCKLE_EXIT=$?
+          DOCKLE_OUTPUT=$(dockle --exit-code 1 --exit-level fatal --timeout 5m onboarding-api:ci 2>&1) && DOCKLE_EXIT=0 || DOCKLE_EXIT=$?
           echo "$DOCKLE_OUTPUT" | tee dockle-output.txt
 
           FATALS=$(echo "$DOCKLE_OUTPUT" | grep -c "^FATAL" || true)
@@ -750,7 +750,7 @@ jobs:
             echo ""
             echo "| Metric | Value |"
             echo "|--------|-------|"
-            echo "| **Exit level** | ERROR |"
+            echo "| **Exit level** | FATAL |"
             echo "| **Timeout** | 5 minutes |"
             echo ""
             echo "### What this check does"

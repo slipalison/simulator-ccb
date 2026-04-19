@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "@tanstack/react-router";
+
 import { PersonTypeRadio } from "@/components/molecules/PersonTypeRadio";
 import { PasswordField } from "@/components/molecules/PasswordField";
 import { PasswordStrengthMeter } from "@/components/molecules/PasswordStrengthMeter";
@@ -37,7 +37,7 @@ import { useAuth } from "@/lib/auth-context";
  * Auto-login after successful registration
  */
 export function RegistrationForm() {
-  const navigate = useNavigate();
+
   const { login } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);

@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text.Json;
 using Keycloak.AuthServices.Sdk.Admin;
 using Keycloak.AuthServices.Sdk.Admin.Models;
 using Microsoft.Extensions.Configuration;
@@ -10,18 +12,23 @@ namespace Onboarding.Domain.Tests.Application.Commands;
 [Trait("Category", "Unit")]
 public sealed class KeycloakUserServiceFirstLoginTests
 {
-    private readonly IKeycloakUserClient _keycloakUserClientMock = Substitute.For<IKeycloakUserClient>();
     private readonly IHttpClientFactory _httpClientFactoryMock = Substitute.For<IHttpClientFactory>();
     private readonly IConfiguration _configurationMock = Substitute.For<IConfiguration>();
     private readonly KeycloakUserService _sut;
+    private readonly FakeHttpMessageHandler _httpHandler = new();
 
     public KeycloakUserServiceFirstLoginTests()
     {
         _configurationMock["Keycloak:Realm"].Returns("onboarding");
-        // Provide a dummy HttpClient so KeycloakUserService constructor does not fail
-        _httpClientFactoryMock.CreateClient("keycloak-admin-api")
-            .Returns(new HttpClient { BaseAddress = new Uri("http://localhost:8180/") });
-        _sut = new KeycloakUserService(_keycloakUserClientMock, _httpClientFactoryMock, _configurationMock);
+        
+        var httpClient = new HttpClient(_httpHandler) { BaseAddress = new Uri("http://localhost:8180/") };
+        
+        _httpClientFactoryMock.CreateClient("keycloak-admin-backoffice")
+            .Returns(httpClient);
+        _httpClientFactoryMock.CreateClient("keycloak-admin-client")
+            .Returns(httpClient);
+            
+        _sut = new KeycloakUserService(_httpClientFactoryMock);
     }
 
     [Fact]
@@ -38,23 +45,20 @@ public sealed class KeycloakUserServiceFirstLoginTests
             }
         };
 
-        _keycloakUserClientMock
-            .GetUserAsync("backoffice", userId, cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(user);
+        _httpHandler.Responses[$"http://localhost:8180/admin/realms/backoffice/users/{userId}"] = 
+            () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(user)) };
 
         // Act
         await _sut.ClearFirstLoginFlagAsync("backoffice", userId);
 
-        // Assert — UpdateUserAsync called with isFirstLogin = "false"
-        await _keycloakUserClientMock.Received(1)
-            .UpdateUserAsync(
-                "backoffice",
-                userId,
-                Arg.Is<UserRepresentation>(u =>
-                    u.Attributes != null &&
-                    u.Attributes.ContainsKey("isFirstLogin") &&
-                    u.Attributes["isFirstLogin"].First() == "false"),
-                Arg.Any<CancellationToken>());
+        // Assert — PUT called with isFirstLogin = "false"
+        var putRequest = _httpHandler.Requests.FirstOrDefault(r => r.Method == HttpMethod.Put);
+        putRequest.ShouldNotBeNull();
+        putRequest.RequestUri!.ToString().ShouldContain($"/users/{userId}");
+        
+        var body = await putRequest.Content!.ReadAsStringAsync();
+        var updatedUser = JsonSerializer.Deserialize<UserRepresentation>(body);
+        updatedUser!.Attributes!["isFirstLogin"].First().ShouldBe("false");
     }
 
     [Fact]
@@ -68,20 +72,14 @@ public sealed class KeycloakUserServiceFirstLoginTests
             Attributes = null
         };
 
-        _keycloakUserClientMock
-            .GetUserAsync("backoffice", userId, cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(user);
+        _httpHandler.Responses[$"http://localhost:8180/admin/realms/backoffice/users/{userId}"] = 
+            () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(user)) };
 
         // Act
         await _sut.ClearFirstLoginFlagAsync("backoffice", userId);
 
-        // Assert — UpdateUserAsync NOT called (idempotent no-op)
-        await _keycloakUserClientMock.DidNotReceive()
-            .UpdateUserAsync(
-                Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<UserRepresentation>(),
-                Arg.Any<CancellationToken>());
+        // Assert — PUT NOT called
+        _httpHandler.Requests.Any(r => r.Method == HttpMethod.Put).ShouldBeFalse();
     }
 
     [Fact]
@@ -98,19 +96,28 @@ public sealed class KeycloakUserServiceFirstLoginTests
             }
         };
 
-        _keycloakUserClientMock
-            .GetUserAsync("backoffice", userId, cancellationToken: Arg.Any<CancellationToken>())
-            .Returns(user);
+        _httpHandler.Responses[$"http://localhost:8180/admin/realms/backoffice/users/{userId}"] = 
+            () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(user)) };
 
         // Act
         await _sut.ClearFirstLoginFlagAsync("backoffice", userId);
 
-        // Assert — UpdateUserAsync NOT called (idempotent no-op)
-        await _keycloakUserClientMock.DidNotReceive()
-            .UpdateUserAsync(
-                Arg.Any<string>(),
-                Arg.Any<string>(),
-                Arg.Any<UserRepresentation>(),
-                Arg.Any<CancellationToken>());
+        // Assert — PUT NOT called
+        _httpHandler.Requests.Any(r => r.Method == HttpMethod.Put).ShouldBeFalse();
+    }
+
+    private class FakeHttpMessageHandler : HttpMessageHandler
+    {
+        public List<HttpRequestMessage> Requests { get; } = new();
+        public Dictionary<string, Func<HttpResponseMessage>> Responses { get; } = new();
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Requests.Add(request);
+            if (Responses.TryGetValue(request.RequestUri!.ToString(), out var responseFunc))
+                return Task.FromResult(responseFunc());
+            
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        }
     }
 }

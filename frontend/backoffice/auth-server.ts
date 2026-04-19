@@ -5,6 +5,7 @@ import {
   setCookie,
   deleteCookie,
   getCookie,
+  getRequestHeader,
   sendRedirect,
   readBody,
 } from "h3";
@@ -36,6 +37,13 @@ router.get(
     const codeChallenge = await generateCodeChallenge(codeVerifier);
     const state = generateCodeVerifier().slice(0, 20);
 
+    // Defensive: clear stale PKCE cookies before setting new ones
+    // (prevents Brave/privacy-browser issues with leftover cookies)
+    deleteCookie(event, "pkce_code_verifier", { path: "/auth" });
+    deleteCookie(event, "pkce_code_verifier", { path: "/" });
+    deleteCookie(event, "pkce_state", { path: "/auth" });
+    deleteCookie(event, "pkce_state", { path: "/" });
+
     setCookie(event, "pkce_code_verifier", codeVerifier, {
       httpOnly: true,
       secure: IS_PROD,
@@ -51,11 +59,17 @@ router.get(
       maxAge: 600,
     });
 
+    // If this login was triggered by a PKCE cookie retry, forward the retry param
+    // in the redirect URI so it arrives back in the callback query string.
+    // This is the fallback when the browser blocks even the pkce_retry cookie.
+    const retryQuery = getQuery(event).retry as string | undefined;
+    const callbackUri = retryQuery === "1" ? `${REDIRECT_URI}?retry=1` : REDIRECT_URI;
+
     const authUrl = buildAuthorizationUrl({
       keycloakUrl: KEYCLOAK_PUBLIC_URL,
       realm: KEYCLOAK_REALM,
       clientId: CLIENT_ID,
-      redirectUri: REDIRECT_URI,
+      redirectUri: callbackUri,
       codeChallenge,
       state,
     });
@@ -87,16 +101,56 @@ router.get(
     }
 
     const storedState = getCookie(event, "pkce_state");
-    if (state !== storedState) {
-      return sendRedirect(event, "/auth/error?error=Invalid+state", 302);
-    }
-
     const codeVerifier = getCookie(event, "pkce_code_verifier");
-    if (!codeVerifier) {
-      return sendRedirect(event, "/auth/error?error=Missing+code+verifier", 302);
+    // Retry tracking: cookie is primary, URL query param is fallback (if cookies completely blocked)
+    const retryFromCookie = parseInt(getCookie(event, "pkce_retry") || "0", 10);
+    const retryFromQuery = parseInt((query.retry as string) || "0", 10);
+    const retryCount = Math.max(retryFromCookie, retryFromQuery);
+
+    if (state !== storedState || !codeVerifier) {
+      // Diagnostic logging — captures evidence for Brave/privacy-browser cookie issues
+      const userAgent = getRequestHeader(event, "user-agent") || "unknown";
+      const cookieHeader = getRequestHeader(event, "cookie") || "(empty)";
+      console.warn(
+        `[auth/callback] PKCE cookie mismatch — ` +
+          `query.state=${state}, cookie.pkce_state=${storedState ?? "(missing)"}, ` +
+          `code_verifier=${codeVerifier ? "present" : "(missing)"}, ` +
+          `retry=${retryCount}, ` +
+          `cookies=[${cookieHeader.replace(/=[^;]+/g, "=***")}], ` +
+          `ua=${userAgent}`
+      );
+
+      // Auto-retry: redirect to /auth/login to restart the flow.
+      // Keycloak already has an active session → user won't re-enter credentials.
+      // Max 1 retry to prevent infinite loops.
+      if (retryCount < 1) {
+        setCookie(event, "pkce_retry", "1", {
+          httpOnly: true,
+          secure: IS_PROD,
+          sameSite: "lax",
+          path: "/",
+          maxAge: 120,
+        });
+        return sendRedirect(event, "/auth/login?retry=1", 302);
+      }
+
+      // Retry exhausted — clear retry cookie, show error with guidance
+      deleteCookie(event, "pkce_retry", { path: "/" });
+      return sendRedirect(
+        event,
+        `/auth/error?error=${encodeURIComponent(
+          "Cookies de sessão não foram preservados pelo navegador. " +
+            "Tente desativar bloqueadores de cookies/Shields para localhost, " +
+            "ou use Chrome/Firefox."
+        )}`,
+        302
+      );
     }
 
     try {
+      // redirect_uri in token exchange must match the one sent to the authorize endpoint
+      const exchangeRedirectUri = retryFromQuery > 0 ? `${REDIRECT_URI}?retry=1` : REDIRECT_URI;
+
       const tokens = await exchangeCodeForTokens({
         keycloakUrl: KEYCLOAK_URL,
         realm: KEYCLOAK_REALM,
@@ -104,7 +158,7 @@ router.get(
         clientSecret: CLIENT_SECRET,
         code,
         codeVerifier,
-        redirectUri: REDIRECT_URI,
+        redirectUri: exchangeRedirectUri,
       });
 
       // Set httpOnly cookies for tokens
@@ -123,9 +177,10 @@ router.get(
         maxAge: 28800,
       });
 
-      // Clean up PKCE cookies
+      // Clean up PKCE cookies + retry cookie
       deleteCookie(event, "pkce_code_verifier", { path: "/auth" });
       deleteCookie(event, "pkce_state", { path: "/auth" });
+      deleteCookie(event, "pkce_retry", { path: "/" });
 
       // Detect first login via isFirstLogin claim in access token
       let isFirstLogin = false;

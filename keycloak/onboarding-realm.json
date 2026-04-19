@@ -72,7 +72,8 @@
       "authorizationServicesEnabled": false,
       "secret": "backoffice-secret-dev-change-in-prod-2026",
       "redirectUris": [
-        "http://localhost:5174/auth/callback"
+        "http://localhost:5174/auth/callback",
+        "http://localhost:5174/auth/callback?retry=1"
       ],
       "webOrigins": [
         "http://localhost:5174"

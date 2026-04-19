@@ -874,6 +874,7 @@ keycloak/themes/
 | 31. Backoffice Auth Code Flow UI | 0/TBD | 📋 Planned | — |
 | 32. Backoffice Admin Management UI + Audit Log UI | 0/TBD | 📋 Planned | — |
 | 33. PKCE + Custom Keycloak Themes (Backoffice + Client) | 1/0 | Complete    | 2026-04-17 |
+| 34. Isolar Backoffice e Client em Realms Separados | 0/TBD | 📋 Planned    | — |
 
 ---
 
@@ -888,10 +889,21 @@ keycloak/themes/
 3. **`/gsd:plan-phase 30`** — Phase 30 (Audit Log Backend + Admin Management Backend)
 4. **`/gsd:plan-phase 31`** — Phase 31 (Backoffice Auth Code Flow UI)
 5. **`/gsd:plan-phase 32`** — Phase 32 (Backoffice Admin Management UI + Audit Log UI)
+6. **`/gsd:plan-phase 34`** — Phase 34 (Isolar Backoffice e Client em Realms Separados)
 
 **Deferred:**
 - Phase 14 (E2E Testing from v2.0) — pode ser feito em paralelo ou após v5.0
 
+### Phase 34: Isolar Backoffice e Client em Realms Separados
+
+**Goal:** Isolar o banco de usuários do Keycloak em dois Realms (backoffice e client) para separar regras de sessão de forma arquitetural
+**Requirements**: ARCH-04
+**Depends on:** Phase 33
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 34 to break down)
+
 ---
 
-*Last updated: 2026-04-15 — Phase 33 adicionada: PKCE + Custom Keycloak Themes para Backoffice e Client*
+*Last updated: 2026-04-19 — Phase 34 adicionada: Separação de Realms*

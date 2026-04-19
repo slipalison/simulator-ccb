@@ -3,7 +3,6 @@ import {
   logoutAdmin,
   getAdminMe,
   getAdministrators,
-  AdminLoginError,
   AdminApiError,
   type AdminUserDto,
 } from "@/lib/admin-api";

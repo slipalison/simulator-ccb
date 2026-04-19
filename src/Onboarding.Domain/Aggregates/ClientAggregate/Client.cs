@@ -25,7 +25,7 @@ public sealed class Client : Entity<Guid>
     // without exposing personal data like email (LGPD privacy)
     public string? KeycloakUserId { get; private set; }
 
-    protected Client() { }
+    private Client() { }
 
     public static Client RegisterPessoaFisica(
         string nome,

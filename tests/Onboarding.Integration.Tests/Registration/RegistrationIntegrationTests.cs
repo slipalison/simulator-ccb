@@ -17,16 +17,14 @@ namespace Onboarding.Integration.Tests.Registration;
 [Trait("Category", "Integration")]
 public class RegistrationIntegrationTests : IAsyncLifetime
 {
-    private readonly KeycloakContainer _keycloak = new KeycloakBuilder()
-        .WithImage("quay.io/keycloak/keycloak:26.1")
+    private readonly KeycloakContainer _keycloak = new KeycloakBuilder("quay.io/keycloak/keycloak:26.1")
         .WithResourceMapping(
             new FileInfo(Path.Combine(AppContext.BaseDirectory, "../../../../../keycloak/backoffice-realm.json")),
             "/opt/keycloak/data/import/")
         .WithCommand("--import-realm")
         .Build();
 
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
         .Build();
 
     private WebApplicationFactory<Program>? _factory;

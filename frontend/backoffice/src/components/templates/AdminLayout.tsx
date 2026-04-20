@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAdminAuth } from "@/lib/admin-auth-context";
 import { toast } from "sonner";
@@ -79,10 +79,20 @@ function AdminSidebar() {
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { admin, logout } = useAdminAuth();
 
+  useEffect(() => {
+    if (!admin.isLoading && !admin.isAuthenticated) {
+      window.location.href = "/admin/login";
+    }
+  }, [admin.isLoading, admin.isAuthenticated]);
+
   async function handleLogout() {
     await logout();
     toast.success("Logout realizado", { description: "Ate logo!" });
     window.location.href = "/admin/login";
+  }
+
+  if (admin.isLoading || !admin.isAuthenticated) {
+    return null; // Prevents flashing unauthenticated content
   }
 
   return (

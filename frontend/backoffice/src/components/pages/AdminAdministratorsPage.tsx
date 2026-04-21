@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Shield, RefreshCw } from "lucide-react";
+import { Shield, RefreshCw, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { getAdministrators } from "@/lib/admin-api";
 import type { AdminUserDto } from "@/lib/admin-api";
@@ -39,16 +39,26 @@ export function AdminAdministratorsPage() {
           <Shield className="h-5 w-5 text-primary" />
           <h2 className="text-xl font-semibold">Administradores</h2>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchAdmins}
-          disabled={isLoading}
-          data-testid="refresh-button"
-        >
-          <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} />
-          Atualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchAdmins}
+            disabled={isLoading}
+            data-testid="refresh-button"
+          >
+            <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} />
+            Atualizar
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => { window.location.href = "/admin/create"; }}
+            data-testid="create-admin-button"
+          >
+            <UserPlus className="h-4 w-4 mr-1" />
+            Criar Admin
+          </Button>
+        </div>
       </div>
 
       <Card>

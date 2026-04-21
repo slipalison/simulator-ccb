@@ -8,7 +8,7 @@ Sistema de onboarding para cadastro de clientes Pessoa Física (PF) e Pessoa Jur
 
 Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
 
-## Current Milestone: v3.0 Painel de Backoffice Admin ✅ COMPLETE
+## Previous Milestone: v3.0 Painel de Backoffice Admin ✅ COMPLETE
 
 **Goal:** Painel administrativo para gerenciar cadastros de usuários — listar, visualizar, editar, bloquear/desbloquear e excluir (LGPD) com autenticação baseada em cookies httpOnly e autorização por role "admin".
 
@@ -44,19 +44,25 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 **Result:** 100% complete — 8/8 phases, 20/20 plans. CI pipeline com 12 jobs operacional.
 
-## Current Milestone: v5.0 Auth Code Flow (Backoffice) + Gestão de Admins
+## Previous Milestone: v5.0 Auth Code Flow + Admins + Auditoria ✅ COMPLETE
 
-**Goal:** Migrar o backoffice de ROPC para Authorization Code Flow + PKCE (Keycloak gerencia forced password change nativamente), adicionar criação de administradores e auditoria completa de ações.
+**Goal:** Migrar backoffice para ACF+PKCE, criar admins com senha temporária, auditoria append-only, isolamento de realms Keycloak.
+
+**Result:** 100% complete — 6/6 phases (29–34). Dois realms isolados (backoffice/client), auth PKCE funcionando, audit log operacional.
+
+## Current Milestone: v6.0 Gestão Completa de Administradores
+
+**Goal:** Admin pode gerenciar outros admins com operações completas — listar com paginação/filtros, editar, resetar senha e desativar/reativar — com segurança e auditoria obrigatórias em cada operação.
 
 **Target features:**
-- Backoffice migrado de ROPC → Auth Code Flow + PKCE (confidential client, code exchange server-side)
-- Forced password change no primeiro login funciona nativamente via Keycloak requiredActions
-- Admin pode criar novos administradores no backoffice (senha temporária, Keycloak força troca)
-- Auditoria de todas as ações administrativas (append-only, visível com filtros no backoffice)
+- Listagem paginada de admins com filtros (nome, email, status)
+- Editar admin (nome + email — atualiza no Keycloak)
+- Resetar senha (gera nova senha temporária exibida uma vez, Keycloak força troca)
+- Desativar/reativar admin (disable/enable no Keycloak — preserva histórico de auditoria)
+- Todas as ações auditadas via IAuditService existente
+- Segurança: admin não pode operar sobre si mesmo; último admin ativo não pode ser desativado
 
-**Key decision:** Client frontend mantém ROPC + UI customizada (decisão consciente — UX priorizada). Somente backoffice migra para Auth Code Flow.
-
-**Depends on**: Milestone v4.0 completo (CI/CD Pipeline + Cybersecurity)
+**Depends on**: Milestone v5.0 completo (Auth Code Flow + Admins + Auditoria)
 
 ## Requirements
 

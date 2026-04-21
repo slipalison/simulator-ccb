@@ -35,6 +35,20 @@ export function logoutAdmin(): void {
 }
 
 // ---------------------------------------------------------------------------
+// Internal Helper: fetchWithAuth
+// Intercepts 401 Unauthorized to trigger a login redirect when token expires.
+// ---------------------------------------------------------------------------
+async function fetchWithAuth(url: string | URL, init?: RequestInit): Promise<Response> {
+  const response = await fetch(url.toString(), init);
+  if (response.status === 401) {
+    if (window.location.pathname !== "/admin/login") {
+      window.location.href = "/admin/login";
+    }
+  }
+  return response;
+}
+
+// ---------------------------------------------------------------------------
 // GET /auth/me — returns session info from httpOnly cookie (Vinxi server)
 // ---------------------------------------------------------------------------
 
@@ -120,7 +134,7 @@ export async function listUsers(
   const queryString = searchParams.toString();
   const url = queryString ? `/api/admin/users?${queryString}` : "/api/admin/users";
 
-  const response = await fetch(url, {
+  const response = await fetchWithAuth(url, {
     method: "GET",
     credentials: "include",
   });
@@ -152,7 +166,7 @@ export interface UserDetailDto {
 }
 
 export async function getUserDetail(userId: string): Promise<UserDetailDto> {
-  const response = await fetch(`/api/admin/users/${userId}`, {
+  const response = await fetchWithAuth(`/api/admin/users/${userId}`, {
     method: "GET",
     credentials: "include",
   });
@@ -183,7 +197,7 @@ export async function updateUser(
   userId: string,
   data: UpdateUserDto
 ): Promise<UserDetailDto> {
-  const response = await fetch(`/api/admin/users/${userId}`, {
+  const response = await fetchWithAuth(`/api/admin/users/${userId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -214,7 +228,7 @@ export async function blockUser(
   userId: string,
   reason: string
 ): Promise<void> {
-  const response = await fetch(`/api/admin/users/${userId}/block`, {
+  const response = await fetchWithAuth(`/api/admin/users/${userId}/block`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ reason }),
@@ -238,7 +252,7 @@ export async function blockUser(
 export async function deleteUser(
   userId: string
 ): Promise<void> {
-  const response = await fetch(`/api/admin/users/${userId}`, {
+  const response = await fetchWithAuth(`/api/admin/users/${userId}`, {
     method: "DELETE",
     credentials: "include",
   });
@@ -265,7 +279,7 @@ export async function unblockUser(
   userId: string,
   reason?: string
 ): Promise<void> {
-  const response = await fetch(`/api/admin/users/${userId}/unblock`, {
+  const response = await fetchWithAuth(`/api/admin/users/${userId}/unblock`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ reason: reason ?? null }),
@@ -296,7 +310,7 @@ export async function createAdmin(
   fullName: string,
   email: string
 ): Promise<CreateAdminResult> {
-  const response = await fetch("/api/admin/administrators", {
+  const response = await fetchWithAuth("/api/admin/administrators", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ fullName, email }),
@@ -319,7 +333,7 @@ export async function createAdmin(
 export async function forcePasswordChange(
   newPassword: string
 ): Promise<void> {
-  const response = await fetch("/api/admin/me/password", {
+  const response = await fetchWithAuth("/api/admin/me/password", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ newPassword }),
@@ -368,7 +382,7 @@ export async function getAuditLog(
   const queryString = searchParams.toString();
   const url = queryString ? `/api/admin/audit-log?${queryString}` : "/api/admin/audit-log";
 
-  const response = await fetch(url, {
+  const response = await fetchWithAuth(url, {
     method: "GET",
     credentials: "include",
   });
@@ -394,7 +408,7 @@ export interface AdminUserDto {
 }
 
 export async function getAdministrators(): Promise<AdminUserDto[]> {
-  const response = await fetch("/api/admin/administrators", {
+  const response = await fetchWithAuth("/api/admin/administrators", {
     method: "GET",
     credentials: "include",
   });

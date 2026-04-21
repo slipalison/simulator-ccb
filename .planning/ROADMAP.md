@@ -953,6 +953,16 @@ Plans:
 | 35. Admin Management Backend | 0/TBD | Not started | — |
 | 36. Admin Management UI | 0/TBD | Not started | — |
 
+### Phase 35: Backoffice Admin Management — Paginação, Filtros, Reset Senha, Edição e Exclusão
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 34
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 35 to break down)
+
 ---
 
 *Last updated: 2026-04-21 — Milestone v6.0 roadmap created (2 phases)*

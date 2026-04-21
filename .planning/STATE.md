@@ -115,6 +115,7 @@ Recent decisions affecting current work:
 
 - Phase 33 adicionada: PKCE + Custom Keycloak Themes para Backoffice e Client (2026-04-15) — ROPC descartado por impossibilidade de 2FA; ACF+PKCE com custom themes substitui abordagem anterior
 - Phase 34 added: Isolar Backoffice e Client em Realms Separados
+- Phase 35 added: Backoffice Admin Management — Paginação, Filtros, Reset Senha, Edição e Exclusão
 
 ### Quick Tasks Completed
 

@@ -19,18 +19,18 @@ public sealed record DeleteUserCommand(
 public sealed class DeleteUserCommandHandler : ICommandHandler<DeleteUserCommand, Unit>
 {
     private readonly IAdminRepository _adminRepository;
-    private readonly IAuditLogRepository _auditLogRepository;
+    private readonly IAuditService _auditService;
     private readonly IKeycloakUserService _keycloakUserService;
     private readonly ILogger<DeleteUserCommandHandler> _logger;
 
     public DeleteUserCommandHandler(
         IAdminRepository adminRepository,
-        IAuditLogRepository auditLogRepository,
+        IAuditService auditService,
         IKeycloakUserService keycloakUserService,
         ILogger<DeleteUserCommandHandler> logger)
     {
         _adminRepository = adminRepository;
-        _auditLogRepository = auditLogRepository;
+        _auditService = auditService;
         _keycloakUserService = keycloakUserService;
         _logger = logger;
     }
@@ -71,7 +71,7 @@ public sealed class DeleteUserCommandHandler : ICommandHandler<DeleteUserCommand
         // Delete from Keycloak — use ORIGINAL email
         try
         {
-            await _keycloakUserService.DeleteUserByEmailAsync(originalEmail, ct);
+            await _keycloakUserService.DeleteUserByEmailAsync("client", originalEmail, ct);
         }
         catch (Exception ex)
         {
@@ -93,20 +93,14 @@ public sealed class DeleteUserCommandHandler : ICommandHandler<DeleteUserCommand
         });
 
         // Audit log
-        var auditLog = AuditLog.Create(
-            command.AdminSub,
-            command.AdminEmail,
-            AuditActions.UserDeleted,
-            command.UserId,
-            originalEmail,
-            before,
-            after,
-            null,
-            null
-        );
-
-        await _auditLogRepository.AddAsync(auditLog, ct);
-        await _auditLogRepository.SaveChangesAsync(ct);
+        await _auditService.RecordAsync(
+            actorSub: command.AdminSub,
+            actorEmail: command.AdminEmail,
+            action: ActionType.UserDeleted,
+            targetUserId: command.UserId,
+            targetUserName: originalEmail,
+            details: JsonSerializer.Serialize(new { Before = before, After = after }),
+            ct: ct);
 
         return Unit.Value;
     }

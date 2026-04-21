@@ -1,112 +1,49 @@
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Primitives;
-using Onboarding.Application.Common;
-using Onboarding.Domain.Exceptions;
-using Onboarding.Infrastructure.Keycloak;
 
 namespace Onboarding.API.Middleware;
 
 /// <summary>
-/// Admin session middleware — converts the httpOnly refresh token cookie into a JWT access token
-/// so that [Authorize(Roles = "admin")] works on admin endpoints.
+/// Admin session middleware — converts the httpOnly backoffice_access_token cookie
+/// (JWT issued by Keycloak via Auth Code Flow + PKCE) into an Authorization: Bearer header
+/// so [Authorize(Roles = "admin")] works on /api/admin/* endpoints.
 ///
-/// Flow:
-/// 1. Reads the adminRefreshToken cookie from the request
-/// 2. Exchanges it for a new access + refresh token pair via Keycloak
-/// 3. Sets the Authorization header with the new access token (JWT Bearer)
-/// 4. Updates the refresh token cookie with the new value
+/// The cookie is set by the Vinxi auth-server (frontend/backoffice/auth-server.ts) after
+/// /auth/callback. Access token rotation is the Vinxi server's responsibility via /auth/refresh —
+/// this middleware does NOT call Keycloak and does NOT manipulate response cookies.
 ///
-/// This runs BEFORE UseAuthentication so JWT Bearer auth sees a valid token.
+/// Runs BEFORE UseAuthentication so JwtBearer sees the populated header.
 /// </summary>
 public static class AdminSessionMiddleware
 {
-    private const string AdminCookieName = "adminRefreshToken";
+    private const string AccessTokenCookieName = "backoffice_access_token";
 
     public static IApplicationBuilder UseAdminSession(this IApplicationBuilder app)
     {
         return app.Use(async (context, next) =>
         {
             var path = context.Request.Path;
+
+            if (!path.StartsWithSegments("/api/admin"))
+            {
+                await next();
+                return;
+            }
+
             var logger = context.RequestServices.GetRequiredService<ILoggerFactory>()
                 .CreateLogger("AdminSessionMiddleware");
 
-            // Skip auth endpoints — they handle cookies themselves
-            if (path.StartsWithSegments("/api/admin/auth"))
+            if (!context.Request.Cookies.TryGetValue(AccessTokenCookieName, out var accessToken)
+                || string.IsNullOrEmpty(accessToken))
             {
+                logger.LogDebug("AdminSessionMiddleware: no {Cookie} cookie on {Path}",
+                    AccessTokenCookieName, path);
                 await next();
                 return;
             }
 
-            // Only process admin API paths
-            if (!path.StartsWithSegments("/api/admin"))
-            {
-                logger.LogDebug("AdminSessionMiddleware: skipped (not admin path): {Path}", path);
-                await next();
-                return;
-            }
-
-            // Read refresh token from cookie
-            if (!context.Request.Cookies.TryGetValue(AdminCookieName, out var refreshToken) ||
-                string.IsNullOrEmpty(refreshToken))
-            {
-                logger.LogWarning("AdminSessionMiddleware: no cookie found. Cookie header: {CookieHeader}",
-                    context.Request.Headers.Cookie.ToString());
-                // No cookie — let downstream auth handle the 401
-                await next();
-                return;
-            }
-
-            logger.LogInformation("AdminSessionMiddleware: found refresh token, exchanging...");
-
-            // Exchange refresh token for access + refresh tokens
-            var tokenService = context.RequestServices.GetRequiredService<IKeycloakTokenService>();
-
-            try
-            {
-                var tokens = await tokenService.RefreshTokenAsync(refreshToken, context.RequestAborted);
-                logger.LogInformation("AdminSessionMiddleware: exchanged refresh token for access token. Scope: {Scope}", tokens.Scope);
-
-                // Decode access token to verify realm_access.roles is present
-                try
-                {
-                    var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-                    var jwt = handler.ReadJwtToken(tokens.AccessToken);
-                    var realmAccess = jwt.Payload.ContainsKey("realm_access")
-                        ? jwt.Payload["realm_access"]?.ToString()
-                        : "MISSING";
-                    logger.LogInformation("AdminSessionMiddleware: realm_access in access token: {RealmAccess}", realmAccess);
-                }
-                catch { /* ignore decode errors in middleware */ }
-
-                // Set Authorization header with the new access token so JWT Bearer auth works
-                context.Request.Headers.Authorization = $"Bearer {tokens.AccessToken}";
-                logger.LogInformation("AdminSessionMiddleware: set Authorization header");
-
-                // Update the refresh token cookie with the new value
-                // Note: CookieSettings.Secure is read at login time; here we use default dev settings
-                context.Response.OnStarting(() =>
-                {
-                    context.Response.Cookies.Append(AdminCookieName, tokens.RefreshToken, new CookieOptions
-                    {
-                        HttpOnly = true,
-                        Secure = false, // Development — set true in production via config
-                        SameSite = SameSiteMode.Strict,
-                        Path = "/api/admin",
-                        Expires = DateTimeOffset.UtcNow.AddSeconds(tokens.RefreshExpiresIn),
-                    });
-                    return Task.CompletedTask;
-                });
-            }
-            catch (KeycloakAuthException ex)
-            {
-                // Token expired/invalid — clear cookie and let downstream return 401
-                logger.LogWarning(ex, "AdminSessionMiddleware: Keycloak auth exception");
-                context.Response.Cookies.Delete(AdminCookieName, new CookieOptions { Path = "/api/admin" });
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "AdminSessionMiddleware: UNEXPECTED exception");
-            }
+            context.Request.Headers.Authorization = $"Bearer {accessToken}";
+            logger.LogInformation("AdminSessionMiddleware: forwarded access token from cookie on {Path}",
+                path);
 
             await next();
         });

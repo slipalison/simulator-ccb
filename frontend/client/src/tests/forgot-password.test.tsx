@@ -7,8 +7,6 @@ import * as api from "@/lib/api";
 
 // Mock API module
 vi.mock("@/lib/api", () => ({
-  loginClient: vi.fn(),
-  refreshTokenClient: vi.fn(),
   getProfileClient: vi.fn(),
   forgotPasswordClient: vi.fn(),
   resetPasswordClient: vi.fn(),

@@ -41,10 +41,6 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IValidator<ForgotPasswordCommand>, ForgotPasswordCommandValidator>();
         services.AddScoped<IValidator<ResetPasswordCommand>, ResetPasswordCommandValidator>();
 
-        // Admin login command (Phase 17 — ADMIN-06)
-        services.AddScoped<ICommandHandler<AdminLoginCommand, AdminSessionResponse>, AdminLoginCommandHandler>();
-        services.AddScoped<IValidator<AdminLoginCommand>, AdminLoginCommandValidator>();
-
         // Admin queries (Phase 16 — ADMIN-01, ADMIN-02)
         services.AddScoped<IQueryHandler<GetPaginatedUsersQuery, PaginatedResult<UserSummaryDto>>, GetPaginatedUsersHandler>();
         services.AddScoped<IQueryHandler<GetUserDetailsQuery, UserDetailDto>, GetUserDetailsHandler>();
@@ -60,6 +56,20 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IValidator<BlockUserCommand>, BlockUserCommandValidator>();
         services.AddScoped<IValidator<UnblockUserCommand>, UnblockUserCommandValidator>();
         services.AddScoped<IValidator<DeleteUserCommand>, DeleteUserCommandValidator>();
+
+        // Admin management commands (Phase 29 — V5.0-01, V5.0-02)
+        services.AddScoped<ICommandHandler<CreateAdminCommand, CreateAdminResult>, CreateAdminCommandHandler>();
+        services.AddScoped<ICommandHandler<ForcePasswordChangeCommand, Unit>, ForcePasswordChangeCommandHandler>();
+        services.AddScoped<IValidator<CreateAdminCommand>, CreateAdminCommandValidator>();
+        services.AddScoped<IValidator<ForcePasswordChangeCommand>, ForcePasswordChangeCommandValidator>();
+
+        // Audit log query (Phase 29 — V5.0-03)
+        services.AddScoped<IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>>, GetAuditLogQueryHandler>();
+
+        // Admin administrators query (Phase 30 — ADM-04)
+        services.AddScoped<
+            IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>>,
+            GetAdministratorsQueryHandler>();
 
         return services;
     }

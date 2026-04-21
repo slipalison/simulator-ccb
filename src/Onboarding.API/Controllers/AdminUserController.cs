@@ -5,6 +5,8 @@ using Onboarding.Application.Admin.Commands;
 using Onboarding.Application.Admin.DTOs;
 using Onboarding.Application.Admin.Queries;
 using Onboarding.Application.Common;
+using Onboarding.Domain.Aggregates.Audit;
+using Onboarding.Domain.Repositories;
 
 namespace Onboarding.API.Controllers;
 
@@ -14,7 +16,7 @@ namespace Onboarding.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin")]
-[Authorize(Roles = "admin")]
+[Authorize(AuthenticationSchemes = "BearerBackoffice", Roles = "admin")]
 public sealed class AdminUserController : ControllerBase
 {
     private readonly IQueryHandler<GetPaginatedUsersQuery, PaginatedResult<UserSummaryDto>> _paginatedHandler;
@@ -23,8 +25,15 @@ public sealed class AdminUserController : ControllerBase
     private readonly ICommandHandler<BlockUserCommand, Unit> _blockHandler;
     private readonly ICommandHandler<UnblockUserCommand, Unit> _unblockHandler;
     private readonly ICommandHandler<DeleteUserCommand, Unit> _deleteHandler;
+    private readonly ICommandHandler<CreateAdminCommand, CreateAdminResult> _createAdminHandler;
+    private readonly ICommandHandler<ForcePasswordChangeCommand, Unit> _forcePasswordChangeHandler;
+    private readonly IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>> _auditLogQueryHandler;
+    private readonly IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>> _administratorsHandler;
+    private readonly IKeycloakUserService _keycloakUserService;
     private readonly IValidator<UpdateUserCommand> _updateValidator;
     private readonly IValidator<DeleteUserCommand> _deleteValidator;
+    private readonly IValidator<CreateAdminCommand> _createAdminValidator;
+    private readonly IValidator<ForcePasswordChangeCommand> _forcePasswordChangeValidator;
     private readonly ILogger<AdminUserController> _logger;
 
     public AdminUserController(
@@ -34,8 +43,15 @@ public sealed class AdminUserController : ControllerBase
         ICommandHandler<BlockUserCommand, Unit> blockHandler,
         ICommandHandler<UnblockUserCommand, Unit> unblockHandler,
         ICommandHandler<DeleteUserCommand, Unit> deleteHandler,
+        ICommandHandler<CreateAdminCommand, CreateAdminResult> createAdminHandler,
+        ICommandHandler<ForcePasswordChangeCommand, Unit> forcePasswordChangeHandler,
+        IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>> auditLogQueryHandler,
+        IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>> administratorsHandler,
+        IKeycloakUserService keycloakUserService,
         IValidator<UpdateUserCommand> updateValidator,
         IValidator<DeleteUserCommand> deleteValidator,
+        IValidator<CreateAdminCommand> createAdminValidator,
+        IValidator<ForcePasswordChangeCommand> forcePasswordChangeValidator,
         ILogger<AdminUserController> logger)
     {
         _paginatedHandler = paginatedHandler;
@@ -44,8 +60,15 @@ public sealed class AdminUserController : ControllerBase
         _blockHandler = blockHandler;
         _unblockHandler = unblockHandler;
         _deleteHandler = deleteHandler;
+        _createAdminHandler = createAdminHandler;
+        _forcePasswordChangeHandler = forcePasswordChangeHandler;
+        _auditLogQueryHandler = auditLogQueryHandler;
+        _administratorsHandler = administratorsHandler;
+        _keycloakUserService = keycloakUserService;
         _updateValidator = updateValidator;
         _deleteValidator = deleteValidator;
+        _createAdminValidator = createAdminValidator;
+        _forcePasswordChangeValidator = forcePasswordChangeValidator;
         _logger = logger;
     }
 
@@ -282,7 +305,147 @@ public sealed class AdminUserController : ControllerBase
         }
     }
 
-    /// <summary>Extracts admin identity from JWT claims for audit logging.</summary>
+    /// <summary>POST /api/admin/administrators — Create a new admin user with a temporary password.</summary>
+    [HttpPost("administrators")]
+    [ProducesResponseType(typeof(CreateAdminResult), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> CreateAdmin(
+        [FromBody] CreateAdminRequest request,
+        CancellationToken ct = default)
+    {
+        var auditContext = GetAuditContextSafe();
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        var command = new CreateAdminCommand(request.FullName, request.Email, auditContext.Sub, auditContext.Email, ipAddress);
+
+        var validation = await _createAdminValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+        {
+            return UnprocessableEntity(new ValidationProblemDetails(
+                validation.Errors
+                    .GroupBy(e => e.PropertyName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
+        }
+
+        try
+        {
+            var result = await _createAdminHandler.HandleAsync(command, ct);
+            return CreatedAtAction(nameof(CreateAdmin), new { id = result.AdminId }, result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
+        {
+            return Conflict(new ProblemDetails
+            {
+                Title = "Conflict",
+                Status = StatusCodes.Status409Conflict,
+                Detail = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
+    /// GET /api/admin/administrators — Lista todos os administradores via Keycloak.
+    /// Inclui ativos (IsEnabled=true) e bloqueados (IsEnabled=false).
+    /// HasTemporaryPassword=true indica que o admin ainda nao trocou a senha temporaria inicial.
+    /// </summary>
+    [HttpGet("administrators")]
+    [ProducesResponseType(typeof(IReadOnlyList<AdminUserDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetAdministrators(CancellationToken ct = default)
+    {
+        try
+        {
+            var result = await _administratorsHandler.HandleAsync(new GetAdministratorsQuery(), ct);
+            return Ok(result);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Keycloak unavailable when listing administrators");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails
+            {
+                Title = "Service Unavailable",
+                Status = StatusCodes.Status503ServiceUnavailable,
+                Detail = "Unable to retrieve administrators from identity provider."
+            });
+        }
+    }
+
+    /// <summary>PUT /api/admin/me/password — Force password change for current admin (first login).</summary>
+    [HttpPut("me/password")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ForcePasswordChange(
+        [FromBody] ForcePasswordChangeRequest request,
+        CancellationToken ct = default)
+    {
+        // Get admin email from cookie (JWT may not have email claim)
+        var adminEmail = HttpContext.Items["AdminEmail"] as string
+            ?? User.FindFirst("email")?.Value
+            ?? User.FindFirst("preferred_username")?.Value
+            ?? throw new InvalidOperationException("Missing admin email context.");
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        // Resolve Keycloak user ID from email
+        var keycloakUser = await _keycloakUserService.GetUserByEmailAsync("backoffice", adminEmail, ct)
+            ?? throw new InvalidOperationException($"Keycloak user not found for email: {adminEmail}");
+        var keycloakUserId = keycloakUser.Id;
+
+        var command = new ForcePasswordChangeCommand(keycloakUserId, adminEmail, request.NewPassword, ipAddress);
+
+        var validation = await _forcePasswordChangeValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+        {
+            return UnprocessableEntity(new ValidationProblemDetails(
+                validation.Errors
+                    .GroupBy(e => e.PropertyName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
+        }
+
+        await _forcePasswordChangeHandler.HandleAsync(command, ct);
+        return NoContent();
+    }
+
+    /// <summary>POST /api/admin/me/complete-first-login — Clears isFirstLogin flag after admin finished first login + password change.</summary>
+    [HttpPost("me/complete-first-login")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> CompleteFirstLogin(CancellationToken ct = default)
+    {
+        var adminEmail = HttpContext.Items["AdminEmail"] as string
+            ?? User.FindFirst("email")?.Value
+            ?? User.FindFirst("preferred_username")?.Value
+            ?? throw new InvalidOperationException("Missing admin email context.");
+
+        var keycloakUser = await _keycloakUserService.GetUserByEmailAsync("backoffice", adminEmail, ct)
+            ?? throw new InvalidOperationException($"Keycloak user not found for email: {adminEmail}");
+
+        await _keycloakUserService.ClearFirstLoginFlagAsync("backoffice", keycloakUser.Id, ct);
+        _logger.LogInformation("Admin {AdminEmail} completed first login; isFirstLogin flag cleared.", adminEmail);
+        return NoContent();
+    }
+
+    /// <summary>GET /api/admin/audit-log — Paginated audit log with filters.</summary>
+    [HttpGet("audit-log")]
+    [ProducesResponseType(typeof(PaginatedResult<AdminAuditLogDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAuditLog(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] DateTimeOffset? startDate = null,
+        [FromQuery] DateTimeOffset? endDate = null,
+        [FromQuery] string? actionType = null,
+        [FromQuery] string? adminUserName = null,
+        CancellationToken ct = default)
+    {
+        ActionType? parsedActionType = null;
+        if (!string.IsNullOrWhiteSpace(actionType) && Enum.TryParse<ActionType>(actionType, out var parsed))
+            parsedActionType = parsed;
+
+        var query = new GetAuditLogQuery(page, pageSize, startDate, endDate, parsedActionType, adminUserName);
+        var result = await _auditLogQueryHandler.HandleAsync(query, ct);
+        return Ok(result);
+    }
+
+    /// <summary>Extracts admin identity from JWT claims for audit logging. Throws if claims missing.</summary>
     private (string Sub, string Email) GetAuditContext()
     {
         var sub = User.FindFirst("sub")?.Value
@@ -291,7 +454,25 @@ public sealed class AdminUserController : ControllerBase
             ?? throw new InvalidOperationException("Missing 'email' claim.");
         return (sub, email);
     }
+
+    /// <summary>Extracts admin identity from JWT claims for audit logging. Falls back to cookie if claims missing.</summary>
+    private (string Sub, string Email) GetAuditContextSafe()
+    {
+        var email = HttpContext.Items["AdminEmail"] as string
+            ?? User.FindFirst("email")?.Value
+            ?? "unknown";
+        var sub = User.FindFirst("sub")?.Value
+            ?? User.FindFirst("preferred_username")?.Value
+            ?? email;
+        return (sub, email);
+    }
 }
 
 /// <summary>DELETE request body for LGPD user deletion.</summary>
 public sealed record DeleteUserRequest(string? ConfirmEmail);
+
+/// <summary>POST request body for creating a new admin user.</summary>
+public sealed record CreateAdminRequest(string FullName, string Email);
+
+/// <summary>PUT request body for forcing password change.</summary>
+public sealed record ForcePasswordChangeRequest(string NewPassword);

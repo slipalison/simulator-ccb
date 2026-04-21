@@ -81,8 +81,9 @@ try
             .AddOtlpExporter());                                        // D-12: reads OTEL_EXPORTER_OTLP_ENDPOINT
 
     // Health checks — split live/ready (OBS-05, D-22 through D-26)
-    var keycloakRealmUrl = builder.Configuration["Keycloak:RealmUrl"] ?? "http://keycloak:8080/realms/onboarding";
-    var keycloakHealthUrl = keycloakRealmUrl.TrimEnd('/').Replace("/realms/onboarding", "") + "/health/ready";
+    // Keycloak 22+ exposes /health/ready on the management port (9000), not the HTTP port (8080).
+    var keycloakManagementUrl = builder.Configuration["Keycloak:ManagementUrl"] ?? "http://keycloak:9000";
+    var keycloakHealthUrl = keycloakManagementUrl.TrimEnd('/') + "/health/ready";
 
     builder.Services.AddHealthChecks()
         .AddNpgSql(
@@ -103,15 +104,14 @@ try
 
     // Authentication — JWT Bearer with Keycloak OIDC auto-discovery (D-04)
     // Authority reads /.well-known/openid-configuration lazily on first request
-    builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(options =>
+    builder.Services.AddAuthentication()
+        .AddJwtBearer("BearerBackoffice", options =>
         {
             // D-04: Auto-discovery via OIDC metadata endpoint
-            options.Authority = builder.Configuration["Keycloak:RealmUrl"]
-                ?? throw new InvalidOperationException("Keycloak:RealmUrl not configured.");
+            options.Authority = builder.Configuration["Keycloak:BackofficeRealmUrl"]
+                ?? throw new InvalidOperationException("Keycloak:BackofficeRealmUrl not configured.");
 
             // Allow HTTP authority in development (Keycloak runs on http://localhost:8180 locally)
-            // In production, Keycloak:RealmUrl must use HTTPS and this remains false by default
             options.RequireHttpsMetadata = false;
 
             // D-05: ROPC tokens have aud: ["account"] — not our API audience. Disable to avoid 401 false positive.
@@ -120,15 +120,12 @@ try
             // IDX10204 fix: OIDC discovery via internal URL (keycloak:8080) does not auto-populate
             // ValidIssuer when KC_HOSTNAME differs. Set it explicitly from config.
             options.TokenValidationParameters.ValidIssuer =
-                builder.Configuration["Keycloak:ValidIssuer"] ?? "http://localhost:8180/realms/onboarding";
+                builder.Configuration["Keycloak:ValidIssuer"] ?? "http://localhost:8180/realms/backoffice";
 
             // D-04: Preserve Keycloak claim names as-is (e.g. "email" stays "email", not XML namespace URI)
-            // Without this, User.FindFirst("email") returns null — Pitfall 2 from RESEARCH.md
             options.MapInboundClaims = false;
 
             // Extract realm_access.roles from JWT and add as flat role claims
-            // Only runs for admin tokens (client tokens don't need role extraction)
-            // Wrapped in try/catch to NEVER break client authentication
             options.Events.OnTokenValidated = async context =>
             {
                 try
@@ -167,6 +164,22 @@ try
             // FIX Test 18: OIDC discovery returns jwks_uri with KC_HOSTNAME (localhost:8180) which is
             // unreachable from inside the API container. The Backchannel rewrites these URLs to use the
             // internal Docker network hostname (keycloak:8080) so the JWKS can be fetched.
+            options.Backchannel = new HttpClient(new HostnameRewriteHandler(
+                internalHost: "keycloak:8080",
+                externalHost: "localhost:8180"))
+            {
+                Timeout = TimeSpan.FromSeconds(30),
+            };
+        })
+        .AddJwtBearer("BearerClient", options =>
+        {
+            options.Authority = builder.Configuration["Keycloak:ClientRealmUrl"]
+                ?? throw new InvalidOperationException("Keycloak:ClientRealmUrl not configured.");
+            options.RequireHttpsMetadata = false;
+            options.TokenValidationParameters.ValidateAudience = false;
+            options.TokenValidationParameters.ValidIssuer = builder.Configuration["Keycloak:ClientRealmUrl"]?.Replace("keycloak:8080", "localhost:8180") ?? "http://localhost:8180/realms/client";
+            options.MapInboundClaims = false;
+
             options.Backchannel = new HttpClient(new HostnameRewriteHandler(
                 internalHost: "keycloak:8080",
                 externalHost: "localhost:8180"))
@@ -229,8 +242,9 @@ try
 
     app.UseSerilogRequestLogging();     // D-05: per-request log with method/path/status/duration
     app.UseCors("AllowFrontendWithCredentials"); // Must come before UseAuthentication
-    app.UseAdminSession();       // Convert admin refresh token cookie → JWT access token
-    app.UseAuthentication();   // D-04: populate HttpContext.User — MUST come after admin session
+    app.UseAdminSession();       // Convert backoffice_access_token cookie → Bearer header for /api/admin/*
+    app.UseClientSession();      // Convert client_access_token cookie → Bearer header for /api/* (non-admin)
+    app.UseAuthentication();   // D-04: populate HttpContext.User — MUST come after session middleware
     app.UseAuthorization();    // D-06: enforce [Authorize] attributes — MUST come after UseAuthentication
 
     // Liveness: process is alive — no dependency checks (D-26: used by Docker Compose healthcheck)

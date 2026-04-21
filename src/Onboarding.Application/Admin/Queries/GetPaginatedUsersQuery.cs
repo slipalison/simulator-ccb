@@ -46,7 +46,7 @@ public sealed class GetPaginatedUsersHandler
 
             try
             {
-                var kcUser = await _keycloakUserService.GetUserByEmailAsync(client.Email.Value, ct);
+                var kcUser = await _keycloakUserService.GetUserByEmailAsync("client", client.Email.Value, ct);
                 enabled = kcUser is not null;
             }
             catch (Exception ex)

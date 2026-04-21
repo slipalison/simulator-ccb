@@ -37,7 +37,7 @@ public class ForgotPasswordEndpointTests : IAsyncLifetime
     {
         // Arrange
         _factory!.KeycloakUserServiceMock
-            .UserExistsByEmailAsync("existing@example.com", Arg.Any<CancellationToken>())
+            .UserExistsByEmailAsync("client", "existing@example.com", Arg.Any<CancellationToken>())
             .Returns(true);
         _factory.TokenRepositoryMock
             .CountRecentTokensAsync("existing@example.com", Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())
@@ -64,7 +64,7 @@ public class ForgotPasswordEndpointTests : IAsyncLifetime
     {
         // Arrange
         _factory!.KeycloakUserServiceMock
-            .UserExistsByEmailAsync("nonexistent@example.com", Arg.Any<CancellationToken>())
+            .UserExistsByEmailAsync("client", "nonexistent@example.com", Arg.Any<CancellationToken>())
             .Returns(false);
 
         var payload = new { email = "nonexistent@example.com" };
@@ -99,7 +99,7 @@ public class ForgotPasswordEndpointTests : IAsyncLifetime
     {
         // Arrange — simulate rate limiting
         _factory!.KeycloakUserServiceMock
-            .UserExistsByEmailAsync("ratelimit@example.com", Arg.Any<CancellationToken>())
+            .UserExistsByEmailAsync("client", "ratelimit@example.com", Arg.Any<CancellationToken>())
             .Returns(true);
         _factory.TokenRepositoryMock
             .CountRecentTokensAsync("ratelimit@example.com", Arg.Any<TimeSpan>(), Arg.Any<CancellationToken>())

@@ -4,23 +4,16 @@ import { RouterProvider, createRouter, createMemoryHistory } from "@tanstack/rea
 import { AuthProvider } from "@/lib/auth-context";
 import { router } from "@/router";
 
-// Mock API
-vi.mock("@/lib/api", () => ({
-  loginClient: vi.fn(),
-  refreshTokenClient: vi.fn(),
-  getProfileClient: vi.fn(),
-  LoginError: class extends Error {
-    constructor(message: string) { super(message); this.name = "LoginError"; }
-  },
-  ProfileError: class extends Error {
-    constructor(message: string) { super(message); this.name = "ProfileError"; }
-  },
-}));
+// Mock fetch for /auth/me
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
-// Mock auth context
+// Mock auth context to control auth state
 const mockAuthState = {
   isAuthenticated: false,
   isLoading: false,
+  userName: null as string | null,
+  email: null as string | null,
 };
 
 vi.mock("@/lib/auth-context", async (importOriginal) => {
@@ -29,12 +22,9 @@ vi.mock("@/lib/auth-context", async (importOriginal) => {
     ...actual,
     useAuth: () => ({
       auth: mockAuthState,
-      login: vi.fn(),
-      logout: vi.fn(),
-      refreshIfNeeded: vi.fn(),
-      getAccessToken: () => mockAuthState.isAuthenticated ? "fake-token" : null,
+      login: vi.fn(() => { window.location.href = "/auth/login"; }),
+      logout: vi.fn(() => { window.location.href = "/auth/logout"; }),
     }),
-    getAccessToken: () => mockAuthState.isAuthenticated ? "fake-token" : null,
   };
 });
 
@@ -53,21 +43,22 @@ async function renderWithRouter(initialPath: string) {
   return { ...view, testRouter, memoryHistory };
 }
 
-describe("Login-first navigation", () => {
+describe("Login-first navigation — ACF", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFetch.mockReset();
     mockAuthState.isAuthenticated = false;
     mockAuthState.isLoading = false;
+    mockAuthState.userName = null;
+    mockAuthState.email = null;
   });
 
-  it("shows LoginPage for unauthenticated user at /", async () => {
+  it("shows AuthLoginPage (redirect spinner) for unauthenticated user at /", async () => {
     await renderWithRouter("/");
 
     await waitFor(() => {
-      expect(screen.getByText("Bem-vindo de volta!")).toBeInTheDocument();
+      expect(screen.getByText(/redirecionando/i)).toBeInTheDocument();
     });
-    expect(screen.getByLabelText("Email")).toBeInTheDocument();
-    expect(screen.getByLabelText("Senha")).toBeInTheDocument();
   });
 
   it("redirects to /profile if authenticated user visits /", async () => {
@@ -80,13 +71,26 @@ describe("Login-first navigation", () => {
     });
   });
 
-  it("redirects to /profile if authenticated user visits /login", async () => {
-    mockAuthState.isAuthenticated = true;
+  it("shows AuthCallbackPage spinner at /auth/callback", async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 401 });
 
-    const { memoryHistory } = await renderWithRouter("/login");
+    await renderWithRouter("/auth/callback");
 
     await waitFor(() => {
-      expect(memoryHistory.location.pathname).toBe("/profile");
+      expect(screen.getByText(/concluindo/i)).toBeInTheDocument();
+    });
+  });
+
+  it("shows AuthErrorPage at /auth/error", async () => {
+    Object.defineProperty(window, "location", {
+      value: { search: "", href: "/auth/error" },
+      writable: true,
+    });
+
+    await renderWithRouter("/auth/error");
+
+    await waitFor(() => {
+      expect(screen.getByText(/erro de autenticação/i)).toBeInTheDocument();
     });
   });
 });

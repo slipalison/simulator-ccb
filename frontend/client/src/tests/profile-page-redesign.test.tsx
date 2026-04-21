@@ -14,12 +14,10 @@ vi.mock("@/lib/api", () => ({
       this.name = "ProfileError";
     }
   },
-  loginClient: vi.fn(),
-  refreshTokenClient: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
-// Mock auth context
+// Mock auth context — ACF version (no getAccessToken/refreshIfNeeded)
 // ---------------------------------------------------------------------------
 
 const mockLogout = vi.fn();
@@ -28,7 +26,6 @@ const mockUseAuth = vi.fn();
 vi.mock("@/lib/auth-context", () => ({
   useAuth: () => mockUseAuth(),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
-  getAccessToken: () => "fake-token",
 }));
 
 // ---------------------------------------------------------------------------
@@ -57,15 +54,6 @@ const mockPFProfile = {
   phone: "(11) 99999-9999",
 };
 
-const _mockPJProfile = {
-  id: "pj-id-456",
-  type: "PessoaJuridica" as const,
-  razaoSocial: "Empresa LTDA",
-  cnpj: "12.345.678/0001-90",
-  email: "contato@empresa.com.br",
-  phone: "(11) 3333-4444",
-};
-
 // ---------------------------------------------------------------------------
 // Helper
 // ---------------------------------------------------------------------------
@@ -82,11 +70,9 @@ describe("ProfilePage (shadcn redesign)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseAuth.mockReturnValue({
-      auth: { isAuthenticated: true, isLoading: false },
+      auth: { isAuthenticated: true, isLoading: false, userName: "João", email: "joao@email.com" },
       login: vi.fn(),
       logout: mockLogout,
-      refreshIfNeeded: vi.fn(),
-      getAccessToken: () => "fake-token",
     });
   });
 
@@ -149,19 +135,17 @@ describe("ProfilePage (shadcn redesign)", () => {
     });
   });
 
-  it("redirects to login when not authenticated", async () => {
+  it("redirects to /auth/login when not authenticated", async () => {
     mockUseAuth.mockReturnValue({
-      auth: { isAuthenticated: false, isLoading: false },
+      auth: { isAuthenticated: false, isLoading: false, userName: null, email: null },
       login: vi.fn(),
       logout: mockLogout,
-      refreshIfNeeded: vi.fn(),
-      getAccessToken: () => null,
     });
 
     renderProfilePage();
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/login" }));
+      expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/auth/login" }));
     });
   });
 });

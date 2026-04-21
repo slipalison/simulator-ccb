@@ -34,43 +34,46 @@ public static class InfrastructureServiceExtensions
 
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IAdminRepository, AdminRepository>();
-        services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
+        services.AddScoped<IAuditService, AuditService>();
 
         // Keycloak Admin API — service account CC grant (REG-06)
         var keycloakBaseUrl = configuration["Keycloak:AuthServerUrl"]
             ?? throw new InvalidOperationException("Keycloak:AuthServerUrl not configured.");
-        var realm = configuration["Keycloak:Realm"] ?? "onboarding";
         var adminClientId = configuration["Keycloak:AdminClientId"]
-            ?? throw new InvalidOperationException("Keycloak:AdminClientId not configured.");
+            ?? "onboarding-api-admin";
         var adminClientSecret = configuration["Keycloak:AdminClientSecret"]
             ?? throw new InvalidOperationException("Keycloak:AdminClientSecret not configured.");
 
-        // IDistributedCache is required by Duende.AccessTokenManagement for CC token caching.
-        // AddDistributedMemoryCache() must be called in Program.cs (also needed by IdempotencyFilter).
         services.AddClientCredentialsTokenManagement()
-            .AddClient("keycloak-admin", client =>
+            .AddClient("keycloak-admin-client", client =>
             {
                 client.ClientId = ClientId.Parse(adminClientId);
                 client.ClientSecret = ClientSecret.Parse(adminClientSecret);
                 client.TokenEndpoint = new Uri(
-                    $"{keycloakBaseUrl.TrimEnd('/')}/realms/{realm}" +
-                    "/protocol/openid-connect/token");
+                    $"{keycloakBaseUrl.TrimEnd('/')}/realms/client/protocol/openid-connect/token");
+            })
+            .AddClient("keycloak-admin-backoffice", client =>
+            {
+                client.ClientId = ClientId.Parse(adminClientId);
+                client.ClientSecret = ClientSecret.Parse(adminClientSecret);
+                client.TokenEndpoint = new Uri(
+                    $"{keycloakBaseUrl.TrimEnd('/')}/realms/backoffice/protocol/openid-connect/token");
             });
 
-        services.AddKeycloakAdminHttpClient(new KeycloakAdminClientOptions
-        {
-            AuthServerUrl = keycloakBaseUrl,
-            Realm = realm,
-        }).AddClientCredentialsTokenHandler(ClientCredentialsClientName.Parse("keycloak-admin"));
-
-        // Named HttpClient for direct Keycloak Admin API calls (e.g., reset-password)
-        // This client reuses the keycloak-admin service account token handler
-        services.AddHttpClient("keycloak-admin-api", client =>
+        services.AddHttpClient("keycloak-admin-client", client =>
             {
                 client.BaseAddress = new Uri(keycloakBaseUrl.TrimEnd('/') + "/");
                 client.Timeout = TimeSpan.FromSeconds(10);
             })
-            .AddClientCredentialsTokenHandler(ClientCredentialsClientName.Parse("keycloak-admin"));
+            .AddClientCredentialsTokenHandler(ClientCredentialsClientName.Parse("keycloak-admin-client"));
+
+        services.AddHttpClient("keycloak-admin-backoffice", client =>
+            {
+                client.BaseAddress = new Uri(keycloakBaseUrl.TrimEnd('/') + "/");
+                client.Timeout = TimeSpan.FromSeconds(10);
+            })
+            .AddClientCredentialsTokenHandler(ClientCredentialsClientName.Parse("keycloak-admin-backoffice"));
 
         services.AddScoped<IKeycloakUserService, KeycloakUserService>();
 

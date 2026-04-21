@@ -6,7 +6,6 @@ import * as api from "@/lib/api";
 // Mock API
 vi.mock("@/lib/api", () => ({
   registerClient: vi.fn(),
-  loginClient: vi.fn(),
   RegistrationValidationError: class extends Error {
     constructor(public errors: Record<string, string[]>) {
       super("Validation failed");
@@ -22,9 +21,6 @@ vi.mock("@/lib/api", () => ({
   ApiError: class extends Error {
     constructor(message: string) { super(message); this.name = "ApiError"; }
   },
-  LoginError: class extends Error {
-    constructor(message: string) { super(message); this.name = "LoginError"; }
-  },
 }));
 
 // Mock auth context
@@ -32,10 +28,8 @@ const mockLogin = vi.fn();
 vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({
     login: mockLogin,
-    auth: { isAuthenticated: false, isLoading: false },
+    auth: { isAuthenticated: false, isLoading: false, userName: null, email: null },
     logout: vi.fn(),
-    refreshIfNeeded: vi.fn(),
-    getAccessToken: () => null,
   }),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
@@ -167,17 +161,8 @@ describe("RegistrationForm", () => {
     expect(api.registerClient).not.toHaveBeenCalled();
   });
 
-  it("auto-login after successful registration", async () => {
+  it("calls login() (ACF redirect) after successful registration", async () => {
     vi.mocked(api.registerClient).mockResolvedValue({ id: "test-id" });
-    vi.mocked(api.loginClient).mockResolvedValue({
-      accessToken: "test-token",
-      refreshToken: "test-refresh",
-      expiresIn: 3600,
-      tokenType: "Bearer",
-      refreshExpiresIn: 7200,
-      scope: "openid",
-    });
-    mockLogin.mockResolvedValue(undefined);
 
     render(<RegistrationForm />);
 
@@ -196,31 +181,7 @@ describe("RegistrationForm", () => {
 
     await waitFor(() => {
       expect(api.registerClient).toHaveBeenCalled();
-    });
-  });
-
-  it("falls back to /login if auto-login fails", async () => {
-    vi.mocked(api.registerClient).mockResolvedValue({ id: "test-id" });
-    vi.mocked(api.loginClient).mockRejectedValue(new Error("Login failed"));
-    mockLogin.mockRejectedValue(new Error("Login failed"));
-
-    render(<RegistrationForm />);
-
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText("Nome completo"), { target: { value: "João Silva" } });
-      fireEvent.change(screen.getByLabelText("CPF"), { target: { value: "12345678909" } });
-      fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@email.com" } });
-      fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "11999999999" } });
-      fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "Test@1234" } });
-      fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "Test@1234" } });
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /criar conta/i }));
-    });
-
-    await waitFor(() => {
-      expect(api.registerClient).toHaveBeenCalled();
+      expect(mockLogin).toHaveBeenCalled();
     });
   });
 });

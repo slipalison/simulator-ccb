@@ -2,7 +2,7 @@
 
 ## Overview
 
-This roadmap builds a secure PF/PJ client onboarding system from infrastructure up, then extends it with an admin backoffice panel for user management. The delivery sequence mirrors the dependency chain: Docker infrastructure first, then a hardened Keycloak, then the DDD backend domain, then observability wiring, then registration and authentication endpoints, then a frontend scaffold, and finally the three user-facing screens (registration, login, profile). After v1.0/v2.0 completion, milestone v3.0 adds admin CRUD endpoints, role-based access control, and a backoffice UI with pagination, filtering, and LGPD-compliant user deletion. Milestone v3.0 concludes with a **frontend separation** into two independent projects (client + backoffice).
+This roadmap builds a secure PF/PJ client onboarding system from infrastructure up, then extends it with an admin backoffice panel for user management. The delivery sequence mirrors the dependency chain: Docker infrastructure first, then a hardened Keycloak, then the DDD backend domain, then observability wiring, then registration and authentication endpoints, then a frontend scaffold, and finally the three user-facing screens (registration, login, profile). After v1.0/v2.0 completion, milestone v3.0 adds admin CRUD endpoints, role-based access control, and a backoffice UI with pagination, filtering, and LGPD-compliant user deletion. Milestone v3.0 concludes with a **frontend separation** into two independent projects (client + backoffice). Milestone v4.0 adds a full CI/CD security pipeline. Milestone v5.0 migrates the backoffice to Auth Code Flow + PKCE, adds administrator management, and introduces an immutable audit log.
 
 Every phase delivers a coherent, independently verifiable capability before the next begins.
 
@@ -17,6 +17,8 @@ Every phase delivers a coherent, independently verifiable capability before the 
 | **v1.0** | Foundation — Cadastro e Login com Perfil Read-Only | 1-10 | ✅ Complete |
 | **v2.0** | UX/UI Redesign + Production Readiness | 11-15 | ✅ Complete |
 | **v3.0** | Admin Backoffice + Frontend Separation | 16-20 | ✅ Complete (5/5 phases, 13 plans, E2E removed) |
+| **v4.0** | CI/CD Pipeline + Cybersecurity | 21-28 | ✅ Complete (8/8 phases, 20/20 plans) |
+| **v5.0** | Auth Code Flow (Backoffice) + Gestão de Admins + Auditoria | 29-32 | 🔄 In Progress |
 
 **Phase order rationale (v3.0):** 16→17→18 (admin backend+UI core) → **19 (separation)** → 20 (edit/delete in separated project). E2E phase removed by user decision.
 
@@ -333,8 +335,9 @@ Plans:
 | **v1.0** Foundation | 1-10 | 30 | ✅ Complete | 35 requirements |
 | **v2.0** UX/UI + Production | 11-15 | 7+ | ✅ Complete | 14 requirements |
 | **v3.0** Admin Backoffice | 16-20 | 13 | ✅ Complete | 22 requirements |
-| **v4.0** CI/CD + Security | 21-28 | 20 | 📋 Planned | 25 requirements |
-| **Total** | **28 phases** | **70+ plans** | **3 milestones done** | **96 requirements** |
+| **v4.0** CI/CD + Security | 21-28 | 20 | ✅ Complete | 25 requirements |
+| **v5.0** Auth Code Flow + Admins + Audit | 29-32 | TBD | 🔄 In Progress | 11 requirements |
+| **Total** | **32 phases** | **80+ plans** | **4 milestones done** | **107 requirements** |
 
 ---
 
@@ -698,19 +701,209 @@ v3.0:  16 → 17 → 18 → 19 → 20
 
 ---
 
-## Next Steps
+---
 
-**Current Milestone:** v3.0 — Admin Backoffice Panel (Defining Requirements)
+## Milestone v5.0 — Auth Code Flow (Backoffice) + Gestão de Admins + Auditoria (Phases 29-32)
 
-**▶ Recommended Next Actions:**
+**Goal:** Migrar o backoffice de ROPC para Authorization Code Flow + PKCE (confidential client, code exchange server-side via Vinxi), adicionar criação e listagem de administradores, e introduzir um audit log imutável de todas as ações administrativas.
 
-1. **`/gsd:define-requirements`** — Formalize v3.0 requirements (ADMIN-01 to ADMIN-16, E2E-06/07) in REQUIREMENTS.md
-2. **`/gsd:plan-phase 16`** — Start planning Phase 16 (Admin API Endpoints) — the first v3.0 phase
-3. **`/gsd:discuss-phase 16`** — Gather context before planning (recommended)
+**Key decisions:**
+- A NEW Keycloak client `onboarding-backoffice` (confidential, standardFlowEnabled) replaces the ROPC login flow in the backoffice
+- The existing `AdminAuthController` ROPC endpoints are retired in favor of Auth Code Flow
+- Tokens stored server-side in httpOnly cookies managed by Vinxi — no client-side token exposure
+- Audit log is append-only (no UPDATE/DELETE on the AuditLog table) — requires new EF Core migration
+- Frontend client keeps ROPC + custom UI (conscious decision — UX prioritized, not in scope for v5.0)
 
-**Deferred:**
-- Phase 14 (E2E Testing from v2.0) — can be done in parallel with v3.0 or deferred until after v3.0
+**Depends on:** Milestone v4.0 complete (CI/CD Pipeline + Cybersecurity)
+
+**Phase order rationale:** 29 (Keycloak config + backend ACF infrastructure) → 30 (audit backend + admin management backend) → 31 (backoffice ACF frontend UI) → 32 (backoffice admin management UI + audit log UI).
+Backend-first ordering ensures API contracts exist before UI is built.
+
+### Phases
+
+- [ ] **Phase 29: Keycloak Config + Auth Code Flow Backend** - New Keycloak client provisioned, .NET backend handles code exchange and cookie issuance (ACF-01, ACF-02, ACF-03, ACF-04)
+- [x] **Phase 30: Audit Log Backend + Admin Management Backend** - AuditLog entity + migration, admin creation endpoint, admin listing endpoint (AUD-01, ADM-01, ADM-02, ADM-03, ADM-04) (completed 2026-04-16)
+- [ ] **Phase 31: Backoffice Auth Code Flow UI** - Vinxi server-side code exchange, login redirect, logout, forced password change handled natively by Keycloak (ACF-01, ACF-02, ACF-03, ACF-04 frontend side)
+- [ ] **Phase 32: Backoffice Admin Management UI + Audit Log UI** - Create admin form with one-time password display, admin list page, paginated audit log with filters (ADM-01, ADM-02, ADM-03, ADM-04, AUD-02, AUD-03)
 
 ---
 
-*Last updated: 2026-04-09 — Milestone v3.0 roadmap created with 5 new phases (16-20)*
+## Milestone v5.0 — Phase Details
+
+### Phase 29: Keycloak Config + Auth Code Flow Backend
+**Goal:** Backend is ready to receive Auth Code Flow callbacks — Keycloak client provisioned, PKCE exchange wired server-side, tokens written to httpOnly cookies
+**Depends on:** Phase 28 (Security Documentation)
+**Requirements:** ACF-01, ACF-02, ACF-03, ACF-04
+**Success Criteria** (what must be TRUE):
+  1. Keycloak realm has a new confidential client `onboarding-backoffice` with standardFlowEnabled, exact redirect URIs registered, and client secret configured
+  2. Admin navigating to the backoffice is redirected to Keycloak's authorization endpoint with code_challenge (PKCE) — no credentials handled by the app
+  3. After Keycloak redirects back with an authorization code, the Vinxi server exchanges it for tokens and writes them to httpOnly, SameSite=Strict cookies — no token is exposed to JavaScript
+  4. Logout clears the httpOnly cookies and redirects the browser to Keycloak's OIDC logout endpoint (`/protocol/openid-connect/logout`) — Keycloak SSO session is terminated
+  5. An admin with `UPDATE_PASSWORD` requiredAction is automatically redirected by Keycloak to the password change screen during the Auth Code Flow — no extra backend logic needed
+**Plans:** TBD
+**UI hint**: yes
+
+### Phase 30: Audit Log Backend + Admin Management Backend
+**Goal:** The backend persists every admin action immutably and exposes endpoints to create and list administrators
+**Depends on:** Phase 29
+**Requirements:** AUD-01, ADM-01, ADM-02, ADM-03, ADM-04
+**Success Criteria** (what must be TRUE):
+  1. A new `AuditLog` table exists in app_db (EF Core migration) with columns: id, actor_email, action_type, target_email, timestamp, details_json — no UPDATE or DELETE operations are permitted on this table
+  2. Every admin action (create admin, block user, unblock user, edit user, delete user) automatically writes an audit record via a shared audit service — the record is visible immediately after the action
+  3. POST `/api/admin/administrators` creates a new Keycloak user with role `admin` and `UPDATE_PASSWORD` requiredAction, returns the one-time temporary password in the response body
+  4. GET `/api/admin/administrators` returns all users with role `admin` in Keycloak — the list includes the actor admin and newly created admins
+  5. Both endpoints require `[Authorize(Roles = "admin")]` — non-admin callers receive 403
+**Plans:** 4/4 plans complete
+Plans:
+- [x] 30-01-PLAN.md — IAuditService + AuditService, migração dos 5 handlers, remoção do legado AuditLog, migration DropAuditLogs
+- [x] 30-02-PLAN.md — AdminUserDto, GetAdministratorsQuery, GetUsersByRoleAsync, POST /administrators + GET /administrators, frontend admin-api.ts
+
+### Phase 31: Backoffice Auth Code Flow UI
+**Goal:** The backoffice frontend replaces the ROPC login form with an Auth Code Flow redirect — Keycloak handles the login screen and forced password change natively
+**Depends on:** Phase 29
+**Requirements:** ACF-01, ACF-02, ACF-03, ACF-04
+**Success Criteria** (what must be TRUE):
+  1. Navigating to any protected backoffice route without a session redirects the browser to Keycloak's authorization endpoint — no custom login form is rendered by the backoffice
+  2. After completing login on Keycloak (including forced password change if required), the admin is redirected back to the backoffice and the dashboard is displayed — session is established via httpOnly cookies
+  3. An admin whose account has `UPDATE_PASSWORD` requiredAction is taken through the Keycloak-native password change screen before reaching the backoffice — no custom password change UI needed in the app
+  4. Clicking logout in the backoffice header clears the session cookies and redirects to Keycloak's OIDC logout endpoint — the admin is returned to the Keycloak login page and cannot access the backoffice without re-authenticating
+**Plans:** TBD
+**UI hint**: yes
+
+### Phase 32: Backoffice Admin Management UI + Audit Log UI
+**Goal:** Admins can create new administrator accounts (seeing the temporary password once) and view the paginated, filterable audit log
+**Depends on:** Phase 30, Phase 31
+**Requirements:** ADM-01, ADM-02, ADM-03, ADM-04, AUD-02, AUD-03
+**Success Criteria** (what must be TRUE):
+  1. A "Create Administrator" form accepts name and email — on submit, the backend creates the Keycloak account and returns a one-time temporary password displayed in a modal; the modal cannot be reopened and the password is not stored
+  2. The administrators list page shows all accounts with the `admin` role — including name, email, and Keycloak account status
+  3. The audit log page shows a paginated table (20 per page) of all recorded admin actions with columns: timestamp, actor email, action type, target, details
+  4. The audit log supports simultaneous filters: date range (from/to), action type (multi-select), and actor email (free text) — applying filters updates the table without a full page reload
+  5. All backoffice pages require an active authenticated session — unauthenticated access triggers the Auth Code Flow redirect established in Phase 31
+**Plans:** TBD
+**UI hint**: yes
+
+### Phase 33: PKCE + Custom Keycloak Themes para Backoffice e Client
+**Goal:** Ambas as aplicações (backoffice e client) autenticam via Authorization Code Flow com PKCE. Cada uma possui um Custom Keycloak Theme dedicado que replica fielmente a identidade visual da aplicação — o usuário nunca percebe a transição para o Keycloak. 2FA, `UPDATE_PASSWORD` e demais required actions são tratados nativamente pelo Keycloak sem código custom nas apps.
+**Depends on:** Phase 28 (Security Documentation)
+**Requirements:** PKC-01, PKC-02, PKC-03, PKC-04, PKC-05, PKC-06
+
+**Contexto arquitetural:**
+
+ROPC (Resource Owner Password Credentials) foi descartado por duas razões fundamentais:
+1. **Sem suporte a 2FA** — TOTP/WebAuthn exigem interação do usuário no Keycloak; ROPC bypassa esse fluxo completamente.
+2. **Credenciais passam pela aplicação** — violação do princípio de separação. OAuth 2.1 depreca ROPC explicitamente.
+
+A solução adotada é **Authorization Code Flow com PKCE** (RFC 7636), onde o usuário é redirecionado para o Keycloak mas percebe uma experiência nativa graças ao Custom Theme. Não há iframes nem `keycloak-js` — o redirect é a garantia de segurança.
+
+**Estratégia de Custom Themes:**
+
+| App | Theme Name | Identidade Visual | Experiência |
+|-----|-----------|-------------------|-------------|
+| `frontend/client` | `onboarding-client` | Branding do produto (cores primárias, logo do produto) | Formulário de login de cliente final: email + senha, mensagens amigáveis, link para cadastro |
+| `frontend/backoffice` | `onboarding-backoffice` | Estilo administrativo (neutro, profissional, dark-friendly) | Formulário de login de admin: sem link de cadastro, mensagem de acesso restrito |
+
+Cada theme é um diretório Keycloak com templates FreeMarker + CSS (sem framework JS externo):
+```
+keycloak/themes/
+  onboarding-client/
+    login/
+      login.ftl          ← formulário de login customizado
+      login-reset-password.ftl
+      login-update-password.ftl   ← tela de troca de senha obrigatória
+      login-otp.ftl      ← 2FA (TOTP)
+      template.ftl       ← layout base
+      theme.properties   ← herda de 'keycloak' como fallback
+      resources/
+        css/styles.css
+  onboarding-backoffice/
+    login/
+      login.ftl
+      login-reset-password.ftl
+      login-update-password.ftl
+      login-otp.ftl
+      template.ftl
+      theme.properties
+      resources/
+        css/styles.css
+```
+
+**Fluxo PKCE por aplicação:**
+
+```
+[Client App]
+  1. Usuário acessa rota protegida → redirect para Keycloak (onboarding-client theme)
+  2. Keycloak autentica → redirect de volta com ?code=...
+  3. Backend BFF troca o code por tokens (PKCE verify)
+  4. Tokens armazenados em httpOnly cookies → JS nunca acessa
+
+[Backoffice App]
+  1. Admin acessa rota protegida → redirect para Keycloak (onboarding-backoffice theme)
+  2. Keycloak autentica → se UPDATE_PASSWORD pendente, exibe tela nativa de troca de senha
+  3. Redirect de volta com ?code=...
+  4. Backend BFF troca o code por tokens
+  5. Session via httpOnly cookies
+```
+
+**Clients Keycloak necessários:**
+
+| Client ID | App | Grant | PKCE | Redirect URIs |
+|-----------|-----|-------|------|---------------|
+| `onboarding-app` | Client (frontend/client) | Authorization Code | obrigatório (S256) | `http://localhost:3000/callback` |
+| `onboarding-backoffice` | Backoffice | Authorization Code | obrigatório (S256) | `http://localhost:4000/admin/callback` |
+
+**Success Criteria** (what must be TRUE):
+  1. Um usuário cliente que acessa `/profile` sem sessão é redirecionado para o Keycloak com o theme `onboarding-client` — o formulário de login exibe o branding do produto e não o tema padrão do Keycloak
+  2. Um admin que acessa `/admin/users` sem sessão é redirecionado para o Keycloak com o theme `onboarding-backoffice` — o formulário exibe identidade administrativa, sem link de cadastro, com mensagem de acesso restrito
+  3. Um admin com `UPDATE_PASSWORD` requiredAction é apresentado à tela nativa de troca de senha do Keycloak (template `login-update-password.ftl` customizado) antes de acessar o backoffice — zero código de troca de senha nas aplicações
+  4. Após login bem-sucedido, o authorization code é trocado por tokens no backend (BFF); nenhum token aparece em localStorage, sessionStorage ou no corpo de respostas JSON acessíveis ao JavaScript
+  5. Logout em qualquer app limpa os cookies httpOnly E invoca o OIDC logout endpoint do Keycloak (`/protocol/openid-connect/logout?id_token_hint=...`) — a sessão SSO do Keycloak é encerrada
+  6. O realm JSON (`keycloak/onboarding-realm.json`) referencia os themes `onboarding-client` e `onboarding-backoffice` nos respectivos clients — o ambiente sobe via `docker compose up` sem configuração manual adicional
+
+**Plans:** 1/0 plans complete
+**UI hint**: yes (Custom Keycloak Themes são a entrega central desta fase)
+
+---
+
+## Milestone v5.0 — Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 29. Keycloak Config + Auth Code Flow Backend | 0/TBD | 📋 Planned | — |
+| 30. Audit Log Backend + Admin Management Backend | 4/4 | Complete    | 2026-04-16 |
+| 31. Backoffice Auth Code Flow UI | 0/TBD | 📋 Planned | — |
+| 32. Backoffice Admin Management UI + Audit Log UI | 0/TBD | 📋 Planned | — |
+| 33. PKCE + Custom Keycloak Themes (Backoffice + Client) | 1/0 | Complete    | 2026-04-17 |
+| 34. Isolar Backoffice e Client em Realms Separados | 0/TBD | 📋 Planned    | — |
+
+---
+
+## Next Steps
+
+**Current Milestone:** v5.0 — Auth Code Flow (Backoffice) + Gestão de Admins + Auditoria
+
+**▶ Recommended Next Actions:**
+
+1. **`/gsd:plan-phase 33`** — Planejar Phase 33 (PKCE + Custom Keycloak Themes)
+2. **`/gsd:plan-phase 29`** — Phase 29 (Keycloak Config + Auth Code Flow Backend)
+3. **`/gsd:plan-phase 30`** — Phase 30 (Audit Log Backend + Admin Management Backend)
+4. **`/gsd:plan-phase 31`** — Phase 31 (Backoffice Auth Code Flow UI)
+5. **`/gsd:plan-phase 32`** — Phase 32 (Backoffice Admin Management UI + Audit Log UI)
+6. **`/gsd:plan-phase 34`** — Phase 34 (Isolar Backoffice e Client em Realms Separados)
+
+**Deferred:**
+- Phase 14 (E2E Testing from v2.0) — pode ser feito em paralelo ou após v5.0
+
+### Phase 34: Isolar Backoffice e Client em Realms Separados
+
+**Goal:** Isolar o banco de usuários do Keycloak em dois Realms (backoffice e client) para separar regras de sessão de forma arquitetural
+**Requirements**: ARCH-04
+**Depends on:** Phase 33
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 34 to break down)
+
+---
+
+*Last updated: 2026-04-19 — Phase 34 adicionada: Separação de Realms*

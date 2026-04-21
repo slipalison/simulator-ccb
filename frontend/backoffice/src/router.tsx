@@ -8,9 +8,14 @@ import {
 import { NotFoundPage } from "@/components/pages/NotFoundPage";
 import { AdminLoginPage } from "@/components/pages/AdminLoginPage";
 import { AdminAccessDeniedPage } from "@/components/pages/AdminAccessDeniedPage";
+import { AuthErrorPage } from "@/components/pages/AuthErrorPage";
 import { AdminUsersPage } from "@/components/pages/AdminUsersPage";
 import { AdminUserDetailPage } from "@/components/pages/AdminUserDetailPage";
 import { AdminUserEditPage } from "@/components/pages/AdminUserEditPage";
+import { CreateAdminPage } from "@/components/pages/CreateAdminPage";
+import { PasswordChangePage } from "@/components/pages/PasswordChangePage";
+import { AuditLogPage } from "@/components/pages/AuditLogPage";
+import { AdminAdministratorsPage } from "@/components/pages/AdminAdministratorsPage";
 import { AdminLayout } from "@/components/templates/AdminLayout";
 import { useEffect } from "react";
 
@@ -39,6 +44,13 @@ const adminAccessDeniedRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/access-denied",
   component: AdminAccessDeniedPage,
+});
+
+// Rota auth error: /auth/error (exibida pelo SPA quando callback retorna erro)
+const authErrorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/error",
+  component: AuthErrorPage,
 });
 
 // Rota admin users: /admin/users
@@ -80,14 +92,63 @@ const adminUserEditRoute = createRoute({
   },
 } as any);
 
+// Rota admin create: /admin/create
+const adminCreateRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/create",
+  component: () => (
+    <AdminLayout>
+      <CreateAdminPage />
+    </AdminLayout>
+  ),
+});
+
+// Rota password change: /admin/password-change
+const adminPasswordChangeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/password-change",
+  component: () => (
+    <AdminLayout>
+      <PasswordChangePage />
+    </AdminLayout>
+  ),
+});
+
+// Rota audit log: /admin/audit-log
+const adminAuditLogRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/audit-log",
+  component: () => (
+    <AdminLayout>
+      <AuditLogPage />
+    </AdminLayout>
+  ),
+});
+
+// Rota admin administrators: /admin/administrators
+const adminAdministratorsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/administrators",
+  component: () => (
+    <AdminLayout>
+      <AdminAdministratorsPage />
+    </AdminLayout>
+  ),
+});
+
 // Arvore de rotas — APENAS rotas admin (sem rotas publicas)
 const routeTree = rootRoute.addChildren([
   indexRoute,
   adminLoginRoute,
   adminAccessDeniedRoute,
+  authErrorRoute,
   adminUsersRoute,
   adminUserEditRoute,
   adminUserDetailRoute,
+  adminCreateRoute,
+  adminPasswordChangeRoute,
+  adminAuditLogRoute,
+  adminAdministratorsRoute,
 ]);
 
 // Instancia do router

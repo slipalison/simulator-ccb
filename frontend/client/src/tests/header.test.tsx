@@ -4,28 +4,16 @@ import userEvent from "@testing-library/user-event";
 import { Header } from "@/components/organisms/Header";
 import { AuthProvider } from "@/lib/auth-context";
 
-// Mock router
-const mockNavigate = vi.fn();
-vi.mock("@tanstack/react-router", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@tanstack/react-router")>();
-  return {
-    ...actual,
-    useNavigate: () => mockNavigate,
-  };
-});
-
-// Mock auth context
+// Mock auth context — logout is now a synchronous redirect (ACF)
 const mockLogout = vi.fn();
 vi.mock("@/lib/auth-context", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/auth-context")>();
   return {
     ...actual,
     useAuth: () => ({
-      auth: { isAuthenticated: true, isLoading: false },
+      auth: { isAuthenticated: true, isLoading: false, userName: "Test User", email: "test@example.com" },
       logout: mockLogout,
       login: vi.fn(),
-      refreshIfNeeded: vi.fn(),
-      getAccessToken: () => "fake-token",
     }),
     AuthProvider: ({ children }: { children: React.ReactNode }) => children,
   };
@@ -48,14 +36,12 @@ describe("Header", () => {
   it("renders with logo on left, controls on right", () => {
     renderHeader();
 
-    // Logo should be visible
     expect(screen.getByText(/Onboarding/i)).toBeInTheDocument();
   });
 
   it("shows theme toggle button", () => {
     renderHeader();
 
-    // Theme toggle should be visible
     const themeToggle = screen.getByRole("button", { name: /alternar tema/i });
     expect(themeToggle).toBeInTheDocument();
   });
@@ -63,14 +49,11 @@ describe("Header", () => {
   it("shows user menu dropdown when authenticated", async () => {
     const { user } = renderHeader();
 
-    // User menu trigger button should exist
     const userButton = screen.getByRole("button", { name: /user menu/i });
     expect(userButton).toBeInTheDocument();
 
-    // Click to open dropdown
     await user.click(userButton);
 
-    // Dropdown should show menu items
     await waitFor(() => {
       expect(screen.getByText(/Meu Perfil/i)).toBeInTheDocument();
     });
@@ -87,12 +70,10 @@ describe("Header", () => {
       expect(screen.getByText(/Sair/i)).toBeInTheDocument();
     });
 
-    // Click logout
     await user.click(screen.getByText(/Sair/i));
 
     await waitFor(() => {
       expect(mockLogout).toHaveBeenCalled();
-      expect(mockNavigate).toHaveBeenCalledWith(expect.objectContaining({ to: "/login" }));
     });
   });
 });

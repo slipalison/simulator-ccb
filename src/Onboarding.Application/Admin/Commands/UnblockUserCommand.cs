@@ -17,18 +17,18 @@ public sealed record UnblockUserCommand(
 public sealed class UnblockUserCommandHandler : ICommandHandler<UnblockUserCommand, Unit>
 {
     private readonly IAdminRepository _adminRepository;
-    private readonly IAuditLogRepository _auditLogRepository;
+    private readonly IAuditService _auditService;
     private readonly IKeycloakUserService _keycloakUserService;
     private readonly ILogger<UnblockUserCommandHandler> _logger;
 
     public UnblockUserCommandHandler(
         IAdminRepository adminRepository,
-        IAuditLogRepository auditLogRepository,
+        IAuditService auditService,
         IKeycloakUserService keycloakUserService,
         ILogger<UnblockUserCommandHandler> logger)
     {
         _adminRepository = adminRepository;
-        _auditLogRepository = auditLogRepository;
+        _auditService = auditService;
         _keycloakUserService = keycloakUserService;
         _logger = logger;
     }
@@ -39,27 +39,20 @@ public sealed class UnblockUserCommandHandler : ICommandHandler<UnblockUserComma
             ?? throw new KeyNotFoundException("User not found.");
 
         // Get Keycloak user
-        var kcUser = await _keycloakUserService.GetUserByEmailAsync(client.Email.Value, ct)
+        var kcUser = await _keycloakUserService.GetUserByEmailAsync("client", client.Email.Value, ct)
             ?? throw new InvalidOperationException("Keycloak user not found.");
 
         // Unblock via Keycloak service abstraction
-        await _keycloakUserService.UnblockUserAsync(kcUser.Id, ct);
+        await _keycloakUserService.UnblockUserAsync("client", kcUser.Id, ct);
 
         // Audit log
-        var auditLog = AuditLog.Create(
-            command.AdminSub,
-            command.AdminEmail,
-            AuditActions.UserUnblocked,
-            command.UserId,
-            client.Email.Value,
-            "{ \"Enabled\": false }",
-            "{ \"Enabled\": true }",
-            null,
-            null
-        );
-
-        await _auditLogRepository.AddAsync(auditLog, ct);
-        await _auditLogRepository.SaveChangesAsync(ct);
+        await _auditService.RecordAsync(
+            actorSub: command.AdminSub,
+            actorEmail: command.AdminEmail,
+            action: ActionType.UserUnblocked,
+            targetUserId: command.UserId,
+            targetUserName: client.Email.Value,
+            ct: ct);
 
         return Unit.Value;
     }

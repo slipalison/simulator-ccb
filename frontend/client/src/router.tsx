@@ -7,7 +7,9 @@ import {
 } from "@tanstack/react-router";
 import { NotFoundPage } from "@/components/pages/NotFoundPage";
 import { RegistrationForm } from "@/components/molecules/RegistrationForm";
-import { LoginPage } from "@/components/pages/LoginPage";
+import { AuthLoginPage } from "@/components/pages/AuthLoginPage";
+import { AuthCallbackPage } from "@/components/pages/AuthCallbackPage";
+import { AuthErrorPage } from "@/components/pages/AuthErrorPage";
 import { ProfilePage } from "@/components/pages/ProfilePage";
 import { ForgotPasswordPage } from "@/components/pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/components/pages/ResetPasswordPage";
@@ -21,7 +23,7 @@ const rootRoute = createRootRoute({
   notFoundComponent: NotFoundPage,
 });
 
-// Rota index: / -> LoginPage (se nao logado) ou redirect para /profile (se logado)
+// Rota index: / -> AuthLoginPage (se nao logado) ou redirect para /profile (se logado)
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
@@ -35,11 +37,25 @@ const registerRoute = createRoute({
   component: RegistrationForm,
 });
 
-// Rota de login: /login
-const loginRoute = createRoute({
+// Auth login (redirect-only): /auth/login
+const authLoginRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/login",
-  component: LoginPage,
+  path: "/auth/login",
+  component: AuthLoginPage,
+});
+
+// Auth callback: /auth/callback
+const authCallbackRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/callback",
+  component: AuthCallbackPage,
+});
+
+// Auth error: /auth/error
+const authErrorRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/auth/error",
+  component: AuthErrorPage,
 });
 
 // Rota de perfil: /profile (protegida)
@@ -64,11 +80,13 @@ const resetPasswordRoute = createRoute({
   validateSearch: z.object({ token: z.string().optional() }),
 });
 
-// Arvore de rotas — APENAS rotas publicas (sem /admin/*)
+// Arvore de rotas
 const routeTree = rootRoute.addChildren([
   indexRoute,
   registerRoute,
-  loginRoute,
+  authLoginRoute,
+  authCallbackRoute,
+  authErrorRoute,
   profileRoute,
   forgotPasswordRoute,
   resetPasswordRoute,
@@ -85,7 +103,7 @@ declare module "@tanstack/react-router" {
 }
 
 // ---------------------------------------------------------------------------
-// RootRoute: shows LoginPage for unauthenticated users
+// RootRoute: shows AuthLoginPage for unauthenticated users
 // If authenticated, useEffect will redirect to /profile
 // ---------------------------------------------------------------------------
 
@@ -99,5 +117,5 @@ function RootRoute() {
     }
   }, [auth.isAuthenticated, navigate]);
 
-  return <LoginPage />;
+  return <AuthLoginPage />;
 }

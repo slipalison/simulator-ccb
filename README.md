@@ -8,7 +8,13 @@ Sistema de onboarding para cadastro de clientes Pessoa Física e Pessoa Jurídic
 [![Dependabot](https://img.shields.io/badge/Dependabot-enabled-green.svg)](https://docs.github.com/en/code-security/dependabot)
 [![Security Policy](https://img.shields.io/badge/Security-Policy-blue.svg)](.github/SECURITY.md)
 
-This project runs **12 independent security checks** on every pull request:
+This project runs **13 security checks** across a multi-stage pipeline:
+
+| Stage | Jobs | Purpose |
+|-------|------|---------|
+| **Build** | Backend, Client, Backoffice | Parallel builds with artifact caching |
+| **Tests** | Domain/API/Integration, Client checks, Backoffice checks | Coverage ≥ 80%, tsc, eslint |
+| **Security** | 10 independent jobs (SAST, SCA, SBOM, DAST, Container, IaC, Secrets) | Run in parallel, no dependencies |
 
 | Category | Tools |
 |----------|-------|
@@ -16,11 +22,16 @@ This project runs **12 independent security checks** on every pull request:
 | Frontend | Vinxi (tsc, eslint, build) × 2 projects |
 | SAST | Semgrep (custom rules), CodeQL (dataflow analysis) |
 | SCA | Trivy (dependency CVEs), Dependabot (weekly updates) |
+| SBOM | Syft (source code SPDX + container CycloneDX) |
+| DAST | OWASP ZAP (baseline scan against running API) |
 | Container | Trivy (image scan), Dockle (CIS Benchmarks) |
 | IaC | Checkov (Docker Compose), Kubescape (K8s preparation) |
 | Secrets | Gitleaks (pattern detection), TruffleHog (active verification) |
 
+**Pipeline stages:** Build → Tests (needs build) — Security runs parallel, independent.
+
 See [Security Overview](docs/security-overview.md) for complete documentation.
+See [CI Pipeline Architecture](docs/ci-pipeline.md) for multi-stage details and security tool rationale.
 
 ## Tech Stack
 

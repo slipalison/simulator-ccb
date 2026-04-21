@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useNavigate } from "@tanstack/react-router";
+
 import { PersonTypeRadio } from "@/components/molecules/PersonTypeRadio";
 import { PasswordField } from "@/components/molecules/PasswordField";
 import { PasswordStrengthMeter } from "@/components/molecules/PasswordStrengthMeter";
@@ -37,7 +37,7 @@ import { useAuth } from "@/lib/auth-context";
  * Auto-login after successful registration
  */
 export function RegistrationForm() {
-  const navigate = useNavigate();
+
   const { login } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -110,14 +110,8 @@ export function RegistrationForm() {
         password: data.password,
       });
 
-      // Auto-login after successful registration
-      try {
-        await login(data.email, data.password);
-        navigate({ to: "/profile" as any, replace: true });
-      } catch {
-        // Fallback to login page if auto-login fails
-        navigate({ to: "/login" as any, state: { message: "Cadastro criado. Faça login." } as any });
-      }
+      // After registration, redirect to ACF login (Keycloak handles authentication)
+      login();
     } catch (err) {
       if (err instanceof RegistrationValidationError) {
         setFieldErrors(err.errors);
@@ -370,7 +364,7 @@ export function RegistrationForm() {
           {/* Footer link */}
           <div className="mt-6 text-center text-sm text-muted-foreground">
             Ja tem conta?{" "}
-            <a href="/login" className="text-primary hover:underline font-medium">
+            <a href="/auth/login" className="text-primary hover:underline font-medium">
               Fazer login &rarr;
             </a>
           </div>

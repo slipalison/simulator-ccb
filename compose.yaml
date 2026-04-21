@@ -47,7 +47,8 @@ services:
       KC_HOSTNAME: http://localhost:8180
       KC_SPI_LOGIN_PROTOCOL__OPENID_CONNECT__REQUEST_URI_ENABLED: "false"
     volumes:
-      - ./keycloak/onboarding-realm.json:/opt/keycloak/data/import/onboarding-realm.json:ro
+      - ./keycloak:/opt/keycloak/data/import:ro
+      - ./keycloak/themes:/opt/keycloak/themes:ro
     ports:
       - "127.0.0.1:8180:8080"
       - "127.0.0.1:9000:9000"   # Keycloak management port (health endpoints)
@@ -70,11 +71,13 @@ services:
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__AppDb: Host=app_db;Port=5432;Database=onboarding;Username=appuser;Password=${APP_DB_PASSWORD}
       Keycloak__AuthServerUrl: http://keycloak:8080
-      Keycloak__Authority: http://keycloak:8080/realms/onboarding
+      Keycloak__Authority: http://keycloak:8080/realms/backoffice
       Keycloak__AdminClientId: onboarding-api-admin
       Keycloak__AdminClientSecret: ${KC_ADMIN_CLIENT_SECRET}
-      Keycloak__RealmUrl: http://keycloak:8080/realms/onboarding
-      Keycloak__ValidIssuer: http://localhost:8180/realms/onboarding
+      Keycloak__RealmUrl: http://keycloak:8080/realms/backoffice
+      Keycloak__BackofficeRealmUrl: http://keycloak:8080/realms/backoffice
+      Keycloak__ClientRealmUrl: http://keycloak:8080/realms/client
+      Keycloak__ValidIssuer: http://localhost:8180/realms/backoffice
       Frontend__BaseUrl: ${FRONTEND_BASE_URL:-http://localhost:5173}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4317
       OTEL_SERVICE_NAME: onboarding-api
@@ -103,11 +106,16 @@ services:
       - ./frontend/client/public:/app/public
       - ./frontend/client/server.ts:/app/server.ts
       - ./frontend/client/app.config.ts:/app/app.config.ts
+      - ./frontend/client/auth-server.ts:/app/auth-server.ts:ro
     environment:
       VITE_API_URL: http://localhost:8080
       VITE_KEYCLOAK_URL: http://localhost:8180
-      VITE_KEYCLOAK_REALM: onboarding
-      VITE_KEYCLOAK_CLIENT_ID: onboarding-app
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:8180
+      KEYCLOAK_REALM: client
+      KEYCLOAK_CLIENT_ACF_CLIENT_ID: ${KEYCLOAK_CLIENT_ACF_CLIENT_ID}
+      KEYCLOAK_CLIENT_ACF_CLIENT_SECRET: ${KEYCLOAK_CLIENT_ACF_CLIENT_SECRET}
+      FRONTEND_URL: http://localhost:5173
     ports:
       - "127.0.0.1:5173:5173"
     depends_on:
@@ -123,9 +131,16 @@ services:
       - ./frontend/backoffice/public:/app/public
       - ./frontend/backoffice/server.ts:/app/server.ts
       - ./frontend/backoffice/app.config.ts:/app/app.config.ts
+      - ./frontend/backoffice/auth-server.ts:/app/auth-server.ts:ro
     environment:
       VITE_API_URL: http://localhost:8080
       VITE_KEYCLOAK_URL: http://localhost:8180
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:8180
+      KEYCLOAK_REALM: backoffice
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_BACKOFFICE_CLIENT_ID}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_BACKOFFICE_CLIENT_SECRET}
+      FRONTEND_URL: http://localhost:5174
     ports:
       - "127.0.0.1:5174:5174"
     depends_on:

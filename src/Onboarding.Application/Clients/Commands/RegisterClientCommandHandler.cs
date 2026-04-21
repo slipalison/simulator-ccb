@@ -55,7 +55,7 @@ public sealed class RegisterClientCommandHandler
         // 4. Create Keycloak user — compensate if it fails (REG-06)
         try
         {
-            var keycloakUserId = await _keycloakUserService.CreateUserAsync(
+            var keycloakUserId = await _keycloakUserService.CreateUserAsync("client", 
                 username: command.Email!,
                 email: command.Email!,
                 password: command.Password!,

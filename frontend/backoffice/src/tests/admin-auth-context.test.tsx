@@ -5,7 +5,7 @@ import * as adminApi from "@/lib/admin-api";
 
 // Mock the admin API module
 vi.mock("@/lib/admin-api", () => ({
-  loginAdmin: vi.fn(),
+
   logoutAdmin: vi.fn(),
   getAdminMe: vi.fn(),
   AdminLoginError: class AdminLoginError extends Error {
@@ -71,31 +71,6 @@ describe("AdminAuthContext", () => {
     expect(result.current.admin.adminEmail).toBeNull();
   });
 
-  it("login updates state with admin session data", async () => {
-    // First: session restoration fails (initial mount)
-    vi.mocked(adminApi.getAdminMe).mockRejectedValueOnce(new Error("No session"));
-
-    vi.mocked(adminApi.loginAdmin).mockResolvedValue({
-      adminName: "Logged Admin",
-      adminEmail: "logged@onboarding.local",
-    });
-
-    const { result } = renderHook(() => useAdminAuth(), { wrapper });
-
-    // Wait for initial loading
-    await waitFor(() => {
-      expect(result.current.admin.isLoading).toBe(false);
-    });
-
-    // Login
-    await act(async () => {
-      await result.current.login("admin@onboarding.local", "SecureP@ss123");
-    });
-
-    expect(result.current.admin.isAuthenticated).toBe(true);
-    expect(result.current.admin.adminName).toBe("Logged Admin");
-    expect(result.current.admin.adminEmail).toBe("logged@onboarding.local");
-  });
 
   it("logout clears all state", async () => {
     // Session restoration succeeds first

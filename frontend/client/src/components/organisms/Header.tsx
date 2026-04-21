@@ -9,15 +9,12 @@ import {
 import { Button } from "@/components/ui/button"
 import { User, LogOut } from "lucide-react"
 import { useAuth } from "../../lib/auth-context"
-import { useNavigate } from "@tanstack/react-router"
 
 export function Header() {
   const { logout } = useAuth()
-  const navigate = useNavigate()
 
-  async function handleLogout() {
-    await logout()
-    navigate({ to: "/login" as any })
+  function handleLogout() {
+    logout() // synchronous redirect to /auth/logout via Vinxi server
   }
 
   return (
@@ -40,7 +37,7 @@ export function Header() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => navigate({ to: "/profile" as any })}>
+              <DropdownMenuItem onClick={() => { window.location.href = "/profile"; }}>
                 Meu Perfil
               </DropdownMenuItem>
               <DropdownMenuSeparator />

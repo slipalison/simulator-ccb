@@ -25,7 +25,7 @@ namespace Onboarding.API.Tests.Admin;
 internal sealed class AdminTestFactory : WebApplicationFactory<Program>
 {
     public IAdminRepository AdminRepositoryMock { get; } = Substitute.For<IAdminRepository>();
-    public IAuditLogRepository AuditLogRepositoryMock { get; } = Substitute.For<IAuditLogRepository>();
+    public IAuditService AuditServiceMock { get; } = Substitute.For<IAuditService>();
     public IClientRepository ClientRepositoryMock { get; } = Substitute.For<IClientRepository>();
     public IKeycloakUserService KeycloakUserServiceMock { get; } = Substitute.For<IKeycloakUserService>();
     public IPasswordResetTokenRepository TokenRepositoryMock { get; } = Substitute.For<IPasswordResetTokenRepository>();
@@ -37,13 +37,13 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:AppDb",
             "Host=localhost;Port=5432;Database=test;Username=test;Password=test");
         builder.UseSetting("Keycloak:RealmUrl",
-            "http://localhost:8180/realms/onboarding");
+            "http://localhost:8180/realms/backoffice");
         builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180/");
         builder.UseSetting("Keycloak:AdminClientId", "onboarding-api-admin");
         builder.UseSetting("Keycloak:AdminClientSecret", "test-secret");
-        builder.UseSetting("Keycloak:Realm", "onboarding");
+        builder.UseSetting("Keycloak:Realm", "backoffice");
         builder.UseSetting("Keycloak:PublicClientId", "onboarding-app");
-        builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/onboarding");
+        builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/backoffice");
 
         builder.ConfigureTestServices(services =>
         {
@@ -60,7 +60,7 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
 
             // Replace all infrastructure with mocks
             services.AddScoped<IAdminRepository>(_ => AdminRepositoryMock);
-            services.AddScoped<IAuditLogRepository>(_ => AuditLogRepositoryMock);
+            services.AddScoped<IAuditService>(_ => AuditServiceMock);
             services.AddScoped<IClientRepository>(_ => ClientRepositoryMock);
             services.AddScoped<IKeycloakUserService>(_ => KeycloakUserServiceMock);
             services.AddScoped<IPasswordResetTokenRepository>(_ => TokenRepositoryMock);
@@ -68,13 +68,23 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
 
             // Disable JWT validation for tests — PostConfigure overrides app configuration
             services.PostConfigure<JwtBearerOptions>(
-                JwtBearerDefaults.AuthenticationScheme, options =>
+                "BearerBackoffice", options =>
                 {
-                    options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration();
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
-                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep: jwt-tokenvalidationparameters-no-expiry-validation — test factory uses fake tokens
+                    options.TokenValidationParameters.ValidateLifetime = false;
                     options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
+                    options.TokenValidationParameters.ValidateIssuerSigningKey = true;
+                });
+
+            services.PostConfigure<JwtBearerOptions>(
+                "BearerClient", options =>
+                {
+                    options.TokenValidationParameters.ValidateIssuer = false;
+                    options.TokenValidationParameters.ValidateAudience = false;
+                    options.TokenValidationParameters.ValidateLifetime = false;
+                    options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
+                    options.TokenValidationParameters.ValidateIssuerSigningKey = true;
                 });
 
             // Replace all IClaimsTransformation implementations with our test version.

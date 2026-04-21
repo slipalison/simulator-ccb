@@ -7,3 +7,5 @@
 #
 # Example:
 # abc123def456  # Test fixture: mock Keycloak secret in integration test
+
+018a344e9571cf46b306dd5597e0eaacd2115d17:docs/ci-pipeline.md:connection-string-password:356  # Documentation example: DB connection string pattern (not a real secret)

@@ -38,27 +38,25 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 **Depends on**: Milestone v2.0 completo (15 phases delivered)
 
-## Current Milestone: v4.0 CI/CD Pipeline + Cybersecurity
+## Previous Milestone: v4.0 CI/CD Pipeline + Cybersecurity ✅ COMPLETE
 
 **Goal:** Pipeline de integração contínua com builds paralelas (backend + 2 frontends) e esteira completa de segurança (SAST, SCA, containers, IaC, secrets).
 
-**Target features:**
-- GitHub Actions workflow com execução paralela por projeto
-  - Backend: build + testes unitários + validação de cobertura
-  - Frontend client: build + lint + type check
-  - Frontend backoffice: build + lint + type check
-- Validação de cobertura de testes (threshold mínimo)
-- Pipeline de segurança automatizada no CI:
-  - **SAST**: Semgrep (rápido, regras C#, customizável) + CodeQL (profundo, nativo GitHub)
-  - **SCA**: Dependabot (zero config) + Trivy (dependências + containers + IaC + secrets)
-  - **Container**: Trivy (imagem Docker) + Dockle (boas práticas Dockerfile)
-  - **IaC**: Checkov (Terraform, K8s, Docker Compose) + Kubescape (Kubernetes)
-  - **Secrets**: Gitleaks (credenciais commitadas) + TruffleHog (verificação ativa)
-- Relatórios de segurança visíveis no GitHub Security Tab
-- Bloqueio de merge em falha crítica de segurança
-- Documentação de segurança para contribuidores
+**Result:** 100% complete — 8/8 phases, 20/20 plans. CI pipeline com 12 jobs operacional.
 
-**Depends on**: Milestone v3.0 completo (Admin Backoffice + Frontend Separation)
+## Current Milestone: v5.0 Auth Code Flow (Backoffice) + Gestão de Admins
+
+**Goal:** Migrar o backoffice de ROPC para Authorization Code Flow + PKCE (Keycloak gerencia forced password change nativamente), adicionar criação de administradores e auditoria completa de ações.
+
+**Target features:**
+- Backoffice migrado de ROPC → Auth Code Flow + PKCE (confidential client, code exchange server-side)
+- Forced password change no primeiro login funciona nativamente via Keycloak requiredActions
+- Admin pode criar novos administradores no backoffice (senha temporária, Keycloak força troca)
+- Auditoria de todas as ações administrativas (append-only, visível com filtros no backoffice)
+
+**Key decision:** Client frontend mantém ROPC + UI customizada (decisão consciente — UX priorizada). Somente backoffice migra para Auth Code Flow.
+
+**Depends on**: Milestone v4.0 completo (CI/CD Pipeline + Cybersecurity)
 
 ## Requirements
 
@@ -71,18 +69,16 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 ### Active
 
-- [ ] GitHub Actions workflow com jobs paralelos (backend, frontend client, frontend backoffice)
-- [ ] Build + testes unitários + cobertura para backend .NET 10
-- [ ] Build + lint + type check para frontend client (Vinxi)
-- [ ] Build + lint + type check para frontend backoffice (Vinxi)
-- [ ] SAST: Semgrep + CodeQL configurados para C# e React
-- [ ] SCA: Dependabot + Trivy escaneando dependências
-- [ ] Container scanning: Trivy + Dockle nas imagens Docker
-- [ ] IaC scanning: Checkov + Kubescape para compose.yaml e futuros K8s manifests
-- [ ] Secrets scanning: Gitleaks + TruffleHog bloqueando credenciais commitadas
-- [ ] Relatórios de segurança no GitHub Security Tab
-- [ ] Policy de branch protection bloqueando merge em falha crítica
-- [ ] Documentação de segurança para contribuidores
+- [ ] Frontend client migrado de ROPC para Authorization Code Flow + PKCE (public client)
+- [ ] Frontend backoffice migrado de ROPC para Authorization Code Flow (confidential client)
+- [ ] Keycloak realm configurado com redirect URIs para Auth Code Flow em ambos os clientes
+- [ ] Backend endpoints de ROPC (login, refresh) substituídos ou adaptados para Auth Code Flow
+- [ ] Forced password change no primeiro login via Keycloak requiredActions (funciona nativamente com Auth Code Flow)
+- [ ] Admin autenticado pode criar novos administradores no backoffice
+- [ ] Sistema gera senha temporária para novos admins (Keycloak força troca via requiredActions)
+- [ ] Novos admins recebem role "admin" no Keycloak automaticamente
+- [ ] Auditoria de ações administrativas (criação de admin, bloqueio, exclusão, edição de usuários)
+- [ ] Log de auditoria visível no portal de backoffice com filtros por data, tipo e ator
 
 ### Out of Scope
 
@@ -91,7 +87,7 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 - Edição de dados cadastrais pelo usuário final — v1 é somente leitura
 - Mobile app — web-first
 - Notificações push/email — sem necessidade no v1
-- Migração de ROPC para Auth Code + PKCE — documentado para v4
+- Migração de ROPC para Auth Code + PKCE — implementado em v5.0
 
 ## Context
 
@@ -140,7 +136,7 @@ O login usa tela custom no React autenticando via Keycloak (Resource Owner Passw
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Login custom (ROPC Grant) | Usuário quer controle total da UI de login | ⚠️ Revisit — deprecated no OAuth2.1 |
+| Login custom (ROPC Grant) | Usuário quer controle total da UI de login | ✓ Migrado para Auth Code Flow + PKCE em v5.0 |
 | Formulário de cadastro custom | Cadastro via Admin API do Keycloak — maior controle do fluxo | — Pending |
 | Sem validação de email no v1 | Simplificar fluxo inicial — cadastrou, já pode logar | — Pending |
 | Atomic Design no frontend | Facilitar mudanças futuras de layout com componentes reutilizáveis | — Pending |
@@ -167,4 +163,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-10 — Milestone v4.0 started: CI/CD Pipeline + Cybersecurity (parallel builds, SAST, SCA, container/IaC/secrets scanning)*
+*Last updated: 2026-04-16 — Phase 33 complete: client app migrado ROPC→ACF+PKCE, Vinxi auth-server.ts, 2 custom Keycloak themes (onboarding-client + onboarding-backoffice). Milestone v5.0 completo. 279 testes passando. 4 achados críticos no code review aguardando fix.*

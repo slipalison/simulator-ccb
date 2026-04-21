@@ -1,11 +1,14 @@
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using NSubstitute;
+using Onboarding.API.Tests.Authentication;
 using Onboarding.Application.Clients.Commands;
 using Onboarding.Application.Clients.Validators;
 using Onboarding.Application.Common;
@@ -34,11 +37,12 @@ internal sealed class RegistrationTestApiFactory : WebApplicationFactory<Program
         builder.UseSetting("ConnectionStrings:AppDb",
             "Host=localhost;Port=5432;Database=test;Username=test;Password=test");
         builder.UseSetting("Keycloak:RealmUrl",
-            "http://localhost:8180/realms/onboarding");
+            "http://localhost:8180/realms/client");
         builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180/");
         builder.UseSetting("Keycloak:AdminClientId", "onboarding-api-admin");
         builder.UseSetting("Keycloak:AdminClientSecret", "test-secret");
-        builder.UseSetting("Keycloak:Realm", "onboarding");
+        builder.UseSetting("Keycloak:Realm", "client");
+        builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/client");
 
         builder.ConfigureTestServices(services =>
         {
@@ -60,6 +64,34 @@ internal sealed class RegistrationTestApiFactory : WebApplicationFactory<Program
             // Ensure IValidator<RegisterClientCommand> is registered
             services.AddScoped<IValidator<RegisterClientCommand>,
                 RegisterClientCommandValidator>();
+
+            services.PostConfigure<JwtBearerOptions>(
+                JwtBearerDefaults.AuthenticationScheme, options =>
+                {
+                    options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
+                    {
+                        Issuer = "http://localhost:8180/realms/client",
+                    };
+                    options.TokenValidationParameters.ValidateIssuer = false;
+                    options.TokenValidationParameters.ValidateAudience = false;
+                    options.TokenValidationParameters.ValidateLifetime = false;
+                    options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
+                    options.TokenValidationParameters.ValidateIssuerSigningKey = true;
+                });
+
+            services.PostConfigure<JwtBearerOptions>(
+                "BearerClient", options =>
+                {
+                    options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
+                    {
+                        Issuer = "http://localhost:8180/realms/client",
+                    };
+                    options.TokenValidationParameters.ValidateIssuer = false;
+                    options.TokenValidationParameters.ValidateAudience = false;
+                    options.TokenValidationParameters.ValidateLifetime = false;
+                    options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
+                    options.TokenValidationParameters.ValidateIssuerSigningKey = true;
+                });
         });
     }
 }
@@ -110,7 +142,7 @@ public class RegistrationControllerTests : IAsyncLifetime
             .AddAsync(Arg.Any<Domain.Aggregates.ClientAggregate.Client>(), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
         _factory.KeycloakMock
-            .CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            .CreateUserAsync("client", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                              Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("fake-keycloak-id");
         _client = _factory.CreateClient();

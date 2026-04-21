@@ -78,6 +78,6 @@ describe("ForgotPasswordPage (shadcn redesign)", () => {
 
     const loginLink = screen.getByRole("link", { name: /voltar para login/i });
     expect(loginLink).toBeInTheDocument();
-    expect(loginLink).toHaveAttribute("href", "/login");
+    expect(loginLink).toHaveAttribute("href", "/auth/login");
   });
 });

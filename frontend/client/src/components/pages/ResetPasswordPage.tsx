@@ -67,7 +67,7 @@ export function ResetPasswordPage({ token: propToken }: { token?: string } = {})
 
     try {
       await resetPasswordClient(token, values.password);
-      navigate({ to: "/login" as any });
+      navigate({ to: "/auth/login" as any });
     } catch (err: unknown) {
       if (err instanceof ResetPasswordError) {
         setError(err.message);
@@ -167,7 +167,7 @@ export function ResetPasswordPage({ token: propToken }: { token?: string } = {})
           </Form>
 
           <div className="mt-4 text-center text-sm">
-            <a href="/login" className="text-primary hover:underline">
+            <a href="/auth/login" className="text-primary hover:underline">
               Voltar para login &rarr;
             </a>
           </div>

@@ -27,59 +27,34 @@ export class AdminApiError extends Error {
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/admin/auth/login
+// GET /auth/logout — redirect to Keycloak OIDC logout (clears cookies)
 // ---------------------------------------------------------------------------
 
-export async function loginAdmin(
-  email: string,
-  password: string
-): Promise<AdminSessionResponse> {
-  const response = await fetch("/api/admin/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-    credentials: "include",
-  });
-
-  if (response.ok) {
-    return response.json() as Promise<AdminSessionResponse>;
-  }
-
-  if (response.status === 401) {
-    throw new AdminLoginError("Credenciais invalidas.");
-  }
-
-  const body = await response.json().catch(() => ({}));
-  throw new AdminApiError(body.detail || "Login falhou.");
+export function logoutAdmin(): void {
+  window.location.href = "/auth/logout";
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/admin/auth/logout
-// ---------------------------------------------------------------------------
-
-export async function logoutAdmin(): Promise<void> {
-  const response = await fetch("/api/admin/auth/logout", {
-    method: "POST",
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    throw new AdminApiError("Logout falhou.");
-  }
-}
-
-// ---------------------------------------------------------------------------
-// GET /api/admin/auth/me
+// GET /auth/me — returns session info from httpOnly cookie (Vinxi server)
 // ---------------------------------------------------------------------------
 
 export async function getAdminMe(): Promise<AdminSessionResponse> {
-  const response = await fetch("/api/admin/auth/me", {
+  const response = await fetch("/auth/me", {
     method: "GET",
     credentials: "include",
   });
 
   if (response.ok) {
-    return response.json() as Promise<AdminSessionResponse>;
+    const data = (await response.json()) as {
+      isAuthenticated: boolean;
+      adminName: string;
+      email: string;
+      sub: string;
+    };
+    if (!data.isAuthenticated) {
+      throw new AdminApiError("Session invalid");
+    }
+    return { adminName: data.adminName, adminEmail: data.email };
   }
 
   throw new AdminApiError("Session invalid");
@@ -305,4 +280,126 @@ export async function unblockUser(
     const body = await response.json().catch(() => ({}));
     throw new AdminApiError(body.detail || "Falha ao desbloquear usuario.");
   }
+}
+
+// ---------------------------------------------------------------------------
+// Admin Management — Phase 29 (Milestone v5.0)
+// ---------------------------------------------------------------------------
+
+// POST /api/admin/administrators — Create new admin
+export interface CreateAdminResult {
+  adminId: string;
+  temporaryPassword: string;
+}
+
+export async function createAdmin(
+  fullName: string,
+  email: string
+): Promise<CreateAdminResult> {
+  const response = await fetch("/api/admin/administrators", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fullName, email }),
+    credentials: "include",
+  });
+
+  if (response.status === 409) {
+    throw new AdminApiError("Email ja cadastrado.", 409);
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Falha ao criar admin.");
+  }
+
+  return response.json() as Promise<CreateAdminResult>;
+}
+
+// PUT /api/admin/me/password — Force password change
+export async function forcePasswordChange(
+  newPassword: string
+): Promise<void> {
+  const response = await fetch("/api/admin/me/password", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ newPassword }),
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Falha ao alterar senha.");
+  }
+}
+
+// GET /api/admin/audit-log — Paginated audit log with filters
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  adminUserId: string;
+  adminUserName: string;
+  actionType: string;
+  targetUserId: string | null;
+  targetUserName: string | null;
+  details: string | null;
+  ipAddress: string | null;
+}
+
+export interface GetAuditLogParams {
+  page?: number;
+  pageSize?: number;
+  startDate?: string;
+  endDate?: string;
+  actionType?: string;
+  adminUserName?: string;
+}
+
+export async function getAuditLog(
+  params: GetAuditLogParams = {}
+): Promise<PaginatedResult<AuditLogEntry>> {
+  const searchParams = new URLSearchParams();
+  if (params.page) searchParams.set("page", String(params.page));
+  if (params.pageSize) searchParams.set("pageSize", String(params.pageSize));
+  if (params.startDate) searchParams.set("startDate", params.startDate);
+  if (params.endDate) searchParams.set("endDate", params.endDate);
+  if (params.actionType) searchParams.set("actionType", params.actionType);
+  if (params.adminUserName) searchParams.set("adminUserName", params.adminUserName);
+
+  const queryString = searchParams.toString();
+  const url = queryString ? `/api/admin/audit-log?${queryString}` : "/api/admin/audit-log";
+
+  const response = await fetch(url, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new AdminApiError("Falha ao carregar audit log.");
+  }
+
+  return response.json() as Promise<PaginatedResult<AuditLogEntry>>;
+}
+
+// ---------------------------------------------------------------------------
+// Admin Administrators — Phase 30 (Milestone v5.0) — ADM-04
+// ---------------------------------------------------------------------------
+
+// GET /api/admin/administrators — Lista todos os administradores
+export interface AdminUserDto {
+  id: string;
+  email: string;
+  fullName: string;
+  isEnabled: boolean;
+  hasTemporaryPassword: boolean;
+}
+
+export async function getAdministrators(): Promise<AdminUserDto[]> {
+  const response = await fetch("/api/admin/administrators", {
+    method: "GET",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new AdminApiError("Falha ao carregar administradores.");
+  }
+  return response.json() as Promise<AdminUserDto[]>;
 }

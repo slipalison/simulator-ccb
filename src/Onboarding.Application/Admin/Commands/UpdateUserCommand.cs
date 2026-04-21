@@ -22,18 +22,18 @@ public sealed record UpdateUserCommand(
 public sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand, Unit>
 {
     private readonly IAdminRepository _adminRepository;
-    private readonly IAuditLogRepository _auditLogRepository;
+    private readonly IAuditService _auditService;
     private readonly IClientRepository _clientRepository;
     private readonly ILogger<UpdateUserCommandHandler> _logger;
 
     public UpdateUserCommandHandler(
         IAdminRepository adminRepository,
-        IAuditLogRepository auditLogRepository,
+        IAuditService auditService,
         IClientRepository clientRepository,
         ILogger<UpdateUserCommandHandler> logger)
     {
         _adminRepository = adminRepository;
-        _auditLogRepository = auditLogRepository;
+        _auditService = auditService;
         _clientRepository = clientRepository;
         _logger = logger;
     }
@@ -76,20 +76,14 @@ public sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand
         await _adminRepository.SaveChangesAsync(ct);
 
         // Audit log
-        var auditLog = AuditLog.Create(
-            command.AdminSub,
-            command.AdminEmail,
-            AuditActions.UserUpdated,
-            command.UserId,
-            client.Email.Value,
-            before,
-            after,
-            null, // IP — extracted by controller if needed
-            null  // UA — extracted by controller if needed
-        );
-
-        await _auditLogRepository.AddAsync(auditLog, ct);
-        await _auditLogRepository.SaveChangesAsync(ct);
+        await _auditService.RecordAsync(
+            actorSub: command.AdminSub,
+            actorEmail: command.AdminEmail,
+            action: ActionType.UserUpdated,
+            targetUserId: command.UserId,
+            targetUserName: client.Email.Value,
+            details: JsonSerializer.Serialize(new { Before = before, After = after }),
+            ct: ct);
 
         return Unit.Value;
     }

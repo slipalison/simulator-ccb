@@ -22,65 +22,62 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Onboarding.Domain.Aggregates.Audit.AuditLog", b =>
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.Audit.AdminAuditLog", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("Action")
+                    b.Property<string>("ActionType")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
-                        .HasColumnName("action");
+                        .HasColumnName("action_type");
 
-                    b.Property<string>("AdminEmail")
-                        .IsRequired()
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)")
-                        .HasColumnName("admin_email");
+                    b.Property<Guid>("AdminUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("admin_user_id");
 
-                    b.Property<string>("AdminSub")
+                    b.Property<string>("AdminUserName")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("admin_sub");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("admin_user_name");
+
+                    b.Property<string>("Details")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("details");
 
                     b.Property<string>("IpAddress")
                         .HasMaxLength(45)
                         .HasColumnType("character varying(45)")
                         .HasColumnName("ip_address");
 
-                    b.Property<string>("SnapshotAfter")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("snapshot_after");
-
-                    b.Property<string>("SnapshotBefore")
-                        .HasColumnType("jsonb")
-                        .HasColumnName("snapshot_before");
-
-                    b.Property<string>("TargetEmail")
-                        .IsRequired()
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)")
-                        .HasColumnName("target_email");
-
                     b.Property<Guid?>("TargetUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("target_user_id");
 
-                    b.Property<DateTime>("Timestamp")
+                    b.Property<string>("TargetUserName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("target_user_name");
+
+                    b.Property<DateTimeOffset>("Timestamp")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("timestamp");
 
-                    b.Property<string>("UserAgent")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("user_agent");
-
                     b.HasKey("Id");
 
-                    b.ToTable("audit_logs", (string)null);
+                    b.HasIndex("ActionType")
+                        .HasDatabaseName("IX_admin_audit_logs_action_type");
+
+                    b.HasIndex("AdminUserId")
+                        .HasDatabaseName("IX_admin_audit_logs_admin_user_id");
+
+                    b.HasIndex("Timestamp")
+                        .HasDatabaseName("IX_admin_audit_logs_timestamp");
+
+                    b.ToTable("admin_audit_logs", (string)null);
                 });
 
             modelBuilder.Entity("Onboarding.Domain.Aggregates.ClientAggregate.Client", b =>

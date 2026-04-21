@@ -1,13 +1,14 @@
-# Requirements — Multi-Milestone (v1.0, v3.0, v4.0)
+# Requirements — Multi-Milestone (v1.0, v3.0, v4.0, v5.0)
 
 **Milestones Covered:**
 - v1.0 — Cadastro e Login com Perfil Read-Only
 - v3.0 — Painel Administrativo (Backoffice)
 - v4.0 — CI/CD Pipeline + Cybersecurity
+- v5.0 — Auth Code Flow (Backoffice) + Gestão de Admins + Auditoria
 
 **Source:** FEATURES.md + SUMMARY.md + PROJECT.md
 **Created:** 2026-04-09
-**Last Updated:** 2026-04-11
+**Last Updated:** 2026-04-14
 **Status:** DRAFT — awaiting review
 
 ---
@@ -58,6 +59,15 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 | Security Documentation | ✅ 3 | — | — |
 | **Total** | **25** | **3 deferred** | **0** |
 
+### v5.0 — Auth Code Flow + Gestão de Admins + Auditoria
+
+| Category | v5 | Deferred | Out of Scope |
+|----------|----|----------|-------------|
+| Auth Code Flow — Backoffice | 4 | — | — |
+| Gestão de Administradores | 4 | — | — |
+| Auditoria | 3 | — | — |
+| **Total** | **11** | **0** | **0** |
+
 ### Grand Total
 
 | Milestone | Requirements | Deferred | Out of Scope |
@@ -65,7 +75,8 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 | v1.0 | 35 | 0 | 2 |
 | v3.0 | 22 | 0 | 0 |
 | v4.0 | 25 | 3 | 0 |
-| **All** | **82** | **3** | **2** |
+| v5.0 | 11 | 0 | 0 |
+| **All** | **93** | **3** | **2** |
 
 ---
 
@@ -800,6 +811,55 @@ Nenhum requisito foi explicitamente delegado para v2. Os itens abaixo foram cons
 | SEC-13 — GitHub Security Tab | Phase 28 | 📋 Planned |
 | SEC-14 — Branch Protection Rules | Phase 28 | 📋 Planned |
 | SEC-15 — Security Documentation | Phase 28 | 📋 Planned |
+
+---
+
+## Milestone v5.0 — Auth Code Flow (Backoffice) + Gestão de Admins + Auditoria
+
+---
+
+### ACF — Auth Code Flow (Backoffice)
+
+> Migração do login do backoffice de ROPC para Authorization Code Flow + PKCE.
+> O frontend client mantém ROPC (decisão consciente — UX customizada priorizada).
+
+- [ ] **ACF-01**: Admin faz login via redirect para Keycloak (Auth Code Flow + PKCE, confidential client com client secret, code exchange server-side via Vinxi)
+- [ ] **ACF-02**: Troca obrigatória de senha no primeiro login funciona nativamente via Keycloak `requiredActions: [UPDATE_PASSWORD]` — sem implementação extra no backend
+- [ ] **ACF-03**: Tokens do admin armazenados em cookies httpOnly gerenciados pelo servidor Vinxi após code exchange
+- [ ] **ACF-04**: Logout limpa cookies de sessão e redireciona ao endpoint de logout do Keycloak (`/protocol/openid-connect/logout`)
+
+### ADM — Gestão de Administradores
+
+- [ ] **ADM-01**: Admin autenticado pode criar novo administrador informando nome e email no backoffice
+- [ ] **ADM-02**: Sistema gera senha temporária aleatória e a exibe uma única vez ao criador (para repasse manual ao novo admin)
+- [ ] **ADM-03**: Novo admin recebe role `admin` e `requiredActions: [UPDATE_PASSWORD]` no Keycloak automaticamente via Admin API
+- [ ] **ADM-04**: Admin pode listar outros administradores cadastrados no backoffice (filtro por role "admin" no Keycloak)
+
+### AUD — Auditoria
+
+- [ ] **AUD-01**: Toda ação administrativa é registrada de forma append-only no banco de dados: ator (email do admin), tipo de ação, alvo (email do usuário afetado), timestamp, detalhes em JSON
+- [ ] **AUD-02**: Admin pode visualizar o audit log paginado no backoffice
+- [ ] **AUD-03**: Audit log suporta filtros por intervalo de datas, tipo de ação e email do ator
+
+**Ações auditadas:** criação de admin, login, logout, edição de usuário, bloqueio, desbloqueio, exclusão (LGPD)
+
+---
+
+### v5.0 — Traceability
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| ACF-01 — Auth Code Flow login | Phase 29 | 📋 Planned |
+| ACF-02 — Forced password change (nativo) | Phase 29 | 📋 Planned |
+| ACF-03 — Tokens em cookies httpOnly | Phase 29 | 📋 Planned |
+| ACF-04 — Logout OIDC | Phase 29 | 📋 Planned |
+| ADM-01 — Criar novo admin | Phase 30 | 📋 Planned |
+| ADM-02 — Senha temporária gerada | Phase 30 | 📋 Planned |
+| ADM-03 — Role + requiredActions no Keycloak | Phase 30 | 📋 Planned |
+| ADM-04 — Listar administradores | Phase 30 | 📋 Planned |
+| AUD-01 — Registrar ações append-only | Phase 30 | 📋 Planned |
+| AUD-02 — Visualizar audit log paginado | Phase 32 | 📋 Planned |
+| AUD-03 — Filtros no audit log | Phase 32 | 📋 Planned |
 
 ---
 

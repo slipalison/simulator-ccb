@@ -27,7 +27,7 @@ public sealed class ClientsController : ControllerBase
 
     /// <summary>GET /api/clients/me — returns the authenticated client's profile.</summary>
     [HttpGet("me")]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = "BearerClient")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

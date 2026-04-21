@@ -11,50 +11,41 @@ public interface IKeycloakUserService
     /// Creates a user in Keycloak realm "onboarding". Returns the Keycloak user ID (UUID string).
     /// Throws on any HTTP error from the Admin API.
     /// </summary>
-    Task<string> CreateUserAsync(
-        string username,
-        string email,
-        string password,
-        string firstName,
-        CancellationToken ct = default);
+    Task<string> CreateUserAsync(string targetRealm, string username, string email, string password, string firstName, CancellationToken ct = default);
 
-    /// <summary>
-    /// Deletes a Keycloak user by email address. Used as compensation step if app_db
-    /// persist fails after Keycloak user was already created (Phase 5 rollback path).
-    /// No-op if no user with the given email exists.
-    /// </summary>
-    Task DeleteUserByEmailAsync(string email, CancellationToken ct = default);
+    Task<string> CreateAdminUserAsync(string targetRealm, string email, string temporaryPassword, string fullName, CancellationToken ct = default);
 
-    /// <summary>
-    /// Checks if a user exists in Keycloak by email address.
-    /// Used by forgot password flow to determine whether to send a reset email.
-    /// Returns false if no user found (without throwing).
-    /// </summary>
-    Task<bool> UserExistsByEmailAsync(string email, CancellationToken ct = default);
+    Task DeleteUserByEmailAsync(string targetRealm, string email, CancellationToken ct = default);
 
-    /// <summary>
-    /// Gets a Keycloak user by email address. Returns null if not found.
-    /// </summary>
-    Task<KeycloakUser?> GetUserByEmailAsync(string email, CancellationToken ct = default);
+    Task<bool> UserExistsByEmailAsync(string targetRealm, string email, CancellationToken ct = default);
 
-    /// <summary>
-    /// Updates the password for a Keycloak user by their ID.
-    /// </summary>
-    Task UpdateUserPasswordAsync(string userId, string newPassword, CancellationToken ct = default);
+    Task<KeycloakUser?> GetUserByEmailAsync(string targetRealm, string email, CancellationToken ct = default);
 
-    /// <summary>
-    /// Blocks a user in Keycloak by setting Enabled = false.
-    /// Fetches the full UserRepresentation, modifies Enabled, and sends it back.
-    /// </summary>
-    Task BlockUserAsync(string keycloakUserId, CancellationToken ct = default);
+    Task<KeycloakUserDetails?> GetUserByIdAsync(string targetRealm, string userId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Unblocks a user in Keycloak by setting Enabled = true.
-    /// </summary>
-    Task UnblockUserAsync(string keycloakUserId, CancellationToken ct = default);
+    Task UpdateUserPasswordAsync(string targetRealm, string userId, string newPassword, CancellationToken ct = default);
+
+    Task SetTemporaryPasswordFlagAsync(string targetRealm, string userId, CancellationToken ct = default);
+
+    Task RemoveUpdatePasswordRequiredActionAsync(string targetRealm, string userId, CancellationToken ct = default);
+
+    Task AssignAdminRoleAsync(string targetRealm, string userId, CancellationToken ct = default);
+
+    Task BlockUserAsync(string targetRealm, string keycloakUserId, CancellationToken ct = default);
+
+    Task UnblockUserAsync(string targetRealm, string keycloakUserId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<AdminUserDto>> GetUsersByRoleAsync(string targetRealm, string roleName, CancellationToken ct = default);
+
+    Task ClearFirstLoginFlagAsync(string targetRealm, string userId, CancellationToken ct = default);
 }
 
 /// <summary>
 /// Minimal representation of a Keycloak user.
 /// </summary>
 public sealed record KeycloakUser(string Id, string Email, bool Enabled = true, bool EmailVerified = true);
+
+/// <summary>
+/// Extended Keycloak user details including required actions.
+/// </summary>
+public sealed record KeycloakUserDetails(string Id, string Email, bool Enabled, bool EmailVerified, IReadOnlyList<string> RequiredActions);

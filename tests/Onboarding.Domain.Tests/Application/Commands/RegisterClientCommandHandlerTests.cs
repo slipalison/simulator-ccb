@@ -21,7 +21,7 @@ public class RegisterClientCommandHandlerTests
         _repo.AddAsync(Arg.Any<Client>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
         _keycloakService = Substitute.For<IKeycloakUserService>();
         _keycloakService
-            .CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            .CreateUserAsync("client", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                              Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("fake-keycloak-id");
         _handler = new RegisterClientCommandHandler(_repo, _keycloakService);
@@ -171,7 +171,7 @@ public class RegisterClientCommandHandlerTests
         _repo.ExistsByEmailAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
         _repo.DeleteAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
         _keycloakService
-            .CreateUserAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
+            .CreateUserAsync("client", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                              Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new HttpRequestException("Keycloak unreachable"));
 
@@ -212,6 +212,7 @@ public class RegisterClientCommandHandlerTests
         // Assert
         result.ShouldNotBe(Guid.Empty);
         await _keycloakService.Received(1).CreateUserAsync(
+            targetRealm: "client",
             username: "joao@example.com",
             email: "joao@example.com",
             password: "Str0ng@Pass",

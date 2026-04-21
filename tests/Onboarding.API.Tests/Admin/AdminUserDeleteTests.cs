@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using NSubstitute;
 using Onboarding.API.Tests.Authentication;
+using Onboarding.Domain.Aggregates.Audit;
 using Onboarding.Domain.Aggregates.ClientAggregate;
 using Onboarding.Domain.Repositories;
 using Shouldly;
@@ -49,7 +50,7 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
             .Returns(client);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("joao@test.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
             .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
 
         var payload = new { confirmEmail = "joao@test.com" };
@@ -74,8 +75,14 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
         client.DeletedAt.ShouldNotBeNull();
 
         // Verify audit log
-        await _factory.AuditLogRepositoryMock.Received(1).AddAsync(
-            Arg.Any<Onboarding.Domain.Aggregates.Audit.AuditLog>(),
+        await _factory.AuditServiceMock.Received(1).RecordAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            Arg.Any<ActionType>(),
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -146,7 +153,7 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
             .Returns(client);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("joao@test.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
             .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
 
         var payload = new { confirmEmail = "joao@test.com" };
@@ -159,7 +166,7 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
         var response = await _client!.SendAsync(request);
 
         // Assert — Keycloak delete was called with original email
-        await _factory.KeycloakUserServiceMock.Received(1).DeleteUserByEmailAsync("joao@test.com", Arg.Any<CancellationToken>());
+        await _factory.KeycloakUserServiceMock.Received(1).DeleteUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>());
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
@@ -177,7 +184,7 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
             .Returns(client);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("joao@test.com", Arg.Any<CancellationToken>())
+            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
             .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
 
         var payload = new { confirmEmail = "joao@test.com" };
@@ -189,12 +196,15 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
         };
         await _client!.SendAsync(request);
 
-        // Assert — audit log with snapshot before/after
-        await _factory.AuditLogRepositoryMock.Received(1).AddAsync(
-            Arg.Is<Onboarding.Domain.Aggregates.Audit.AuditLog>(log =>
-                log.Action == "USER_DELETED" &&
-                log.SnapshotBefore != null &&
-                log.SnapshotAfter != null),
+        // Assert — audit log with USER_DELETED action
+        await _factory.AuditServiceMock.Received(1).RecordAsync(
+            Arg.Any<string>(),
+            Arg.Any<string>(),
+            ActionType.UserDeleted,
+            Arg.Any<Guid?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 

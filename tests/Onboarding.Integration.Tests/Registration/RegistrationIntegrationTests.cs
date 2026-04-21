@@ -17,16 +17,14 @@ namespace Onboarding.Integration.Tests.Registration;
 [Trait("Category", "Integration")]
 public class RegistrationIntegrationTests : IAsyncLifetime
 {
-    private readonly KeycloakContainer _keycloak = new KeycloakBuilder()
-        .WithImage("quay.io/keycloak/keycloak:26.1")
+    private readonly KeycloakContainer _keycloak = new KeycloakBuilder("quay.io/keycloak/keycloak:26.1")
         .WithResourceMapping(
-            new FileInfo(Path.Combine(AppContext.BaseDirectory, "../../../../../keycloak/onboarding-realm.json")),
+            new FileInfo(Path.Combine(AppContext.BaseDirectory, "../../../../../keycloak/backoffice-realm.json")),
             "/opt/keycloak/data/import/")
         .WithCommand("--import-realm")
         .Build();
 
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
-        .WithImage("postgres:16-alpine")
+    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
         .Build();
 
     private WebApplicationFactory<Program>? _factory;
@@ -43,15 +41,15 @@ public class RegistrationIntegrationTests : IAsyncLifetime
                 b.UseEnvironment("Test");
                 b.UseSetting("ConnectionStrings:AppDb", _postgres.GetConnectionString());
                 b.UseSetting("Keycloak:RealmUrl",
-                    $"{_keycloak.GetBaseAddress()}realms/onboarding");
+                    $"{_keycloak.GetBaseAddress()}realms/backoffice");
                 b.UseSetting("Keycloak:AuthServerUrl", _keycloak.GetBaseAddress());
                 b.UseSetting("Keycloak:AdminClientId", "onboarding-api-admin");
                 // Note: test Keycloak container uses default admin credentials
-                // The realm "onboarding" must exist in the container for these tests to pass.
+                // The realm "backoffice" must exist in the container for these tests to pass.
                 // For Phase 5 scope, these tests verify the integration wiring compiles and
                 // containers start — full end-to-end requires the realm import (future work).
                 b.UseSetting("Keycloak:AdminClientSecret", "dev-admin-secret");
-                b.UseSetting("Keycloak:Realm", "onboarding");
+                b.UseSetting("Keycloak:Realm", "backoffice");
             });
 
         _client = _factory.CreateClient();

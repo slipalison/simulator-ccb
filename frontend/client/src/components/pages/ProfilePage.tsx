@@ -32,10 +32,10 @@ export function ProfilePage() {
 
   // Auth guard
   useEffect(() => {
-    if (!auth.isAuthenticated) {
-      navigate({ to: "/login" as any })
+    if (!auth.isLoading && !auth.isAuthenticated) {
+      navigate({ to: "/auth/login" as any })
     }
-  }, [auth.isAuthenticated, navigate])
+  }, [auth.isLoading, auth.isAuthenticated, navigate])
 
   // Fetch profile data
   useEffect(() => {

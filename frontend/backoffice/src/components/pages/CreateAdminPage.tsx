@@ -20,6 +20,7 @@ type CreateAdminForm = z.infer<typeof createAdminSchema>;
 interface CreateAdminResult {
   adminId: string;
   temporaryPassword: string;
+  email: string;
 }
 
 export function CreateAdminPage() {
@@ -44,7 +45,7 @@ export function CreateAdminPage() {
     setIsSubmitting(true);
     try {
       const result = await createAdmin(data.fullName, data.email);
-      setCreatedResult(result);
+      setCreatedResult({ ...result, email: data.email });
       toast.success("Admin criado com sucesso!", {
         description: "A senha temporaria foi gerada. Comunique ao novo admin.",
       });
@@ -136,7 +137,7 @@ export function CreateAdminPage() {
             <div className="space-y-2">
               <Label>Email do novo admin</Label>
               <p className="font-mono text-sm bg-white dark:bg-gray-900 p-2 rounded border">
-                {createdResult.adminId}
+                {createdResult.email}
               </p>
             </div>
 

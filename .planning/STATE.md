@@ -3,7 +3,7 @@ gsd_state_version: 1.0
 milestone: v6.0
 milestone_name: Gestão Completa de Administradores
 status: executing
-stopped_at: Milestone v6.0 started — requirements defined, ready to plan Phase 35
+stopped_at: Milestone v6.0 roadmap created — Phase 35 ready to plan
 last_updated: "2026-04-21T00:00:00.000Z"
 last_activity: 2026-04-21
 progress:
@@ -133,8 +133,33 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-04-21
-Stopped at: Milestone v5.0 verified 100% complete — all 36 phases done
+Stopped at: Milestone v6.0 roadmap created — Phase 35 (Admin Management Backend) ready to plan
 Resume file: none
+
+### Milestone v6.0 Requirements (2026-04-21)
+
+**MGMT — Gestão de Administradores** -> Phase 35 (backend) + Phase 36 (frontend)
+
+- MGMT-01: Admin pode visualizar lista paginada de administradores (20 por página)
+- MGMT-02: Admin pode filtrar a lista por nome, email e status (ativo/inativo)
+- MGMT-03: Admin pode editar nome e email de outro administrador (persiste no Keycloak)
+- MGMT-04: Admin pode resetar senha de outro administrador (senha temporária exibida uma vez, UPDATE_PASSWORD requiredAction)
+- MGMT-05: Admin pode desativar outro administrador (disable no Keycloak — conta preservada para auditoria)
+- MGMT-06: Admin pode reativar um administrador desativado
+
+**SEC — Segurança** -> Phase 35 (backend guards, all blockers)
+
+- SEC-01: Admin não pode editar, resetar senha ou desativar a própria conta
+- SEC-02: Todos os endpoints requerem sessão autenticada com role admin (BearerBackoffice)
+- SEC-03: Reset de senha gera senha criptograficamente segura via RandomNumberGenerator (min 16 chars)
+- SEC-04: Edição de email valida unicidade no Keycloak antes de persistir — conflito retorna 409
+- SEC-05: Sistema bloqueia desativação do último administrador ativo
+
+**AUD — Auditoria (extensão v5.0)** -> Phase 35 (backend audit)
+
+- AUD-04: Edição de admin registrada no audit log com actor, target, campos alterados (valores antigos e novos)
+- AUD-05: Reset de senha de admin registrado no audit log (actor + target — senha nunca gravada)
+- AUD-06: Desativação e reativação registradas no audit log com actor, target e motivo (se fornecido)
 
 ### Milestone v5.0 Requirements (2026-04-14)
 

@@ -723,8 +723,8 @@ Backend-first ordering ensures API contracts exist before UI is built.
 
 - [ ] **Phase 29: Keycloak Config + Auth Code Flow Backend** - New Keycloak client provisioned, .NET backend handles code exchange and cookie issuance (ACF-01, ACF-02, ACF-03, ACF-04)
 - [x] **Phase 30: Audit Log Backend + Admin Management Backend** - AuditLog entity + migration, admin creation endpoint, admin listing endpoint (AUD-01, ADM-01, ADM-02, ADM-03, ADM-04) (completed 2026-04-16)
-- [ ] **Phase 31: Backoffice Auth Code Flow UI** - Vinxi server-side code exchange, login redirect, logout, forced password change handled natively by Keycloak (ACF-01, ACF-02, ACF-03, ACF-04 frontend side)
-- [ ] **Phase 32: Backoffice Admin Management UI + Audit Log UI** - Create admin form with one-time password display, admin list page, paginated audit log with filters (ADM-01, ADM-02, ADM-03, ADM-04, AUD-02, AUD-03)
+- [x] **Phase 31: Backoffice Auth Code Flow UI** - Vinxi server-side code exchange, login redirect, logout, forced password change handled natively by Keycloak (ACF-01, ACF-02, ACF-03, ACF-04 frontend side)
+- [x] **Phase 32: Backoffice Admin Management UI + Audit Log UI** - Create admin form with one-time password display, admin list page, paginated audit log with filters (ADM-01, ADM-02, ADM-03, ADM-04, AUD-02, AUD-03)
 
 ---
 
@@ -880,16 +880,13 @@ keycloak/themes/
 
 ## Next Steps
 
-**Current Milestone:** v5.0 — Auth Code Flow (Backoffice) + Gestão de Admins + Auditoria
+**✅ Milestone v5.0 COMPLETO** — Auth Code Flow (Backoffice) + Gestão de Admins + Auditoria + Realm Isolation
 
-**▶ Recommended Next Actions:**
+**▶ Todos os 36 phases concluídos. Projeto Foundation completo.**
 
-1. **`/gsd:plan-phase 33`** — Planejar Phase 33 (PKCE + Custom Keycloak Themes)
-2. **`/gsd:plan-phase 29`** — Phase 29 (Keycloak Config + Auth Code Flow Backend)
-3. **`/gsd:plan-phase 30`** — Phase 30 (Audit Log Backend + Admin Management Backend)
-4. **`/gsd:plan-phase 31`** — Phase 31 (Backoffice Auth Code Flow UI)
-5. **`/gsd:plan-phase 32`** — Phase 32 (Backoffice Admin Management UI + Audit Log UI)
-6. **`/gsd:plan-phase 34`** — Phase 34 (Isolar Backoffice e Client em Realms Separados)
+Próximos passos possíveis:
+- Phase 14 (E2E Testing) — deferred desde v2.0
+- Novo milestone v6.0 (se necessário)
 
 **Deferred:**
 - Phase 14 (E2E Testing from v2.0) — pode ser feito em paralelo ou após v5.0
@@ -902,8 +899,12 @@ keycloak/themes/
 **Plans:** 0 plans
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 34 to break down)
+- [x] Realm `backoffice-realm.json` criado com client `onboarding-backoffice` + `onboarding-api-admin`
+- [x] Realm `client-realm.json` criado com client `onboarding-client-acf`
+- [x] `compose.yaml` importa pasta inteira; frontends apontam para realms corretos
+- [x] Backend com dois `AddJwtBearer` (`BearerBackoffice` + `BearerClient`)
+- [x] `KeycloakUserService` com roteamento `targetRealm` por parâmetro
 
 ---
 
-*Last updated: 2026-04-19 — Phase 34 adicionada: Separação de Realms*
+*Last updated: 2026-04-21 — Milestone v5.0 completo — todos os 36 phases concluídos*

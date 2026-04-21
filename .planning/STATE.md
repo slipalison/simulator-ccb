@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v5.0
 milestone_name: Auth Code Flow + Admins + Auditoria
-status: executing
-stopped_at: Phases 29-33 complete — ready to plan Phase 34
+status: complete
+stopped_at: Milestone v5.0 complete — all 36 phases done
 last_updated: "2026-04-21T00:00:00.000Z"
 last_activity: 2026-04-21
 progress:
   total_phases: 36
-  completed_phases: 33
+  completed_phases: 36
   total_plans: 72
   completed_plans: 72
-  percent: 97
+  percent: 100
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** Phase 34 — Isolar Backoffice e Client em Realms Separados
-**Last activity:** 2026-04-21 - Verified phases 31-33 complete; fixed CreateAdminPage email display bug
+**Current focus:** Milestone v5.0 complete — all phases done
+**Last activity:** 2026-04-21 - Verified phases 29-34 complete; milestone v5.0 closed
 
 ## Current Position
 
-Phase: 34
-Plan: Not started
-Status: Ready to plan Phase 34
-Last activity: 2026-04-21 -- Phases 29-33 verified complete
+Phase: 36 (all complete)
+Plan: All complete
+Status: Milestone v5.0 complete
+Last activity: 2026-04-21 -- All 36 phases verified complete
 
 ## Milestone Breakdown
 
@@ -37,7 +37,7 @@ Last activity: 2026-04-21 -- Phases 29-33 verified complete
 **Milestone v2.0 — UX/UI + Production:** ✅ COMPLETE (5/5 phases, 7+ plans)
 **Milestone v3.0 — Admin Backoffice + Frontend Separation:** ✅ COMPLETE (5/5 phases, 13/13 plans)
 **Milestone v4.0 — CI/CD Pipeline + Cybersecurity:** ✅ COMPLETE (8/8 phases, 20/20 plans)
-**Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** 🔄 IN PROGRESS (5/6 phases)
+**Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** ✅ COMPLETE (6/6 phases)
 
 ## Milestone v5.0 Phase Breakdown
 
@@ -48,7 +48,7 @@ Last activity: 2026-04-21 -- Phases 29-33 verified complete
 | 31 | Backoffice Auth Code Flow UI | ACF-01, ACF-02, ACF-03, ACF-04 (frontend) | ✅ Complete |
 | 32 | Backoffice Admin Management UI + Audit Log UI | ADM-01, ADM-02, ADM-03, ADM-04, AUD-02, AUD-03 | ✅ Complete |
 | 33 | PKCE + Custom Keycloak Themes (Backoffice + Client) | PKC-01..PKC-06 | ✅ Complete |
-| 34 | Isolar Backoffice e Client em Realms Separados | ARCH-04 | ⬜ Not started |
+| 34 | Isolar Backoffice e Client em Realms Separados | ARCH-04 | ✅ Complete |
 
 **Coverage:** 11/11 v5.0 requirements + Phase 33 (PKC) + Phase 34 (realms) adicionadas ✓
 
@@ -125,7 +125,7 @@ Recent decisions affecting current work:
 ## Session Continuity
 
 Last session: 2026-04-21
-Stopped at: Phases 29-33 verified complete; STATE.md updated; ready to plan Phase 34
+Stopped at: Milestone v5.0 verified 100% complete — all 36 phases done
 Resume file: none
 
 ### Milestone v5.0 Requirements (2026-04-14)

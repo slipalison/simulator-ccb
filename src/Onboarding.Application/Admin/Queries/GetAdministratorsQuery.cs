@@ -3,10 +3,11 @@ using Onboarding.Application.Common;
 namespace Onboarding.Application.Admin.Queries;
 
 /// <summary>
-/// Query: retorna todos os administradores via Keycloak.
-/// Sem paginacao — lista de admins e pequena.
+/// Query: retorna todos os administradores via Keycloak (sem paginação).
+/// Usado pelo endpoint legado GET /api/admin/administrators.
+/// Para lista paginada+filtrada use GetPaginatedAdministratorsQuery (Phase 35).
 /// </summary>
-public sealed record GetAdministratorsQuery();
+public sealed record GetAdministratorsQuery;
 
 public sealed class GetAdministratorsQueryHandler
     : IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>>
@@ -18,5 +19,7 @@ public sealed class GetAdministratorsQueryHandler
 
     public async Task<IReadOnlyList<AdminUserDto>> HandleAsync(
         GetAdministratorsQuery query, CancellationToken ct = default)
-        => await _keycloakUserService.GetUsersByRoleAsync("backoffice", "admin", ct);
+    {
+        return await _keycloakUserService.GetUsersByRoleAsync("backoffice", "admin", ct);
+    }
 }

@@ -68,13 +68,9 @@ public sealed class ResetAdministratorPasswordCommandHandler
         // SEC-03: generate cryptographically secure 16-char password without ambiguous chars
         var temporaryPassword = GenerateTemporaryPassword();
 
-        // Set the temporary password in Keycloak (temporary=true → Keycloak clears it on next login)
-        var passwordPayload = new { type = "password", value = temporaryPassword, temporary = true };
-        // We call UpdateUserPasswordAsync with temporary flag via the existing Keycloak infra,
-        // but that method sets temporary=false. To set temporary=true we use SetTemporaryPasswordFlagAsync
-        // pattern: first set password, then ensure UPDATE_PASSWORD action is present.
-        await _keycloakUserService.UpdateUserPasswordAsync("backoffice", command.TargetKeycloakId, temporaryPassword, ct);
-        await _keycloakUserService.SetTemporaryPasswordFlagAsync("backoffice", command.TargetKeycloakId, ct);
+        // Set the temporary password in Keycloak atomically (CR-02: single call with temporary=true
+        // so there is no window where the password is set as permanent before UPDATE_PASSWORD action is added).
+        await _keycloakUserService.ResetPasswordAsTemporaryAsync("backoffice", command.TargetKeycloakId, temporaryPassword, ct);
 
         // AUD-05: actor + target only — password never recorded
         await _auditService.RecordAsync(

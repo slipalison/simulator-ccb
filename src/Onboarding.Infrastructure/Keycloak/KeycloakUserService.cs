@@ -167,6 +167,14 @@ public sealed class KeycloakUserService : IKeycloakUserService
         }
     }
 
+    public async Task ResetPasswordAsTemporaryAsync(string targetRealm, string userId, string newPassword, CancellationToken ct = default)
+    {
+        var payload = new { type = "password", value = newPassword, temporary = true };
+        var response = await GetClient(targetRealm).PutAsJsonAsync(
+            $"admin/realms/{targetRealm}/users/{userId}/reset-password", payload, ct);
+        response.EnsureSuccessStatusCode();
+    }
+
     public async Task BlockUserAsync(string targetRealm, string keycloakUserId, CancellationToken ct = default)
     {
         var client = GetClient(targetRealm);

@@ -25,6 +25,14 @@ public interface IKeycloakUserService
 
     Task UpdateUserPasswordAsync(string targetRealm, string userId, string newPassword, CancellationToken ct = default);
 
+    /// <summary>
+    /// Resets a user's password as temporary in a single atomic Keycloak call
+    /// (PUT reset-password with temporary=true). The user will be forced to change
+    /// their password on next login. Use this instead of UpdateUserPasswordAsync +
+    /// SetTemporaryPasswordFlagAsync to avoid the two-call gap.
+    /// </summary>
+    Task ResetPasswordAsTemporaryAsync(string targetRealm, string userId, string newPassword, CancellationToken ct = default);
+
     Task SetTemporaryPasswordFlagAsync(string targetRealm, string userId, CancellationToken ct = default);
 
     Task RemoveUpdatePasswordRequiredActionAsync(string targetRealm, string userId, CancellationToken ct = default);

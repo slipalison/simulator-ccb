@@ -47,7 +47,7 @@ public sealed class GetPaginatedAdministratorsQueryHandler
 
         var list = filtered.ToList();
         var total = list.Count;
-        var pageSize = query.PageSize > 0 ? query.PageSize : 20;
+        var pageSize = query.PageSize > 0 ? Math.Min(query.PageSize, 100) : 20;
         var page = query.Page > 0 ? query.Page : 1;
 
         var items = list

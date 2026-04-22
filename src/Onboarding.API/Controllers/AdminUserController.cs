@@ -29,11 +29,19 @@ public sealed class AdminUserController : ControllerBase
     private readonly ICommandHandler<ForcePasswordChangeCommand, Unit> _forcePasswordChangeHandler;
     private readonly IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>> _auditLogQueryHandler;
     private readonly IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>> _administratorsHandler;
+    // Phase 35 — Admin Management
+    private readonly IQueryHandler<GetPaginatedAdministratorsQuery, PaginatedResult<AdminUserDto>> _paginatedAdministratorsHandler;
+    private readonly ICommandHandler<UpdateAdministratorCommand, Unit> _updateAdministratorHandler;
+    private readonly ICommandHandler<ResetAdministratorPasswordCommand, ResetAdministratorPasswordResult> _resetAdminPasswordHandler;
+    private readonly ICommandHandler<ToggleAdministratorStatusCommand, Unit> _toggleAdminStatusHandler;
     private readonly IKeycloakUserService _keycloakUserService;
     private readonly IValidator<UpdateUserCommand> _updateValidator;
     private readonly IValidator<DeleteUserCommand> _deleteValidator;
     private readonly IValidator<CreateAdminCommand> _createAdminValidator;
     private readonly IValidator<ForcePasswordChangeCommand> _forcePasswordChangeValidator;
+    private readonly IValidator<UpdateAdministratorCommand> _updateAdministratorValidator;
+    private readonly IValidator<ResetAdministratorPasswordCommand> _resetAdminPasswordValidator;
+    private readonly IValidator<ToggleAdministratorStatusCommand> _toggleAdminStatusValidator;
     private readonly ILogger<AdminUserController> _logger;
 
     public AdminUserController(
@@ -47,11 +55,18 @@ public sealed class AdminUserController : ControllerBase
         ICommandHandler<ForcePasswordChangeCommand, Unit> forcePasswordChangeHandler,
         IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>> auditLogQueryHandler,
         IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>> administratorsHandler,
+        IQueryHandler<GetPaginatedAdministratorsQuery, PaginatedResult<AdminUserDto>> paginatedAdministratorsHandler,
+        ICommandHandler<UpdateAdministratorCommand, Unit> updateAdministratorHandler,
+        ICommandHandler<ResetAdministratorPasswordCommand, ResetAdministratorPasswordResult> resetAdminPasswordHandler,
+        ICommandHandler<ToggleAdministratorStatusCommand, Unit> toggleAdminStatusHandler,
         IKeycloakUserService keycloakUserService,
         IValidator<UpdateUserCommand> updateValidator,
         IValidator<DeleteUserCommand> deleteValidator,
         IValidator<CreateAdminCommand> createAdminValidator,
         IValidator<ForcePasswordChangeCommand> forcePasswordChangeValidator,
+        IValidator<UpdateAdministratorCommand> updateAdministratorValidator,
+        IValidator<ResetAdministratorPasswordCommand> resetAdminPasswordValidator,
+        IValidator<ToggleAdministratorStatusCommand> toggleAdminStatusValidator,
         ILogger<AdminUserController> logger)
     {
         _paginatedHandler = paginatedHandler;
@@ -64,11 +79,18 @@ public sealed class AdminUserController : ControllerBase
         _forcePasswordChangeHandler = forcePasswordChangeHandler;
         _auditLogQueryHandler = auditLogQueryHandler;
         _administratorsHandler = administratorsHandler;
+        _paginatedAdministratorsHandler = paginatedAdministratorsHandler;
+        _updateAdministratorHandler = updateAdministratorHandler;
+        _resetAdminPasswordHandler = resetAdminPasswordHandler;
+        _toggleAdminStatusHandler = toggleAdminStatusHandler;
         _keycloakUserService = keycloakUserService;
         _updateValidator = updateValidator;
         _deleteValidator = deleteValidator;
         _createAdminValidator = createAdminValidator;
         _forcePasswordChangeValidator = forcePasswordChangeValidator;
+        _updateAdministratorValidator = updateAdministratorValidator;
+        _resetAdminPasswordValidator = resetAdminPasswordValidator;
+        _toggleAdminStatusValidator = toggleAdminStatusValidator;
         _logger = logger;
     }
 
@@ -344,11 +366,7 @@ public sealed class AdminUserController : ControllerBase
         }
     }
 
-    /// <summary>
-    /// GET /api/admin/administrators — Lista todos os administradores via Keycloak.
-    /// Inclui ativos (IsEnabled=true) e bloqueados (IsEnabled=false).
-    /// HasTemporaryPassword=true indica que o admin ainda nao trocou a senha temporaria inicial.
-    /// </summary>
+    /// <summary>GET /api/admin/administrators — Lista todos os administradores via Keycloak (sem paginação).</summary>
     [HttpGet("administrators")]
     [ProducesResponseType(typeof(IReadOnlyList<AdminUserDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
@@ -368,6 +386,146 @@ public sealed class AdminUserController : ControllerBase
                 Status = StatusCodes.Status503ServiceUnavailable,
                 Detail = "Unable to retrieve administrators from identity provider."
             });
+        }
+    }
+
+    /// <summary>GET /api/admin/administrators/paginated — Paginated+filtered list of administrators (MGMT-01, MGMT-02).</summary>
+    [HttpGet("administrators/paginated")]
+    [ProducesResponseType(typeof(PaginatedResult<AdminUserDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> GetAdministratorsPaginated(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? name = null,
+        [FromQuery] string? email = null,
+        [FromQuery] string? status = null,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var query = new GetPaginatedAdministratorsQuery(page, pageSize, name, email, status);
+            var result = await _paginatedAdministratorsHandler.HandleAsync(query, ct);
+            return Ok(result);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Keycloak unavailable when listing administrators");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails
+            {
+                Title = "Service Unavailable",
+                Status = StatusCodes.Status503ServiceUnavailable,
+                Detail = "Unable to retrieve administrators from identity provider."
+            });
+        }
+    }
+
+    /// <summary>PUT /api/admin/administrators/{id} — Edit admin name and email (MGMT-03, SEC-01, SEC-04, AUD-04).</summary>
+    [HttpPut("administrators/{id}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> UpdateAdministrator(
+        [FromRoute] string id,
+        [FromBody] UpdateAdministratorRequest request,
+        CancellationToken ct = default)
+    {
+        var audit = GetAuditContextSafe();
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var command = new UpdateAdministratorCommand(id, request.FullName ?? string.Empty, request.Email ?? string.Empty, audit.Sub, audit.Email, ip);
+
+        var validation = await _updateAdministratorValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            await _updateAdministratorHandler.HandleAsync(command, ct);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(Problem("Administrator not found.", statusCode: 404));
+        }
+        catch (ArgumentException ex)
+        {
+            return Conflict(Problem(ex.Message, statusCode: 409));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(Problem(ex.Message, statusCode: 400));
+        }
+    }
+
+    /// <summary>POST /api/admin/administrators/{id}/reset-password — Reset password and return one-time temp password (MGMT-04, SEC-01, SEC-03, AUD-05).</summary>
+    [HttpPost("administrators/{id}/reset-password")]
+    [ProducesResponseType(typeof(ResetAdministratorPasswordResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ResetAdministratorPassword(
+        [FromRoute] string id,
+        [FromBody] ResetAdministratorPasswordRequest request,
+        CancellationToken ct = default)
+    {
+        var audit = GetAuditContextSafe();
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var command = new ResetAdministratorPasswordCommand(id, request.TargetUserName ?? string.Empty, audit.Sub, audit.Email, ip);
+
+        var validation = await _resetAdminPasswordValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            var result = await _resetAdminPasswordHandler.HandleAsync(command, ct);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(Problem("Administrator not found.", statusCode: 404));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(Problem(ex.Message, statusCode: 400));
+        }
+    }
+
+    /// <summary>POST /api/admin/administrators/{id}/toggle-status — Disable or reactivate admin (MGMT-05, MGMT-06, SEC-01, SEC-05, AUD-06).</summary>
+    [HttpPost("administrators/{id}/toggle-status")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> ToggleAdministratorStatus(
+        [FromRoute] string id,
+        [FromBody] ToggleAdministratorStatusRequest request,
+        CancellationToken ct = default)
+    {
+        var audit = GetAuditContextSafe();
+        var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var command = new ToggleAdministratorStatusCommand(
+            id, request.TargetUserName ?? string.Empty,
+            request.Activate, request.Reason,
+            audit.Sub, audit.Email, ip);
+
+        var validation = await _toggleAdminStatusValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            await _toggleAdminStatusHandler.HandleAsync(command, ct);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound(Problem("Administrator not found.", statusCode: 404));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(Problem(ex.Message, statusCode: 400));
         }
     }
 
@@ -466,6 +624,12 @@ public sealed class AdminUserController : ControllerBase
             ?? email;
         return (sub, email);
     }
+
+    /// <summary>Converts a FluentValidation result into a ValidationProblemDetails response body.</summary>
+    private static ValidationProblemDetails ToValidationProblem(FluentValidation.Results.ValidationResult result)
+        => new(result.Errors
+            .GroupBy(e => e.PropertyName)
+            .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()));
 }
 
 /// <summary>DELETE request body for LGPD user deletion.</summary>
@@ -476,3 +640,12 @@ public sealed record CreateAdminRequest(string FullName, string Email);
 
 /// <summary>PUT request body for forcing password change.</summary>
 public sealed record ForcePasswordChangeRequest(string NewPassword);
+
+/// <summary>PUT request body for editing an administrator (Phase 35 — MGMT-03).</summary>
+public sealed record UpdateAdministratorRequest(string? FullName, string? Email);
+
+/// <summary>POST request body for resetting an administrator's password (Phase 35 — MGMT-04).</summary>
+public sealed record ResetAdministratorPasswordRequest(string? TargetUserName);
+
+/// <summary>POST request body for enabling or disabling an administrator (Phase 35 — MGMT-05, MGMT-06).</summary>
+public sealed record ToggleAdministratorStatusRequest(bool Activate, string? TargetUserName, string? Reason);

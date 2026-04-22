@@ -38,6 +38,19 @@ public interface IKeycloakUserService
     Task<IReadOnlyList<AdminUserDto>> GetUsersByRoleAsync(string targetRealm, string roleName, CancellationToken ct = default);
 
     Task ClearFirstLoginFlagAsync(string targetRealm, string userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates an admin's display name and email in Keycloak.
+    /// Throws InvalidOperationException if the target user is not found.
+    /// Throws ArgumentException (409-equivalent) if the new email is already taken.
+    /// </summary>
+    Task UpdateAdminUserAsync(string targetRealm, string userId, string fullName, string email, CancellationToken ct = default);
+
+    /// <summary>
+    /// Immediately revokes all active sessions of a Keycloak user (POST /users/{id}/logout).
+    /// Call after disabling an account to ensure the user cannot continue with an existing token.
+    /// </summary>
+    Task LogoutAllSessionsAsync(string targetRealm, string userId, CancellationToken ct = default);
 }
 
 /// <summary>

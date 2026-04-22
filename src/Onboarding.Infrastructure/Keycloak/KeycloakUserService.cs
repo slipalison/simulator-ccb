@@ -297,4 +297,46 @@ public sealed class KeycloakUserService : IKeycloakUserService
 
     private static string BuildFullName(string? firstName, string? lastName)
         => string.Join(" ", new[] { firstName, lastName }.Where(s => !string.IsNullOrWhiteSpace(s) && s != "-")).Trim();
+
+    public async Task UpdateAdminUserAsync(string targetRealm, string userId, string fullName, string email, CancellationToken ct = default)
+    {
+        var client = GetClient(targetRealm);
+
+        // Check if the new email is already in use by someone else
+        var existing = await client.GetFromJsonAsync<List<UserRepresentation>>(
+            $"admin/realms/{targetRealm}/users?email={Uri.EscapeDataString(email)}&exact=true", ct) ?? [];
+
+        if (existing.Any(u => u.Id != userId))
+            throw new ArgumentException($"Email '{email}' is already in use by another account.");
+
+        var user = await client.GetFromJsonAsync<UserRepresentation>($"admin/realms/{targetRealm}/users/{userId}", ct)
+            ?? throw new InvalidOperationException($"Keycloak user '{userId}' not found.");
+
+        user.FirstName = fullName;
+        user.LastName = "-";
+        user.Email = email;
+        user.Username = email;
+
+        var response = await client.PutAsJsonAsync($"admin/realms/{targetRealm}/users/{userId}", user, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync(ct);
+            if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+                throw new ArgumentException($"Email '{email}' is already in use by another account.");
+            throw new InvalidOperationException($"Keycloak rejected user update for '{userId}': {body}");
+        }
+    }
+
+    public async Task LogoutAllSessionsAsync(string targetRealm, string userId, CancellationToken ct = default)
+    {
+        var client = GetClient(targetRealm);
+        // Keycloak Admin API: POST /admin/realms/{realm}/users/{id}/logout
+        var response = await client.PostAsync($"admin/realms/{targetRealm}/users/{userId}/logout", null, ct);
+        // 204 = success; 404 = user has no sessions (acceptable)
+        if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NotFound)
+        {
+            var body = await response.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException($"Failed to logout all sessions for user '{userId}': {body}");
+        }
+    }
 }

@@ -420,7 +420,7 @@ public sealed class AdminUserController : ControllerBase
     }
 
     /// <summary>PUT /api/admin/administrators/{id} — Edit admin name and email (MGMT-03, SEC-01, SEC-04, AUD-04).</summary>
-    [HttpPut("administrators/{id}")]
+    [HttpPut("administrators/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -459,7 +459,7 @@ public sealed class AdminUserController : ControllerBase
     }
 
     /// <summary>POST /api/admin/administrators/{id}/reset-password — Reset password and return one-time temp password (MGMT-04, SEC-01, SEC-03, AUD-05).</summary>
-    [HttpPost("administrators/{id}/reset-password")]
+    [HttpPost("administrators/{id:guid}/reset-password")]
     [ProducesResponseType(typeof(ResetAdministratorPasswordResult), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -493,7 +493,7 @@ public sealed class AdminUserController : ControllerBase
     }
 
     /// <summary>POST /api/admin/administrators/{id}/toggle-status — Disable or reactivate admin (MGMT-05, MGMT-06, SEC-01, SEC-05, AUD-06).</summary>
-    [HttpPost("administrators/{id}/toggle-status")]
+    [HttpPost("administrators/{id:guid}/toggle-status")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

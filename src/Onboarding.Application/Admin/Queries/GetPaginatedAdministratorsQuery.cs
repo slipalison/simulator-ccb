@@ -37,7 +37,7 @@ public sealed class GetPaginatedAdministratorsQueryHandler
 
         if (!string.IsNullOrWhiteSpace(query.Email))
             filtered = filtered.Where(a =>
-                a.Email.Contains(query.Email, StringComparison.OrdinalIgnoreCase));
+                (a.Email ?? string.Empty).Contains(query.Email, StringComparison.OrdinalIgnoreCase));
 
         if (!string.IsNullOrWhiteSpace(query.Status))
         {

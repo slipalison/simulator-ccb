@@ -912,7 +912,7 @@ Plans:
 
 ### Phases
 
-- [ ] **Phase 35: Admin Management Backend** - All .NET API endpoints for admin CRUD + security guards (SEC-01..05) + audit logging (AUD-04..06) (MGMT-01..06, SEC-01..05, AUD-04..06)
+- [x] **Phase 35: Admin Management Backend** - All .NET API endpoints for admin CRUD + security guards (SEC-01..05) + audit logging (AUD-04..06) (MGMT-01..06, SEC-01..05, AUD-04..06) (completed 2026-04-22)
 - [ ] **Phase 36: Admin Management UI** - Updated backoffice UI — paginated admin list with filters, edit modal, reset password modal, deactivate/reactivate confirmations (MGMT-01..06)
 
 ---
@@ -929,7 +929,7 @@ Plans:
   3. POST `/api/admin/administrators/{id}/reset-password` generates a cryptographically secure 16+ char password via `RandomNumberGenerator`, sets it in Keycloak with `UPDATE_PASSWORD` requiredAction, returns the password once in the response body; attempting to reset own password returns 400 (SEC-01); audit record written with actor and target — password never logged (SEC-03, AUD-05)
   4. POST `/api/admin/administrators/{id}/deactivate` disables the Keycloak account; attempting to deactivate own account returns 400 (SEC-01); attempting to deactivate the last active admin returns 409 (SEC-05); audit record written with actor, target, and optional reason (AUD-06)
   5. POST `/api/admin/administrators/{id}/reactivate` re-enables the Keycloak account; attempting to reactivate own account returns 400 (SEC-01); audit record written (AUD-06)
-**Plans:** TBD
+**Plans:** 1/1 plans complete
 
 ### Phase 36: Admin Management UI
 **Goal:** Backoffice users can perform all admin management operations through a polished, feedback-rich interface that reflects backend state immediately
@@ -950,7 +950,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 35. Admin Management Backend | 0/TBD | Not started | — |
+| 35. Admin Management Backend | 1/1 | Complete   | 2026-04-22 |
 | 36. Admin Management UI | 0/TBD | Not started | — |
 
 ### Phase 35: Backoffice Admin Management — Paginação, Filtros, Reset Senha, Edição e Exclusão

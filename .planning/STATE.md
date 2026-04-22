@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: — Foundation
-status: executing
-stopped_at: Milestone v6.0 roadmap created — Phase 35 (Admin Management Backend) ready to plan
-last_updated: "2026-04-21T14:55:37.179Z"
-last_activity: 2026-04-21
+status: verifying
+stopped_at: Completed 35-01-PLAN.md — Phase 35 Admin Management Backend complete
+last_updated: "2026-04-22T11:05:42.601Z"
+last_activity: 2026-04-22
 progress:
-  total_phases: 37
-  completed_phases: 29
-  total_plans: 75
-  completed_plans: 72
+  total_phases: 38
+  completed_phases: 30
+  total_plans: 76
+  completed_plans: 73
   percent: 96
 ---
 
@@ -21,15 +21,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-14)
 
 **Core value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
-**Current focus:** Phase 35 — Admin Management Backend (v6.0)
-**Last activity:** 2026-04-21
+**Current focus:** Phase 35 — backoffice-admin-management-pagina-o-filtros-reset-senha-edi
+**Last activity:** 2026-04-22
 
 ## Current Position
 
-Phase: 35
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-04-21 -- Phase 35 planning complete
+Phase: 35 (backoffice-admin-management-pagina-o-filtros-reset-senha-edi) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-04-22
 
 ## Milestone Breakdown
 
@@ -44,7 +44,7 @@ Last activity: 2026-04-21 -- Phase 35 planning complete
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 35 | Admin Management Backend | MGMT-01..06, SEC-01..05, AUD-04..06 | ⬜ Not started |
+| 35 | Admin Management Backend | MGMT-01..06, SEC-01..05, AUD-04..06 | ✅ Complete |
 | 36 | Admin Management UI | MGMT-01..06, SEC-01, UI-01..03 | ⬜ Not started |
 
 ## Milestone v5.0 Phase Breakdown
@@ -73,6 +73,7 @@ Recent decisions affecting current work:
 - [v5.0-keycloak-client]: Novo client Keycloak `onboarding-backoffice` (confidential, standardFlowEnabled) com redirect URIs exatos — o client `onboarding-app` (ROPC) não é modificado
 - [v5.0-audit-log]: AuditLog é append-only — nenhuma operação UPDATE ou DELETE é permitida na tabela. Nova EF Core migration em Phase 30.
 - [v5.0-temp-password]: Senha temporária é gerada pelo backend, exibida UMA VEZ na UI, e não é armazenada. Keycloak força troca via UPDATE_PASSWORD requiredAction.
+- [Phase 35]: Toggle pattern (single endpoint + Activate bool) used instead of separate deactivate/reactivate endpoints to reduce API surface area
 
 ### Key Architecture for v5.0
 
@@ -133,9 +134,9 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-21
-Stopped at: Milestone v6.0 roadmap created — Phase 35 (Admin Management Backend) ready to plan
-Resume file: none
+Last session: 2026-04-22T11:05:42.595Z
+Stopped at: Completed 35-01-PLAN.md — Phase 35 Admin Management Backend complete
+Resume file: None
 
 ### Milestone v6.0 Requirements (2026-04-21)
 

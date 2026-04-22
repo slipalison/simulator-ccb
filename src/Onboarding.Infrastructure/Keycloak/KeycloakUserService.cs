@@ -212,7 +212,8 @@ public sealed class KeycloakUserService : IKeycloakUserService
             user.Email ?? string.Empty,
             user.Enabled ?? true,
             user.EmailVerified ?? false,
-            (user.RequiredActions ?? []).ToList().AsReadOnly());
+            (user.RequiredActions ?? []).ToList().AsReadOnly(),
+            BuildFullName(user.FirstName, user.LastName));
     }
 
     public async Task SetTemporaryPasswordFlagAsync(string targetRealm, string userId, CancellationToken ct = default)

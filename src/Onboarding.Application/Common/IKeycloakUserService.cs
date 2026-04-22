@@ -67,6 +67,6 @@ public interface IKeycloakUserService
 public sealed record KeycloakUser(string Id, string Email, bool Enabled = true, bool EmailVerified = true);
 
 /// <summary>
-/// Extended Keycloak user details including required actions.
+/// Extended Keycloak user details including required actions and display name.
 /// </summary>
-public sealed record KeycloakUserDetails(string Id, string Email, bool Enabled, bool EmailVerified, IReadOnlyList<string> RequiredActions);
+public sealed record KeycloakUserDetails(string Id, string Email, bool Enabled, bool EmailVerified, IReadOnlyList<string> RequiredActions, string FullName = "");

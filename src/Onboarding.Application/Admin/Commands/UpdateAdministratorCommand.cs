@@ -65,10 +65,10 @@ public sealed class UpdateAdministratorCommandHandler : ICommandHandler<UpdateAd
             command.Email,
             ct);
 
-        // AUD-04: record old→new snapshot
+        // AUD-04: record old→new snapshot (WR-03: include old fullName for complete change record)
         var details = JsonSerializer.Serialize(new
         {
-            old = new { email = current.Email },
+            old = new { fullName = current.FullName, email = current.Email },
             @new = new { fullName = command.FullName, email = command.Email }
         });
 

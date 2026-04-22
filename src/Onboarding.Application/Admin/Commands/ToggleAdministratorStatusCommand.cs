@@ -66,6 +66,17 @@ public sealed class ToggleAdministratorStatusCommandHandler : ICommandHandler<To
 
             // Disable in Keycloak then revoke all active sessions immediately
             await _keycloakUserService.BlockUserAsync("backoffice", command.TargetKeycloakId, ct);
+
+            // Post-disable re-verification (CR-01): compensate for race condition between check and act.
+            // If two concurrent requests both passed the guard, we may have just disabled the last admin.
+            var afterDisable = await _keycloakUserService.GetUsersByRoleAsync("backoffice", "admin", ct);
+            if (!afterDisable.Any(a => a.IsEnabled))
+            {
+                await _keycloakUserService.UnblockUserAsync("backoffice", command.TargetKeycloakId, ct);
+                throw new InvalidOperationException(
+                    "Cannot disable the last active administrator. At least one active administrator must remain.");
+            }
+
             await _keycloakUserService.LogoutAllSessionsAsync("backoffice", command.TargetKeycloakId, ct);
         }
         else

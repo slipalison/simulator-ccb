@@ -1,7 +1,7 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: — Foundation
+milestone: v6.0
+milestone_name: Gestão Completa de Administradores
 status: verifying
 stopped_at: Completed 35-01-PLAN.md — Phase 35 Admin Management Backend complete
 last_updated: "2026-04-22T11:05:42.601Z"

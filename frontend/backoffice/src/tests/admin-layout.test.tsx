@@ -57,6 +57,7 @@ describe("Admin Layout", () => {
     vi.mocked(adminApi.getAdminMe).mockResolvedValue({
       adminName: "Test Admin",
       adminEmail: "test@onboarding.local",
+      adminId: "test-admin-id",
     });
 
     render(
@@ -77,6 +78,7 @@ describe("Admin Layout", () => {
     vi.mocked(adminApi.getAdminMe).mockResolvedValue({
       adminName: "Test Admin",
       adminEmail: "test@onboarding.local",
+      adminId: "test-admin-id",
     });
     vi.mocked(adminApi.logoutAdmin).mockResolvedValue();
 
@@ -106,6 +108,7 @@ describe("Admin Layout", () => {
     vi.mocked(adminApi.getAdminMe).mockResolvedValue({
       adminName: "Test Admin",
       adminEmail: "test@onboarding.local",
+      adminId: "test-admin-id",
     });
 
     render(

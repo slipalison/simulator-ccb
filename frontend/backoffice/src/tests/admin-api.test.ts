@@ -25,24 +25,22 @@ describe("admin-api.ts", () => {
   // ---------------------------------------------------------------------------
 
   describe("logoutAdmin", () => {
-    it("calls POST /api/admin/auth/logout with credentials: include", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true });
+    it("sets window.location.href to /auth/logout", () => {
+      const mockLocation = { href: "" };
+      const originalDescriptor = Object.getOwnPropertyDescriptor(window, "location");
+      Object.defineProperty(window, "location", {
+        value: mockLocation,
+        writable: true,
+        configurable: true,
+      });
 
-      await logoutAdmin();
+      logoutAdmin();
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/admin/auth/logout",
-        expect.objectContaining({
-          method: "POST",
-          credentials: "include",
-        })
-      );
-    });
+      expect(mockLocation.href).toBe("/auth/logout");
 
-    it("throws AdminApiError on failure", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: false, status: 500 });
-
-      await expect(logoutAdmin()).rejects.toThrow(AdminApiError);
+      if (originalDescriptor) {
+        Object.defineProperty(window, "location", originalDescriptor);
+      }
     });
   });
 
@@ -56,15 +54,17 @@ describe("admin-api.ts", () => {
         ok: true,
         json: () =>
           Promise.resolve({
+            isAuthenticated: true,
             adminName: "Test Admin",
-            adminEmail: "test@onboarding.local",
+            email: "test@onboarding.local",
+            sub: "sub-123",
           }),
       });
 
       const result = await getAdminMe();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "/api/admin/auth/me",
+        "/auth/me",
         expect.objectContaining({
           method: "GET",
           credentials: "include",
@@ -73,6 +73,7 @@ describe("admin-api.ts", () => {
       expect(result).toEqual({
         adminName: "Test Admin",
         adminEmail: "test@onboarding.local",
+        adminId: "sub-123",
       });
     });
 

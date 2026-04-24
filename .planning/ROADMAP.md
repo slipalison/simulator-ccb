@@ -951,7 +951,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 35. Admin Management Backend | 1/1 | Complete   | 2026-04-22 |
-| 36. Admin Management UI | 0/TBD | Not started | — |
+| 36. Admin Management UI | 0/4 | Not started | — |
 
 ### Phase 35: Backoffice Admin Management — Paginação, Filtros, Reset Senha, Edição e Exclusão
 

@@ -5,6 +5,7 @@ status: draft
 shadcn_initialized: true
 preset: "style=default baseColor=neutral cssVariables=true"
 created: 2026-04-24
+revised: 2026-04-24
 ---
 
 # Phase 36 — UI Design Contract: Admin Management UI
@@ -40,14 +41,14 @@ Escala 8-point herdada do Tailwind CSS 4. Valores declarados para uso nesta fase
 | sm    | 8px   | Gap entre toolbar items (`gap-2`), padding interno de botões pequenos |
 | md    | 16px  | Padding horizontal de células de tabela (`px-4`), gap de toolbar principal |
 | lg    | 24px  | Padding vertical de seções (`p-6`), gap entre card sections |
-| xl    | 32px  | Margem top de paginação (`mt-4` = 16px — exceção listada abaixo) |
+| xl    | 32px  | Margem top de paginação (`mt-8` = 32px) |
 | 2xl   | 48px  | Não utilizado nesta fase                          |
 | 3xl   | 64px  | Não utilizado nesta fase                          |
 
 **Exceções:**
 
 - `py-3` (12px) para células de tabela — padrão do `AdminAdministratorsPage` existente; mantido para consistência visual com `AdminUsersPage`.
-- `mt-4` (16px) para separação entre tabela e paginação — padrão do `AdminUsersPage`.
+- `mt-4` (16px) para separação entre tabela e paginação — padrão do `AdminUsersPage`. Classificado sob token `md` (16px), não `xl`.
 - Touch target do botão `⋯` (DropdownMenuTrigger): mínimo 32px altura via `size="icon"` do shadcn Button (`h-8 w-8`).
 
 ---
@@ -56,10 +57,12 @@ Escala 8-point herdada do Tailwind CSS 4. Valores declarados para uso nesta fase
 
 Tokens CSS do shadcn/neutral. Sem fonte customizada — herda Inter ou fonte do sistema.
 
+**Pesos declarados: exatamente 2 — 400 (normal) e 600 (semibold).**
+
 | Role     | Tamanho    | Peso              | Line Height | Uso nesta fase                                           |
 |----------|------------|-------------------|-------------|----------------------------------------------------------|
 | Body     | 14px (sm)  | 400 (normal)      | 1.5         | Células de tabela, labels de filtro, descrição de dialogs |
-| Label    | 14px (sm)  | 500 (medium)      | 1.4         | Cabeçalhos de coluna (`font-medium text-muted-foreground`), labels de form |
+| Label    | 14px (sm)  | 600 (semibold)    | 1.4         | Cabeçalhos de coluna (`font-semibold text-muted-foreground`), labels de form |
 | Heading  | 20px (xl)  | 600 (semibold)    | 1.2         | Título da página (`text-xl font-semibold "Administradores"`) |
 | Caption  | 12px (xs)  | 400 (normal)      | 1.5         | Info de paginação (`text-sm text-muted-foreground`) — na prática 14px; o token caption cobre textos auxiliares |
 
@@ -137,7 +140,7 @@ Tokens CSS herdados do `globals.css` (shadcn/neutral, oklch).
 
 | # | Cabeçalho       | Conteúdo da célula                                               | Largura      |
 |---|-----------------|------------------------------------------------------------------|--------------|
-| 1 | Nome            | `admin.fullName` — `font-medium`                                 | auto         |
+| 1 | Nome            | `admin.fullName` — `font-semibold`                               | auto         |
 | 2 | Email           | `admin.email` — `text-muted-foreground`                          | auto         |
 | 3 | Status          | Badge: Ativo (`variant="default"`) / Inativo (`variant="destructive"`) | 100px     |
 | 4 | Senha Temp      | Badge: Pendente (`text-amber-600 border-amber-300`) / Definida (`text-green-600 border-green-300`) | 120px |
@@ -194,7 +197,7 @@ const isSelf = admin.id === adminId
   - Email: `<Input type="email">` — obrigatório, formato RFC válido
 - Validação inline: erro abaixo do campo em `text-sm text-destructive`
 - `DialogFooter`:
-  - "Cancelar" — `variant="outline"` — fecha dialog sem salvar
+  - "Cancelar edição" — `variant="outline"` — fecha dialog sem salvar
   - "Salvar alterações" — `variant="default"` (accent/primary) — submits form
 
 **Estados do botão submit:**
@@ -249,7 +252,7 @@ const isSelf = admin.id === adminId
 - `DialogDescription`: "O administrador {admin.fullName} perderá acesso ao backoffice. A conta é preservada para auditoria."
 - Alert `variant="destructive"`: "Esta ação pode ser revertida reativando o administrador."
 - `DialogFooter`:
-  - "Cancelar" — `variant="outline"`
+  - "Cancelar desativação" — `variant="outline"`
   - "Desativar" — `variant="destructive"`
 
 **Estados do botão "Desativar":**
@@ -268,7 +271,7 @@ const isSelf = admin.id === adminId
 - `DialogTitle`: "Reativar Administrador"
 - `DialogDescription`: "O administrador {admin.fullName} recuperará acesso ao backoffice."
 - `DialogFooter`:
-  - "Cancelar" — `variant="outline"`
+  - "Cancelar reativação" — `variant="outline"`
   - "Reativar" — `variant="default"` (sem destructive — ação positiva)
 
 **Feedback:** `toast.success("Administrador reativado.")` após sucesso.
@@ -290,7 +293,7 @@ Qualquer mudança em qualquer filtro reseta `page` para 1 (D-12).
 
 - `pageSize`: 20 por página (padrão MGMT-01)
 - Componente: `AdminPagination` sem alteração
-- Posicionamento: `<div className="mt-4">` abaixo do `<CardContent>`
+- Posicionamento: `<div className="mt-4">` abaixo do `<CardContent>` — separação de 16px (token `md`)
 - Exibido somente quando `result.totalCount > 0`
 
 ---
@@ -318,7 +321,9 @@ Qualquer mudança em qualquer filtro reseta `page` para 1 (D-12).
 | Empty state body                  | "Ajuste os filtros ou crie um novo administrador."                                                 |
 | Error state                       | "Falha ao carregar administradores. Tente novamente." + botão inline "Tentar novamente"            |
 | CTA primário EditAdminDialog      | "Salvar alterações"                                                                                |
-| CTA cancelar (todos os dialogs)   | "Cancelar"                                                                                         |
+| CTA cancelar EditAdminDialog      | "Cancelar edição"                                                                                  |
+| CTA cancelar DeactivateAdminDialog| "Cancelar desativação"                                                                             |
+| CTA cancelar ReactivateAdminDialog| "Cancelar reativação"                                                                              |
 | CTA fechar (ResetPasswordDialog)  | "Fechar"                                                                                           |
 | Aviso one-time password           | "Esta senha não pode ser recuperada. Feche somente após copiar."                                   |
 | Botão copiar senha — normal       | "Copiar senha"                                                                                     |
@@ -406,4 +411,5 @@ Nenhum registry terceiro declarado. Gate de segurança não aplicável.
 
 *Phase: 36-admin-management-ui*
 *UI-SPEC gerado: 2026-04-24*
+*UI-SPEC revisado: 2026-04-24 — correcoes: tipografia consolidada para 2 pesos, token xl corrigido, copywriting cancelar especificado por dialog*
 *Fontes: CONTEXT.md (15 decisões), globals.css (tokens), AdminUsersPage.tsx (padrão), AdminAdministratorsPage.tsx (componente atual)*

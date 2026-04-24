@@ -1,7 +1,7 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: — Foundation
+milestone: v6.0
+milestone_name: Gestão Completa de Administradores
 status: verifying
 stopped_at: Phase 36 context gathered
 last_updated: "2026-04-24T11:21:19.404Z"

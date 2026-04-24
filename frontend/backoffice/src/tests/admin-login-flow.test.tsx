@@ -99,7 +99,7 @@ describe("Admin Login Flow", () => {
       adminId: "admin-user-id",
     });
 
-    const { memoryHistory } = await renderWithRouter(["/admin/login"]);
+    await renderWithRouter(["/admin/login"]);
 
     await waitFor(() => {
       expect(window.location.href).toBe("/admin/users");

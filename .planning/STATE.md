@@ -1,16 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v6.0
-milestone_name: Gestão Completa de Administradores
+milestone: v1.0
+milestone_name: — Foundation
 status: verifying
-stopped_at: Completed 35-01-PLAN.md — Phase 35 Admin Management Backend complete
-last_updated: "2026-04-22T11:05:42.601Z"
+stopped_at: Phase 36 context gathered
+last_updated: "2026-04-24T11:21:19.404Z"
 last_activity: 2026-04-22
 progress:
-  total_phases: 38
-  completed_phases: 30
-  total_plans: 76
-  completed_plans: 73
+  total_phases: 37
+  completed_phases: 29
+  total_plans: 75
+  completed_plans: 72
   percent: 96
 ---
 
@@ -134,9 +134,9 @@ Recent decisions affecting current work:
 
 ## Session Continuity
 
-Last session: 2026-04-22T11:05:42.595Z
-Stopped at: Completed 35-01-PLAN.md — Phase 35 Admin Management Backend complete
-Resume file: None
+Last session: 2026-04-24T11:21:19.397Z
+Stopped at: Phase 36 context gathered
+Resume file: .planning/phases/36-admin-management-ui/36-CONTEXT.md
 
 ### Milestone v6.0 Requirements (2026-04-21)
 

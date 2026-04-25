@@ -2,7 +2,7 @@
   "name": "keycloak-tests",
   "private": true,
   "scripts": {
-    "prepare": "husky",
+    "prepare": "npx husky",
     "lint:backoffice": "npm run lint --workspace=frontend-backoffice",
     "lint:client": "npm run lint --workspace=frontend-client"
   },

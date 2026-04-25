@@ -16,7 +16,7 @@ RUN dotnet publish "src/Onboarding.API/Onboarding.API.csproj" -c Release -o /app
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
 WORKDIR /app
 
-RUN addgroup -S app && adduser -S app -G app
+RUN addgroup -g 1000 -S app 2>/dev/null || true && adduser -S app -G app 2>/dev/null || true
 
 ENV DOTNET_GlobalizationMode=Invariant
 

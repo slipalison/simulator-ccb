@@ -72,8 +72,6 @@ jobs:
         run: npm ci
 
       - name: Build production
-        env:
-          NODE_ENV: production
         run: npm run build
 
   frontend-backoffice-build:
@@ -106,8 +104,6 @@ jobs:
         run: npm ci
 
       - name: Build production
-        env:
-          NODE_ENV: production
         run: npm run build
 
 # ─────────────────────────────────────────────────────────────────

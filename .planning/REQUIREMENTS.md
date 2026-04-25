@@ -1,75 +1,125 @@
-# Requirements — Milestone v6.0: Gestão Completa de Administradores
+# Requirements — Milestone v7.0: PJ-Only Onboarding + Gestão de Funcionários
 
-> **Segurança é requisito de primeira classe.** Toda operação de gestão de admins
-> deve ser autenticada, autorizada, validada e auditada. Não existe "vamos adicionar
-> segurança depois" neste milestone.
-
----
-
-## MGMT — Gestão de Administradores
-
-- [ ] **MGMT-01**: Admin pode visualizar lista paginada de administradores (20 por página)
-- [ ] **MGMT-02**: Admin pode filtrar a lista por nome, email e status (ativo/inativo)
-- [ ] **MGMT-03**: Admin pode editar nome e email de outro administrador (persiste no Keycloak)
-- [ ] **MGMT-04**: Admin pode resetar senha de outro administrador — gera nova senha temporária exibida uma única vez; Keycloak força troca no próximo login via `UPDATE_PASSWORD` requiredAction
-- [ ] **MGMT-05**: Admin pode desativar outro administrador (disable no Keycloak — conta preservada para histórico de auditoria)
-- [ ] **MGMT-06**: Admin pode reativar um administrador desativado
+> **Isolamento entre empresas é requisito de primeira classe.** Qualquer bug que permita
+> PJ ver/editar dados de funcionários de outra PJ é vulnerabilidade crítica de segurança.
+> **Base zerada:** `docker compose down -v` — migration cria schemas novos (Company + Employee).
 
 ---
 
-## SEC — Segurança
+## REG — Cadastro PJ
 
-> Segurança não é opcional. Cada item abaixo é um bloqueador de release.
-
-- [ ] **SEC-01**: Admin não pode editar, resetar senha ou desativar a própria conta (prevenção de auto-bloqueio)
-- [ ] **SEC-02**: Todos os endpoints de gestão de admins exigem sessão autenticada com role `admin` no realm `backoffice` (scheme `BearerBackoffice`)
-- [ ] **SEC-03**: Reset de senha gera senha criptograficamente segura via `RandomNumberGenerator` (mínimo 16 chars, mix de upper/lower/digit/special) — mesma abordagem do criar admin
-- [ ] **SEC-04**: Edição de email valida unicidade no Keycloak antes de persistir — conflito retorna 409 com mensagem clara
-- [ ] **SEC-05**: Sistema bloqueia desativação do último administrador ativo (prevenção de lockout total do sistema)
+- [ ] **REG-01**: PJ pode se cadastrar com razão social, CNPJ, email, telefone, senha + aceite de termos de uso
+- [ ] **REG-02**: CNPJ deve ser único no sistema — conflito retorna 409 com mensagem clara
+- [ ] **REG-03**: PJ pode cadastrar funcionários PF vinculados à sua empresa (nome, CPF, email, telefone, senha temporária)
+- [ ] **REG-04**: Aceite de termos de uso obrigatório no cadastro — armazena timestamp e versão dos termos (texto mock por enquanto)
+- [ ] **REG-05**: Remover completamente o fluxo de cadastro PF do frontend (client) e da API — cadastro é exclusivamente PJ
 
 ---
 
-## AUD — Auditoria (extensão do v5.0)
+## MGMT — Gestão de Funcionários
 
-- [ ] **AUD-04**: Edição de admin registrada no audit log com actor, target, campos alterados (valores antigos e novos)
-- [ ] **AUD-05**: Reset de senha de admin registrado no audit log (actor + target — senha nunca gravada no log)
-- [ ] **AUD-06**: Desativação e reativação de admin registradas no audit log com actor, target e motivo (se fornecido)
+- [ ] **MGMT-01**: PJ pode visualizar lista paginada de funcionários da sua empresa (20 por página) com filtros (nome, status)
+- [ ] **MGMT-02**: PJ pode bloquear/desbloquear funcionários (disable/enable no Keycloak — preserva dados para auditoria)
+- [ ] **MGMT-03**: PJ pode resetar senha de funcionário — gera senha temporária exibida uma vez, Keycloak força troca no próximo login
+- [ ] **MGMT-04**: PJ pode editar dados do funcionário (nome, email, telefone) — persiste no Keycloak
+- [ ] **MGMT-05**: PJ pode excluir funcionário (LGPD) — anonimiza dados no PostgreSQL + delete no Keycloak
+
+---
+
+## PERM — Permissões e Grupos de Acesso
+
+- [ ] **PERM-01**: Funcionário com role `admin-empresa` tem mesmos poderes do PJ dono (gerenciar funcionários, ver audit, atribuir grupos)
+- [ ] **PERM-02**: Funcionário com role `viewer` pode visualizar dados de funcionários da empresa mas não pode editar, bloquear ou excluir
+- [ ] **PERM-03**: Funcionário com role `dashboard` pode acessar a tela de dashboard
+- [ ] **PERM-04**: PJ pode atribuir/remover grupos de acesso dos seus funcionários (transições entre admin-empresa, viewer, dashboard)
+- [ ] **PERM-05**: Isolamento estrito entre empresas — PJ nunca vê/edita dados de funcionários de outra PJ (enforced no backend via filtro de empresa)
+
+---
+
+## AUD — Auditoria de Funcionários
+
+- [ ] **AUD-01**: PJ e Admin Empresa podem visualizar log de ações dos seus funcionários com filtros (data, tipo de ação, ator)
+- [ ] **AUD-02**: Todas as ações de funcionários (login, edição, bloqueio, etc.) são registradas automaticamente no audit log existente (append-only)
+
+---
+
+## DASH — Dashboard
+
+- [ ] **DASH-01**: Tela de dashboard com dados estáticos (mock) — total de funcionários ativos/inativos, logins recentes, ações por período
+
+---
+
+## ADM — BackOffice
+
+- [ ] **ADM-01**: BackOffice pode visualizar funcionários de qualquer empresa com filtros (empresa, nome, status)
+- [ ] **ADM-02**: BackOffice pode forçar reset de senha, bloquear/desbloquear qualquer funcionário de qualquer empresa
+
+---
+
+## CI — CI/CD Coverage
+
+- [ ] **CI-01**: GitHub Actions com cobertura de testes >= 80% no backend (.NET) e no frontend (React/Vinxi)
 
 ---
 
 ## Future Requirements (deferred)
 
-- Motivo obrigatório ao desativar admin — pode ser útil para auditoria mas não bloqueador para v6.0
-- Notificação por email ao admin quando sua senha é resetada — requer integração SMTP
-- Histórico de alterações por admin (quem alterou o quê ao longo do tempo) — consulta específica no audit log
-- Permissões granulares (super admin vs admin) — qualquer admin pode tudo no v6.0
+- Dashboard com dados reais e dinâmicos — mock estático por enquanto, dados reais em milestone futuro
+- Notificação por email ao funcionário quando senha é resetada — requer integração SMTP
+- Funcionário pode editar seus próprios dados — v7.0 é read-only para o funcionário
+- 2FA obrigatório para PJ e Admin Empresa — Keycloak suporta mas requer configuração de realm separada
+- Motivo obrigatório ao bloquear funcionário — útil para auditoria mas não bloqueador para v7.0
+- Exportação de relatórios (CSV/PDF) de audit log — deferido para futuro
+- Fluxo de convite por email (PJ envia email, funcionário completa cadastro) — complexidade adicional sem valor imediato
 
 ---
 
 ## Out of Scope
 
-- Exclusão permanente de admin — desativar (MGMT-05) é suficiente; exclusão hard remove histórico de auditoria
-- Transferência de propriedade de ações auditadas — audit log é imutável
-- Login como outro admin (impersonation) — fora do escopo de segurança aceitável
-- 2FA obrigatório para admins — Keycloak suporta mas requer configuração de realm separada
+| Feature | Reason |
+|---------|--------|
+| Cadastro PF | Removido do sistema — v7.0 é PJ-only. Base zerada. |
+| Bit Flags no JWT para permissões | Keycloak roles/groups nativo é abordagem escolhida — sem custom mapper |
+| Dashboard com dados dinâmicos | Mock estático é suficiente para apresentação; dados reais em futuro |
+| Impersonação de funcionários | Fora do escopo de segurança aceitável |
+| Login social (Google, GitHub, etc.) | Complexidade adicional sem valor imediato |
+| Edição de dados pelo funcionário | v7.0 funcionário é read-only; PF edita dados em milestone futuro |
+| Celular/app mobile | Web-first |
+| Multi-tenancy com realm separado por empresa | Mesmo realm, isolamento via companyId FK — Keycloak Groups para roles |
 
 ---
 
 ## Traceability
 
-| REQ-ID | Phase | Status |
-|--------|-------|--------|
-| MGMT-01 | Phase 35 (backend) + Phase 36 (frontend) | ⬜ |
-| MGMT-02 | Phase 35 (backend) + Phase 36 (frontend) | ⬜ |
-| MGMT-03 | Phase 35 (backend) + Phase 36 (frontend) | ⬜ |
-| MGMT-04 | Phase 35 (backend) + Phase 36 (frontend) | ⬜ |
-| MGMT-05 | Phase 35 (backend) + Phase 36 (frontend) | ⬜ |
-| MGMT-06 | Phase 35 (backend) + Phase 36 (frontend) | ⬜ |
-| SEC-01 | Phase 35 (backend guard) | ⬜ |
-| SEC-02 | Phase 35 (backend auth) | ⬜ |
-| SEC-03 | Phase 35 (backend crypto) | ⬜ |
-| SEC-04 | Phase 35 (backend validation) | ⬜ |
-| SEC-05 | Phase 35 (backend guard) | ⬜ |
-| AUD-04 | Phase 35 (backend audit) | ⬜ |
-| AUD-05 | Phase 35 (backend audit) | ⬜ |
-| AUD-06 | Phase 35 (backend audit) | ⬜ |
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| REG-01 | Phase TBD | Pending |
+| REG-02 | Phase TBD | Pending |
+| REG-03 | Phase TBD | Pending |
+| REG-04 | Phase TBD | Pending |
+| REG-05 | Phase TBD | Pending |
+| MGMT-01 | Phase TBD | Pending |
+| MGMT-02 | Phase TBD | Pending |
+| MGMT-03 | Phase TBD | Pending |
+| MGMT-04 | Phase TBD | Pending |
+| MGMT-05 | Phase TBD | Pending |
+| PERM-01 | Phase TBD | Pending |
+| PERM-02 | Phase TBD | Pending |
+| PERM-03 | Phase TBD | Pending |
+| PERM-04 | Phase TBD | Pending |
+| PERM-05 | Phase TBD | Pending |
+| AUD-01 | Phase TBD | Pending |
+| AUD-02 | Phase TBD | Pending |
+| DASH-01 | Phase TBD | Pending |
+| ADM-01 | Phase TBD | Pending |
+| ADM-02 | Phase TBD | Pending |
+| CI-01 | Phase TBD | Pending |
+
+**Coverage:**
+- v7.0 requirements: 21 total
+- Mapped to phases: 0 (defined during roadmap)
+- Unmapped: 21 ⚠️
+
+---
+*Requirements defined: 2026-04-25*
+*Last updated: 2026-04-25 after milestone v7.0 requirements definition*

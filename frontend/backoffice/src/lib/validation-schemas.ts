@@ -53,3 +53,22 @@ export const adminUnblockUserSchema = z.object({
 });
 
 export type AdminUnblockUserInput = z.infer<typeof adminUnblockUserSchema>;
+
+// ---------------------------------------------------------------------------
+// Edit Administrator Schema — Phase 36 (nome e email obrigatórios)
+// ---------------------------------------------------------------------------
+
+export const adminEditAdministratorSchema = z.object({
+  fullName: z
+    .string()
+    .trim()
+    .min(2, "Nome muito curto (mínimo 2 caracteres)")
+    .max(100, "Nome muito longo (máximo 100 caracteres)"),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Email é obrigatório")
+    .email("Email inválido"),
+});
+
+export type AdminEditAdministratorInput = z.infer<typeof adminEditAdministratorSchema>;

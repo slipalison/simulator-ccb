@@ -1,0 +1,25 @@
+{
+  "name": "keycloak-tests",
+  "private": true,
+  "scripts": {
+    "prepare": "husky",
+    "lint:backoffice": "npm run lint --workspace=frontend-backoffice",
+    "lint:client": "npm run lint --workspace=frontend-client"
+  },
+  "workspaces": [
+    "frontend/backoffice",
+    "frontend/client"
+  ],
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2"
+  },
+  "lint-staged": {
+    "frontend/backoffice/**/*.{ts,tsx}": [
+      "npm run lint:backoffice"
+    ],
+    "frontend/client/**/*.{ts,tsx}": [
+      "npm run lint:client"
+    ]
+  }
+}

@@ -1,42 +1,161 @@
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Shield, RefreshCw, UserPlus } from "lucide-react";
 import { toast } from "sonner";
-import { getAdministrators } from "@/lib/admin-api";
-import type { AdminUserDto } from "@/lib/admin-api";
+import {
+  getAdministratorsPaginated,
+  updateAdministrator,
+  resetAdministratorPassword,
+  toggleAdministratorStatus,
+  AdminApiError,
+} from "@/lib/admin-api";
+import type { AdminUserDto, PaginatedResult } from "@/lib/admin-api";
+import { AdminSearchBar } from "@/components/molecules/AdminSearchBar";
+import { AdminStatusFilter, ADMIN_STATUS_OPTIONS } from "@/components/molecules/AdminStatusFilter";
+import { AdminPagination } from "@/components/molecules/AdminPagination";
+import { AdminAdministratorsTable } from "@/components/molecules/AdminAdministratorsTable";
+import { EditAdminDialog } from "@/components/molecules/EditAdminDialog";
+import { ResetPasswordDialog } from "@/components/molecules/ResetPasswordDialog";
+import { DeactivateAdminDialog } from "@/components/molecules/DeactivateAdminDialog";
+import { ReactivateAdminDialog } from "@/components/molecules/ReactivateAdminDialog";
+import type { AdminEditAdministratorInput } from "@/lib/validation-schemas";
+
+type DialogState =
+  | { type: "none" }
+  | { type: "edit"; admin: AdminUserDto }
+  | { type: "reset-password"; password: string }
+  | { type: "deactivate"; admin: AdminUserDto }
+  | { type: "reactivate"; admin: AdminUserDto };
 
 export function AdminAdministratorsPage() {
-  const [admins, setAdmins] = useState<AdminUserDto[]>([]);
+  const [page, setPage] = useState(1);
+  const [nameSearch, setNameSearch] = useState("");
+  const [emailSearch, setEmailSearch] = useState("");
+  const [status, setStatus] = useState("all");
+
+  const [result, setResult] = useState<PaginatedResult<AdminUserDto> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
+
+  const [dialog, setDialog] = useState<DialogState>({ type: "none" });
+
+  useEffect(() => {
+    setPage(1);
+  }, [nameSearch, emailSearch, status]);
 
   const fetchAdmins = useCallback(async () => {
     setIsLoading(true);
     setIsError(false);
     try {
-      const data = await getAdministrators();
-      setAdmins(data);
-    } catch (_err) {
-      setIsError(true);
-      toast.error("Falha ao carregar administradores", {
-        description: "Tente novamente.",
+      const data = await getAdministratorsPaginated({
+        page,
+        pageSize: 20,
+        name: nameSearch || undefined,
+        email: emailSearch || undefined,
+        status: status === "all" ? undefined : status,
       });
+      setResult(data);
+    } catch {
+      setIsError(true);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [page, nameSearch, emailSearch, status]);
 
   useEffect(() => {
     fetchAdmins();
   }, [fetchAdmins]);
 
+  const handleOpenEdit = (admin: AdminUserDto) => {
+    setDialog({ type: "edit", admin });
+  };
+
+  const handleOpenResetPassword = async (admin: AdminUserDto) => {
+    try {
+      const result = await resetAdministratorPassword(admin.id, admin.fullName);
+      toast.success("Senha temporária gerada.");
+      setDialog({ type: "reset-password", password: result.temporaryPassword });
+    } catch (err) {
+      const status = err instanceof AdminApiError ? err.status : undefined;
+      toast.error("Falha ao resetar senha", {
+        description: status === 400 ? "Operação não permitida." : "Tente novamente.",
+      });
+    }
+  };
+
+  const handleOpenDeactivate = (admin: AdminUserDto) => {
+    setDialog({ type: "deactivate", admin });
+  };
+
+  const handleOpenReactivate = (admin: AdminUserDto) => {
+    setDialog({ type: "reactivate", admin });
+  };
+
+  const handleCloseDialog = () => {
+    setDialog({ type: "none" });
+  };
+
+  const handleSaveEdit = async (adminId: string, data: AdminEditAdministratorInput) => {
+    try {
+      await updateAdministrator(adminId, { fullName: data.fullName, email: data.email });
+      toast.success("Administrador atualizado com sucesso.");
+      fetchAdmins();
+    } catch (err) {
+      const apiErr = err instanceof AdminApiError ? err : null;
+      if (apiErr?.status === 409) {
+        toast.error("Email já está em uso.", {
+          description: "Escolha outro email e tente novamente.",
+        });
+      } else {
+        toast.error("Falha ao atualizar administrador", { description: "Tente novamente." });
+      }
+      throw err;
+    }
+  };
+
+  const handleDeactivate = async (adminId: string) => {
+    try {
+      await toggleAdministratorStatus(
+        adminId,
+        dialog.type === "deactivate" ? dialog.admin.fullName : "",
+        false
+      );
+      toast.success("Administrador desativado.");
+      fetchAdmins();
+    } catch (err) {
+      const apiErr = err instanceof AdminApiError ? err : null;
+      if (apiErr?.status === 400 || apiErr?.status === 409) {
+        toast.error("Não é possível desativar.", {
+          description: "Deve existir ao menos um administrador ativo.",
+        });
+      } else {
+        toast.error("Falha ao desativar administrador", { description: "Tente novamente." });
+      }
+      throw err;
+    }
+  };
+
+  const handleReactivate = async (adminId: string) => {
+    try {
+      await toggleAdministratorStatus(
+        adminId,
+        dialog.type === "reactivate" ? dialog.admin.fullName : "",
+        true
+      );
+      toast.success("Administrador reativado.");
+      fetchAdmins();
+    } catch {
+      toast.error("Falha ao reativar administrador", { description: "Tente novamente." });
+      throw new Error("reactivate failed");
+    }
+  };
+
   return (
     <div className="space-y-6" data-testid="admin-administrators-page">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-primary" />
+          <Shield className="h-5 w-5 text-primary" aria-hidden="true" />
           <h2 className="text-xl font-semibold">Administradores</h2>
         </div>
         <div className="flex gap-2">
@@ -47,7 +166,7 @@ export function AdminAdministratorsPage() {
             disabled={isLoading}
             data-testid="refresh-button"
           >
-            <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} aria-hidden="true" />
             Atualizar
           </Button>
           <Button
@@ -55,97 +174,86 @@ export function AdminAdministratorsPage() {
             onClick={() => { window.location.href = "/admin/create"; }}
             data-testid="create-admin-button"
           >
-            <UserPlus className="h-4 w-4 mr-1" />
+            <UserPlus className="h-4 w-4 mr-1" aria-hidden="true" />
             Criar Admin
           </Button>
         </div>
       </div>
 
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <AdminSearchBar
+          value={nameSearch}
+          onChange={(val) => setNameSearch(val)}
+          placeholder="Buscar por nome..."
+          disabled={isLoading}
+        />
+        <AdminSearchBar
+          value={emailSearch}
+          onChange={(val) => setEmailSearch(val)}
+          placeholder="Buscar por email..."
+          disabled={isLoading}
+        />
+        <AdminStatusFilter
+          value={status}
+          onChange={(val) => setStatus(val)}
+          disabled={isLoading}
+          options={ADMIN_STATUS_OPTIONS}
+        />
+      </div>
+
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Lista de Administradores</CardTitle>
-        </CardHeader>
+        <CardHeader className="p-0" />
         <CardContent className="p-0">
-          {isLoading && (
-            <div className="p-6 text-center text-sm text-muted-foreground" data-testid="loading-state">
-              Carregando administradores...
-            </div>
-          )}
-
-          {isError && !isLoading && (
-            <div className="p-6 text-center text-sm text-destructive" data-testid="error-state">
-              Falha ao carregar administradores.{" "}
-              <button
-                className="underline hover:no-underline"
-                onClick={fetchAdmins}
-              >
-                Tentar novamente
-              </button>
-            </div>
-          )}
-
-          {!isLoading && !isError && admins.length === 0 && (
-            <div className="p-6 text-center text-sm text-muted-foreground" data-testid="empty-state">
-              Nenhum administrador encontrado.
-            </div>
-          )}
-
-          {!isLoading && !isError && admins.length > 0 && (
-            <table className="w-full text-sm" data-testid="administrators-table">
-              <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                    Nome
-                  </th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                    Email
-                  </th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                    Status
-                  </th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                    Senha Temporaria
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {admins.map((admin) => (
-                  <tr
-                    key={admin.id}
-                    className="border-b last:border-0 hover:bg-muted/30 transition-colors"
-                    data-testid={`admin-row-${admin.id}`}
-                  >
-                    <td className="py-3 px-4 font-medium">{admin.fullName}</td>
-                    <td className="py-3 px-4 text-muted-foreground">{admin.email}</td>
-                    <td className="py-3 px-4">
-                      {admin.isEnabled ? (
-                        <Badge variant="default" data-testid="badge-active">
-                          Ativo
-                        </Badge>
-                      ) : (
-                        <Badge variant="destructive" data-testid="badge-blocked">
-                          Bloqueado
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      {admin.hasTemporaryPassword ? (
-                        <Badge variant="outline" className="text-amber-600 border-amber-300" data-testid="badge-temp-password">
-                          Pendente
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-green-600 border-green-300" data-testid="badge-password-set">
-                          Definida
-                        </Badge>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <AdminAdministratorsTable
+            result={result}
+            isLoading={isLoading}
+            isError={isError}
+            onRetry={fetchAdmins}
+            onEdit={handleOpenEdit}
+            onResetPassword={handleOpenResetPassword}
+            onDeactivate={handleOpenDeactivate}
+            onReactivate={handleOpenReactivate}
+          />
         </CardContent>
       </Card>
+
+      {result && result.totalCount > 0 && (
+        <div className="mt-4">
+          <AdminPagination
+            page={page}
+            pageSize={20}
+            totalCount={result.totalCount}
+            onPageChange={setPage}
+          />
+        </div>
+      )}
+
+      <EditAdminDialog
+        open={dialog.type === "edit"}
+        admin={dialog.type === "edit" ? dialog.admin : null}
+        onClose={handleCloseDialog}
+        onSave={handleSaveEdit}
+      />
+
+      <ResetPasswordDialog
+        open={dialog.type === "reset-password"}
+        generatedPassword={dialog.type === "reset-password" ? dialog.password : null}
+        onClose={handleCloseDialog}
+      />
+
+      <DeactivateAdminDialog
+        open={dialog.type === "deactivate"}
+        admin={dialog.type === "deactivate" ? dialog.admin : null}
+        onClose={handleCloseDialog}
+        onDeactivate={handleDeactivate}
+      />
+
+      <ReactivateAdminDialog
+        open={dialog.type === "reactivate"}
+        admin={dialog.type === "reactivate" ? dialog.admin : null}
+        onClose={handleCloseDialog}
+        onReactivate={handleReactivate}
+      />
     </div>
   );
 }

@@ -44,6 +44,7 @@ describe("AdminAuthContext", () => {
     vi.mocked(adminApi.getAdminMe).mockResolvedValue({
       adminName: "Admin User",
       adminEmail: "admin@onboarding.local",
+      adminId: "admin-id-1",
     });
 
     const { result } = renderHook(() => useAdminAuth(), { wrapper });
@@ -77,6 +78,7 @@ describe("AdminAuthContext", () => {
     vi.mocked(adminApi.getAdminMe).mockResolvedValueOnce({
       adminName: "Admin User",
       adminEmail: "admin@onboarding.local",
+      adminId: "admin-id-1",
     });
 
     const { result } = renderHook(() => useAdminAuth(), { wrapper });
@@ -113,6 +115,7 @@ describe("AdminAuthContext", () => {
     vi.mocked(adminApi.getAdminMe).mockResolvedValueOnce({
       adminName: "Restored Admin",
       adminEmail: "restored@onboarding.local",
+      adminId: "admin-id-2",
     });
 
     const restored = await act(async () => {

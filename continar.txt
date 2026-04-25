@@ -3,5 +3,8 @@
   ◻ Create SUMMARY.md for quick task
 
 
-  claude --dangerously-skip-permissions --resume 03480c7d-4fb3-4add-9ac7-187ae3475207
+
+  claude --dangerously-skip-permissions -resume ecf13653-f91c-4c14-8b2c-b62a64c904ca
+
+  
 

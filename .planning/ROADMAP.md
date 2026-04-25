@@ -19,7 +19,7 @@ Every phase delivers a coherent, independently verifiable capability before the 
 | **v3.0** | Admin Backoffice + Frontend Separation | 16-20 | ✅ Complete (5/5 phases, 13 plans, E2E removed) |
 | **v4.0** | CI/CD Pipeline + Cybersecurity | 21-28 | ✅ Complete (8/8 phases, 20/20 plans) |
 | **v5.0** | Auth Code Flow (Backoffice) + Gestão de Admins + Auditoria | 29-34 | ✅ Complete (6/6 phases) |
-| **v6.0** | Gestão Completa de Administradores | 35-36 | 🔄 In Progress |
+| **v6.0** | Gestão Completa de Administradores | 35-36 | ✅ Complete |
 
 **Phase order rationale (v3.0):** 16→17→18 (admin backend+UI core) → **19 (separation)** → 20 (edit/delete in separated project). E2E phase removed by user decision.
 
@@ -338,8 +338,8 @@ Plans:
 | **v3.0** Admin Backoffice | 16-20 | 13 | ✅ Complete | 22 requirements |
 | **v4.0** CI/CD + Security | 21-28 | 20 | ✅ Complete | 25 requirements |
 | **v5.0** Auth Code Flow + Admins + Audit | 29-34 | TBD | ✅ Complete | 11 requirements |
-| **v6.0** Gestão Completa de Administradores | 35-36 | TBD | 🔄 In Progress | 14 requirements |
-| **Total** | **36 phases** | **80+ plans** | **5 milestones done** | **121 requirements** |
+| **v6.0** Gestão Completa de Administradores | 35-36 | 5 | ✅ Complete | 14 requirements |
+| **Total** | **36 phases** | **81+ plans** | **6 milestones done** | **135 requirements** |
 
 ---
 
@@ -912,8 +912,9 @@ Plans:
 
 ### Phases
 
-- [ ] **Phase 35: Admin Management Backend** - All .NET API endpoints for admin CRUD + security guards (SEC-01..05) + audit logging (AUD-04..06) (MGMT-01..06, SEC-01..05, AUD-04..06)
-- [ ] **Phase 36: Admin Management UI** - Updated backoffice UI — paginated admin list with filters, edit modal, reset password modal, deactivate/reactivate confirmations (MGMT-01..06)
+- [x] **Phase 35: Admin Management Backend** - All .NET API endpoints for admin CRUD + security guards (SEC-01..05) + audit logging (AUD-04..06) (MGMT-01..06, SEC-01..05, AUD-04..06) (completed 2026-04-22)
+- [x] **Phase 36: Admin Management UI** - Updated backoffice UI — paginated admin list with filters, edit modal, reset password modal, deactivate/reactivate confirmations (MGMT-01..06)
+ (completed 2026-04-24)
 
 ---
 
@@ -924,12 +925,12 @@ Plans:
 **Depends on:** Phase 34
 **Requirements:** MGMT-01, MGMT-02, MGMT-03, MGMT-04, MGMT-05, MGMT-06, SEC-01, SEC-02, SEC-03, SEC-04, SEC-05, AUD-04, AUD-05, AUD-06
 **Success Criteria** (what must be TRUE):
-  1. GET `/api/admin/administrators` returns a paginated list (20 per page) filterable by name, email, and status — non-admin callers receive 403 (SEC-02)
-  2. PUT `/api/admin/administrators/{id}` updates name and email in Keycloak; attempting to update own account returns 400 (SEC-01); duplicate email returns 409 (SEC-04); audit record written with old and new field values (AUD-04)
-  3. POST `/api/admin/administrators/{id}/reset-password` generates a cryptographically secure 16+ char password via `RandomNumberGenerator`, sets it in Keycloak with `UPDATE_PASSWORD` requiredAction, returns the password once in the response body; attempting to reset own password returns 400 (SEC-01); audit record written with actor and target — password never logged (SEC-03, AUD-05)
-  4. POST `/api/admin/administrators/{id}/deactivate` disables the Keycloak account; attempting to deactivate own account returns 400 (SEC-01); attempting to deactivate the last active admin returns 409 (SEC-05); audit record written with actor, target, and optional reason (AUD-06)
-  5. POST `/api/admin/administrators/{id}/reactivate` re-enables the Keycloak account; attempting to reactivate own account returns 400 (SEC-01); audit record written (AUD-06)
-**Plans:** TBD
+   1. GET `/api/admin/administrators/paginated` returns a paginated list (20 per page) filterable by name, email, and status — non-admin callers receive 403 (SEC-02)
+   2. PUT `/api/admin/administrators/{id}` updates name and email in Keycloak; attempting to update own account returns 400 (SEC-01); duplicate email returns 409 (SEC-04); audit record written with old and new field values (AUD-04)
+   3. POST `/api/admin/administrators/{id}/reset-password` generates a cryptographically secure 16+ char password via `RandomNumberGenerator`, sets it in Keycloak with `UPDATE_PASSWORD` requiredAction, returns the password once in the response body; attempting to reset own password returns 400 (SEC-01); audit record written with actor and target — password never logged (SEC-03, AUD-05)
+   4. POST `/api/admin/administrators/{id}/toggle-status` with `{ activate: false }` disables the Keycloak account; attempting to deactivate own account returns 400 (SEC-01); attempting to deactivate the last active admin returns 400/409 (SEC-05); audit record written with actor, target, and optional reason (AUD-06)
+   5. POST `/api/admin/administrators/{id}/toggle-status` with `{ activate: true }` re-enables the Keycloak account; attempting to reactivate own account returns 400 (SEC-01); audit record written (AUD-06)
+**Plans:** 1/1 plans complete (completed 2026-04-22)
 
 ### Phase 36: Admin Management UI
 **Goal:** Backoffice users can perform all admin management operations through a polished, feedback-rich interface that reflects backend state immediately
@@ -941,7 +942,7 @@ Plans:
   3. A reset password modal asks the actor to confirm the action; after confirmation the new temporary password is displayed in a one-time reveal dialog (cannot be reopened); the action is disabled on the actor's own row (reflecting SEC-01)
   4. Deactivate and reactivate use confirmation dialogs; the actor's own row has these actions disabled (reflecting SEC-01); attempting to deactivate the last active admin shows a clear error message from the API (reflecting SEC-05); the table status badge updates after each action with a toast confirmation
   5. All unauthenticated access to admin management pages triggers the Auth Code Flow redirect established in Phase 33
-**Plans:** TBD
+**Plans:** 4/4 plans complete
 **UI hint**: yes
 
 ---
@@ -950,19 +951,22 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 35. Admin Management Backend | 0/TBD | Not started | — |
-| 36. Admin Management UI | 0/TBD | Not started | — |
+| 35. Admin Management Backend | 1/1 | ✅ Complete | 2026-04-22 |
+| 36. Admin Management UI | 4/4 | ✅ Complete | 2026-04-24 |
 
-### Phase 35: Backoffice Admin Management — Paginação, Filtros, Reset Senha, Edição e Exclusão
-
-**Goal:** [To be planned]
-**Requirements**: TBD
-**Depends on:** Phase 34
-**Plans:** 0 plans
+### Phase 35: Admin Management Backend (completed 2026-04-22)
 
 Plans:
-- [ ] TBD (run /gsd-plan-phase 35 to break down)
+- [x] 35-01-PLAN.md — Paginated GET endpoint, update endpoint, reset-password endpoint, toggle-status endpoint with SEC-01..05 and AUD-04..06
+
+### Phase 36: Admin Management UI (completed 2026-04-24)
+
+Plans:
+- [x] 36-01-PLAN.md — API client functions, adminEditAdministratorSchema, adminId in auth context, AdminStatusFilter options
+- [x] 36-02-PLAN.md — AdminActionsDropdown + AdminAdministratorsTable
+- [x] 36-03-PLAN.md — EditAdminDialog, ResetPasswordDialog, DeactivateAdminDialog, ReactivateAdminDialog
+- [x] 36-04-PLAN.md — AdminAdministratorsPage rewrite with full integration
 
 ---
 
-*Last updated: 2026-04-21 — Milestone v6.0 roadmap created (2 phases)*
+*Last updated: 2026-04-24 — Milestone v6.0 complete (2/2 phases, 5 plans)*

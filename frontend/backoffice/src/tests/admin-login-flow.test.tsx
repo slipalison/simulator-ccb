@@ -93,16 +93,16 @@ describe("Admin Login Flow", () => {
   });
 
   it("redirects to /admin/users if already authenticated", async () => {
-    // Session restoration succeeds
     vi.mocked(adminApi.getAdminMe).mockResolvedValue({
       adminName: "Admin User",
       adminEmail: "admin@onboarding.local",
+      adminId: "admin-user-id",
     });
 
-    const { memoryHistory } = await renderWithRouter(["/admin/login"]);
+    await renderWithRouter(["/admin/login"]);
 
     await waitFor(() => {
-      expect(memoryHistory.location.pathname).toBe("/admin/users");
+      expect(window.location.href).toBe("/admin/users");
     });
   });
 });

@@ -11,6 +11,7 @@ interface AdminAuthValue {
     isLoading: boolean;
     adminName: string | null;
     adminEmail: string | null;
+    adminId: string | null;
   };
   logout: () => void;
   restoreSession: () => Promise<boolean>;
@@ -27,6 +28,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [adminName, setAdminName] = useState<string | null>(null);
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  const [adminId, setAdminId] = useState<string | null>(null);
 
   // Session restoration on mount
   useEffect(() => {
@@ -35,6 +37,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         const me = await getAdminMe();
         setAdminName(me.adminName);
         setAdminEmail(me.adminEmail);
+        setAdminId(me.adminId);
         setIsAuthenticated(true);
       } catch {
         // Session invalid — admin needs to login
@@ -49,6 +52,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   function logout(): void {
     setAdminName(null);
     setAdminEmail(null);
+    setAdminId(null);
     setIsAuthenticated(false);
     logoutAdmin();
   }
@@ -58,11 +62,13 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       const me = await getAdminMe();
       setAdminName(me.adminName);
       setAdminEmail(me.adminEmail);
+      setAdminId(me.adminId);
       setIsAuthenticated(true);
       return true;
     } catch {
       setAdminName(null);
       setAdminEmail(null);
+      setAdminId(null);
       setIsAuthenticated(false);
       return false;
     }
@@ -71,7 +77,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   return (
     <AdminAuthContext.Provider
       value={{
-        admin: { isAuthenticated, isLoading, adminName, adminEmail },
+        admin: { isAuthenticated, isLoading, adminName, adminEmail, adminId },
         logout,
         restoreSession,
       }}

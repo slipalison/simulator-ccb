@@ -18,4 +18,9 @@ public enum ActionType
     UserUnblocked = 11,
     UserDeleted = 12,
     UserUpdated = 13,
+    // Phase 35 — Admin Management
+    AdminEdited = 14,
+    AdminPasswordReset = 15,
+    AdminDisabled = 16,
+    AdminReactivated = 17,
 }

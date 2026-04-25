@@ -71,6 +71,17 @@ public static class ApplicationServiceExtensions
             IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>>,
             GetAdministratorsQueryHandler>();
 
+        // Admin management (Phase 35 — MGMT-01..06, SEC-01..05, AUD-04..06)
+        services.AddScoped<
+            IQueryHandler<GetPaginatedAdministratorsQuery, PaginatedResult<AdminUserDto>>,
+            GetPaginatedAdministratorsQueryHandler>();
+        services.AddScoped<ICommandHandler<UpdateAdministratorCommand, Unit>, UpdateAdministratorCommandHandler>();
+        services.AddScoped<ICommandHandler<ResetAdministratorPasswordCommand, ResetAdministratorPasswordResult>, ResetAdministratorPasswordCommandHandler>();
+        services.AddScoped<ICommandHandler<ToggleAdministratorStatusCommand, Unit>, ToggleAdministratorStatusCommandHandler>();
+        services.AddScoped<IValidator<UpdateAdministratorCommand>, UpdateAdministratorCommandValidator>();
+        services.AddScoped<IValidator<ResetAdministratorPasswordCommand>, ResetAdministratorPasswordCommandValidator>();
+        services.AddScoped<IValidator<ToggleAdministratorStatusCommand>, ToggleAdministratorStatusCommandValidator>();
+
         return services;
     }
 }

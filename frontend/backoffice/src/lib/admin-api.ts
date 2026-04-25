@@ -8,6 +8,7 @@
 export interface AdminSessionResponse {
   adminName: string;
   adminEmail: string;
+  adminId: string;
 }
 
 export class AdminLoginError extends Error {
@@ -68,7 +69,7 @@ export async function getAdminMe(): Promise<AdminSessionResponse> {
     if (!data.isAuthenticated) {
       throw new AdminApiError("Session invalid");
     }
-    return { adminName: data.adminName, adminEmail: data.email };
+    return { adminName: data.adminName, adminEmail: data.email, adminId: data.sub };
   }
 
   throw new AdminApiError("Session invalid");
@@ -416,4 +417,120 @@ export async function getAdministrators(): Promise<AdminUserDto[]> {
     throw new AdminApiError("Falha ao carregar administradores.");
   }
   return response.json() as Promise<AdminUserDto[]>;
+}
+
+// ---------------------------------------------------------------------------
+// Admin Administrators — Phase 36 (Milestone v6.0) — MGMT-01..06
+// ---------------------------------------------------------------------------
+
+export interface GetAdministratorsPaginatedParams {
+  page?: number;
+  pageSize?: number;
+  name?: string;
+  email?: string;
+  status?: string;
+}
+
+export interface ResetAdministratorPasswordResult {
+  temporaryPassword: string;
+}
+
+export async function getAdministratorsPaginated(
+  params: GetAdministratorsPaginatedParams = {}
+): Promise<PaginatedResult<AdminUserDto>> {
+  const searchParams = new URLSearchParams();
+  if (params.page) searchParams.set("page", String(params.page));
+  if (params.pageSize) searchParams.set("pageSize", String(params.pageSize));
+  if (params.name) searchParams.set("name", params.name);
+  if (params.email) searchParams.set("email", params.email);
+  if (params.status) searchParams.set("status", params.status);
+
+  const queryString = searchParams.toString();
+  const url = queryString
+    ? `/api/admin/administrators/paginated?${queryString}`
+    : "/api/admin/administrators/paginated";
+
+  const response = await fetchWithAuth(url, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new AdminApiError("Falha ao carregar administradores.", response.status);
+  }
+
+  return response.json() as Promise<PaginatedResult<AdminUserDto>>;
+}
+
+export async function updateAdministrator(
+  adminId: string,
+  data: { fullName: string; email: string }
+): Promise<void> {
+  const response = await fetchWithAuth(`/api/admin/administrators/${adminId}`, {
+    ..._adminFetchOptions("PUT", JSON.stringify({ fullName: data.fullName, email: data.email })),
+  });
+
+  if (response.status === 400) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Operação não permitida.", 400);
+  }
+
+  if (response.status === 409) {
+    throw new AdminApiError("Email já está em uso.", 409);
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Falha ao atualizar administrador.", response.status);
+  }
+}
+
+export async function resetAdministratorPassword(
+  adminId: string,
+  targetUserName: string
+): Promise<ResetAdministratorPasswordResult> {
+  const response = await fetchWithAuth(`/api/admin/administrators/${adminId}/reset-password`, {
+    ..._adminFetchOptions("POST", JSON.stringify({ targetUserName })),
+  });
+
+  if (response.status === 400) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Operação não permitida.", 400);
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Falha ao resetar senha.", response.status);
+  }
+
+  return response.json() as Promise<ResetAdministratorPasswordResult>;
+}
+
+export async function toggleAdministratorStatus(
+  adminId: string,
+  targetUserName: string,
+  activate: boolean,
+  reason?: string
+): Promise<void> {
+  const response = await fetchWithAuth(`/api/admin/administrators/${adminId}/toggle-status`, {
+    ..._adminFetchOptions(
+      "POST",
+      JSON.stringify({ activate, targetUserName, reason: reason ?? null })
+    ),
+  });
+
+  if (response.status === 400) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Operação não permitida.", 400);
+  }
+
+  if (response.status === 409) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Não é possível desativar o último administrador ativo.", 409);
+  }
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new AdminApiError(body.detail || "Falha ao alterar status.", response.status);
+  }
 }

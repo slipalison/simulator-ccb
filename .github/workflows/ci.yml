@@ -529,6 +529,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+
+      - name: Install dependencies for Trivy scan
+        env:
+          HUSKY: 0
+        run: npm ci
+
       - name: Run Trivy filesystem scan
         id: trivy
         uses: aquasecurity/trivy-action@v0.36.0

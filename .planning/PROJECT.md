@@ -2,11 +2,11 @@
 
 ## What This Is
 
-Sistema de onboarding para cadastro de clientes Pessoa Física (PF) e Pessoa Jurídica (PJ). O usuário se cadastra com dados básicos e senha, é direcionado ao login, e após autenticação visualiza seus dados cadastrais em modo leitura. A segurança é prioridade — Keycloak hardened, infraestrutura containerizada.
+Sistema de onboarding para cadastro exclusivo de Pessoas Jurídicas (PJ). O PJ é o usuário principal que gerencia funcionários (PF) da sua empresa — cadastra, bloqueia, reseta senha e define permissões. Isolamento total entre empresas: PJ não vê/edita funcionários de outra PJ. BackOffice mantém poder de auditoria e suporte global. Segurança é prioridade — Keycloak hardened, permissões via roles/groups nativos.
 
 ## Core Value
 
-Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
+Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — isolamento entre empresas é requisito de primeira classe. Se a segurança falhar, nada mais importa.
 
 ## Previous Milestone: v3.0 Painel de Backoffice Admin ✅ COMPLETE
 
@@ -50,19 +50,29 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 **Result:** 100% complete — 6/6 phases (29–34). Dois realms isolados (backoffice/client), auth PKCE funcionando, audit log operacional.
 
-## Current Milestone: v6.0 Gestão Completa de Administradores
+## Previous Milestone: v6.0 Gestão Completa de Administradores ✅ COMPLETE
 
 **Goal:** Admin pode gerenciar outros admins com operações completas — listar com paginação/filtros, editar, resetar senha e desativar/reativar — com segurança e auditoria obrigatórias em cada operação.
 
-**Target features:**
-- Listagem paginada de admins com filtros (nome, email, status)
-- Editar admin (nome + email — atualiza no Keycloak)
-- Resetar senha (gera nova senha temporária exibida uma vez, Keycloak força troca)
-- Desativar/reativar admin (disable/enable no Keycloak — preserva histórico de auditoria)
-- Todas as ações auditadas via IAuditService existente
-- Segurança: admin não pode operar sobre si mesmo; último admin ativo não pode ser desativado
+**Result:** 100% complete — 2/2 phases, 5/5 plans.
 
-**Depends on**: Milestone v5.0 completo (Auth Code Flow + Admins + Auditoria)
+## Current Milestone: v7.0 PJ-Only Onboarding + Gestão de Funcionários
+
+**Goal:** Transformar cadastro misto PF/PJ em PJ-only, onde PJ é usuário principal que gerencia funcionários PF com grupos de acesso, aceite de termos e auditoria completa.
+
+**Target features:**
+- Cadastro exclusivamente PJ (PF removido do fluxo — base zerada)
+- PJ cadastra funcionários PF vinculados à sua empresa
+- PJ gerencia funcionários: cadastrar, bloquear, resetar senha
+- Grupos de acesso via Keycloak nativo: Admin Empresa, Viewer, Dashboard
+- Isolamento crítico: PJ não vê/edita funcionários de outra PJ
+- Aceite de termos de uso obrigatório (texto mock)
+- Auditoria de ações dos funcionários visível ao admin (PJ ou Admin Empresa)
+- Dashboard mock com dados estáticos
+- CI com 80% cobertura no GitHub Actions
+- Reflete em API, frontend Client e frontend BackOffice
+
+**Depends on**: Milestone v6.0 completo (Gestão Completa de Administradores)
 
 ## Requirements
 
@@ -75,25 +85,29 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 ### Active
 
-- [ ] Frontend client migrado de ROPC para Authorization Code Flow + PKCE (public client)
-- [ ] Frontend backoffice migrado de ROPC para Authorization Code Flow (confidential client)
-- [ ] Keycloak realm configurado com redirect URIs para Auth Code Flow em ambos os clientes
-- [ ] Backend endpoints de ROPC (login, refresh) substituídos ou adaptados para Auth Code Flow
-- [ ] Forced password change no primeiro login via Keycloak requiredActions (funciona nativamente com Auth Code Flow)
-- [ ] Admin autenticado pode criar novos administradores no backoffice
-- [ ] Sistema gera senha temporária para novos admins (Keycloak força troca via requiredActions)
-- [ ] Novos admins recebem role "admin" no Keycloak automaticamente
-- [ ] Auditoria de ações administrativas (criação de admin, bloqueio, exclusão, edição de usuários)
-- [ ] Log de auditoria visível no portal de backoffice com filtros por data, tipo e ator
+- [ ] Cadastro exclusivamente PJ — remoção completa do fluxo PF
+- [ ] PJ é usuário principal que gerencia funcionários da sua empresa
+- [ ] PJ cadastra funcionários PF vinculados à sua empresa
+- [ ] PJ bloqueia/desbloqueia funcionários
+- [ ] PJ reseta senha de funcionários
+- [ ] Grupos de acesso: Admin Empresa, Viewer, Dashboard (via Keycloak roles/groups)
+- [ ] Isolamento entre empresas — PJ não vê/edita dados de outra PJ
+- [ ] Aceite de termos de uso obrigatório no cadastro (texto mock)
+- [ ] Auditoria de ações dos funcionários visível ao admin
+- [ ] Dashboard mock com dados estáticos
+- [ ] CI GitHub Actions com 80% cobertura
+- [ ] BackOffice mantém poder de auditar/suportar qualquer empresa
 
 ### Out of Scope
 
 - Validação de email no cadastro — não necessário no v1
 - OAuth social login (Google, GitHub, etc.) — complexidade adicional sem valor para v1
-- Edição de dados cadastrais pelo usuário final — v1 é somente leitura
 - Mobile app — web-first
 - Notificações push/email — sem necessidade no v1
-- Migração de ROPC para Auth Code + PKCE — implementado em v5.0
+- Bit Flags no JWT — Keycloak nativo (roles/groups) é a abordagem escolhida
+- Dashboard real com dados dinâmicos — mock estático por enquanto
+- Impersonação de funcionários por PJ — fora do escopo de segurança
+- 2FA obrigatório para funcionários — requer configuração de realm separada
 
 ## Context
 
@@ -108,13 +122,14 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 ### Fluxo Principal
 
-1. Usuário acessa tela de cadastro → escolhe PF ou PJ
-2. Preenche dados básicos + senha
-3. API C# valida dados, persiste no PostgreSQL, cria user no Keycloak via Admin API
-4. Redirecionamento para tela de login
-5. Usuário faz login (tela custom → autenticação Keycloak)
-6. Token JWT retornado → redirecionamento para tela de perfil
-7. Tela de perfil exibe dados cadastrais (read-only)
+1. PJ acessa tela de cadastro → preenche dados da empresa + senha + aceita termos de uso
+2. API C# valida dados, persiste no PostgreSQL, cria user no Keycloak via Admin API
+3. Redirecionamento para tela de login
+4. PJ faz login → Token JWT retornado → redirecionamento para Dashboard
+5. PJ pode cadastrar funcionários PF para sua empresa
+6. PJ pode gerenciar funcionários: bloquear, resetar senha, editar permissões
+7. Funcionário PF faz login → vê apenas suas telas conforme permissões
+8. Admin da empresa + PJ dono podem auditar ações dos funcionários
 
 ### Segurança — Prioridade
 
@@ -142,7 +157,9 @@ O login usa tela custom no React autenticando via Keycloak (Resource Owner Passw
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Login custom (ROPC Grant) | Usuário quer controle total da UI de login | ✓ Migrado para Auth Code Flow + PKCE em v5.0 |
+| Keycloak nativo (roles/groups) para permissões | Bit Flags no JWT rejeitado — Keycloak já suporta roles/groups nativo, sem custom mapper | — Pending |
+| Cadastro PJ-only | Remoção completa do fluxo PF — base zerada via docker compose down -v | — Pending |
+| Grupos de acesso: Admin Empresa, Viewer, Dashboard | Admin Empresa = mesmos poderes PJ; Viewer = ver sem editar; Dashboard = acesso ao dashboard | — Pending |
 | Formulário de cadastro custom | Cadastro via Admin API do Keycloak — maior controle do fluxo | — Pending |
 | Sem validação de email no v1 | Simplificar fluxo inicial — cadastrou, já pode logar | — Pending |
 | Atomic Design no frontend | Facilitar mudanças futuras de layout com componentes reutilizáveis | — Pending |
@@ -169,4 +186,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-16 — Phase 33 complete: client app migrado ROPC→ACF+PKCE, Vinxi auth-server.ts, 2 custom Keycloak themes (onboarding-client + onboarding-backoffice). Milestone v5.0 completo. 279 testes passando. 4 achados críticos no code review aguardando fix.*
+*Last updated: 2026-04-25 — Milestone v7.0 started: PJ-Only Onboarding + Gestão de Funcionários*

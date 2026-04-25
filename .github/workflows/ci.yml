@@ -717,9 +717,10 @@ jobs:
 
       - name: Install Dockle
         run: |
-          # Get latest version from GitHub API
-          DOCKLE_VERSION=$(curl -s "https://api.github.com/repos/goodwithtech/dockle/releases/latest" | grep '"tag_name"' | sed 's/.*"v\(.*\)".*/\1/')
-          curl -sL "https://github.com/goodwithtech/dockle/releases/download/v${DOCKLE_VERSION}/dockle_${DOCKLE_VERSION}_Linux-64bit.tar.gz" | tar xz -C /usr/local/bin dockle
+          DOCKLE_VERSION="0.4.15"
+          curl -sL -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://github.com/goodwithtech/dockle/releases/download/v${DOCKLE_VERSION}/dockle_${DOCKLE_VERSION}_Linux-64bit.tar.gz" \
+            | tar xz -C /usr/local/bin dockle
 
       - name: Run Dockle Scan
         id: dockle

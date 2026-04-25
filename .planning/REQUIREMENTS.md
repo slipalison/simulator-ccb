@@ -93,33 +93,33 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| REG-01 | Phase TBD | Pending |
-| REG-02 | Phase TBD | Pending |
-| REG-03 | Phase TBD | Pending |
-| REG-04 | Phase TBD | Pending |
-| REG-05 | Phase TBD | Pending |
-| MGMT-01 | Phase TBD | Pending |
-| MGMT-02 | Phase TBD | Pending |
-| MGMT-03 | Phase TBD | Pending |
-| MGMT-04 | Phase TBD | Pending |
-| MGMT-05 | Phase TBD | Pending |
-| PERM-01 | Phase TBD | Pending |
-| PERM-02 | Phase TBD | Pending |
-| PERM-03 | Phase TBD | Pending |
-| PERM-04 | Phase TBD | Pending |
-| PERM-05 | Phase TBD | Pending |
-| AUD-01 | Phase TBD | Pending |
-| AUD-02 | Phase TBD | Pending |
-| DASH-01 | Phase TBD | Pending |
-| ADM-01 | Phase TBD | Pending |
-| ADM-02 | Phase TBD | Pending |
-| CI-01 | Phase TBD | Pending |
+| REG-01 | Phase 38 | Pending |
+| REG-02 | Phase 37 | Pending |
+| REG-03 | Phase 38 | Pending |
+| REG-04 | Phase 37 | Pending |
+| REG-05 | Phase 37 | Pending |
+| MGMT-01 | Phase 38 | Pending |
+| MGMT-02 | Phase 38 | Pending |
+| MGMT-03 | Phase 38 | Pending |
+| MGMT-04 | Phase 38 | Pending |
+| MGMT-05 | Phase 38 | Pending |
+| PERM-01 | Phase 39 | Pending |
+| PERM-02 | Phase 39 | Pending |
+| PERM-03 | Phase 39 | Pending |
+| PERM-04 | Phase 39 | Pending |
+| PERM-05 | Phase 39 | Pending |
+| AUD-01 | Phase 41 | Pending |
+| AUD-02 | Phase 41 | Pending |
+| DASH-01 | Phase 40 | Pending |
+| ADM-01 | Phase 41 | Pending |
+| ADM-02 | Phase 41 | Pending |
+| CI-01 | Phase 42 | Pending |
 
 **Coverage:**
 - v7.0 requirements: 21 total
-- Mapped to phases: 0 (defined during roadmap)
-- Unmapped: 21 ⚠️
+- Mapped to phases: 21
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-25*
-*Last updated: 2026-04-25 after milestone v7.0 requirements definition*
+*Last updated: 2026-04-25 after milestone v7.0 roadmap creation*

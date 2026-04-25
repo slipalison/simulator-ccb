@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: PJ-Only Onboarding + Gestão de Funcionários
-status: defining_requirements
-stopped_at: Requirements definition in progress
-last_updated: "2026-04-25T00:00:00.000Z"
+status: planned
+stopped_at: Milestone v7.0 roadmap created — ready for planning
+last_updated: "2026-04-25T12:00:00.000Z"
 last_activity: 2026-04-25
 progress:
-  total_phases: 36
+  total_phases: 42
   completed_phases: 36
-  total_plans: 81
+  total_plans: 85
   completed_plans: 81
-  percent: 100
+  percent: 95
 ---
 
 # Project State
@@ -26,10 +26,10 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 37 (Not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-25 — Milestone v7.0 started
+Status: Roadmap created — ready for Phase 37 planning
+Last activity: 2026-04-25
 
 ## Milestone Breakdown
 
@@ -39,6 +39,18 @@ Last activity: 2026-04-25 — Milestone v7.0 started
 **Milestone v4.0 — CI/CD Pipeline + Cybersecurity:** ✅ COMPLETE (8/8 phases, 20/20 plans)
 **Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** ✅ COMPLETE (6/6 phases)
 **Milestone v6.0 — Gestão Completa de Administradores:** ✅ COMPLETE (2/2 phases)
+**Milestone v7.0 — PJ-Only Onboarding + Gestão de Funcionários:** 📋 Planned (Phases 37-42)
+
+## Milestone v7.0 Phase Breakdown
+
+| Phase | Name | Requirements | Status |
+|-------|------|--------------|--------|
+| 37 | Domain Model Redesign | REG-02, REG-04, REG-05 | 📋 Planned |
+| 38 | Employee Registration & Management API | REG-01, REG-03, MGMT-01..05 | 📋 Planned |
+| 39 | Keycloak Groups & Permissions | PERM-01..05 | 📋 Planned |
+| 40 | Client Frontend — PJ Registration & Employee Management | DASH-01 | 📋 Planned |
+| 41 | BackOffice Employee Management + Audit | ADM-01, ADM-02, AUD-01, AUD-02 | 📋 Planned |
+| 42 | CI Coverage Enforcement | CI-01 | 📋 Planned |
 
 ## Accumulated Context
 

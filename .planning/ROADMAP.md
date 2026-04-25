@@ -969,4 +969,150 @@ Plans:
 
 ---
 
-*Last updated: 2026-04-24 — Milestone v6.0 complete (2/2 phases, 5 plans)*
+## Milestone v7.0 — PJ-Only Onboarding + Gestão de Funcionários (Phases 37-42)
+
+**Goal:** Transformar cadastro misto PF/PJ em PJ-only, onde PJ é usuário principal que gerencia funcionários PF com grupos de acesso via Keycloak, aceite de termos, auditoria e dashboard mock. Isolamento entre empresas é requisito CRÍTICO.
+
+**⚠️ ARQUITETURA — MUDANÇA DE DOMÍNIO:**
+> O aggregate `Client` (PF/PJ) é substituído por `Company` (PJ) + `Employee` (PF).
+> Base de dados zerada via `docker compose down -v`. New EF Core migration cria schemas novos.
+> Keycloak groups/roles nativos para permissões (admin-empresa, viewer, dashboard).
+> Isolamento entre empresas via `CompanyId` FK + EF Core global query filter.
+
+**Key decisions:**
+- Permissões via Keycloak groups nativos (NÃO Bit Flags no JWT) — sem custom mapper
+- Isolamento entre empresas: EF Core global query filter (`HasQueryFilter(e => e.CompanyId == currentCompanyId)`) + defense-in-depth application-level checks
+- Cadastro PJ-only: fluxo PF removido do frontend e API
+- Aceite de termos: texto mock com timestamp + versão no registro
+- Dashboard: dados estáticos/mock, sem dados reais
+- Base zerada: `docker compose down -v` — migration limpa cria tudo do zero
+
+**Depends on:** Milestone v6.0 completo (Phase 36)
+
+**Phase order rationale:** 37 (domain redesign foundation) → 38 (employee management API — needs new domain) → 39 (Keycloak groups & isolation — needs API endpoints) → 40 (client frontend — needs backend + permissions) → 41 (backoffice + audit — needs employee data) → 42 (CI coverage — needs all code complete).
+
+### Phases
+
+- [ ] **Phase 37: Domain Model Redesign** - Company + Employee aggregates, TermsAcceptance value object, remove PF flow. New EF Core migration. Base zerada. (REG-02, REG-04, REG-05)
+- [ ] **Phase 38: Employee Registration & Management API** - PJ registration endpoint, employee CRUD API, company isolation via global query filter. (REG-01, REG-03, MGMT-01..05)
+- [ ] **Phase 39: Keycloak Groups & Permissions** - Configure Keycloak groups (admin-empresa, viewer, dashboard), JWT claims mapping, backend permission enforcement, company isolation checks. (PERM-01..05)
+- [ ] **Phase 40: Client Frontend — PJ Registration & Employee Management** - PJ registration form with terms acceptance, employee list/block/reset/edit/delete, remove PF flow from frontend, dashboard mock. (DASH-01)
+- [ ] **Phase 41: BackOffice Employee Management + Audit** - BackOffice views employees from any company, force reset/block. Extend audit log for employee actions. (ADM-01, ADM-02, AUD-01, AUD-02)
+- [ ] **Phase 42: CI Coverage Enforcement** - GitHub Actions with 80% test coverage enforcement for backend (.NET) and frontend (React/Vinxi). (CI-01)
+
+---
+
+### Phase 37: Domain Model Redesign
+**Goal:** Novos aggregates Company (PJ) e Employee (PF) substituem Client. TermsAcceptance value object. Remoção completa do fluxo PF. Migration limpa cria tudo do zero.
+**Depends on:** Phase 36
+**Requirements:** REG-02, REG-04, REG-05
+**Success Criteria** (what must be TRUE):
+  1. `Company` aggregate existe com propriedades: CNPJ, RazãoSocial, Email, Telefone, KeycloakUserId, TermsAcceptance — CNPJ é value object com validação de check-digit
+  2. `Employee` aggregate existe com propriedades: CPF, Nome, Email, Telefone, CompanyId (FK para Company), KeycloakUserId, AccessGroup — CPF é value object com validação
+  3. `TermsAcceptance` value object existe com propriedades: AcceptedAt, TermsVersion, IpAddress — aceitar termos é obrigatório no registro PJ
+  4. Fluxo PF completamente removido: `RegisterPessoaFisica` factory method, `PersonType.PF` enum value, rotas `/registration?tipo=pf` — nenhum vestígio no código ou nas rotas
+  5. Nova EF Core migration cria tabela `companies` e `employees` e remove tabela `clients` — `docker compose down -v && docker compose up` sobe tudo limpo
+  6. Isolamento entre empresas: `CompanyConfiguration` e `EmployeeConfiguration` com `HasQueryFilter` filtrando por `CompanyId` — nenhum employee de outra empresa é acessível
+  7. Todos os testes unitários do domain passando (Company, Employee, Cnpj, Cpf, TermsAcceptance, EmployeeAccessGroup)
+**Plans:** TBD
+
+### Phase 38: Employee Registration & Management API
+**Goal:** Backend endpoints para registro PJ, cadastro de funcionários e CRUD completo de funcionários — tudo com isolamento obrigatório por empresa.
+**Depends on:** Phase 37
+**Requirements:** REG-01, REG-03, MGMT-01, MGMT-02, MGMT-03, MGMT-04, MGMT-05
+**Success Criteria** (what must be TRUE):
+  1. POST `/api/companies/registration` registra PJ com CNPJ, razão social, email, telefone, senha + aceite de termos — CNPJ duplicado retorna 409 (REG-01, REG-02)
+  2. POST `/api/companies/{companyId}/employees` cadastra funcionário PF vinculado à empresa — gera senha temporária, Keycloak user criado no realm `client` com group `viewer` padrão (REG-03)
+  3. GET `/api/companies/{companyId}/employees` retorna lista paginada de funcionários (20/página) com filtros por nome e status — escopo obrigatório por companyId (MGMT-01)
+  4. POST `/api/companies/{companyId}/employees/{id}/toggle-status` bloqueia/desbloqueia funcionário no Keycloak — preserva dados para auditoria (MGMT-02)
+  5. POST `/api/companies/{companyId}/employees/{id}/reset-password` gera senha temporária exibida uma vez — Keycloak força troca via `UPDATE_PASSWORD` requiredAction (MGMT-03)
+  6. PUT `/api/companies/{companyId}/employees/{id}` edita dados do funcionário (nome, email, telefone) — persiste no Keycloak (MGMT-04)
+  7. DELETE `/api/companies/{companyId}/employees/{id}` realiza exclusão LGPD — anonimiza dados no PostgreSQL + delete no Keycloak (MGMT-05)
+  8. Nenhum endpoint retorna dados de funcionários de outra empresa — company isolation enforced em todos os queries (PERM-05 backend preview)
+**Plans:** TBD
+
+### Phase 39: Keycloak Groups & Permissions
+**Goal:** Keycloak groups configurados (admin-empresa, viewer, dashboard). Backend lê groups do JWT e aplica permissões. Isolamento entre empresas enforced no backend.
+**Depends on:** Phase 38
+**Requirements:** PERM-01, PERM-02, PERM-03, PERM-04, PERM-05
+**Success Criteria** (what must be TRUE):
+  1. Keycloak realm `client` tem groups `admin-empresa`, `viewer`, `dashboard` — funcionários recebem `viewer` por padrão no cadastro (PERM-01, PERM-02, PERM-03)
+  2. Backend lê groups do JWT claims e aplica autorização: `admin-empresa` pode gerenciar funcionários e ver audit; `viewer` pode apenas visualizar dados; `dashboard` pode acessar dashboard (PERM-01, PERM-02, PERM-03)
+  3. PJ pode atribuir/remover groups de funcionários via PUT `/api/companies/{companyId}/employees/{id}/access-group` — apenas groups permitidos: admin-empresa, viewer, dashboard (PERM-04)
+  4. Funcionário com `admin-empresa` tem mesmos poderes de gestão do PJ dono (visualizar, editar, bloquear, resetar, excluir funcionários + ver audit) (PERM-01)
+  5. Company isolation: EF Core global query filter garante que employee queries NUNCA retornam dados de outra empresa — defense-in-depth check no service layer também (PERM-05)
+  6. JWT do Keycloak inclui claims de grupos em `realm_access.roles` ou `groups` — backend mapeia para permissões via `ClaimsPrincipal`
+**Plans:** TBD
+
+### Phase 40: Client Frontend — PJ Registration & Employee Management
+**Goal:** Frontend client redesenhado para cadastro PJ-only com gestão de funcionários. Dashboard mock com dados estáticos. Remoção completa do fluxo PF.
+**Depends on:** Phase 39
+**Requirements:** DASH-01
+**Success Criteria** (what must be TRUE):
+  1. Tela de cadastro mostra apenas formulário PJ (razão social, CNPJ, email, telefone, senha) com checkbox obrigatório de aceite de termos — nenhum seletor PF/PJ existe (REG-01 frontend, REG-05 frontend)
+  2. Após cadastro PJ e login, tela de gestão de funcionários mostra lista paginada com nome, email, status e ações (bloquear, resetar senha, editar, excluir) (MGMT-01..05 frontend)
+  3. PJ pode atribuir/remover grupos de acesso de funcionários com dropdown (admin-empresa, viewer, dashboard) — mudança reflete no Keycloak em tempo real (PERM-04 frontend)
+  4. Tela de dashboard mostra dados estáticos mock: total funcionários ativos/inativos, logins recentes, ações por período (DASH-01)
+  5. Funcionário com role `admin-empresa` vê mesmas telas de gestão que o PJ dono — `viewer` vê dados em modo leitura sem botões de ação
+  6. Nenhuma rota de cadastro PF existe no frontend — `/registration?tipo=pf` retorna 404 ou redireciona para cadastro PJ
+  7. Login de funcionário redireciona para telas baseadas no group: `admin-empresa` → management, `viewer` → read-only employee list, `dashboard` → dashboard
+**Plans:** TBD
+**UI hint**: yes
+
+### Phase 41: BackOffice Employee Management + Audit
+**Goal:** BackOffice pode visualizar funcionários de qualquer empresa, auditar ações e dar suporte. Audit log estendido para ações de funcionários.
+**Depends on:** Phase 39
+**Requirements:** ADM-01, ADM-02, AUD-01, AUD-02
+**Success Criteria** (what must be TRUE):
+  1. GET `/api/admin/employees` retorna lista paginada de funcionários de TODAS as empresas com filtros (empresa, nome, status) — admin backoffice ignora company isolation (ADM-01)
+  2. POST `/api/admin/employees/{id}/reset-password` força reset de senha de qualquer funcionário de qualquer empresa (ADM-02)
+  3. POST `/api/admin/employees/{id}/toggle-status` bloqueia/desbloqueia qualquer funcionário de qualquer empresa (ADM-02)
+  4. PJ e Admin Empresa podem visualizar audit log dos seus funcionários com filtros (data, tipo de ação, ator) — log é escopo por companyId do PJ logado (AUD-01)
+  5. Todas as ações de funcionários (login, edição, bloqueio, reset senha) são registradas automaticamente no audit log existente — append-only, sem UPDATE ou DELETE (AUD-02)
+  6. AuditLog estendido com campos: `CompanyId`, `TargetEmployeeId`, `ActionType` (valores novos: EMPLOYEE_LOGIN, EMPLOYEE_EDIT, EMPLOYEE_BLOCK, EMPLOYEE_UNBLOCK, EMPLOYEE_PASSWORD_RESET, EMPLOYEE_DELETE, ACCESS_GROUP_CHANGE)
+**Plans:** TBD
+**UI hint**: yes
+
+### Phase 42: CI Coverage Enforcement
+**Goal:** GitHub Actions pipeline com cobertura de testes >= 80% no backend (.NET) e frontend (React/Vinxi).
+**Depends on:** Phase 40, Phase 41
+**Requirements:** CI-01
+**Success Criteria** (what must be TRUE):
+  1. GitHub Actions workflow roda em push para main e em PRs com 3 jobs paralelos: `backend` (.NET build + test + coverage), `frontend-client` (build + lint + type check), `frontend-backoffice` (build + lint + type check)
+  2. Backend job falha se cobertura < 80% (`dotnet test /p:CollectCoverage=true /p:ThresholdType=line /p:Threshold=80`)
+  3. Frontend jobs falham se `eslint --max-warnings 0` ou `tsc --noEmit` falharem
+  4. Coverage report gerado em formato cobertura ou lcov para backend; jest coverage para frontends
+  5. Workflow usa cache: `~/.nuget/packages` para .NET, `node_modules/.cache` para frontends
+**Plans:** TBD
+
+---
+
+## Milestone v7.0 — Progress
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 37. Domain Model Redesign | 0/TBD | 📋 Planned | — |
+| 38. Employee Registration & Management API | 0/TBD | 📋 Planned | — |
+| 39. Keycloak Groups & Permissions | 0/TBD | 📋 Planned | — |
+| 40. Client Frontend — PJ Registration & Employee Management | 0/TBD | 📋 Planned | — |
+| 41. BackOffice Employee Management + Audit | 0/TBD | 📋 Planned | — |
+| 42. CI Coverage Enforcement | 0/TBD | 📋 Planned | — |
+
+---
+
+## Milestone Summary
+
+| Milestone | Phases | Plans | Status | Requirements |
+|-----------|--------|-------|--------|--------------|
+| **v1.0** Foundation | 1-10 | 30 | ✅ Complete | 35 requirements |
+| **v2.0** UX/UI + Production | 11-15 | 7+ | ✅ Complete | 14 requirements |
+| **v3.0** Admin Backoffice | 16-20 | 13 | ✅ Complete | 22 requirements |
+| **v4.0** CI/CD + Security | 21-28 | 20 | ✅ Complete | 25 requirements |
+| **v5.0** Auth Code Flow + Admins + Audit | 29-34 | TBD | ✅ Complete | 11 requirements |
+| **v6.0** Gestão Completa de Administradores | 35-36 | 5 | ✅ Complete | 14 requirements |
+| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-42 | TBD | 📋 Planned | 21 requirements |
+| **Total** | **42 phases** | **110+ plans** | **6 milestones done** | **142 requirements** |
+
+---
+
+*Last updated: 2026-04-25 — Milestone v7.0 roadmap created (6 phases, 21 requirements)*

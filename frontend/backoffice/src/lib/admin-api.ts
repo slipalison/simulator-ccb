@@ -20,10 +20,12 @@ export class AdminLoginError extends Error {
 
 export class AdminApiError extends Error {
   public status?: number;
-  constructor(message: string, status?: number) {
+  public code?: string;
+  constructor(message: string, status?: number, code?: string) {
     super(message);
     this.name = "AdminApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -519,14 +521,17 @@ export async function toggleAdministratorStatus(
     ),
   });
 
-  if (response.status === 400) {
+  if (response.status === 400 || response.status === 409) {
     const body = await response.json().catch(() => ({}));
-    throw new AdminApiError(body.detail || "Operação não permitida.", 400);
-  }
-
-  if (response.status === 409) {
-    const body = await response.json().catch(() => ({}));
-    throw new AdminApiError(body.detail || "Não é possível desativar o último administrador ativo.", 409);
+    const detail = body.detail || "";
+    const code = body.type || "";
+    let message = body.detail || "Operação não permitida.";
+    if (code.includes("LAST_ADMIN") || detail.toLowerCase().includes("último administrador") || detail.toLowerCase().includes("last admin")) {
+      message = "Não é possível desativar o último administrador ativo.";
+    } else if (code.includes("SELF_ACTION") || detail.toLowerCase().includes("própria conta") || detail.toLowerCase().includes("self")) {
+      message = "Operação não permitida na própria conta.";
+    }
+    throw new AdminApiError(message, response.status, code);
   }
 
   if (!response.ok) {

@@ -39,6 +39,7 @@ export function AdminAdministratorsPage() {
   const [isError, setIsError] = useState(false);
 
   const [dialog, setDialog] = useState<DialogState>({ type: "none" });
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   useEffect(() => {
     setPage(1);
@@ -72,6 +73,7 @@ export function AdminAdministratorsPage() {
   };
 
   const handleOpenResetPassword = async (admin: AdminUserDto) => {
+    setIsResettingPassword(true);
     try {
       const result = await resetAdministratorPassword(admin.id, admin.fullName);
       toast.success("Senha temporária gerada.");
@@ -81,6 +83,8 @@ export function AdminAdministratorsPage() {
       toast.error("Falha ao resetar senha", {
         description: status === 400 ? "Operação não permitida." : "Tente novamente.",
       });
+    } finally {
+      setIsResettingPassword(false);
     }
   };
 
@@ -122,12 +126,23 @@ export function AdminAdministratorsPage() {
         false
       );
       toast.success("Administrador desativado.");
-      fetchAdmins();
+      await fetchAdmins();
+      setResult((prev) => {
+        if (prev && prev.items.length === 1 && page > 1) {
+          setPage((p) => p - 1);
+        }
+        return prev;
+      });
     } catch (err) {
       const apiErr = err instanceof AdminApiError ? err : null;
-      if (apiErr?.status === 400 || apiErr?.status === 409) {
+      const isLastAdmin = apiErr?.message?.toLowerCase().includes("último administrador") || apiErr?.code?.includes("LAST_ADMIN");
+      if (isLastAdmin) {
         toast.error("Não é possível desativar.", {
           description: "Deve existir ao menos um administrador ativo.",
+        });
+      } else if (apiErr?.status === 400) {
+        toast.error("Operação não permitida.", {
+          description: "Você não pode desativar a própria conta.",
         });
       } else {
         toast.error("Falha ao desativar administrador", { description: "Tente novamente." });
@@ -213,6 +228,7 @@ export function AdminAdministratorsPage() {
             onResetPassword={handleOpenResetPassword}
             onDeactivate={handleOpenDeactivate}
             onReactivate={handleOpenReactivate}
+            resettingPasswordId={isResettingPassword ? "active" : undefined}
           />
         </CardContent>
       </Card>

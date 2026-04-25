@@ -12,6 +12,7 @@ interface AdminAdministratorsTableProps {
   onResetPassword: (admin: AdminUserDto) => void;
   onDeactivate: (admin: AdminUserDto) => void;
   onReactivate: (admin: AdminUserDto) => void;
+  resettingPasswordId?: string;
 }
 
 const SKELETON_ROWS = 5;
@@ -25,6 +26,7 @@ export function AdminAdministratorsTable({
   onResetPassword,
   onDeactivate,
   onReactivate,
+  resettingPasswordId,
 }: AdminAdministratorsTableProps) {
   if (isLoading && !result) {
     return (
@@ -154,6 +156,7 @@ export function AdminAdministratorsTable({
                   onResetPassword={onResetPassword}
                   onDeactivate={onDeactivate}
                   onReactivate={onReactivate}
+                  isResettingPassword={resettingPasswordId !== undefined}
                 />
               </td>
             </tr>

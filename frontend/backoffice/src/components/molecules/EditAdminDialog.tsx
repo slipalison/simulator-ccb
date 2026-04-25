@@ -81,6 +81,7 @@ export function EditAdminDialog({ open, admin, onClose, onSave }: EditAdminDialo
               {...register("fullName")}
               placeholder="Nome completo"
               disabled={isSubmitting}
+              autoFocus
               data-testid="edit-fullname-input"
             />
             {errors.fullName && (

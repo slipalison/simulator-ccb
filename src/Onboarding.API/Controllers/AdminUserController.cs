@@ -11,32 +11,38 @@ using Onboarding.Domain.Repositories;
 namespace Onboarding.API.Controllers;
 
 /// <summary>
-/// Admin user management endpoints — requires admin role.
-/// All endpoints are protected by [Authorize(Roles = "admin")].
+/// Admin management endpoints — requires admin role.
+/// Operates on Company/Employee (Phase 37 — D-19).
+/// Phase 35 admin management (administrators) kept as-is.
 /// </summary>
 [ApiController]
 [Route("api/admin")]
 [Authorize(AuthenticationSchemes = "BearerBackoffice", Roles = "admin")]
 public sealed class AdminUserController : ControllerBase
 {
-    private readonly IQueryHandler<GetPaginatedUsersQuery, PaginatedResult<UserSummaryDto>> _paginatedHandler;
-    private readonly IQueryHandler<GetUserDetailsQuery, UserDetailDto> _detailsHandler;
-    private readonly ICommandHandler<UpdateUserCommand, Unit> _updateHandler;
-    private readonly ICommandHandler<BlockUserCommand, Unit> _blockHandler;
-    private readonly ICommandHandler<UnblockUserCommand, Unit> _unblockHandler;
-    private readonly ICommandHandler<DeleteUserCommand, Unit> _deleteHandler;
+    // Company/Employee handlers (Phase 37 — D-19)
+    private readonly IQueryHandler<GetPaginatedCompaniesQuery, PaginatedResult<CompanySummaryDto>> _paginatedCompaniesHandler;
+    private readonly IQueryHandler<GetCompanyDetailsQuery, CompanySummaryDto> _companyDetailsHandler;
+    private readonly IQueryHandler<GetPaginatedEmployeesQuery, PaginatedResult<EmployeeSummaryDto>> _paginatedEmployeesHandler;
+    private readonly IQueryHandler<GetEmployeeDetailsQuery, EmployeeSummaryDto> _employeeDetailsHandler;
+    private readonly ICommandHandler<UpdateCompanyCommand, Unit> _updateCompanyHandler;
+    private readonly ICommandHandler<DeleteEmployeeCommand, Unit> _deleteEmployeeHandler;
+    private readonly ICommandHandler<BlockEmployeeCommand, Unit> _blockEmployeeHandler;
+    private readonly ICommandHandler<UnblockEmployeeCommand, Unit> _unblockEmployeeHandler;
+
+    // Phase 29 — Admin management
     private readonly ICommandHandler<CreateAdminCommand, CreateAdminResult> _createAdminHandler;
     private readonly ICommandHandler<ForcePasswordChangeCommand, Unit> _forcePasswordChangeHandler;
     private readonly IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>> _auditLogQueryHandler;
     private readonly IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>> _administratorsHandler;
-    // Phase 35 — Admin Management
+
+    // Phase 35 — Admin management
     private readonly IQueryHandler<GetPaginatedAdministratorsQuery, PaginatedResult<AdminUserDto>> _paginatedAdministratorsHandler;
     private readonly ICommandHandler<UpdateAdministratorCommand, Unit> _updateAdministratorHandler;
     private readonly ICommandHandler<ResetAdministratorPasswordCommand, ResetAdministratorPasswordResult> _resetAdminPasswordHandler;
     private readonly ICommandHandler<ToggleAdministratorStatusCommand, Unit> _toggleAdminStatusHandler;
+
     private readonly IKeycloakUserService _keycloakUserService;
-    private readonly IValidator<UpdateUserCommand> _updateValidator;
-    private readonly IValidator<DeleteUserCommand> _deleteValidator;
     private readonly IValidator<CreateAdminCommand> _createAdminValidator;
     private readonly IValidator<ForcePasswordChangeCommand> _forcePasswordChangeValidator;
     private readonly IValidator<UpdateAdministratorCommand> _updateAdministratorValidator;
@@ -45,23 +51,26 @@ public sealed class AdminUserController : ControllerBase
     private readonly ILogger<AdminUserController> _logger;
 
     public AdminUserController(
-        IQueryHandler<GetPaginatedUsersQuery, PaginatedResult<UserSummaryDto>> paginatedHandler,
-        IQueryHandler<GetUserDetailsQuery, UserDetailDto> detailsHandler,
-        ICommandHandler<UpdateUserCommand, Unit> updateHandler,
-        ICommandHandler<BlockUserCommand, Unit> blockHandler,
-        ICommandHandler<UnblockUserCommand, Unit> unblockHandler,
-        ICommandHandler<DeleteUserCommand, Unit> deleteHandler,
+        // Company/Employee handlers (Phase 37)
+        IQueryHandler<GetPaginatedCompaniesQuery, PaginatedResult<CompanySummaryDto>> paginatedCompaniesHandler,
+        IQueryHandler<GetCompanyDetailsQuery, CompanySummaryDto> companyDetailsHandler,
+        IQueryHandler<GetPaginatedEmployeesQuery, PaginatedResult<EmployeeSummaryDto>> paginatedEmployeesHandler,
+        IQueryHandler<GetEmployeeDetailsQuery, EmployeeSummaryDto> employeeDetailsHandler,
+        ICommandHandler<UpdateCompanyCommand, Unit> updateCompanyHandler,
+        ICommandHandler<DeleteEmployeeCommand, Unit> deleteEmployeeHandler,
+        ICommandHandler<BlockEmployeeCommand, Unit> blockEmployeeHandler,
+        ICommandHandler<UnblockEmployeeCommand, Unit> unblockEmployeeHandler,
+        // Phase 29 — Admin management
         ICommandHandler<CreateAdminCommand, CreateAdminResult> createAdminHandler,
         ICommandHandler<ForcePasswordChangeCommand, Unit> forcePasswordChangeHandler,
         IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>> auditLogQueryHandler,
         IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>> administratorsHandler,
+        // Phase 35 — Admin management
         IQueryHandler<GetPaginatedAdministratorsQuery, PaginatedResult<AdminUserDto>> paginatedAdministratorsHandler,
         ICommandHandler<UpdateAdministratorCommand, Unit> updateAdministratorHandler,
         ICommandHandler<ResetAdministratorPasswordCommand, ResetAdministratorPasswordResult> resetAdminPasswordHandler,
         ICommandHandler<ToggleAdministratorStatusCommand, Unit> toggleAdminStatusHandler,
         IKeycloakUserService keycloakUserService,
-        IValidator<UpdateUserCommand> updateValidator,
-        IValidator<DeleteUserCommand> deleteValidator,
         IValidator<CreateAdminCommand> createAdminValidator,
         IValidator<ForcePasswordChangeCommand> forcePasswordChangeValidator,
         IValidator<UpdateAdministratorCommand> updateAdministratorValidator,
@@ -69,12 +78,14 @@ public sealed class AdminUserController : ControllerBase
         IValidator<ToggleAdministratorStatusCommand> toggleAdminStatusValidator,
         ILogger<AdminUserController> logger)
     {
-        _paginatedHandler = paginatedHandler;
-        _detailsHandler = detailsHandler;
-        _updateHandler = updateHandler;
-        _blockHandler = blockHandler;
-        _unblockHandler = unblockHandler;
-        _deleteHandler = deleteHandler;
+        _paginatedCompaniesHandler = paginatedCompaniesHandler;
+        _companyDetailsHandler = companyDetailsHandler;
+        _paginatedEmployeesHandler = paginatedEmployeesHandler;
+        _employeeDetailsHandler = employeeDetailsHandler;
+        _updateCompanyHandler = updateCompanyHandler;
+        _deleteEmployeeHandler = deleteEmployeeHandler;
+        _blockEmployeeHandler = blockEmployeeHandler;
+        _unblockEmployeeHandler = unblockEmployeeHandler;
         _createAdminHandler = createAdminHandler;
         _forcePasswordChangeHandler = forcePasswordChangeHandler;
         _auditLogQueryHandler = auditLogQueryHandler;
@@ -84,8 +95,6 @@ public sealed class AdminUserController : ControllerBase
         _resetAdminPasswordHandler = resetAdminPasswordHandler;
         _toggleAdminStatusHandler = toggleAdminStatusHandler;
         _keycloakUserService = keycloakUserService;
-        _updateValidator = updateValidator;
-        _deleteValidator = deleteValidator;
         _createAdminValidator = createAdminValidator;
         _forcePasswordChangeValidator = forcePasswordChangeValidator;
         _updateAdministratorValidator = updateAdministratorValidator;
@@ -94,238 +103,124 @@ public sealed class AdminUserController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>GET /api/admin/users — Paginated list of users with search and status filters.</summary>
-    [HttpGet("users")]
-    [ProducesResponseType(typeof(PaginatedResult<UserSummaryDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetUsers(
+    // ─── Company endpoints ────────────────────────────────────────────
+
+    /// <summary>GET /api/admin/companies — Paginated list of companies with search and status filters.</summary>
+    [HttpGet("companies")]
+    [ProducesResponseType(typeof(PaginatedResult<CompanySummaryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCompanies(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         [FromQuery] string? search = null,
         [FromQuery] string? status = null,
         CancellationToken ct = default)
     {
-        var query = new GetPaginatedUsersQuery(page, pageSize, search, status);
-        var result = await _paginatedHandler.HandleAsync(query, ct);
+        var query = new GetPaginatedCompaniesQuery(page, pageSize, search, status);
+        var result = await _paginatedCompaniesHandler.HandleAsync(query, ct);
         return Ok(result);
     }
 
-    /// <summary>GET /api/admin/users/{id} — Detailed user data including Keycloak status.</summary>
-    [HttpGet("users/{id:guid}")]
-    [ProducesResponseType(typeof(UserDetailDto), StatusCodes.Status200OK)]
+    /// <summary>GET /api/admin/companies/{id} — Detailed company data.</summary>
+    [HttpGet("companies/{id:guid}")]
+    [ProducesResponseType(typeof(CompanySummaryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetUserDetails(
+    public async Task<IActionResult> GetCompanyDetails(
         [FromRoute] Guid id,
         CancellationToken ct = default)
     {
-        try
-        {
-            var query = new GetUserDetailsQuery(id);
-            var result = await _detailsHandler.HandleAsync(query, ct);
-            return Ok(result);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "User not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = "The requested user does not exist."
-            });
-        }
+        var query = new GetCompanyDetailsQuery(id);
+        var result = await _companyDetailsHandler.HandleAsync(query, ct);
+        return Ok(result);
     }
 
-    /// <summary>PUT /api/admin/users/{id} — Update user data.</summary>
-    [HttpPut("users/{id:guid}")]
+    /// <summary>PUT /api/admin/companies/{id} — Update company data.</summary>
+    [HttpPut("companies/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status422UnprocessableEntity)]
-    public async Task<IActionResult> UpdateUser(
+    public async Task<IActionResult> UpdateCompany(
         [FromRoute] Guid id,
-        [FromBody] UpdateUserRequest request,
+        [FromBody] UpdateCompanyRequest request,
         CancellationToken ct = default)
     {
-        var auditContext = GetAuditContext();
-
-        var command = new UpdateUserCommand(
-            id,
-            request.RazaoSocial ?? string.Empty,
-            null,
-            request.Email ?? string.Empty,
-            request.Phone ?? string.Empty,
-            auditContext.Sub,
-            auditContext.Email);
-
-        var validation = await _updateValidator.ValidateAsync(command, ct);
-        if (!validation.IsValid)
-        {
-            return UnprocessableEntity(new ValidationProblemDetails(
-                validation.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
-        }
-
-        try
-        {
-            await _updateHandler.HandleAsync(command, ct);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "User not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = "The requested user does not exist."
-            });
-        }
-        catch (ArgumentException ex)
-        {
-            return Conflict(new ProblemDetails
-            {
-                Title = "Conflict",
-                Status = StatusCodes.Status409Conflict,
-                Detail = ex.Message
-            });
-        }
+        var command = new UpdateCompanyCommand(id, request.RazaoSocial ?? string.Empty, request.Email ?? string.Empty, request.Phone ?? string.Empty);
+        await _updateCompanyHandler.HandleAsync(command, ct);
+        return NoContent();
     }
 
-    /// <summary>POST /api/admin/users/{id}/block — Block user account.</summary>
-    [HttpPost("users/{id:guid}/block")]
+    // ─── Employee endpoints ────────────────────────────────────────────
+
+    /// <summary>GET /api/admin/employees — Paginated list of employees with search, status and company filters.</summary>
+    [HttpGet("employees")]
+    [ProducesResponseType(typeof(PaginatedResult<EmployeeSummaryDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetEmployees(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        [FromQuery] string? status = null,
+        [FromQuery] Guid? companyId = null,
+        CancellationToken ct = default)
+    {
+        var query = new GetPaginatedEmployeesQuery(page, pageSize, search, status, companyId);
+        var result = await _paginatedEmployeesHandler.HandleAsync(query, ct);
+        return Ok(result);
+    }
+
+    /// <summary>GET /api/admin/employees/{id} — Detailed employee data.</summary>
+    [HttpGet("employees/{id:guid}")]
+    [ProducesResponseType(typeof(EmployeeSummaryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetEmployeeDetails(
+        [FromRoute] Guid id,
+        CancellationToken ct = default)
+    {
+        var query = new GetEmployeeDetailsQuery(id);
+        var result = await _employeeDetailsHandler.HandleAsync(query, ct);
+        return Ok(result);
+    }
+
+    /// <summary>POST /api/admin/employees/{id}/block — Block employee account.</summary>
+    [HttpPost("employees/{id:guid}/block")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> BlockUser(
+    public async Task<IActionResult> BlockEmployee(
         [FromRoute] Guid id,
         CancellationToken ct = default)
     {
         var auditContext = GetAuditContext();
-        var command = new BlockUserCommand(id, auditContext.Sub, auditContext.Email);
-
-        try
-        {
-            await _blockHandler.HandleAsync(command, ct);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "User not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = "The requested user does not exist."
-            });
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Failed to block user {UserId}", id);
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails
-            {
-                Title = "Service unavailable",
-                Status = StatusCodes.Status503ServiceUnavailable,
-                Detail = "Unable to process this request. Please try again later."
-            });
-        }
+        var command = new BlockEmployeeCommand(id, auditContext.Sub);
+        await _blockEmployeeHandler.HandleAsync(command, ct);
+        return NoContent();
     }
 
-    /// <summary>POST /api/admin/users/{id}/unblock — Unblock user account.</summary>
-    [HttpPost("users/{id:guid}/unblock")]
+    /// <summary>POST /api/admin/employees/{id}/unblock — Unblock employee account.</summary>
+    [HttpPost("employees/{id:guid}/unblock")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
-    public async Task<IActionResult> UnblockUser(
+    public async Task<IActionResult> UnblockEmployee(
         [FromRoute] Guid id,
         CancellationToken ct = default)
     {
         var auditContext = GetAuditContext();
-        var command = new UnblockUserCommand(id, auditContext.Sub, auditContext.Email);
-
-        try
-        {
-            await _unblockHandler.HandleAsync(command, ct);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "User not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = "The requested user does not exist."
-            });
-        }
-        catch (InvalidOperationException ex)
-        {
-            _logger.LogWarning(ex, "Failed to unblock user {UserId}", id);
-            return StatusCode(StatusCodes.Status503ServiceUnavailable, new ProblemDetails
-            {
-                Title = "Service unavailable",
-                Status = StatusCodes.Status503ServiceUnavailable,
-                Detail = "Unable to process this request. Please try again later."
-            });
-        }
+        var command = new UnblockEmployeeCommand(id, auditContext.Sub);
+        await _unblockEmployeeHandler.HandleAsync(command, ct);
+        return NoContent();
     }
 
-    /// <summary>DELETE /api/admin/users/{id} — LGPD-compliant user deletion.</summary>
-    [HttpDelete("users/{id:guid}")]
+    /// <summary>DELETE /api/admin/employees/{id} — LGPD-compliant employee deletion.</summary>
+    [HttpDelete("employees/{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> DeleteUser(
+    public async Task<IActionResult> DeleteEmployee(
         [FromRoute] Guid id,
-        [FromBody] DeleteUserRequest request,
         CancellationToken ct = default)
     {
         var auditContext = GetAuditContext();
-        var command = new DeleteUserCommand(
-            id,
-            request.ConfirmEmail ?? string.Empty,
-            auditContext.Sub,
-            auditContext.Email);
-
-        var validation = await _deleteValidator.ValidateAsync(command, ct);
-        if (!validation.IsValid)
-        {
-            return BadRequest(new ValidationProblemDetails(
-                validation.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
-        }
-
-        try
-        {
-            await _deleteHandler.HandleAsync(command, ct);
-            return NoContent();
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound(new ProblemDetails
-            {
-                Title = "User not found",
-                Status = StatusCodes.Status404NotFound,
-                Detail = "The requested user does not exist."
-            });
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Bad request",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = ex.Message
-            });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new ProblemDetails
-            {
-                Title = "Conflict",
-                Status = StatusCodes.Status409Conflict,
-                Detail = ex.Message
-            });
-        }
+        var command = new DeleteEmployeeCommand(id, auditContext.Sub);
+        await _deleteEmployeeHandler.HandleAsync(command, ct);
+        return NoContent();
     }
+
+    // ─── Phase 29/35 — Admin management endpoints (unchanged) ──────────
 
     /// <summary>POST /api/admin/administrators — Create a new admin user with a temporary password.</summary>
     [HttpPost("administrators")]
@@ -537,14 +432,12 @@ public sealed class AdminUserController : ControllerBase
         [FromBody] ForcePasswordChangeRequest request,
         CancellationToken ct = default)
     {
-        // Get admin email from cookie (JWT may not have email claim)
         var adminEmail = HttpContext.Items["AdminEmail"] as string
             ?? User.FindFirst("email")?.Value
             ?? User.FindFirst("preferred_username")?.Value
             ?? throw new InvalidOperationException("Missing admin email context.");
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
 
-        // Resolve Keycloak user ID from email
         var keycloakUser = await _keycloakUserService.GetUserByEmailAsync("backoffice", adminEmail, ct)
             ?? throw new InvalidOperationException($"Keycloak user not found for email: {adminEmail}");
         var keycloakUserId = keycloakUser.Id;
@@ -632,8 +525,8 @@ public sealed class AdminUserController : ControllerBase
             .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()));
 }
 
-/// <summary>DELETE request body for LGPD user deletion.</summary>
-public sealed record DeleteUserRequest(string? ConfirmEmail);
+/// <summary>PUT request body for updating a company (Phase 37 — D-19).</summary>
+public sealed record UpdateCompanyRequest(string? RazaoSocial, string? Email, string? Phone);
 
 /// <summary>POST request body for creating a new admin user.</summary>
 public sealed record CreateAdminRequest(string FullName, string Email);

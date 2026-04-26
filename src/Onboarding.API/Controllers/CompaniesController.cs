@@ -6,8 +6,9 @@ using Onboarding.Domain.Repositories;
 namespace Onboarding.API.Controllers;
 
 /// <summary>
-/// Company profile endpoints.
+/// Company endpoints.
 /// GET /api/companies/me — AUTH-03: protected route returns profile of authenticated company.
+/// POST /api/companies/registration — PJ company registration (replaces RegistrationController).
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -45,6 +46,21 @@ public sealed class CompaniesController : ControllerBase
 
         _logger.LogWarning("Authenticated request missing 'sub' claim in JWT");
         return Unauthorized();
+    }
+
+    /// <summary>POST /api/companies/registration — Company registration placeholder (Phase 38).</summary>
+    [HttpPost("registration")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status501NotImplemented)]
+    public IActionResult RegisterCompany()
+    {
+        // Full registration flow deferred to Phase 38
+        return StatusCode(StatusCodes.Status501NotImplemented, new ProblemDetails
+        {
+            Title = "Not implemented",
+            Status = StatusCodes.Status501NotImplemented,
+            Detail = "Company registration will be implemented in Phase 38."
+        });
     }
 
     private static CompanyProfileDto MapToDto(Company company) => new(

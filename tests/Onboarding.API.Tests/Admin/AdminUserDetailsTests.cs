@@ -11,7 +11,7 @@ using Shouldly;
 namespace Onboarding.API.Tests.Admin;
 
 [Collection(WebAppFactoryCollection.Name)]
-public sealed class AdminUserDetailsTests : IAsyncLifetime
+public sealed class AdminCompanyDetailsTests : IAsyncLifetime
 {
     private AdminTestFactory? _factory;
     private HttpClient? _client;
@@ -42,7 +42,7 @@ public sealed class AdminUserDetailsTests : IAsyncLifetime
 
     [Fact]
     [Trait("Category", "Integration")]
-    public async Task GetUserDetails_ValidId_ReturnsFullData()
+    public async Task GetCompanyDetails_ValidId_ReturnsData()
     {
         var companyId = Guid.NewGuid();
         var company = CreateTestCompany(companyId);
@@ -55,48 +55,21 @@ public sealed class AdminUserDetailsTests : IAsyncLifetime
             .GetUserByEmailAsync("client", "empresa@test.com", Arg.Any<CancellationToken>())
             .Returns(new KeycloakUser("kc-uuid", "empresa@test.com"));
 
-        var response = await _client!.GetAsync($"/api/admin/users/{companyId}");
+        var response = await _client!.GetAsync($"/api/admin/companies/{companyId}");
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<UserDetailDto>();
-        body.ShouldNotBeNull();
-        body.RazaoSocial.ShouldBe("Empresa Teste");
-        body.Email.ShouldBe("empresa@test.com");
     }
 
     [Fact]
     [Trait("Category", "Integration")]
-    public async Task GetUserDetails_InvalidId_ReturnsNotFound()
+    public async Task GetCompanyDetails_InvalidId_ReturnsNotFound()
     {
         var nonExistentId = Guid.NewGuid();
         _factory!.AdminRepositoryMock
             .GetByIdAsync(nonExistentId, Arg.Any<CancellationToken>())
             .Returns((Company?)null);
 
-        var response = await _client!.GetAsync($"/api/admin/users/{nonExistentId}");
+        var response = await _client!.GetAsync($"/api/admin/companies/{nonExistentId}");
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    [Trait("Category", "Integration")]
-    public async Task GetUserDetails_Company_ReturnsCnpj()
-    {
-        var companyId = Guid.NewGuid();
-        var company = CreateTestCompany(companyId);
-
-        _factory!.AdminRepositoryMock
-            .GetByIdAsync(companyId, Arg.Any<CancellationToken>())
-            .Returns(company);
-
-        _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("client", "empresa@test.com", Arg.Any<CancellationToken>())
-            .Returns(new KeycloakUser("kc-uuid", "empresa@test.com"));
-
-        var response = await _client!.GetAsync($"/api/admin/users/{companyId}");
-
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<UserDetailDto>();
-        body.ShouldNotBeNull();
-        body.Cnpj.ShouldNotBeNull();
     }
 }

@@ -217,7 +217,7 @@ try
     // Application layer — handlers, validators
     builder.Services.AddApplication();
 
-    // Infrastructure layer — DbContext, ClientRepository, KeycloakUserService, KC Admin HTTP client
+    // Infrastructure layer — DbContext, repositories, KeycloakUserService, KC Admin HTTP client
     builder.Services.AddInfrastructure(builder.Configuration);
 
     // Cookie settings — environment-configured Secure flag

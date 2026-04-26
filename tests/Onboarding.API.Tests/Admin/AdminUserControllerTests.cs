@@ -15,37 +15,40 @@ namespace Onboarding.API.Tests.Admin;
 
 public class AdminUserControllerTests
 {
-    private readonly IQueryHandler<GetPaginatedUsersQuery, PaginatedResult<UserSummaryDto>> _paginatedHandler;
+    private readonly IQueryHandler<GetPaginatedCompaniesQuery, PaginatedResult<CompanySummaryDto>> _paginatedCompaniesHandler;
     private readonly ICommandHandler<CreateAdminCommand, CreateAdminResult> _createAdminHandler;
     private readonly IValidator<CreateAdminCommand> _createAdminValidator;
     private readonly AdminUserController _sut;
 
     public AdminUserControllerTests()
     {
-        _paginatedHandler = Substitute.For<IQueryHandler<GetPaginatedUsersQuery, PaginatedResult<UserSummaryDto>>>();
+        _paginatedCompaniesHandler = Substitute.For<IQueryHandler<GetPaginatedCompaniesQuery, PaginatedResult<CompanySummaryDto>>>();
         _createAdminHandler = Substitute.For<ICommandHandler<CreateAdminCommand, CreateAdminResult>>();
         _createAdminValidator = Substitute.For<IValidator<CreateAdminCommand>>();
-        
+
         var logger = Substitute.For<ILogger<AdminUserController>>();
 
         _sut = new AdminUserController(
-            _paginatedHandler,
-            Substitute.For<IQueryHandler<GetUserDetailsQuery, UserDetailDto>>(),
-            Substitute.For<ICommandHandler<UpdateUserCommand, Unit>>(),
-            Substitute.For<ICommandHandler<BlockUserCommand, Unit>>(),
-            Substitute.For<ICommandHandler<UnblockUserCommand, Unit>>(),
-            Substitute.For<ICommandHandler<DeleteUserCommand, Unit>>(),
+            // Company/Employee handlers (Phase 37)
+            _paginatedCompaniesHandler,
+            Substitute.For<IQueryHandler<GetCompanyDetailsQuery, CompanySummaryDto>>(),
+            Substitute.For<IQueryHandler<GetPaginatedEmployeesQuery, PaginatedResult<EmployeeSummaryDto>>>(),
+            Substitute.For<IQueryHandler<GetEmployeeDetailsQuery, EmployeeSummaryDto>>(),
+            Substitute.For<ICommandHandler<UpdateCompanyCommand, Unit>>(),
+            Substitute.For<ICommandHandler<DeleteEmployeeCommand, Unit>>(),
+            Substitute.For<ICommandHandler<BlockEmployeeCommand, Unit>>(),
+            Substitute.For<ICommandHandler<UnblockEmployeeCommand, Unit>>(),
+            // Phase 29 — Admin management
             _createAdminHandler,
             Substitute.For<ICommandHandler<ForcePasswordChangeCommand, Unit>>(),
             Substitute.For<IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>>>(),
             Substitute.For<IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>>>(),
+            // Phase 35 — Admin management
             Substitute.For<IQueryHandler<GetPaginatedAdministratorsQuery, PaginatedResult<AdminUserDto>>>(),
             Substitute.For<ICommandHandler<UpdateAdministratorCommand, Unit>>(),
             Substitute.For<ICommandHandler<ResetAdministratorPasswordCommand, ResetAdministratorPasswordResult>>(),
             Substitute.For<ICommandHandler<ToggleAdministratorStatusCommand, Unit>>(),
             Substitute.For<IKeycloakUserService>(),
-            Substitute.For<IValidator<UpdateUserCommand>>(),
-            Substitute.For<IValidator<DeleteUserCommand>>(),
             _createAdminValidator,
             Substitute.For<IValidator<ForcePasswordChangeCommand>>(),
             Substitute.For<IValidator<UpdateAdministratorCommand>>(),
@@ -89,15 +92,15 @@ public class AdminUserControllerTests
     }
 
     [Fact]
-    public async Task GetUsers_ShouldReturnOk_WhenSuccessful()
+    public async Task GetCompanies_ShouldReturnOk_WhenSuccessful()
     {
         // Arrange
-        var expected = new PaginatedResult<UserSummaryDto>(new List<UserSummaryDto>(), 0, 1, 20);
-        _paginatedHandler.HandleAsync(Arg.Any<GetPaginatedUsersQuery>(), Arg.Any<CancellationToken>())
+        var expected = new PaginatedResult<CompanySummaryDto>(new List<CompanySummaryDto>(), 0, 1, 20);
+        _paginatedCompaniesHandler.HandleAsync(Arg.Any<GetPaginatedCompaniesQuery>(), Arg.Any<CancellationToken>())
             .Returns(expected);
 
         // Act
-        var response = await _sut.GetUsers();
+        var response = await _sut.GetCompanies();
 
         // Assert
         var okResult = response.ShouldBeOfType<OkObjectResult>();

@@ -1,4 +1,4 @@
----
+﻿---
 phase: 40-client-frontend-pj-registration
 plan: 02
 subsystem: frontend-client
@@ -129,3 +129,13 @@ No new threat surface beyond what was in the plan's threat model. All mitigation
 ---
 *Phase: 40-client-frontend-pj-registration*
 *Completed: 2026-04-26*
+
+## Self-Check: PASSED
+
+- All 5 key files exist on disk: ✅ (dialog.tsx, checkbox.tsx, TermsDialog.tsx, RegisterPage.tsx, RegistrationForm.tsx)
+- All 3 commit hashes found in git log: ✅ (71daafd, 03e1e89, 43eac68)
+- TypeScript compiles without errors: ✅ (npx tsc --noEmit — 0 errors)
+- No PF references found: ✅ (PersonTypeRadio, pfRegistration, PessoaFisica — none)
+- Terms checkbox uses z.literal(true): ✅
+- CNPJ validated with modulo-11: ✅ (validateCnpj used in wizard step 1)
+- Registration redirects to / on 201: ✅

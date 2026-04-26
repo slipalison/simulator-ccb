@@ -58,7 +58,7 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IQueryHandler<GetPaginatedEmployeesQuery, PaginatedResult<EmployeeSummaryDto>>, GetPaginatedEmployeesHandler>();
         services.AddScoped<IQueryHandler<GetEmployeeDetailsQuery, EmployeeSummaryDto>, GetEmployeeDetailsHandler>();
 
-        // Admin commands — Company/Employee (Phase 37 — D-19) stubs (to be replaced by Phase 41)
+        // Admin commands — Company (Phase 38) + Employee (Phase 38 — MGMT-03, MGMT-05)
         services.AddScoped<ICommandHandler<UpdateCompanyCommand, Unit>, UpdateCompanyCommandHandler>();
         services.AddScoped<ICommandHandler<Admin.Commands.DeleteEmployeeCommand, Unit>, Admin.Commands.DeleteEmployeeCommandHandler>();
         services.AddScoped<ICommandHandler<BlockEmployeeCommand, Unit>, BlockEmployeeCommandHandler>();

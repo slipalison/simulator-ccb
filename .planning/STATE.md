@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: PJ-Only Onboarding + Gestão de Funcionários
-status: context-gathered
-stopped_at: Phase 37 context gathered
-last_updated: "2026-04-25T22:10:00.000Z"
+status: executing
+stopped_at: Phase 37 Plan 02 complete
+last_updated: "2026-04-25T23:04:00.000Z"
 last_activity: 2026-04-25
 progress:
   total_phases: 42
   completed_phases: 36
   total_plans: 85
-  completed_plans: 81
-  percent: 95
+  completed_plans: 83
+  percent: 98
 ---
 
 # Project State
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — isolamento entre empresas é requisito de primeira classe.
-**Current focus:** Milestone v7.0 — Phase 37 context gathered
+**Current focus:** Milestone v7.0 — Phase 37 executing (Plan 02 complete)
 **Last activity:** 2026-04-25
 
 ## Current Position
 
-Phase: 37 (Context gathered)
-Plan: —
-Status: Phase 37 context gathered — ready for planning
+Phase: 37 (Domain Model Redesign)
+Plan: 02 complete
+Status: Phase 37 Plan 02 — 45 testes domain organizados e passando
 Last activity: 2026-04-25
 
 ## Milestone Breakdown
@@ -45,7 +45,7 @@ Last activity: 2026-04-25
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 37 | Domain Model Redesign | REG-02, REG-04, REG-05 | 📋 Planned |
+| 37 | Domain Model Redesign | REG-02, REG-04, REG-05 | 🔄 Executing (Plan 02 done) |
 | 38 | Employee Registration & Management API | REG-01, REG-03, MGMT-01..05 | 📋 Planned |
 | 39 | Keycloak Groups & Permissions | PERM-01..05 | 📋 Planned |
 | 40 | Client Frontend — PJ Registration & Employee Management | DASH-01 | 📋 Planned |

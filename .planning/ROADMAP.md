@@ -1,4 +1,4 @@
-# Roadmap: Onboarding de Clientes
+﻿# Roadmap: Onboarding de Clientes
 
 ## Overview
 
@@ -912,7 +912,8 @@ Plans:
 
 ### Phases
 
-- [x] **Phase 35: Admin Management Backend** - All .NET API endpoints for admin CRUD + security guards (SEC-01..05) + audit logging (AUD-04..06) (MGMT-01..06, SEC-01..05, AUD-04..06) (completed 2026-04-22)
+- [x] **Phase 35: Admin Management Backend** - All .NET API endpoints for admin CRUD + security guards (SEC-01..05) + audit logging (AUD-04..06) (MGMT-01..06, SEC-01..05, AUD-04..06)
+ (completed 2026-04-22)
 - [x] **Phase 36: Admin Management UI** - Updated backoffice UI — paginated admin list with filters, edit modal, reset password modal, deactivate/reactivate confirmations (MGMT-01..06)
  (completed 2026-04-24)
 

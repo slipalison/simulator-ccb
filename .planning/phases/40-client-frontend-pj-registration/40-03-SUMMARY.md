@@ -145,3 +145,17 @@ No new threat surface beyond what was in the plan's threat model. All mitigation
 ---
 *Phase: 40-client-frontend-pj-registration*
 *Completed: 2026-04-26*
+
+## Self-Check: PASSED
+
+- All 9 created/modified files tracked in git: ✅
+- Commit hashes 9174138, 637a9e4 found in git log: ✅
+- TypeScript compiles without errors: ✅ (`npx tsc --noEmit` — 0 errors)
+- ESLint passes with 0 errors: ✅
+- Viewer role hides Actions column: ✅ (`isViewer` conditional in EmployeesTable)
+- 5 actions in dropdown: ✅ (Edit, Block/Unblock, Reset Password, Delete, Change Access Group)
+- LGPD email confirmation: ✅ (`emailMatches` check in DeleteEmployeeDialog)
+- One-time password reveal: ✅ (ResetPasswordDialog with copy-to-clipboard)
+- Zod validation on edit form: ✅ (`editEmployeeSchema` via zodResolver)
+- All mutations show toast notifications: ✅ (sonner used throughout)
+- MGMT-01..05 requirements marked complete in REQUIREMENTS.md: ✅

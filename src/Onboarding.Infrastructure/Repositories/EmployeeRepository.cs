@@ -101,6 +101,65 @@ public sealed class EmployeeRepository : IEmployeeRepository
         return (items.AsReadOnly(), totalCount);
     }
 
+    /// <summary>
+    /// Paginated employee listing across ALL companies — admin bypasses HasQueryFilter (MGMT-01).
+    /// </summary>
+    public async Task<(IReadOnlyList<Employee> Items, int TotalCount)> GetPagedAllAsync(
+        int page, int pageSize, string? search, string? status,
+        CancellationToken ct = default)
+    {
+        // Admin endpoint — bypasses HasQueryFilter to see all companies' employees
+        var query = _db.Employees
+            .IgnoreQueryFilters()
+            .AsNoTracking();
+
+        // Status filter
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var normalizedStatus = status.ToLowerInvariant();
+            if (normalizedStatus == "active")
+                query = query.Where(e => !e.DeletedAt.HasValue);
+            else if (normalizedStatus == "deleted")
+                query = query.Where(e => e.DeletedAt.HasValue);
+        }
+        else
+        {
+            // Default: show only active employees
+            query = query.Where(e => !e.DeletedAt.HasValue);
+        }
+
+        // Search filter — nome, email, cpf
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalized = search.Trim().ToLowerInvariant();
+            var digitsOnly = new string(normalized.Where(char.IsDigit).ToArray());
+
+            query = query.Where(e =>
+                EF.Functions.ILike(e.Nome, $"%{normalized}%") ||
+                EF.Functions.ILike(e.Email.Value, $"%{normalized}%") ||
+                (digitsOnly.Length > 0 && e.Cpf != null && e.Cpf.Value.Contains(digitsOnly)));
+        }
+
+        var totalCount = await query.CountAsync(ct);
+
+        var items = await query
+            .OrderBy(e => e.Nome)
+            .ThenBy(e => e.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return (items.AsReadOnly(), totalCount);
+    }
+
+    /// <summary>
+    /// Fetches a single employee by ID, bypassing HasQueryFilter — admin lookup (MGMT-02).
+    /// </summary>
+    public async Task<Employee?> GetByIdIgnoreFilterAsync(Guid id, CancellationToken ct = default)
+        => await _db.Employees
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(e => e.Id == id, ct);
+
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
         var employee = await _db.Employees.FindAsync([id], ct);

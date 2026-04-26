@@ -20,5 +20,17 @@ public interface IEmployeeRepository
     Task<(IReadOnlyList<Employee> Items, int TotalCount)> GetPagedByCompanyAsync(
         Guid companyId, int page, int pageSize, string? search, string? status, CancellationToken ct = default);
 
+    /// <summary>
+    /// Paginated employee listing across ALL companies — admin endpoint bypasses HasQueryFilter.
+    /// Uses IgnoreQueryFilter to see employees from every company (MGMT-01).
+    /// </summary>
+    Task<(IReadOnlyList<Employee> Items, int TotalCount)> GetPagedAllAsync(
+        int page, int pageSize, string? search, string? status, CancellationToken ct = default);
+
+    /// <summary>
+    /// Fetches a single employee by ID, bypassing HasQueryFilter — for admin lookups (MGMT-02).
+    /// </summary>
+    Task<Employee?> GetByIdIgnoreFilterAsync(Guid id, CancellationToken ct = default);
+
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 }

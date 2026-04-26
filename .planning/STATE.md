@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: PJ-Only Onboarding + Gestão de Funcionários
-status: planned
-stopped_at: Milestone v7.0 roadmap created — ready for planning
-last_updated: "2026-04-25T12:00:00.000Z"
+status: context-gathered
+stopped_at: Phase 37 context gathered
+last_updated: "2026-04-25T22:10:00.000Z"
 last_activity: 2026-04-25
 progress:
   total_phases: 42
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — isolamento entre empresas é requisito de primeira classe.
-**Current focus:** Milestone v7.0 — Defining requirements
+**Current focus:** Milestone v7.0 — Phase 37 context gathered
 **Last activity:** 2026-04-25
 
 ## Current Position
 
-Phase: 37 (Not started)
+Phase: 37 (Context gathered)
 Plan: —
-Status: Roadmap created — ready for Phase 37 planning
+Status: Phase 37 context gathered — ready for planning
 Last activity: 2026-04-25
 
 ## Milestone Breakdown

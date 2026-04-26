@@ -1069,8 +1069,12 @@ Plans:
   5. Funcionário com role `admin-empresa` vê mesmas telas de gestão que o PJ dono — `viewer` vê dados em modo leitura sem botões de ação
   6. Nenhuma rota de cadastro PF existe no frontend — `/registration?tipo=pf` retorna 404 ou redireciona para cadastro PJ
   7. Login de funcionário redireciona para telas baseadas no group: `admin-empresa` → management, `viewer` → read-only employee list, `dashboard` → dashboard
-**Plans:** TBD
-**UI hint**: yes
+**Plans:** 4 plans
+Plans:
+- [ ] 40-01-PLAN.md — Auth context extension (group/permissions), employee API client, PJ validation schemas, Sidebar, router restructure
+- [ ] 40-02-PLAN.md — PJ-only 2-step registration wizard with terms acceptance, PF removal
+- [ ] 40-03-PLAN.md — Employee management UI (list, search, edit, block, reset password, LGPD delete, change access group)
+- [ ] 40-04-PLAN.md — Dashboard mock (6 cards), permission-based routing, ProfilePage PJ adaptation, PF removal verification
 
 ### Phase 41: BackOffice Employee Management + Audit
 **Goal:** BackOffice pode visualizar funcionários de qualquer empresa, auditar ações e dar suporte. Audit log estendido para ações de funcionários.

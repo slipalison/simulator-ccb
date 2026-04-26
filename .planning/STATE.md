@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 
 ## Current Position
 
-Phase: 39 (keycloak-groups-permissions) — COMPLETE ✓
-Plan: 3 of 3
-Status: Phase 39 verified and complete. Ready for Phase 40.
-Last activity: 2026-04-26 -- All 3 plans executed, 11/11 must-haves verified
+Phase: 40 (client-frontend-pj-registration) — PLANNED
+Plan: 0 of 4
+Status: Phase 40 planned. 4 plans in 4 waves. Ready to execute.
+Last activity: 2026-04-26 -- Planning complete
 
 ## Milestone Breakdown
 
@@ -47,7 +47,7 @@ Last activity: 2026-04-26 -- All 3 plans executed, 11/11 must-haves verified
 | 37 | Domain Model Redesign | REG-02, REG-04, REG-05 | ✅ Complete |
 | 38 | Employee Registration & Management API | REG-01, REG-03, MGMT-01..05 | ✅ Complete |
 | 39 | Keycloak Groups & Permissions | PERM-01..05 | ✅ Complete |
-| 40 | Client Frontend — PJ Registration & Employee Management | DASH-01 | 📋 Planned |
+| 40 | Client Frontend — PJ Registration & Employee Management | DASH-01, REG-01, REG-05, MGMT-01..05, PERM-04 | 📋 Planned |
 | 41 | BackOffice Employee Management + Audit | ADM-01, ADM-02, AUD-01, AUD-02 | 📋 Planned |
 | 42 | CI Coverage Enforcement | CI-01 | 📋 Planned |
 

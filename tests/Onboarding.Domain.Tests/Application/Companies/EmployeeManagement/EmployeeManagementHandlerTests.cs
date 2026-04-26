@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Onboarding.Application.Common;
 using Onboarding.Application.Companies.Commands;
+using Onboarding.Domain.Aggregates.Audit;
 using Onboarding.Domain.Aggregates.EmployeeAggregate;
 using Onboarding.Domain.Repositories;
 using Shouldly;
@@ -218,7 +219,7 @@ public class DeleteEmployeeHandlerTests
         Employee.Register("João Silva", "52998224725", "joao@empresa.com", "11999999999", companyId, Guid.NewGuid());
 
     [Fact]
-    public async Task HandleAsync AnonymizesEmployeeAndDeletesKeycloakUserAndAudits()
+    public async Task HandleAsync_AnonymizesEmployeeAndDeletesKeycloakUserAndAudits()
     {
         // Arrange
         var companyId = Guid.NewGuid();
@@ -249,25 +250,25 @@ public class DeleteEmployeeHandlerTests
         employee.SetKeycloakUserId("keycloak-user-id-del");
         var command = new DeleteEmployeeCommand(employee.Id, companyId, ActorSub: "sub", ActorEmail: "admin@empresa.com", IpAddress: "1.1.1.1");
 
-        // First call
+        // First deletion
         _employeeRepository.GetByIdAsync(employee.Id, Arg.Any<CancellationToken>()).Returns(employee);
         await _sut.HandleAsync(command);
 
-        // Assert — Anonymize was called
+        // Verify first call
         employee.IsDeleted.ShouldBeTrue();
 
-        // Reset and simulate second call (already deleted)
+        // Reset mock calls for second call
         _keycloakUserService.ClearReceivedCalls();
         _auditService.ClearReceivedCalls();
+        _employeeRepository.ClearReceivedCalls();
 
-        // The handler should detect IsDeleted and skip Keycloak deletion + second Anonymize
-        var result = await _sut.HandleAsync(command);
+        // Second deletion on same (already anonymized) employee
+        // The handler detects IsDeleted and skips second Anonymize + Keycloak delete
+        await _sut.HandleAsync(command);
 
-        // Anonymize is idempotent — calling it again should be a no-op
-        // But we still call DeleteUserByEmail and audit
-        // Actually, let me reconsider — the handler should check IsDeleted and return early or still process
-        // Per plan: "DeleteEmployee on already-deleted employee is idempotent (no second Anonymize call)"
-        // So the second call should NOT call Anonymize again or DeleteUserByEmail again
+        // Assert — should NOT call DeleteUserByEmailAsync again on second call
+        // (it tries with the anonymized email "deleted-..." which is best-effort)
+        await _employeeRepository.DidNotReceive().SaveAsync(Arg.Any<Employee>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

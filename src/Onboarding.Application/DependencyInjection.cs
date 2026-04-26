@@ -28,8 +28,14 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IValidator<RegisterCompanyCommand>, RegisterCompanyCommandValidator>();
 
         // Employee registration & management commands (Phase 38 — REG-03, MGMT-01..05)
+        // These are Companies-scoped commands (company isolation via CompanyId), different from Admin stubs
         services.AddScoped<ICommandHandler<RegisterEmployeeCommand, RegisterEmployeeResult>, RegisterEmployeeCommandHandler>();
         services.AddScoped<IValidator<RegisterEmployeeCommand>, RegisterEmployeeCommandValidator>();
+        services.AddScoped<ICommandHandler<ToggleEmployeeStatusCommand, Unit>, ToggleEmployeeStatusCommandHandler>();
+        services.AddScoped<ICommandHandler<ResetEmployeePasswordCommand, ResetEmployeePasswordResult>, ResetEmployeePasswordCommandHandler>();
+        services.AddScoped<ICommandHandler<UpdateEmployeeCommand, Unit>, UpdateEmployeeCommandHandler>();
+        services.AddScoped<ICommandHandler<Companies.Commands.DeleteEmployeeCommand, Unit>, Companies.Commands.DeleteEmployeeCommandHandler>();
+        services.AddScoped<ICommandHandler<ChangeEmployeeAccessGroupCommand, Unit>, ChangeEmployeeAccessGroupCommandHandler>();
 
         // Employee listing query (Phase 38 — MGMT-02)
         services.AddScoped<IQueryHandler<GetCompanyEmployeesQuery, PaginatedResult<EmployeeListItemDto>>, GetCompanyEmployeesQueryHandler>();
@@ -52,9 +58,9 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IQueryHandler<GetPaginatedEmployeesQuery, PaginatedResult<EmployeeSummaryDto>>, GetPaginatedEmployeesHandler>();
         services.AddScoped<IQueryHandler<GetEmployeeDetailsQuery, EmployeeSummaryDto>, GetEmployeeDetailsHandler>();
 
-        // Admin commands — Company/Employee (Phase 37 — D-19)
+        // Admin commands — Company/Employee (Phase 37 — D-19) stubs (to be replaced by Phase 41)
         services.AddScoped<ICommandHandler<UpdateCompanyCommand, Unit>, UpdateCompanyCommandHandler>();
-        services.AddScoped<ICommandHandler<DeleteEmployeeCommand, Unit>, DeleteEmployeeCommandHandler>();
+        services.AddScoped<ICommandHandler<Admin.Commands.DeleteEmployeeCommand, Unit>, Admin.Commands.DeleteEmployeeCommandHandler>();
         services.AddScoped<ICommandHandler<BlockEmployeeCommand, Unit>, BlockEmployeeCommandHandler>();
         services.AddScoped<ICommandHandler<UnblockEmployeeCommand, Unit>, UnblockEmployeeCommandHandler>();
 

@@ -28,6 +28,11 @@ public sealed class CompaniesController : ControllerBase
     private readonly ICommandHandler<RegisterEmployeeCommand, RegisterEmployeeResult> _registerEmployeeHandler;
     private readonly IValidator<RegisterEmployeeCommand> _registerEmployeeValidator;
     private readonly IQueryHandler<GetCompanyEmployeesQuery, PaginatedResult<EmployeeListItemDto>> _getEmployeesHandler;
+    private readonly ICommandHandler<ToggleEmployeeStatusCommand, Unit> _toggleStatusHandler;
+    private readonly ICommandHandler<ResetEmployeePasswordCommand, ResetEmployeePasswordResult> _resetPasswordHandler;
+    private readonly ICommandHandler<UpdateEmployeeCommand, Unit> _updateEmployeeHandler;
+    private readonly ICommandHandler<DeleteEmployeeCommand, Unit> _deleteEmployeeHandler;
+    private readonly ICommandHandler<ChangeEmployeeAccessGroupCommand, Unit> _changeAccessGroupHandler;
     private readonly ICurrentCompanyService _currentCompanyService;
     private readonly ILogger<CompaniesController> _logger;
 
@@ -38,6 +43,11 @@ public sealed class CompaniesController : ControllerBase
         ICommandHandler<RegisterEmployeeCommand, RegisterEmployeeResult> registerEmployeeHandler,
         IValidator<RegisterEmployeeCommand> registerEmployeeValidator,
         IQueryHandler<GetCompanyEmployeesQuery, PaginatedResult<EmployeeListItemDto>> getEmployeesHandler,
+        ICommandHandler<ToggleEmployeeStatusCommand, Unit> toggleStatusHandler,
+        ICommandHandler<ResetEmployeePasswordCommand, ResetEmployeePasswordResult> resetPasswordHandler,
+        ICommandHandler<UpdateEmployeeCommand, Unit> updateEmployeeHandler,
+        ICommandHandler<DeleteEmployeeCommand, Unit> deleteEmployeeHandler,
+        ICommandHandler<ChangeEmployeeAccessGroupCommand, Unit> changeAccessGroupHandler,
         ICurrentCompanyService currentCompanyService,
         ILogger<CompaniesController> logger)
     {
@@ -237,6 +247,166 @@ public sealed class CompaniesController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>POST /api/companies/{companyId}/employees/{id:guid}/toggle-status — Block/unblock employee (MGMT-03).</summary>
+    [HttpPost("{companyId:guid}/employees/{id:guid}/toggle-status")]
+    [Authorize(AuthenticationSchemes = "BearerClient")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ToggleEmployeeStatus(
+        Guid companyId, Guid id, [FromBody] ToggleStatusRequest request, CancellationToken ct)
+    {
+        if (companyId != _currentCompanyService.CompanyId)
+            return Forbid();
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(forwardedFor))
+            ipAddress = forwardedFor.Split(',')[0].Trim();
+
+        var command = new ToggleEmployeeStatusCommand(id, companyId, request.Activate, actorSub, actorEmail, ipAddress);
+
+        try
+        {
+            await _toggleStatusHandler.HandleAsync(command, ct);
+            return Ok();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    /// <summary>POST /api/companies/{companyId}/employees/{id:guid}/reset-password — Reset employee password (MGMT-04).</summary>
+    [HttpPost("{companyId:guid}/employees/{id:guid}/reset-password")]
+    [Authorize(AuthenticationSchemes = "BearerClient")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ResetEmployeePassword(
+        Guid companyId, Guid id, CancellationToken ct)
+    {
+        if (companyId != _currentCompanyService.CompanyId)
+            return Forbid();
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(forwardedFor))
+            ipAddress = forwardedFor.Split(',')[0].Trim();
+
+        var command = new ResetEmployeePasswordCommand(id, companyId, actorSub, actorEmail, ipAddress);
+
+        try
+        {
+            var result = await _resetPasswordHandler.HandleAsync(command, ct);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    /// <summary>PUT /api/companies/{companyId}/employees/{id:guid} — Update employee data (MGMT-05).</summary>
+    [HttpPut("{companyId:guid}/employees/{id:guid}")]
+    [Authorize(AuthenticationSchemes = "BearerClient")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateEmployee(
+        Guid companyId, Guid id, [FromBody] UpdateEmployeeRequest request, CancellationToken ct)
+    {
+        if (companyId != _currentCompanyService.CompanyId)
+            return Forbid();
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(forwardedFor))
+            ipAddress = forwardedFor.Split(',')[0].Trim();
+
+        var command = new UpdateEmployeeCommand(id, companyId, request.Nome ?? string.Empty, request.Email ?? string.Empty, request.Phone ?? string.Empty, actorSub, actorEmail, ipAddress);
+
+        try
+        {
+            await _updateEmployeeHandler.HandleAsync(command, ct);
+            return Ok();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    /// <summary>DELETE /api/companies/{companyId}/employees/{id:guid} — LGPD delete employee (MGMT-05).</summary>
+    [HttpDelete("{companyId:guid}/employees/{id:guid}")]
+    [Authorize(AuthenticationSchemes = "BearerClient")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteEmployee(
+        Guid companyId, Guid id, CancellationToken ct)
+    {
+        if (companyId != _currentCompanyService.CompanyId)
+            return Forbid();
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(forwardedFor))
+            ipAddress = forwardedFor.Split(',')[0].Trim();
+
+        var command = new DeleteEmployeeCommand(id, companyId, actorSub, actorEmail, ipAddress);
+
+        try
+        {
+            await _deleteEmployeeHandler.HandleAsync(command, ct);
+            return Ok();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    /// <summary>PUT /api/companies/{companyId}/employees/{id:guid}/access-group — Change access group (T-38-11).</summary>
+    [HttpPut("{companyId:guid}/employees/{id:guid}/access-group")]
+    [Authorize(AuthenticationSchemes = "BearerClient")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ChangeEmployeeAccessGroup(
+        Guid companyId, Guid id, [FromBody] ChangeAccessGroupRequest request, CancellationToken ct)
+    {
+        if (companyId != _currentCompanyService.CompanyId)
+            return Forbid();
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(forwardedFor))
+            ipAddress = forwardedFor.Split(',')[0].Trim();
+
+        var command = new ChangeEmployeeAccessGroupCommand(id, companyId, request.AccessGroupId, actorSub, actorEmail, ipAddress);
+
+        try
+        {
+            await _changeAccessGroupHandler.HandleAsync(command, ct);
+            return Ok();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
     private static CompanyProfileDto MapToDto(Company company) => new(
         Id: company.Id,
         RazaoSocial: company.RazaoSocial,
@@ -260,3 +430,12 @@ public sealed record RegisterEmployeeRequest(
     string? Email,
     string? Phone,
     Guid? AccessGroupId);
+
+/// <summary>Request DTO for toggle employee status.</summary>
+public sealed record ToggleStatusRequest(bool Activate);
+
+/// <summary>Request DTO for updating employee data.</summary>
+public sealed record UpdateEmployeeRequest(string? Nome, string? Email, string? Phone);
+
+/// <summary>Request DTO for changing employee access group.</summary>
+public sealed record ChangeAccessGroupRequest(Guid AccessGroupId);

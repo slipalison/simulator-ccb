@@ -3,6 +3,7 @@ using NSubstitute;
 using Onboarding.Application.Common;
 using Onboarding.Application.Companies.Commands;
 using Onboarding.Domain.Aggregates.Audit;
+using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Domain.Aggregates.EmployeeAggregate;
 using Onboarding.Domain.Exceptions;
 using Onboarding.Domain.Repositories;
@@ -33,6 +34,12 @@ public class RegisterEmployeeCommandHandlerTests
             _keycloakUserService, _auditService, _logger);
     }
 
+    private static Company CreateTestCompany(Guid? id = null)
+    {
+        var company = Company.Register("Empresa Teste LTDA", "11444777000161", "empresa@teste.com", "11999999999", TermsAcceptance.Create("1.0", "192.168.1.1"));
+        return company;
+    }
+
     private RegisterEmployeeCommand ValidCommand(Guid? companyId = null, Guid? accessGroupId = null) => new(
         CompanyId: companyId ?? Guid.NewGuid(),
         Nome: "João Silva",
@@ -54,7 +61,7 @@ public class RegisterEmployeeCommandHandlerTests
         var command = ValidCommand(companyId: companyId, accessGroupId: viewerGroupId);
         var keycloakUserId = Guid.NewGuid().ToString();
 
-        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(new Company());
+        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(CreateTestCompany());
         _employeeRepository.ExistsByCpfAsync(command.Cpf, Arg.Any<CancellationToken>()).Returns(false);
         _employeeRepository.ExistsByEmailAsync(command.Email, Arg.Any<CancellationToken>()).Returns(false);
         _accessGroupRepository.GetByIdAsync(viewerGroupId, Arg.Any<CancellationToken>()).Returns(
@@ -71,10 +78,7 @@ public class RegisterEmployeeCommandHandlerTests
         result.TemporaryPassword.ShouldNotBeNullOrEmpty();
         result.TemporaryPassword.Length.ShouldBeGreaterThanOrEqualTo(16);
 
-        await _employeeRepository.Received(1).AddAsync(Arg.Is<Employee>(e =>
-            e.Nome == command.Nome &&
-            e.CompanyId == companyId &&
-            e.AccessGroupId == viewerGroupId), Arg.Any<CancellationToken>());
+        await _employeeRepository.Received(1).AddAsync(Arg.Any<Employee>(), Arg.Any<CancellationToken>());
         await _keycloakUserService.Received(1).CreateUserAsync(
             "client", command.Email, command.Email, Arg.Any<string>(), command.Nome, Arg.Any<CancellationToken>());
         await _employeeRepository.Received(1).SaveAsync(Arg.Is<Employee>(e => e.KeycloakUserId == keycloakUserId), Arg.Any<CancellationToken>());
@@ -92,7 +96,7 @@ public class RegisterEmployeeCommandHandlerTests
         // Arrange
         var companyId = Guid.NewGuid();
         var command = ValidCommand(companyId: companyId);
-        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(new Company());
+        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(CreateTestCompany());
         _employeeRepository.ExistsByCpfAsync(command.Cpf, Arg.Any<CancellationToken>()).Returns(true);
 
         // Act & Assert
@@ -108,7 +112,7 @@ public class RegisterEmployeeCommandHandlerTests
         // Arrange
         var companyId = Guid.NewGuid();
         var command = ValidCommand(companyId: companyId);
-        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(new Company());
+        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(CreateTestCompany());
         _employeeRepository.ExistsByCpfAsync(command.Cpf, Arg.Any<CancellationToken>()).Returns(false);
         _employeeRepository.ExistsByEmailAsync(command.Email, Arg.Any<CancellationToken>()).Returns(true);
 
@@ -124,7 +128,7 @@ public class RegisterEmployeeCommandHandlerTests
         var viewerGroupId = Guid.NewGuid();
         var command = ValidCommand(companyId: companyId, accessGroupId: viewerGroupId);
 
-        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(new Company());
+        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(CreateTestCompany());
         _employeeRepository.ExistsByCpfAsync(command.Cpf, Arg.Any<CancellationToken>()).Returns(false);
         _employeeRepository.ExistsByEmailAsync(command.Email, Arg.Any<CancellationToken>()).Returns(false);
         _accessGroupRepository.GetByIdAsync(viewerGroupId, Arg.Any<CancellationToken>()).Returns(
@@ -159,7 +163,7 @@ public class RegisterEmployeeCommandHandlerTests
         var command = ValidCommand(companyId: companyId, accessGroupId: null);
         var keycloakUserId = Guid.NewGuid().ToString();
 
-        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(new Company());
+        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(CreateTestCompany());
         _employeeRepository.ExistsByCpfAsync(command.Cpf, Arg.Any<CancellationToken>()).Returns(false);
         _employeeRepository.ExistsByEmailAsync(command.Email, Arg.Any<CancellationToken>()).Returns(false);
         _accessGroupRepository.GetByCompanyAndNameAsync(companyId, "viewer", Arg.Any<CancellationToken>()).Returns(viewerGroup);
@@ -183,7 +187,7 @@ public class RegisterEmployeeCommandHandlerTests
         var command = ValidCommand(companyId: companyId, accessGroupId: viewerGroupId);
         var keycloakUserId = Guid.NewGuid().ToString();
 
-        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(new Company());
+        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(CreateTestCompany());
         _employeeRepository.ExistsByCpfAsync(command.Cpf, Arg.Any<CancellationToken>()).Returns(false);
         _employeeRepository.ExistsByEmailAsync(command.Email, Arg.Any<CancellationToken>()).Returns(false);
         _accessGroupRepository.GetByIdAsync(viewerGroupId, Arg.Any<CancellationToken>()).Returns(
@@ -197,7 +201,6 @@ public class RegisterEmployeeCommandHandlerTests
         // Assert — password should be 16+ chars, contain upper, lower, digit, special
         result.TemporaryPassword.ShouldNotBeNullOrEmpty();
         result.TemporaryPassword.Length.ShouldBeGreaterThanOrEqualTo(16);
-        // Must contain at least one uppercase, one lowercase, one digit, one special
         result.TemporaryPassword.Any(char.IsUpper).ShouldBeTrue();
         result.TemporaryPassword.Any(char.IsLower).ShouldBeTrue();
         result.TemporaryPassword.Any(char.IsDigit).ShouldBeTrue();

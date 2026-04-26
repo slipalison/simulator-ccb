@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Onboarding.Application.Common;
 using Onboarding.Application.Companies.Commands;
 using Onboarding.Application.Companies.DTOs;
+using Onboarding.Application.Companies.Queries;
 using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Domain.Exceptions;
 using Onboarding.Domain.Repositories;
@@ -14,6 +15,8 @@ namespace Onboarding.API.Controllers;
 /// Company endpoints.
 /// GET /api/companies/me — AUTH-03: protected route returns profile of authenticated company.
 /// POST /api/companies/registration — REG-01: PJ company registration with Keycloak user creation.
+/// POST /api/companies/{companyId}/employees — REG-03: PJ registers employee (PF) with temp password.
+/// GET /api/companies/{companyId}/employees — MGMT-02: PJ lists employees with pagination/filters.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -22,17 +25,29 @@ public sealed class CompaniesController : ControllerBase
     private readonly ICompanyRepository _repository;
     private readonly ICommandHandler<RegisterCompanyCommand, RegisterCompanyResult> _registerHandler;
     private readonly IValidator<RegisterCompanyCommand> _registerValidator;
+    private readonly ICommandHandler<RegisterEmployeeCommand, RegisterEmployeeResult> _registerEmployeeHandler;
+    private readonly IValidator<RegisterEmployeeCommand> _registerEmployeeValidator;
+    private readonly IQueryHandler<GetCompanyEmployeesQuery, PaginatedResult<EmployeeListItemDto>> _getEmployeesHandler;
+    private readonly ICurrentCompanyService _currentCompanyService;
     private readonly ILogger<CompaniesController> _logger;
 
     public CompaniesController(
         ICompanyRepository repository,
         ICommandHandler<RegisterCompanyCommand, RegisterCompanyResult> registerHandler,
         IValidator<RegisterCompanyCommand> registerValidator,
+        ICommandHandler<RegisterEmployeeCommand, RegisterEmployeeResult> registerEmployeeHandler,
+        IValidator<RegisterEmployeeCommand> registerEmployeeValidator,
+        IQueryHandler<GetCompanyEmployeesQuery, PaginatedResult<EmployeeListItemDto>> getEmployeesHandler,
+        ICurrentCompanyService currentCompanyService,
         ILogger<CompaniesController> logger)
     {
         _repository = repository;
         _registerHandler = registerHandler;
         _registerValidator = registerValidator;
+        _registerEmployeeHandler = registerEmployeeHandler;
+        _registerEmployeeValidator = registerEmployeeValidator;
+        _getEmployeesHandler = getEmployeesHandler;
+        _currentCompanyService = currentCompanyService;
         _logger = logger;
     }
 
@@ -128,6 +143,100 @@ public sealed class CompaniesController : ControllerBase
         }
     }
 
+    /// <summary>POST /api/companies/{companyId}/employees — Register employee (PF) for company (REG-03, MGMT-01).</summary>
+    [HttpPost("{companyId:guid}/employees")]
+    [Authorize(AuthenticationSchemes = "BearerClient")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> RegisterEmployee(
+        Guid companyId, [FromBody] RegisterEmployeeRequest? request, CancellationToken ct)
+    {
+        // Company isolation: verify route companyId matches JWT companyId (T-38-07)
+        if (companyId != _currentCompanyService.CompanyId)
+            return Forbid();
+
+        if (request is null)
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Bad request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = "Request body is required."
+            });
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(forwardedFor))
+            ipAddress = forwardedFor.Split(',')[0].Trim();
+
+        var command = new RegisterEmployeeCommand(
+            CompanyId: companyId,
+            Nome: request.Nome ?? string.Empty,
+            Cpf: request.Cpf ?? string.Empty,
+            Email: request.Email ?? string.Empty,
+            Phone: request.Phone ?? string.Empty,
+            AccessGroupId: request.AccessGroupId,
+            ActorSub: actorSub,
+            ActorEmail: actorEmail,
+            IpAddress: ipAddress);
+
+        var validation = await _registerEmployeeValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+        {
+            return UnprocessableEntity(new ValidationProblemDetails(
+                validation.Errors
+                    .GroupBy(e => e.PropertyName)
+                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
+        }
+
+        try
+        {
+            var result = await _registerEmployeeHandler.HandleAsync(command, ct);
+            return CreatedAtAction(nameof(GetMe), new { companyId }, result);
+        }
+        catch (BadRequestException ex)
+        {
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Bad request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = ex.Message
+            });
+        }
+        catch (DuplicateKeycloakUserException ex)
+        {
+            _logger.LogWarning(ex, "Duplicate Keycloak user during employee registration for {Email}", command.Email);
+            return Conflict(new ProblemDetails
+            {
+                Title = "Conflict",
+                Status = StatusCodes.Status409Conflict,
+                Detail = "A user with this email already exists."
+            });
+        }
+    }
+
+    /// <summary>GET /api/companies/{companyId}/employees — Paginated employee listing (MGMT-02).</summary>
+    [HttpGet("{companyId:guid}/employees")]
+    [Authorize(AuthenticationSchemes = "BearerClient")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetEmployees(
+        Guid companyId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null, [FromQuery] string? status = null, CancellationToken ct = default)
+    {
+        // Company isolation (T-38-07)
+        if (companyId != _currentCompanyService.CompanyId)
+            return Forbid();
+
+        var query = new GetCompanyEmployeesQuery(companyId, page, pageSize, search, status);
+        var result = await _getEmployeesHandler.HandleAsync(query, ct);
+        return Ok(result);
+    }
+
     private static CompanyProfileDto MapToDto(Company company) => new(
         Id: company.Id,
         RazaoSocial: company.RazaoSocial,
@@ -143,3 +252,11 @@ public sealed record CompanyProfileDto(
     string Email,
     string Phone,
     string? Cnpj);
+
+/// <summary>Request DTO for employee registration.</summary>
+public sealed record RegisterEmployeeRequest(
+    string? Nome,
+    string? Cpf,
+    string? Email,
+    string? Phone,
+    Guid? AccessGroupId);

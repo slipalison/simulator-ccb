@@ -3,11 +3,11 @@ namespace Onboarding.Application.Admin.DTOs;
 /// <summary>
 /// Summary item for paginated company listing (ADMIN-01).
 /// </summary>
-public sealed record UserSummaryDto(
+public sealed record CompanySummaryDto(
     Guid Id,
     string RazaoSocial,
+    string Cnpj,
     string Email,
-    string? Cnpj,
-    string Type,  // Always "PJ" for companies
-    bool Enabled,
-    DateTime? DeletedAt);
+    string Phone,
+    bool IsDeleted,
+    string? KeycloakUserId);

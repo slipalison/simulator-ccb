@@ -1112,7 +1112,7 @@ Plans:
 | 37. Domain Model Redesign | 4/4 | ✅ Complete | 2026-04-26 |
 | 38. Employee Registration & Management API | 3/3 | ✅ Complete | 2026-04-26 |
 | 39. Keycloak Groups & Permissions | 3/3 | ✅ Complete | 2026-04-26 |
-| 40. Client Frontend — PJ Registration & Employee Management | 0/TBD | 📋 Planned | — |
+| 40. Client Frontend — PJ Registration & Employee Management | 3/4 | 🔄 Executing | 2026-04-26 |
 | 41. BackOffice Employee Management + Audit | 0/TBD | 📋 Planned | — |
 | 42. CI Coverage Enforcement | 0/TBD | 📋 Planned | — |
 

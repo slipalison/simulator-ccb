@@ -18,11 +18,11 @@
 
 ## MGMT — Gestão de Funcionários
 
-- [ ] **MGMT-01**: PJ pode visualizar lista paginada de funcionários da sua empresa (20 por página) com filtros (nome, status)
-- [ ] **MGMT-02**: PJ pode bloquear/desbloquear funcionários (disable/enable no Keycloak — preserva dados para auditoria)
-- [ ] **MGMT-03**: PJ pode resetar senha de funcionário — gera senha temporária exibida uma vez, Keycloak força troca no próximo login
-- [ ] **MGMT-04**: PJ pode editar dados do funcionário (nome, email, telefone) — persiste no Keycloak
-- [ ] **MGMT-05**: PJ pode excluir funcionário (LGPD) — anonimiza dados no PostgreSQL + delete no Keycloak
+- [x] **MGMT-01**: PJ pode visualizar lista paginada de funcionários da sua empresa (20 por página) com filtros (nome, status)
+- [x] **MGMT-02**: PJ pode bloquear/desbloquear funcionários (disable/enable no Keycloak — preserva dados para auditoria)
+- [x] **MGMT-03**: PJ pode resetar senha de funcionário — gera senha temporária exibida uma vez, Keycloak força troca no próximo login
+- [x] **MGMT-04**: PJ pode editar dados do funcionário (nome, email, telefone) — persiste no Keycloak
+- [x] **MGMT-05**: PJ pode excluir funcionário (LGPD) — anonimiza dados no PostgreSQL + delete no Keycloak
 
 ---
 
@@ -98,11 +98,11 @@
 | REG-03 | Phase 38 | Pending |
 | REG-04 | Phase 37 | Pending |
 | REG-05 | Phase 37 | Pending |
-| MGMT-01 | Phase 38 | Pending |
-| MGMT-02 | Phase 38 | Pending |
-| MGMT-03 | Phase 38 | Pending |
-| MGMT-04 | Phase 38 | Pending |
-| MGMT-05 | Phase 38 | Pending |
+| MGMT-01 | Phase 40 | ✅ Complete |
+| MGMT-02 | Phase 40 | ✅ Complete |
+| MGMT-03 | Phase 40 | ✅ Complete |
+| MGMT-04 | Phase 40 | ✅ Complete |
+| MGMT-05 | Phase 40 | ✅ Complete |
 | PERM-01 | Phase 39 | ✅ Complete |
 | PERM-02 | Phase 39 | ✅ Complete |
 | PERM-03 | Phase 39 | ✅ Complete |

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v7.0
 milestone_name: PJ-Only Onboarding + Gestão de Funcionários
-status: executing
-stopped_at: Phase 37 Plan 03 complete
-last_updated: "2026-04-26T02:16:30.000Z"
+status: complete
+stopped_at: Phase 37 complete
+last_updated: "2026-04-26T17:00:00.000Z"
 last_activity: 2026-04-26
 progress:
   total_phases: 42
-  completed_phases: 36
-  total_plans: 85
-  completed_plans: 84
+  completed_phases: 37
+  total_plans: 89
+  completed_plans: 89
   percent: 98
 ---
 
@@ -21,14 +21,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — isolamento entre empresas é requisito de primeira classe.
-**Current focus:** Milestone v7.0 — Phase 37 executing (Plan 03 complete)
+**Current focus:** Milestone v7.0 — Phase 37 complete
 **Last activity:** 2026-04-26
 
 ## Current Position
 
-Phase: 37 (Domain Model Redesign)
-Plan: 03 complete
-Status: Phase 37 Plan 03 — Infrastructure layer com EF Core configs, HasQueryFilter, repositories e migration
+Phase: 37 (Complete)
+Plan: 4/4
+Status: Phase 37 Domain Model Redesign — Company/Employee/AccessGroup/TermsAcceptance implementados, Client removido, build limpo
 Last activity: 2026-04-26
 
 ## Milestone Breakdown
@@ -45,7 +45,7 @@ Last activity: 2026-04-26
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
-| 37 | Domain Model Redesign | REG-02, REG-04, REG-05 | 🔄 Executing (Plan 03 done) |
+| 37 | Domain Model Redesign | REG-02, REG-04, REG-05 | ✅ Complete |
 | 38 | Employee Registration & Management API | REG-01, REG-03, MGMT-01..05 | 📋 Planned |
 | 39 | Keycloak Groups & Permissions | PERM-01..05 | 📋 Planned |
 | 40 | Client Frontend — PJ Registration & Employee Management | DASH-01 | 📋 Planned |
@@ -61,10 +61,11 @@ Recent decisions affecting current work:
 
 - [v7.0]: Cadastro agora é exclusivamente PJ — PF removido do fluxo de registro
 - [v7.0]: Permissões via Keycloak roles/groups nativo — Bit Flags no JWT rejeitado
-- [v7.0]: Grupos de acesso: Admin Empresa, Viewer, Dashboard
+- [v7.0]: Grupos de acesso: Admin Empresa, Viewer, Dashboard (seed automático no registro)
 - [v7.0]: Aceite de termos de uso obrigatório (texto mock por enquanto)
 - [v7.0]: Dashboard com dados estáticos (mock)
 - [v7.0]: Base zerada — docker compose down -v para recriar tudo
+- [v7.0]: AccessGroup como entidade no banco com permissões resource:action (employees:read, employees:write, etc.)
 - [Phase 37-03]: Cnpj e Cpf nullable no DB — necessário para Anonymize() LGPD que seta VO para null!
 - [Phase 21-frontend-separation]: DECISÃO DE ARQUITETURA — Dois projetos frontend independentes (`frontend/client` e `frontend/backoffice`) são obrigatórios — nenhum compartilhamento de código, builds separadas, deploys independentes
 - [Phase 21-frontend-separation]: Regra de ouro: código duplicado é aceitável, import cruzado é proibido

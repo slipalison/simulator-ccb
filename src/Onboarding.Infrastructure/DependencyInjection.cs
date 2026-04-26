@@ -12,6 +12,8 @@ using Onboarding.Infrastructure.Keycloak;
 using Onboarding.Infrastructure.Persistence;
 using Onboarding.Infrastructure.Repositories;
 
+// ReSharper disable once RedundantUsingDirective — explicit for DI clarity
+
 namespace Onboarding.Infrastructure;
 
 /// <summary>
@@ -32,7 +34,12 @@ public static class InfrastructureServiceExtensions
                 ?? throw new InvalidOperationException(
                     "Connection string 'AppDb' not found in configuration.")));
 
+        // Company isolation service — set per-request from JWT claims (D-17)
+        services.AddScoped<ICurrentCompanyService, CurrentCompanyService>();
+
         services.AddScoped<ICompanyRepository, CompanyRepository>();
+        services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+        services.AddScoped<IAccessGroupRepository, AccessGroupRepository>();
         services.AddScoped<IAdminRepository, AdminRepository>();
         services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
         services.AddScoped<IAuditService, AuditService>();

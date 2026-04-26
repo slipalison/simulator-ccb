@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Onboarding.Application.Common;
 using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Domain.ValueObjects;
 
@@ -7,6 +8,13 @@ namespace Onboarding.Infrastructure.Persistence.Configurations;
 
 public sealed class CompanyConfiguration : IEntityTypeConfiguration<Company>
 {
+    private readonly ICurrentCompanyService _currentCompanyService;
+
+    public CompanyConfiguration(ICurrentCompanyService currentCompanyService)
+    {
+        _currentCompanyService = currentCompanyService;
+    }
+
     public void Configure(EntityTypeBuilder<Company> builder)
     {
         builder.ToTable("companies");
@@ -37,8 +45,9 @@ public sealed class CompanyConfiguration : IEntityTypeConfiguration<Company>
             .HasColumnName("cnpj")
             .HasConversion(
                 vo => vo == null ? null : vo.Value,
-                s => s == null ? null : Cnpj.Create(s))
-            .HasMaxLength(14);
+                s => s == null ? null! : Cnpj.Create(s))
+            .HasMaxLength(14)
+            .IsRequired(false);
 
         builder.Property(c => c.KeycloakUserId)
             .HasColumnName("keycloak_user_id")

@@ -6,6 +6,7 @@ namespace Onboarding.Infrastructure.Persistence;
 /// <summary>
 /// Design-time factory for EF Core CLI tools (migrations).
 /// Not used at runtime — runtime DbContext is configured via DI in Program.cs.
+/// Provides a default CurrentCompanyService for migration generation (HasQueryFilter is ignored during migrations).
 /// </summary>
 public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
@@ -16,6 +17,6 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
         // Use actual dev password — matches .env APP_DB_PASSWORD
         optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=onboarding;Username=appuser;Password=dev_app_pass_2026");
         
-        return new AppDbContext(optionsBuilder.Options);
+        return new AppDbContext(optionsBuilder.Options, new CurrentCompanyService());
     }
 }

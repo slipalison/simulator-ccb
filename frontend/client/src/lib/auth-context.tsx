@@ -7,6 +7,21 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 export type AccessGroup = "admin-empresa" | "viewer" | "dashboard";
 
 // ---------------------------------------------------------------------------
+// Group-based default routes per D-22
+// ---------------------------------------------------------------------------
+
+const GROUP_DEFAULT_ROUTES: Record<AccessGroup, string> = {
+  "admin-empresa": "/employees",
+  viewer: "/employees",
+  dashboard: "/dashboard",
+};
+
+/** Returns the default route for a given access group. Fallback: /profile */
+export function getDefaultRouteForGroup(group: AccessGroup | null): string {
+  return group ? (GROUP_DEFAULT_ROUTES[group] ?? "/profile") : "/profile";
+}
+
+// ---------------------------------------------------------------------------
 // Context definition
 // ---------------------------------------------------------------------------
 

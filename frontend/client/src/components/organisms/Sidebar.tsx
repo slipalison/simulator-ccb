@@ -5,9 +5,9 @@ import { LayoutDashboard, Users, Building2 } from "lucide-react";
 // ---------------------------------------------------------------------------
 // Sidebar navigation with permission-based link visibility (D-03, D-19, D-20, D-21)
 // ---------------------------------------------------------------------------
-// admin-empresa: sees Dashboard, Employees, Profile
+// admin-empresa: sees Dashboard, Employees (full), Profile
 // viewer: sees Employees (read-only), Profile
-// dashboard: sees Dashboard, Profile
+// dashboard: sees Dashboard, Employees (read-only), Profile
 // ---------------------------------------------------------------------------
 
 interface NavItem {
@@ -28,7 +28,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Funcionários",
     href: "/employees",
     icon: <Users className="h-5 w-5" />,
-    groups: ["admin-empresa", "viewer"],
+    groups: ["admin-empresa", "viewer", "dashboard"],
   },
   {
     label: "Perfil Empresa",

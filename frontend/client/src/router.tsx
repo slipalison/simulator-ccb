@@ -16,7 +16,7 @@ import { EmployeesPage } from "@/components/pages/EmployeesPage";
 import { ForgotPasswordPage } from "@/components/pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/components/pages/ResetPasswordPage";
 import { AppLayout } from "@/components/templates/AppLayout";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, getDefaultRouteForGroup } from "@/lib/auth-context";
 import { z } from "zod";
 
 // Root route: notFoundComponent for type-safe 404 routing
@@ -131,7 +131,7 @@ declare module "@tanstack/react-router" {
 
 // ---------------------------------------------------------------------------
 // RootRoute: shows AuthLoginPage for unauthenticated users
-// If authenticated, redirect to /dashboard
+// If authenticated, redirect based on access group (D-22)
 // ---------------------------------------------------------------------------
 
 function RootRoute() {
@@ -139,8 +139,9 @@ function RootRoute() {
   const navigate = useNavigate();
 
   if (auth.isAuthenticated) {
-    // Navigate to dashboard instead of profile (D-02: / is dashboard for auth users)
-    navigate({ to: "/dashboard" as any, replace: true });
+    // D-22: redirect based on group — admin-empresa/viewer → /employees, dashboard → /dashboard
+    const defaultRoute = getDefaultRouteForGroup(auth.accessGroup);
+    navigate({ to: defaultRoute as any, replace: true });
     return null;
   }
 

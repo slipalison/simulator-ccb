@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth, getDefaultRouteForGroup } from "@/lib/auth-context";
 import { Navigate } from "@tanstack/react-router";
 import { getEmployees } from "@/lib/api";
 import {
@@ -15,6 +15,7 @@ import {
  * DashboardPage: 6-card mock dashboard per D-15.
  * Accessible by admin-empresa and dashboard groups.
  * Total Funcionários card can optionally show real API count (D-18).
+ * Unauthorized users are redirected to their group's default route (D-22).
  */
 export function DashboardPage() {
   const { auth } = useAuth();
@@ -39,8 +40,9 @@ export function DashboardPage() {
   }
 
   // Permission guard: only admin-empresa and dashboard can see dashboard
+  // Redirect unauthorized users to their group's default route (D-22)
   if (auth.accessGroup !== "admin-empresa" && auth.accessGroup !== "dashboard") {
-    return <Navigate to="/profile" />;
+    return <Navigate to={getDefaultRouteForGroup(auth.accessGroup) as any} />;
   }
 
   return (

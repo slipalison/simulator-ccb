@@ -106,6 +106,29 @@ public sealed class RegisterEmployeeCommandHandler
         employee.SetKeycloakUserId(keycloakUserId);
         await _employeeRepository.SaveAsync(employee, ct);
 
+        // 9b. Add employee to Keycloak group (D-16)
+        // Best-effort: resolved group name → Keycloak group ID → AddUserToGroupAsync
+        try
+        {
+            var accessGroup = await _accessGroupRepository.GetByIdAsync(employee.AccessGroupId, ct);
+            if (accessGroup is not null)
+            {
+                var keycloakGroupId = await _keycloakUserService.GetGroupByNameAsync("client", accessGroup.Name, ct);
+                if (keycloakGroupId is not null)
+                {
+                    await _keycloakUserService.AddUserToGroupAsync("client", keycloakUserId, keycloakGroupId, ct);
+                }
+                else
+                {
+                    _logger.LogWarning("Keycloak group '{GroupName}' not found for employee {EmployeeId}. Employee created but not added to Keycloak group.", accessGroup.Name, employee.Id);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to add employee {EmployeeId} to Keycloak group. Employee created in DB, group membership may need manual sync.", employee.Id);
+        }
+
         // 10. Audit (MGMT-04, T-38-10)
         await _auditService.RecordAsync(
             actorSub: command.ActorSub,

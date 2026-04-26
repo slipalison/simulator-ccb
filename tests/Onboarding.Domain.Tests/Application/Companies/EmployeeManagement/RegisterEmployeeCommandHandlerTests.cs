@@ -205,4 +205,55 @@ public class RegisterEmployeeCommandHandlerTests
         result.TemporaryPassword.Any(char.IsLower).ShouldBeTrue();
         result.TemporaryPassword.Any(char.IsDigit).ShouldBeTrue();
     }
+
+    [Fact]
+    public async Task HandleAsync_AddsEmployeeToKeycloakGroup_AfterUserCreation()
+    {
+        // Arrange (D-16: employee added to Keycloak group after registration)
+        var companyId = Guid.NewGuid();
+        var viewerGroup = AccessGroup.Create(companyId, "viewer", [Permissions.EmployeesRead]);
+        // Use the AccessGroup's generated Id as the command's AccessGroupId
+        var command = ValidCommand(companyId: companyId, accessGroupId: viewerGroup.Id);
+        var keycloakUserId = Guid.NewGuid().ToString();
+        var keycloakGroupId = Guid.NewGuid().ToString();
+
+        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(CreateTestCompany());
+        _employeeRepository.ExistsByCpfAsync(command.Cpf, Arg.Any<CancellationToken>()).Returns(false);
+        _employeeRepository.ExistsByEmailAsync(command.Email, Arg.Any<CancellationToken>()).Returns(false);
+        _accessGroupRepository.GetByIdAsync(viewerGroup.Id, Arg.Any<CancellationToken>()).Returns(viewerGroup);
+        _keycloakUserService.CreateUserAsync("client", command.Email, command.Email, Arg.Any<string>(), command.Nome, Arg.Any<CancellationToken>())
+            .Returns(keycloakUserId);
+        _keycloakUserService.GetGroupByNameAsync("client", "viewer", Arg.Any<CancellationToken>()).Returns(keycloakGroupId);
+
+        // Act
+        await _sut.HandleAsync(command);
+
+        // Assert — AddUserToGroupAsync called with correct parameters
+        await _keycloakUserService.Received(1).AddUserToGroupAsync("client", keycloakUserId, keycloakGroupId, Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task HandleAsync_KeycloakGroupNotFound_LogsWarningButStillCompletes()
+    {
+        // Arrange — GetGroupByNameAsync returns null (D-16: best-effort)
+        var companyId = Guid.NewGuid();
+        var viewerGroup = AccessGroup.Create(companyId, "viewer", [Permissions.EmployeesRead]);
+        var command = ValidCommand(companyId: companyId, accessGroupId: viewerGroup.Id);
+        var keycloakUserId = Guid.NewGuid().ToString();
+
+        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(CreateTestCompany());
+        _employeeRepository.ExistsByCpfAsync(command.Cpf, Arg.Any<CancellationToken>()).Returns(false);
+        _employeeRepository.ExistsByEmailAsync(command.Email, Arg.Any<CancellationToken>()).Returns(false);
+        _accessGroupRepository.GetByIdAsync(viewerGroup.Id, Arg.Any<CancellationToken>()).Returns(viewerGroup);
+        _keycloakUserService.CreateUserAsync("client", command.Email, command.Email, Arg.Any<string>(), command.Nome, Arg.Any<CancellationToken>())
+            .Returns(keycloakUserId);
+        _keycloakUserService.GetGroupByNameAsync("client", "viewer", Arg.Any<CancellationToken>()).Returns((string?)null);
+
+        // Act — should NOT throw
+        var result = await _sut.HandleAsync(command);
+
+        // Assert — employee is still created, AddUserToGroupAsync was NOT called
+        result.ShouldNotBeNull();
+        await _keycloakUserService.DidNotReceive().AddUserToGroupAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+    }
 }

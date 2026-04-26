@@ -80,6 +80,48 @@ public class RegisterCompanyCommandHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_ValidRegistration_CreatesKeycloakGroupsForDefaultAccessGroups()
+    {
+        // Arrange
+        var command = ValidCommand();
+        var keycloakUserId = Guid.NewGuid().ToString();
+        _companyRepository.ExistsByCnpjAsync(command.Cnpj, Arg.Any<CancellationToken>()).Returns(false);
+        _companyRepository.ExistsByEmailAsync(command.Email, Arg.Any<CancellationToken>()).Returns(false);
+        _keycloakUserService.CreateUserAsync("client", command.Email, command.Email, command.Password, command.RazaoSocial, Arg.Any<CancellationToken>())
+            .Returns(keycloakUserId);
+
+        // Act
+        var result = await _sut.HandleAsync(command);
+
+        // Assert — CreateGroupAsync called for each default group (D-13)
+        await _keycloakUserService.Received(1).CreateGroupAsync("client", "admin-empresa", Arg.Any<CancellationToken>());
+        await _keycloakUserService.Received(1).CreateGroupAsync("client", "viewer", Arg.Any<CancellationToken>());
+        await _keycloakUserService.Received(1).CreateGroupAsync("client", "dashboard", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task HandleAsync_KeycloakGroupCreationFailure_StillCompletesRegistration()
+    {
+        // Arrange — Keycloak group creation fails but DB group creation succeeds (D-13 eventual consistency)
+        var command = ValidCommand();
+        var keycloakUserId = Guid.NewGuid().ToString();
+        _companyRepository.ExistsByCnpjAsync(command.Cnpj, Arg.Any<CancellationToken>()).Returns(false);
+        _companyRepository.ExistsByEmailAsync(command.Email, Arg.Any<CancellationToken>()).Returns(false);
+        _keycloakUserService.CreateUserAsync("client", command.Email, command.Email, command.Password, command.RazaoSocial, Arg.Any<CancellationToken>())
+            .Returns(keycloakUserId);
+        _keycloakUserService.CreateGroupAsync("client", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<Task<string>>(_ => throw new Exception("Keycloak group creation failed"));
+
+        // Act — should NOT throw despite Keycloak group failure
+        var result = await _sut.HandleAsync(command);
+
+        // Assert — company still created, groups still seeded in DB
+        result.ShouldNotBeNull();
+        await _accessGroupRepository.Received(1).AddRangeAsync(Arg.Is<IEnumerable<AccessGroup>>(groups =>
+            groups.Count() == 3), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task HandleAsync_DuplicateCnpj_ThrowsDuplicateCompanyException()
     {
         // Arrange

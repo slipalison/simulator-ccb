@@ -87,6 +87,21 @@ public sealed class RegisterCompanyCommandHandler
         var defaultGroups = AccessGroup.CreateDefaultGroups(company.Id);
         await _accessGroupRepository.AddRangeAsync(defaultGroups, ct);
 
+        // 8b. Provision Keycloak groups for each default AccessGroup (D-13)
+        // Best-effort: DB is source of truth; Keycloak sync failure is logged but not rethrown
+        var targetRealm = "client";
+        foreach (var group in defaultGroups)
+        {
+            try
+            {
+                await _keycloakUserService.CreateGroupAsync(targetRealm, group.Name, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to create Keycloak group {GroupName} for company {CompanyId}. DB group exists, Keycloak group may need manual creation.", group.Name, company.Id);
+            }
+        }
+
         // 9. Audit (REG-03)
         await _auditService.RecordAsync(
             actorSub: "",

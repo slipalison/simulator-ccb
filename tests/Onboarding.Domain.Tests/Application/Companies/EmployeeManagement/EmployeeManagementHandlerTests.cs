@@ -288,15 +288,19 @@ public class ChangeEmployeeAccessGroupHandlerTests
 {
     private readonly IEmployeeRepository _employeeRepository;
     private readonly IAccessGroupRepository _accessGroupRepository;
+    private readonly IKeycloakUserService _keycloakUserService;
     private readonly IAuditService _auditService;
+    private readonly ILogger<ChangeEmployeeAccessGroupCommandHandler> _logger;
     private readonly ChangeEmployeeAccessGroupCommandHandler _sut;
 
     public ChangeEmployeeAccessGroupHandlerTests()
     {
         _employeeRepository = Substitute.For<IEmployeeRepository>();
         _accessGroupRepository = Substitute.For<IAccessGroupRepository>();
+        _keycloakUserService = Substitute.For<IKeycloakUserService>();
         _auditService = Substitute.For<IAuditService>();
-        _sut = new ChangeEmployeeAccessGroupCommandHandler(_employeeRepository, _accessGroupRepository, _auditService);
+        _logger = Substitute.For<ILogger<ChangeEmployeeAccessGroupCommandHandler>>();
+        _sut = new ChangeEmployeeAccessGroupCommandHandler(_employeeRepository, _accessGroupRepository, _keycloakUserService, _auditService, _logger);
     }
 
     private static Employee CreateTestEmployee(Guid companyId) =>
@@ -323,6 +327,60 @@ public class ChangeEmployeeAccessGroupHandlerTests
         employee.AccessGroupId.ShouldBe(newGroupId);
         await _employeeRepository.Received(1).SaveAsync(employee, Arg.Any<CancellationToken>());
         await _auditService.Received(1).RecordAsync("sub", "admin@empresa.com", ActionType.AccessGroupChanged, employee.Id, employee.Nome, Arg.Any<string>(), "1.1.1.1", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task HandleAsync_ChangesAccessGroup_SyncsKeycloakGroupMembership()
+    {
+        // Arrange (D-15: add to new group + remove from old group in Keycloak)
+        var companyId = Guid.NewGuid();
+        var previousAccessGroupId = Guid.NewGuid();
+        var newGroupId = Guid.NewGuid();
+        var employee = Employee.Register("João Silva", "52998224725", "joao@empresa.com", "11999999999", companyId, previousAccessGroupId);
+        employee.SetKeycloakUserId("keycloak-user-id-999");
+
+        var previousGroup = AccessGroup.Create(companyId, "viewer", [Permissions.EmployeesRead]);
+        var newGroup = AccessGroup.Create(companyId, "admin-empresa", Permissions.All);
+        var command = new ChangeEmployeeAccessGroupCommand(employee.Id, companyId, newGroupId, ActorSub: "sub", ActorEmail: "admin@empresa.com", IpAddress: "1.1.1.1");
+
+        _employeeRepository.GetByIdAsync(employee.Id, Arg.Any<CancellationToken>()).Returns(employee);
+        _accessGroupRepository.GetByIdAsync(newGroupId, Arg.Any<CancellationToken>()).Returns(newGroup);
+        _accessGroupRepository.GetByIdAsync(previousAccessGroupId, Arg.Any<CancellationToken>()).Returns(previousGroup);
+        _keycloakUserService.GetGroupByNameAsync("client", "admin-empresa", Arg.Any<CancellationToken>()).Returns("new-group-id");
+        _keycloakUserService.GetGroupByNameAsync("client", "viewer", Arg.Any<CancellationToken>()).Returns("old-group-id");
+
+        // Act
+        await _sut.HandleAsync(command);
+
+        // Assert — AddUserToGroupAsync for new group, RemoveUserFromGroupAsync for old group
+        await _keycloakUserService.Received(1).AddUserToGroupAsync("client", "keycloak-user-id-999", "new-group-id", Arg.Any<CancellationToken>());
+        await _keycloakUserService.Received(1).RemoveUserFromGroupAsync("client", "keycloak-user-id-999", "old-group-id", Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task HandleAsync_KeycloakSyncFailure_StillCompletesDbUpdate()
+    {
+        // Arrange — Keycloak sync fails but DB update succeeds (D-15 eventual consistency)
+        var companyId = Guid.NewGuid();
+        var previousAccessGroupId = Guid.NewGuid();
+        var newGroupId = Guid.NewGuid();
+        var employee = Employee.Register("João Silva", "52998224725", "joao@empresa.com", "11999999999", companyId, previousAccessGroupId);
+        employee.SetKeycloakUserId("keycloak-user-id-999");
+
+        var newGroup = AccessGroup.Create(companyId, "admin-empresa", Permissions.All);
+        var command = new ChangeEmployeeAccessGroupCommand(employee.Id, companyId, newGroupId, ActorSub: "sub", ActorEmail: "admin@empresa.com", IpAddress: "1.1.1.1");
+
+        _employeeRepository.GetByIdAsync(employee.Id, Arg.Any<CancellationToken>()).Returns(employee);
+        _accessGroupRepository.GetByIdAsync(newGroupId, Arg.Any<CancellationToken>()).Returns(newGroup);
+        _keycloakUserService.GetGroupByNameAsync("client", Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns<Task<string?>>(_ => throw new Exception("Keycloak unavailable"));
+
+        // Act — should NOT throw despite Keycloak failure
+        await _sut.HandleAsync(command);
+
+        // Assert — DB update still happened
+        employee.AccessGroupId.ShouldBe(newGroupId);
+        await _employeeRepository.Received(1).SaveAsync(employee, Arg.Any<CancellationToken>());
     }
 
     [Fact]

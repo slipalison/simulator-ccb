@@ -1071,7 +1071,7 @@ Plans:
   7. Login de funcionário redireciona para telas baseadas no group: `admin-empresa` → management, `viewer` → read-only employee list, `dashboard` → dashboard
 **Plans:** 4 plans
 Plans:
-- [ ] 40-01-PLAN.md — Auth context extension (group/permissions), employee API client, PJ validation schemas, Sidebar, router restructure
+- [x] 40-01-PLAN.md — Auth context extension (group/permissions), employee API client, PJ validation schemas, Sidebar, router restructure
 - [ ] 40-02-PLAN.md — PJ-only 2-step registration wizard with terms acceptance, PF removal
 - [ ] 40-03-PLAN.md — Employee management UI (list, search, edit, block, reset password, LGPD delete, change access group)
 - [ ] 40-04-PLAN.md — Dashboard mock (6 cards), permission-based routing, ProfilePage PJ adaptation, PF removal verification

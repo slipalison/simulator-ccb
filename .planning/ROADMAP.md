@@ -1051,7 +1051,11 @@ Plans:
   4. Funcionário com `admin-empresa` tem mesmos poderes de gestão do PJ dono (visualizar, editar, bloquear, resetar, excluir funcionários + ver audit) (PERM-01)
   5. Company isolation: EF Core global query filter garante que employee queries NUNCA retornam dados de outra empresa — defense-in-depth check no service layer também (PERM-05)
   6. JWT do Keycloak inclui claims de grupos em `realm_access.roles` ou `groups` — backend mapeia para permissões via `ClaimsPrincipal`
-**Plans:** TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 39-01-PLAN.md — Keycloak client-realm.json groups + Group Membership mapper + IKeycloakUserService group methods
+- [ ] 39-02-PLAN.md — ClientClaimsMiddleware, ICurrentCompanyPermissionsService, GroupsClaimsTransformation, 7 authorization policies, Program.cs wiring
+- [ ] 39-03-PLAN.md — Handler extensions (RegisterCompany groups sync, RegisterEmployee group assignment, ChangeAccessGroup Keycloak sync) + CompaniesController permission policies
 
 ### Phase 40: Client Frontend — PJ Registration & Employee Management
 **Goal:** Frontend client redesenhado para cadastro PJ-only com gestão de funcionários. Dashboard mock com dados estáticos. Remoção completa do fluxo PF.
@@ -1101,8 +1105,8 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 37. Domain Model Redesign | 4/4 | ✅ Complete | 2026-04-26 |
-| 38. Employee Registration & Management API | 0/3 | 📋 Planned | — |
-| 39. Keycloak Groups & Permissions | 0/TBD | 📋 Planned | — |
+| 38. Employee Registration & Management API | 3/3 | ✅ Complete | 2026-04-26 |
+| 39. Keycloak Groups & Permissions | 0/3 | 📋 Planned | — |
 | 40. Client Frontend — PJ Registration & Employee Management | 0/TBD | 📋 Planned | — |
 | 41. BackOffice Employee Management + Audit | 0/TBD | 📋 Planned | — |
 | 42. CI Coverage Enforcement | 0/TBD | 📋 Planned | — |
@@ -1119,9 +1123,9 @@ Plans:
 | **v4.0** CI/CD + Security | 21-28 | 20 | ✅ Complete | 25 requirements |
 | **v5.0** Auth Code Flow + Admins + Audit | 29-34 | TBD | ✅ Complete | 11 requirements |
 | **v6.0** Gestão Completa de Administradores | 35-36 | 5 | ✅ Complete | 14 requirements |
-| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-42 | 4 done (Phase 37) | 🔄 Active | 21 requirements |
+| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-42 | 4+3 plans | 🔄 Active | 21 requirements |
 | **Total** | **42 phases** | **110+ plans** | **6 milestones done** | **142 requirements** |
 
 ---
 
-*Last updated: 2026-04-26 — Phase 37 complete*
+*Last updated: 2026-04-26 — Phase 38 complete, Phase 39 planned*

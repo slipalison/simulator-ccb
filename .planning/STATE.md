@@ -20,15 +20,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — isolamento entre empresas é requisito de primeira classe.
-**Current focus:** Phase 38 — employee-registration-management-api
+**Current focus:** Phase 39 — keycloak-groups-permissions
 **Last activity:** 2026-04-26
 
 ## Current Position
 
-Phase: 38 (employee-registration-management-api) — EXECUTING
-Plan: 1 of 3
-Status: Executing Phase 38
-Last activity: 2026-04-26 -- Phase 38 execution started
+Phase: 39 (keycloak-groups-permissions) — PLANNING
+Plan: 0 of 3
+Status: Planning Phase 39
+Last activity: 2026-04-26 -- Phase 39 planning started
 
 ## Milestone Breakdown
 
@@ -38,14 +38,14 @@ Last activity: 2026-04-26 -- Phase 38 execution started
 **Milestone v4.0 — CI/CD Pipeline + Cybersecurity:** ✅ COMPLETE (8/8 phases, 20/20 plans)
 **Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** ✅ COMPLETE (6/6 phases)
 **Milestone v6.0 — Gestão Completa de Administradores:** ✅ COMPLETE (2/2 phases)
-**Milestone v7.0 — PJ-Only Onboarding + Gestão de Funcionários:** 📋 Planned (Phases 37-42)
+**Milestone v7.0 — PJ-Only Onboarding + Gestão de Funcionários:** 🔄 Active (Phases 37-42)
 
 ## Milestone v7.0 Phase Breakdown
 
 | Phase | Name | Requirements | Status |
 |-------|------|--------------|--------|
 | 37 | Domain Model Redesign | REG-02, REG-04, REG-05 | ✅ Complete |
-| 38 | Employee Registration & Management API | REG-01, REG-03, MGMT-01..05 | 📋 Planned |
+| 38 | Employee Registration & Management API | REG-01, REG-03, MGMT-01..05 | ✅ Complete |
 | 39 | Keycloak Groups & Permissions | PERM-01..05 | 📋 Planned |
 | 40 | Client Frontend — PJ Registration & Employee Management | DASH-01 | 📋 Planned |
 | 41 | BackOffice Employee Management + Audit | ADM-01, ADM-02, AUD-01, AUD-02 | 📋 Planned |

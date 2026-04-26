@@ -1,4 +1,5 @@
 import { ThemeToggle } from "../atoms/ThemeToggle"
+import { ProfileBadge } from "../atoms/ProfileBadge"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,7 +12,7 @@ import { User, LogOut } from "lucide-react"
 import { useAuth } from "../../lib/auth-context"
 
 export function Header() {
-  const { logout } = useAuth()
+  const { auth, logout } = useAuth()
 
   function handleLogout() {
     logout() // synchronous redirect to /auth/logout via Vinxi server
@@ -29,6 +30,11 @@ export function Header() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
 
+          {/* Access group badge (when authenticated) */}
+          {auth.isAuthenticated && auth.accessGroup && (
+            <ProfileBadge group={auth.accessGroup} />
+          )}
+
           {/* User menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -37,9 +43,11 @@ export function Header() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => { window.location.href = "/profile"; }}>
-                Meu Perfil
-              </DropdownMenuItem>
+              {auth.isAuthenticated && (
+                <DropdownMenuItem onClick={() => { window.location.href = "/profile"; }}>
+                  Meu Perfil
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>
                 <LogOut className="mr-2 h-4 w-4" />

@@ -59,6 +59,27 @@ public interface IKeycloakUserService
     /// Call after disabling an account to ensure the user cannot continue with an existing token.
     /// </summary>
     Task LogoutAllSessionsAsync(string targetRealm, string userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Creates a Keycloak group in the target realm. Idempotent: if group already exists, returns existing group ID.
+    /// Returns the Keycloak group ID (UUID string).
+    /// </summary>
+    Task<string> CreateGroupAsync(string targetRealm, string groupName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Adds a user to a Keycloak group. Idempotent: 409 (already a member) is not an error.
+    /// </summary>
+    Task AddUserToGroupAsync(string targetRealm, string keycloakUserId, string keycloakGroupId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Removes a user from a Keycloak group. Idempotent: 404 (not a member) is not an error.
+    /// </summary>
+    Task RemoveUserFromGroupAsync(string targetRealm, string keycloakUserId, string keycloakGroupId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets a Keycloak group by name. Returns the group ID (UUID string) or null if not found.
+    /// </summary>
+    Task<string?> GetGroupByNameAsync(string targetRealm, string groupName, CancellationToken ct = default);
 }
 
 /// <summary>

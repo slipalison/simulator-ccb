@@ -183,5 +183,16 @@ public class MockHttpMessageHandler : HttpMessageHandler
             }
             _handler._responses.Add((r => r.Method == _method && r.RequestUri!.PathAndQuery.Contains(_path), response));
         }
+
+        public void RespondWithHeaders(HttpStatusCode code, Action<HttpResponseMessage> configure, object? body = null)
+        {
+            var response = new HttpResponseMessage(code);
+            if (body != null)
+            {
+                response.Content = JsonContent.Create(body);
+            }
+            configure(response);
+            _handler._responses.Add((r => r.Method == _method && r.RequestUri!.PathAndQuery.Contains(_path), response));
+        }
     }
 }

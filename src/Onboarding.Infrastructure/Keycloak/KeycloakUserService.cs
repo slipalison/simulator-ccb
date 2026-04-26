@@ -8,6 +8,11 @@ using System.Text.Json;
 
 namespace Onboarding.Infrastructure.Keycloak;
 
+/// <summary>
+/// Minimal JSON representation for Keycloak group search results.
+/// </summary>
+public sealed record KeycloakGroupRepresentation(string? Id, string? Name);
+
 public sealed class KeycloakUserService : IKeycloakUserService
 {
     private readonly IHttpClientFactory _httpClientFactory;
@@ -347,5 +352,79 @@ public sealed class KeycloakUserService : IKeycloakUserService
             var body = await response.Content.ReadAsStringAsync(ct);
             throw new InvalidOperationException($"Failed to logout all sessions for user '{userId}': {body}");
         }
+    }
+
+    public async Task<string> CreateGroupAsync(string targetRealm, string groupName, CancellationToken ct = default)
+    {
+        var client = GetClient(targetRealm);
+
+        // Check if group already exists (idempotent)
+        var existingGroupId = await GetGroupByNameAsync(targetRealm, groupName, ct);
+        if (existingGroupId is not null)
+            return existingGroupId;
+
+        // Create the group
+        var payload = new { name = groupName };
+        var createResponse = await client.PostAsJsonAsync($"admin/realms/{targetRealm}/groups", payload, ct);
+        if (!createResponse.IsSuccessStatusCode)
+        {
+            var body = await createResponse.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException($"Failed to create group '{groupName}' in Keycloak: {body}");
+        }
+
+        // Keycloak POST /groups returns 201 with Location header containing group ID
+        // Extract from Location header or do a follow-up GET
+        var locationHeader = createResponse.Headers.Location;
+        if (locationHeader is not null)
+        {
+            var locationPath = locationHeader.AbsolutePath;
+            var groupIdFromLocation = locationPath.Split('/').LastOrDefault();
+            if (!string.IsNullOrEmpty(groupIdFromLocation))
+                return groupIdFromLocation;
+        }
+
+        // Fallback: look up the group by name
+        var createdGroupId = await GetGroupByNameAsync(targetRealm, groupName, ct);
+        return createdGroupId
+            ?? throw new InvalidOperationException($"Keycloak created group '{groupName}' but returned no ID.");
+    }
+
+    public async Task AddUserToGroupAsync(string targetRealm, string keycloakUserId, string keycloakGroupId, CancellationToken ct = default)
+    {
+        var client = GetClient(targetRealm);
+        var response = await client.PutAsync($"admin/realms/{targetRealm}/users/{keycloakUserId}/groups/{keycloakGroupId}", null, ct);
+
+        // 204 = success, 409 = already a member (idempotent — not an error)
+        if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.Conflict)
+        {
+            var body = await response.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException($"Failed to add user '{keycloakUserId}' to group '{keycloakGroupId}': {body}");
+        }
+    }
+
+    public async Task RemoveUserFromGroupAsync(string targetRealm, string keycloakUserId, string keycloakGroupId, CancellationToken ct = default)
+    {
+        var client = GetClient(targetRealm);
+        var response = await client.DeleteAsync($"admin/realms/{targetRealm}/users/{keycloakUserId}/groups/{keycloakGroupId}", ct);
+
+        // 204 = success, 404 = not a member (idempotent — not an error)
+        if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NotFound)
+        {
+            var body = await response.Content.ReadAsStringAsync(ct);
+            throw new InvalidOperationException($"Failed to remove user '{keycloakUserId}' from group '{keycloakGroupId}': {body}");
+        }
+    }
+
+    public async Task<string?> GetGroupByNameAsync(string targetRealm, string groupName, CancellationToken ct = default)
+    {
+        var client = GetClient(targetRealm);
+        var response = await client.GetAsync($"admin/realms/{targetRealm}/groups?search={Uri.EscapeDataString(groupName)}&exact=true", ct);
+
+        if (!response.IsSuccessStatusCode)
+            return null;
+
+        var groups = await response.Content.ReadFromJsonAsync<List<KeycloakGroupRepresentation>>(cancellationToken: ct);
+        var group = groups?.FirstOrDefault(g => g.Name == groupName);
+        return group?.Id;
     }
 }

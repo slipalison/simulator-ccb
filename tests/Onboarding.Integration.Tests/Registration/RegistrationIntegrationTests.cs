@@ -82,7 +82,7 @@ public class RegistrationIntegrationTests : IAsyncLifetime
             password = "Str0ng@Pass"
         };
 
-        var response = await _client!.PostAsJsonAsync("/api/registration", payload);
+        var response = await _client!.PostAsJsonAsync("/api/companies/registration", payload);
         ((int)response.StatusCode).ShouldBeOneOf(201, 503);
     }
 
@@ -99,7 +99,7 @@ public class RegistrationIntegrationTests : IAsyncLifetime
             password = "Str0ng@Pass"
         };
 
-        var response = await _client!.PostAsJsonAsync("/api/registration", payload);
+        var response = await _client!.PostAsJsonAsync("/api/companies/registration", payload);
 
         // If 503 (Keycloak down), compensation should have run — DB must have no row
         if (response.StatusCode == HttpStatusCode.ServiceUnavailable)

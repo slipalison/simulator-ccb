@@ -37,6 +37,9 @@ public static class InfrastructureServiceExtensions
         // Company isolation service — set per-request from JWT claims (D-17)
         services.AddScoped<ICurrentCompanyService, CurrentCompanyService>();
 
+        // Permissions service — set per-request by ClientClaimsMiddleware (D-10)
+        services.AddScoped<ICurrentCompanyPermissionsService, CurrentCompanyPermissionsService>();
+
         services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
         services.AddScoped<IAccessGroupRepository, AccessGroupRepository>();

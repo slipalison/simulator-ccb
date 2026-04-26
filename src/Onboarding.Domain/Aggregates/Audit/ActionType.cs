@@ -32,4 +32,6 @@ public enum ActionType
     EmployeePasswordReset = 23,
     EmployeeDeleted = 24,
     AccessGroupChanged = 25,
+    // Phase 38 — Company update
+    CompanyUpdated = 26,
 }

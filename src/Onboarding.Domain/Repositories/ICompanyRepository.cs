@@ -25,4 +25,10 @@ public interface ICompanyRepository
     /// Compensation step — delete row if Keycloak user creation fails (REG-06).
     /// </summary>
     Task DeleteAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Paginated query for admin listing (ADMIN-01).
+    /// </summary>
+    Task<(IReadOnlyList<Company> Items, int TotalCount)> GetPagedAsync(
+        int page, int pageSize, string? search, string? status, CancellationToken ct = default);
 }

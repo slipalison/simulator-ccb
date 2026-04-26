@@ -68,4 +68,41 @@ public sealed class CompanyRepository : ICompanyRepository
         return await _db.Companies
             .FirstOrDefaultAsync(c => c.Email == emailVo, ct);
     }
+
+    public async Task<(IReadOnlyList<Company> Items, int TotalCount)> GetPagedAsync(
+        int page, int pageSize, string? search, string? status, CancellationToken ct = default)
+    {
+        var query = _db.Companies.AsQueryable();
+
+        // Search filter: razaoSocial, CNPJ, or email
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchLower = search.ToLowerInvariant();
+            query = query.Where(c =>
+                c.RazaoSocial.ToLower().Contains(searchLower) ||
+                c.Cnpj.Value.ToLower().Contains(searchLower) ||
+                c.Email.Value.ToLower().Contains(searchLower));
+        }
+
+        // Status filter: active (not deleted), deleted
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            var statusLower = status.ToLowerInvariant();
+            query = statusLower switch
+            {
+                "active" => query.Where(c => !c.IsDeleted),
+                "deleted" => query.Where(c => c.IsDeleted),
+                _ => query
+            };
+        }
+
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
+            .OrderByDescending(c => c.TermsAcceptance.AcceptedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+
+        return (items, totalCount);
+    }
 }

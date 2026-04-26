@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Onboarding.Application.Common;
 using Onboarding.Application.Companies.Commands;
@@ -47,9 +48,9 @@ public class RegisterCompanyCommandHandlerTests
         // Arrange
         var command = ValidCommand();
         var keycloakUserId = Guid.NewGuid().ToString();
-        _companyRepository.ExistsByCnpjAsync(command.Cnpj).Returns(false);
-        _companyRepository.ExistsByEmailAsync(command.Email).Returns(false);
-        _keycloakUserService.CreateUserAsync("client", command.Email, command.Email, command.Password, command.RazaoSocial)
+        _companyRepository.ExistsByCnpjAsync(command.Cnpj, Arg.Any<CancellationToken>()).Returns(false);
+        _companyRepository.ExistsByEmailAsync(command.Email, Arg.Any<CancellationToken>()).Returns(false);
+        _keycloakUserService.CreateUserAsync("client", command.Email, command.Email, command.Password, command.RazaoSocial, Arg.Any<CancellationToken>())
             .Returns(keycloakUserId);
 
         // Act
@@ -63,13 +64,19 @@ public class RegisterCompanyCommandHandlerTests
         await _companyRepository.Received(1).AddAsync(Arg.Is<Company>(c =>
             c.RazaoSocial == command.RazaoSocial &&
             c.Email.Value == command.Email.ToLowerInvariant()), Arg.Any<CancellationToken>());
-        await _keycloakUserService.Received(1).CreateUserAsync("client", command.Email, command.Email, command.Password, command.RazaoSocial);
+        await _keycloakUserService.Received(1).CreateUserAsync("client", command.Email, command.Email, command.Password, command.RazaoSocial, Arg.Any<CancellationToken>());
         await _companyRepository.Received(1).SaveAsync(Arg.Any<Company>(), Arg.Any<CancellationToken>());
         await _accessGroupRepository.Received(1).AddRangeAsync(Arg.Is<IEnumerable<AccessGroup>>(groups =>
             groups.Count() == 3), Arg.Any<CancellationToken>());
         await _auditService.Received(1).RecordAsync(
-            Arg.Any<string>(), command.Email, ActionType.CompanyRegistered,
-            Arg.Any<Guid?>(), command.RazaoSocial, Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<string>(),
+            command.Email,
+            ActionType.CompanyRegistered,
+            Arg.Any<Guid?>(),
+            command.RazaoSocial,
+            Arg.Is<string>(d => d.Contains(command.Cnpj)),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -77,13 +84,13 @@ public class RegisterCompanyCommandHandlerTests
     {
         // Arrange
         var command = ValidCommand();
-        _companyRepository.ExistsByCnpjAsync(command.Cnpj).Returns(true);
+        _companyRepository.ExistsByCnpjAsync(command.Cnpj, Arg.Any<CancellationToken>()).Returns(true);
 
         // Act & Assert
         await Should.ThrowAsync<DuplicateCompanyException>(() => _sut.HandleAsync(command));
 
         await _keycloakUserService.DidNotReceive().CreateUserAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -91,14 +98,14 @@ public class RegisterCompanyCommandHandlerTests
     {
         // Arrange
         var command = ValidCommand();
-        _companyRepository.ExistsByCnpjAsync(command.Cnpj).Returns(false);
-        _companyRepository.ExistsByEmailAsync(command.Email).Returns(true);
+        _companyRepository.ExistsByCnpjAsync(command.Cnpj, Arg.Any<CancellationToken>()).Returns(false);
+        _companyRepository.ExistsByEmailAsync(command.Email, Arg.Any<CancellationToken>()).Returns(true);
 
         // Act & Assert
         await Should.ThrowAsync<DuplicateCompanyException>(() => _sut.HandleAsync(command));
 
         await _keycloakUserService.DidNotReceive().CreateUserAsync(
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -106,10 +113,10 @@ public class RegisterCompanyCommandHandlerTests
     {
         // Arrange
         var command = ValidCommand();
-        _companyRepository.ExistsByCnpjAsync(command.Cnpj).Returns(false);
-        _companyRepository.ExistsByEmailAsync(command.Email).Returns(false);
-        _keycloakUserService.CreateUserAsync("client", command.Email, command.Email, command.Password, command.RazaoSocial)
-            .Throws(new Exception("Keycloak error"));
+        _companyRepository.ExistsByCnpjAsync(command.Cnpj, Arg.Any<CancellationToken>()).Returns(false);
+        _companyRepository.ExistsByEmailAsync(command.Email, Arg.Any<CancellationToken>()).Returns(false);
+        _keycloakUserService.CreateUserAsync("client", command.Email, command.Email, command.Password, command.RazaoSocial, Arg.Any<CancellationToken>())
+            .Returns<Task<string>>(_ => throw new Exception("Keycloak error"));
 
         // Act & Assert
         await Should.ThrowAsync<Exception>(() => _sut.HandleAsync(command));
@@ -123,9 +130,9 @@ public class RegisterCompanyCommandHandlerTests
         // Arrange
         var command = ValidCommand();
         var keycloakUserId = Guid.NewGuid().ToString();
-        _companyRepository.ExistsByCnpjAsync(command.Cnpj).Returns(false);
-        _companyRepository.ExistsByEmailAsync(command.Email).Returns(false);
-        _keycloakUserService.CreateUserAsync("client", command.Email, command.Email, command.Password, command.RazaoSocial)
+        _companyRepository.ExistsByCnpjAsync(command.Cnpj, Arg.Any<CancellationToken>()).Returns(false);
+        _companyRepository.ExistsByEmailAsync(command.Email, Arg.Any<CancellationToken>()).Returns(false);
+        _keycloakUserService.CreateUserAsync("client", command.Email, command.Email, command.Password, command.RazaoSocial, Arg.Any<CancellationToken>())
             .Returns(keycloakUserId);
 
         // Act
@@ -142,9 +149,9 @@ public class RegisterCompanyCommandHandlerTests
         // Arrange
         var command = ValidCommand();
         var keycloakUserId = Guid.NewGuid().ToString();
-        _companyRepository.ExistsByCnpjAsync(command.Cnpj).Returns(false);
-        _companyRepository.ExistsByEmailAsync(command.Email).Returns(false);
-        _keycloakUserService.CreateUserAsync("client", command.Email, command.Email, command.Password, command.RazaoSocial)
+        _companyRepository.ExistsByCnpjAsync(command.Cnpj, Arg.Any<CancellationToken>()).Returns(false);
+        _companyRepository.ExistsByEmailAsync(command.Email, Arg.Any<CancellationToken>()).Returns(false);
+        _keycloakUserService.CreateUserAsync("client", command.Email, command.Email, command.Password, command.RazaoSocial, Arg.Any<CancellationToken>())
             .Returns(keycloakUserId);
 
         // Act
@@ -157,7 +164,8 @@ public class RegisterCompanyCommandHandlerTests
             ActionType.CompanyRegistered,
             Arg.Any<Guid?>(),
             command.RazaoSocial,
-            Arg.Any<string>(),
+            Arg.Is<string>(d => d.Contains(command.Cnpj)),
+            Arg.Any<string?>(),
             Arg.Any<CancellationToken>());
     }
 }

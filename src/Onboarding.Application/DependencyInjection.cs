@@ -9,6 +9,8 @@ using Onboarding.Application.Auth.Commands;
 using Onboarding.Application.Auth.DTOs;
 using Onboarding.Application.Auth.Validators;
 using Onboarding.Application.Common;
+using Onboarding.Application.Companies.Commands;
+using Onboarding.Application.Companies.DTOs;
 
 namespace Onboarding.Application;
 
@@ -20,6 +22,10 @@ public static class ApplicationServiceExtensions
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        // Company registration commands (Phase 38 — REG-01, REG-02)
+        services.AddScoped<ICommandHandler<RegisterCompanyCommand, RegisterCompanyResult>, RegisterCompanyCommandHandler>();
+        services.AddScoped<IValidator<RegisterCompanyCommand>, RegisterCompanyCommandValidator>();
+
         // Auth commands (Phase 6 — AUTH-02, AUTH-04)
         services.AddScoped<ICommandHandler<LoginCommand, TokenResponse>, LoginCommandHandler>();
         services.AddScoped<ICommandHandler<RefreshTokenCommand, TokenResponse>, RefreshTokenCommandHandler>();

@@ -1,23 +1,30 @@
 using System.Net;
 using System.Net.Http.Headers;
-using Microsoft.AspNetCore.Mvc.Testing;
 using NSubstitute;
 using Onboarding.API.Tests.Authentication;
 using Onboarding.Domain.Aggregates.Audit;
-using Onboarding.Domain.Aggregates.ClientAggregate;
+using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Domain.Repositories;
 using Shouldly;
 
 namespace Onboarding.API.Tests.Admin;
 
-/// <summary>
-/// Integration tests for POST /api/admin/users/{id}/block and /unblock (ADMIN-04).
-/// </summary>
 [Collection(WebAppFactoryCollection.Name)]
 public sealed class AdminUserBlockTests : IAsyncLifetime
 {
     private AdminTestFactory? _factory;
     private HttpClient? _client;
+
+    private static Company CreateTestCompany(Guid id) =>
+        CreateTestCompanyWith(id, "empresa@test.com");
+
+    private static Company CreateTestCompanyWith(Guid id, string email)
+    {
+        var terms = TermsAcceptance.Create("1.0", "127.0.0.1");
+        var company = Company.Register("Empresa Teste", "11222333000181", email, "11999999999", terms);
+        typeof(Company).BaseType!.GetProperty("Id")!.SetValue(company, id);
+        return company;
+    }
 
     public Task InitializeAsync()
     {
@@ -31,110 +38,61 @@ public sealed class AdminUserBlockTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _client?.Dispose();
-        if (_factory is not null)
-            await _factory.DisposeAsync();
+        if (_factory is not null) await _factory.DisposeAsync();
     }
 
     [Fact]
     [Trait("Category", "Integration")]
     public async Task BlockUser_ReturnsNoContent_DisablesKeycloak()
     {
-        // Arrange
-        var clientId = Guid.NewGuid();
-        var client = Client.RegisterPessoaFisica("Joao Silva", "529.982.247-25", "joao@test.com", "11999999999");
-        typeof(Client).GetProperty(nameof(Client.Id))!.SetValue(client, clientId);
+        var companyId = Guid.NewGuid();
+        var company = CreateTestCompany(companyId);
 
-        _factory!.AdminRepositoryMock
-            .GetByIdAsync(clientId, Arg.Any<CancellationToken>())
-            .Returns(client);
-
+        _factory!.AdminRepositoryMock.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(company);
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
-            .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
+            .GetUserByEmailAsync("client", "empresa@test.com", Arg.Any<CancellationToken>())
+            .Returns(new Application.Common.KeycloakUser("kc-uuid", "empresa@test.com"));
 
-        // Act
-        var response = await _client!.PostAsync($"/api/admin/users/{clientId}/block", null);
-
-        // Assert
+        var response = await _client!.PostAsync($"/api/admin/users/{companyId}/block", null);
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-
-        // Verify Keycloak block was called
         await _factory.KeycloakUserServiceMock.Received(1).BlockUserAsync("client", "kc-uuid", Arg.Any<CancellationToken>());
-
-        // Verify audit log
         await _factory.AuditServiceMock.Received(1).RecordAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<ActionType>(),
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ActionType>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     [Trait("Category", "Integration")]
     public async Task UnblockUser_ReturnsNoContent_EnablesKeycloak()
     {
-        // Arrange
-        var clientId = Guid.NewGuid();
-        var client = Client.RegisterPessoaFisica("Joao Silva", "529.982.247-25", "joao@test.com", "11999999999");
-        typeof(Client).GetProperty(nameof(Client.Id))!.SetValue(client, clientId);
+        var companyId = Guid.NewGuid();
+        var company = CreateTestCompany(companyId);
 
-        _factory!.AdminRepositoryMock
-            .GetByIdAsync(clientId, Arg.Any<CancellationToken>())
-            .Returns(client);
-
+        _factory!.AdminRepositoryMock.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(company);
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
-            .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
+            .GetUserByEmailAsync("client", "empresa@test.com", Arg.Any<CancellationToken>())
+            .Returns(new Application.Common.KeycloakUser("kc-uuid", "empresa@test.com"));
 
-        // Act
-        var response = await _client!.PostAsync($"/api/admin/users/{clientId}/unblock", null);
-
-        // Assert
+        var response = await _client!.PostAsync($"/api/admin/users/{companyId}/unblock", null);
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-
-        // Verify Keycloak unblock was called
         await _factory.KeycloakUserServiceMock.Received(1).UnblockUserAsync("client", "kc-uuid", Arg.Any<CancellationToken>());
-
-        // Verify audit log
-        await _factory.AuditServiceMock.Received(1).RecordAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<ActionType>(),
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
     }
 
     [Fact]
     [Trait("Category", "Integration")]
     public async Task BlockUser_AlreadyBlocked_NoOp_ReturnsNoContent()
     {
-        // Arrange — mock BlockUserAsync to succeed (idempotent in KeycloakUserService)
-        var clientId = Guid.NewGuid();
-        var client = Client.RegisterPessoaFisica("Joao Silva", "529.982.247-25", "joao@test.com", "11999999999");
-        typeof(Client).GetProperty(nameof(Client.Id))!.SetValue(client, clientId);
+        var companyId = Guid.NewGuid();
+        var company = CreateTestCompany(companyId);
 
-        _factory!.AdminRepositoryMock
-            .GetByIdAsync(clientId, Arg.Any<CancellationToken>())
-            .Returns(client);
-
+        _factory!.AdminRepositoryMock.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(company);
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
-            .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
+            .GetUserByEmailAsync("client", "empresa@test.com", Arg.Any<CancellationToken>())
+            .Returns(new Application.Common.KeycloakUser("kc-uuid", "empresa@test.com"));
 
-        // First block
-        await _client!.PostAsync($"/api/admin/users/{clientId}/block", null);
-
-        // Second block — should still return 204 (idempotent)
-        var response = await _client.PostAsync($"/api/admin/users/{clientId}/block", null);
-
-        // Assert
+        await _client!.PostAsync($"/api/admin/users/{companyId}/block", null);
+        var response = await _client.PostAsync($"/api/admin/users/{companyId}/block", null);
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
@@ -142,16 +100,10 @@ public sealed class AdminUserBlockTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task BlockUser_NonExistentId_ReturnsNotFound()
     {
-        // Arrange
         var nonExistentId = Guid.NewGuid();
-        _factory!.AdminRepositoryMock
-            .GetByIdAsync(nonExistentId, Arg.Any<CancellationToken>())
-            .Returns((Client?)null);
+        _factory!.AdminRepositoryMock.GetByIdAsync(nonExistentId, Arg.Any<CancellationToken>()).Returns((Company?)null);
 
-        // Act
         var response = await _client!.PostAsync($"/api/admin/users/{nonExistentId}/block", null);
-
-        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
@@ -159,41 +111,24 @@ public sealed class AdminUserBlockTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task BlockUnblock_AuditLogCreated()
     {
-        // Arrange
-        var clientId = Guid.NewGuid();
-        var client = Client.RegisterPessoaFisica("Joao Silva", "529.982.247-25", "joao@test.com", "11999999999");
-        typeof(Client).GetProperty(nameof(Client.Id))!.SetValue(client, clientId);
+        var companyId = Guid.NewGuid();
+        var company = CreateTestCompany(companyId);
 
-        _factory!.AdminRepositoryMock
-            .GetByIdAsync(clientId, Arg.Any<CancellationToken>())
-            .Returns(client);
-
+        _factory!.AdminRepositoryMock.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(company);
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
-            .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
+            .GetUserByEmailAsync("client", "empresa@test.com", Arg.Any<CancellationToken>())
+            .Returns(new Application.Common.KeycloakUser("kc-uuid", "empresa@test.com"));
 
-        // Act — block then unblock
-        await _client!.PostAsync($"/api/admin/users/{clientId}/block", null);
-        await _client.PostAsync($"/api/admin/users/{clientId}/unblock", null);
+        await _client!.PostAsync($"/api/admin/users/{companyId}/block", null);
+        await _client.PostAsync($"/api/admin/users/{companyId}/unblock", null);
 
-        // Assert — two audit log entries (block + unblock)
         await _factory.AuditServiceMock.Received(1).RecordAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            ActionType.UserBlocked,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<string>(), ActionType.UserBlocked,
+            Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<CancellationToken>());
         await _factory.AuditServiceMock.Received(1).RecordAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            ActionType.UserUnblocked,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<string>(), ActionType.UserUnblocked,
+            Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 }

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using NSubstitute;
 using Onboarding.API.Tests.Authentication;
 using Onboarding.Domain.Aggregates.Audit;
-using Onboarding.Domain.Aggregates.ClientAggregate;
+using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Domain.Repositories;
 using Shouldly;
 
@@ -19,6 +19,15 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
 {
     private AdminTestFactory? _factory;
     private HttpClient? _client;
+
+    private static Company CreateTestCompany(Guid? id = null)
+    {
+        var terms = TermsAcceptance.Create("1.0", "127.0.0.1");
+        var company = Company.Register("Empresa Teste", "11222333000181", "empresa@test.com", "11999999999", terms);
+        if (id.HasValue)
+            typeof(Company).BaseType!.GetProperty("Id")!.SetValue(company, id.Value);
+        return company;
+    }
 
     public Task InitializeAsync()
     {
@@ -40,75 +49,55 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task DeleteUser_CorrectEmail_ReturnsNoContent_PiiScrubbed()
     {
-        // Arrange
-        var clientId = Guid.NewGuid();
-        var client = Client.RegisterPessoaFisica("Joao Silva", "529.982.247-25", "joao@test.com", "11999999999");
-        typeof(Client).GetProperty(nameof(Client.Id))!.SetValue(client, clientId);
+        var companyId = Guid.NewGuid();
+        var company = CreateTestCompany(companyId);
 
         _factory!.AdminRepositoryMock
-            .GetByIdAsync(clientId, Arg.Any<CancellationToken>())
-            .Returns(client);
+            .GetByIdAsync(companyId, Arg.Any<CancellationToken>())
+            .Returns(company);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
-            .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
+            .GetUserByEmailAsync("client", "empresa@test.com", Arg.Any<CancellationToken>())
+            .Returns(new Application.Common.KeycloakUser("kc-uuid", "empresa@test.com"));
 
-        var payload = new { confirmEmail = "joao@test.com" };
+        var payload = new { confirmEmail = "empresa@test.com" };
 
-        // Act
-        var response = await _client!.PostAsJsonAsync($"/api/admin/users/{clientId}/delete", payload);
-
-        // Note: The controller uses HttpDelete with body, but HttpClient may not send it correctly.
-        // Let me use SendAsync with DELETE method and body.
-        var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/users/{clientId}")
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/users/{companyId}")
         {
             Content = JsonContent.Create(payload)
         };
-        response = await _client!.SendAsync(request);
+        var response = await _client!.SendAsync(request);
 
-        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        company.RazaoSocial.ShouldBe("Empresa Excluída");
+        company.Cnpj.ShouldBeNull();
+        company.DeletedAt.ShouldNotBeNull();
 
-        // Verify PII was scrubbed (Anonymize was called)
-        client.Name.ShouldBe("Usuário Excluído");
-        client.Cpf.ShouldBeNull();
-        client.DeletedAt.ShouldNotBeNull();
-
-        // Verify audit log
         await _factory.AuditServiceMock.Received(1).RecordAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            Arg.Any<ActionType>(),
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<ActionType>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     [Trait("Category", "Integration")]
     public async Task DeleteUser_WrongEmail_ReturnsBadRequest()
     {
-        // Arrange
-        var clientId = Guid.NewGuid();
-        var client = Client.RegisterPessoaFisica("Joao Silva", "529.982.247-25", "joao@test.com", "11999999999");
-        typeof(Client).GetProperty(nameof(Client.Id))!.SetValue(client, clientId);
+        var companyId = Guid.NewGuid();
+        var company = CreateTestCompany(companyId);
 
         _factory!.AdminRepositoryMock
-            .GetByIdAsync(clientId, Arg.Any<CancellationToken>())
-            .Returns(client);
+            .GetByIdAsync(companyId, Arg.Any<CancellationToken>())
+            .Returns(company);
 
         var payload = new { confirmEmail = "wrong@email.com" };
 
-        // Act
-        var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/users/{clientId}")
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/users/{companyId}")
         {
             Content = JsonContent.Create(payload)
         };
         var response = await _client!.SendAsync(request);
 
-        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
     }
 
@@ -116,26 +105,22 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task DeleteUser_AlreadyDeleted_ReturnsConflict()
     {
-        // Arrange — client already deleted
-        var clientId = Guid.NewGuid();
-        var client = Client.RegisterPessoaFisica("Joao Silva", "529.982.247-25", "joao@test.com", "11999999999");
-        typeof(Client).GetProperty(nameof(Client.Id))!.SetValue(client, clientId);
-        client.Anonymize(); // Already deleted — email is now deleted-{id}@internal.local
+        var companyId = Guid.NewGuid();
+        var company = CreateTestCompany(companyId);
+        company.Anonymize();
 
         _factory!.AdminRepositoryMock
-            .GetByIdAsync(clientId, Arg.Any<CancellationToken>())
-            .Returns(client);
+            .GetByIdAsync(companyId, Arg.Any<CancellationToken>())
+            .Returns(company);
 
-        var payload = new { confirmEmail = client.Email.Value };
+        var payload = new { confirmEmail = company.Email.Value };
 
-        // Act
-        var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/users/{clientId}")
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/users/{companyId}")
         {
             Content = JsonContent.Create(payload)
         };
         var response = await _client!.SendAsync(request);
 
-        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
     }
 
@@ -143,30 +128,26 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task DeleteUser_RemovesFromKeycloak()
     {
-        // Arrange
-        var clientId = Guid.NewGuid();
-        var client = Client.RegisterPessoaFisica("Joao Silva", "529.982.247-25", "joao@test.com", "11999999999");
-        typeof(Client).GetProperty(nameof(Client.Id))!.SetValue(client, clientId);
+        var companyId = Guid.NewGuid();
+        var company = CreateTestCompany(companyId);
 
         _factory!.AdminRepositoryMock
-            .GetByIdAsync(clientId, Arg.Any<CancellationToken>())
-            .Returns(client);
+            .GetByIdAsync(companyId, Arg.Any<CancellationToken>())
+            .Returns(company);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
-            .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
+            .GetUserByEmailAsync("client", "empresa@test.com", Arg.Any<CancellationToken>())
+            .Returns(new Application.Common.KeycloakUser("kc-uuid", "empresa@test.com"));
 
-        var payload = new { confirmEmail = "joao@test.com" };
+        var payload = new { confirmEmail = "empresa@test.com" };
 
-        // Act
-        var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/users/{clientId}")
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/users/{companyId}")
         {
             Content = JsonContent.Create(payload)
         };
         var response = await _client!.SendAsync(request);
 
-        // Assert — Keycloak delete was called with original email
-        await _factory.KeycloakUserServiceMock.Received(1).DeleteUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>());
+        await _factory.KeycloakUserServiceMock.Received(1).DeleteUserByEmailAsync("client", "empresa@test.com", Arg.Any<CancellationToken>());
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 
@@ -174,60 +155,48 @@ public sealed class AdminUserDeleteTests : IAsyncLifetime
     [Trait("Category", "Integration")]
     public async Task DeleteUser_AuditLogWithPiiSnapshot()
     {
-        // Arrange
-        var clientId = Guid.NewGuid();
-        var client = Client.RegisterPessoaFisica("Joao Silva", "529.982.247-25", "joao@test.com", "11999999999");
-        typeof(Client).GetProperty(nameof(Client.Id))!.SetValue(client, clientId);
+        var companyId = Guid.NewGuid();
+        var company = CreateTestCompany(companyId);
 
         _factory!.AdminRepositoryMock
-            .GetByIdAsync(clientId, Arg.Any<CancellationToken>())
-            .Returns(client);
+            .GetByIdAsync(companyId, Arg.Any<CancellationToken>())
+            .Returns(company);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
-            .Returns(new Application.Common.KeycloakUser("kc-uuid", "joao@test.com"));
+            .GetUserByEmailAsync("client", "empresa@test.com", Arg.Any<CancellationToken>())
+            .Returns(new Application.Common.KeycloakUser("kc-uuid", "empresa@test.com"));
 
-        var payload = new { confirmEmail = "joao@test.com" };
+        var payload = new { confirmEmail = "empresa@test.com" };
 
-        // Act
-        var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/users/{clientId}")
+        var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/users/{companyId}")
         {
             Content = JsonContent.Create(payload)
         };
         await _client!.SendAsync(request);
 
-        // Assert — audit log with USER_DELETED action
         await _factory.AuditServiceMock.Received(1).RecordAsync(
-            Arg.Any<string>(),
-            Arg.Any<string>(),
-            ActionType.UserDeleted,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<string>(), ActionType.UserDeleted,
+            Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
     [Trait("Category", "Integration")]
     public async Task DeleteUser_NonExistentId_ReturnsNotFound()
     {
-        // Arrange
         var nonExistentId = Guid.NewGuid();
         _factory!.AdminRepositoryMock
             .GetByIdAsync(nonExistentId, Arg.Any<CancellationToken>())
-            .Returns((Client?)null);
+            .Returns((Company?)null);
 
         var payload = new { confirmEmail = "any@email.com" };
 
-        // Act
         var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/admin/users/{nonExistentId}")
         {
             Content = JsonContent.Create(payload)
         };
         var response = await _client!.SendAsync(request);
 
-        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 }

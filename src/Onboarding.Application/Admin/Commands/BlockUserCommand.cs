@@ -35,11 +35,11 @@ public sealed class BlockUserCommandHandler : ICommandHandler<BlockUserCommand, 
 
     public async Task<Unit> HandleAsync(BlockUserCommand command, CancellationToken ct = default)
     {
-        var client = await _adminRepository.GetByIdAsync(command.UserId, ct)
+        var company = await _adminRepository.GetByIdAsync(command.UserId, ct)
             ?? throw new KeyNotFoundException("User not found.");
 
         // Get Keycloak user
-        var kcUser = await _keycloakUserService.GetUserByEmailAsync("client", client.Email.Value, ct)
+        var kcUser = await _keycloakUserService.GetUserByEmailAsync("client", company.Email.Value, ct)
             ?? throw new InvalidOperationException("Keycloak user not found.");
 
         // Block via Keycloak service abstraction
@@ -51,7 +51,7 @@ public sealed class BlockUserCommandHandler : ICommandHandler<BlockUserCommand, 
             actorEmail: command.AdminEmail,
             action: ActionType.UserBlocked,
             targetUserId: command.UserId,
-            targetUserName: client.Email.Value,
+            targetUserName: company.Email.Value,
             ct: ct);
 
         return Unit.Value;

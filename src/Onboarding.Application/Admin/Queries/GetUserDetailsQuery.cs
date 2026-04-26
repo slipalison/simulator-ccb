@@ -5,7 +5,7 @@ using Onboarding.Domain.Repositories;
 namespace Onboarding.Application.Admin.Queries;
 
 /// <summary>
-/// Query: detailed user data including Keycloak status (ADMIN-02).
+/// Query: detailed company data including Keycloak status (ADMIN-02).
 /// </summary>
 public sealed record GetUserDetailsQuery(Guid UserId)
     : IQuery<UserDetailDto>;
@@ -27,36 +27,23 @@ public sealed class GetUserDetailsHandler
     public async Task<UserDetailDto> HandleAsync(
         GetUserDetailsQuery query, CancellationToken ct = default)
     {
-        var client = await _adminRepository.GetByIdAsync(query.UserId, ct)
+        var company = await _adminRepository.GetByIdAsync(query.UserId, ct)
             ?? throw new KeyNotFoundException("User not found.");
 
-        var kcUser = await _keycloakUserService.GetUserByEmailAsync("client", client.Email.Value, ct);
-
-        var document = client.Type.ToString() == "PessoaFisica"
-            ? FormatCpf(client.Cpf?.Value)
-            : FormatCnpj(client.Cnpj?.Value);
+        var kcUser = await _keycloakUserService.GetUserByEmailAsync("client", company.Email.Value, ct);
 
         return new UserDetailDto(
-            client.Id,
-            client.Name,
-            client.Email.Value,
-            client.Phone.Value,
-            document,
-            client.Type.ToString() == "PessoaFisica" ? "PF" : "PJ",
-            client.RazaoSocial,
-            default, // CreatedAt — not tracked on Client aggregate
-            client.DeletedAt,
+            company.Id,
+            company.RazaoSocial,
+            company.Email.Value,
+            company.Phone.Value,
+            FormatCnpj(company.Cnpj?.Value),
+            "PJ",
+            default, // CreatedAt — not tracked on Company aggregate
+            company.DeletedAt,
             kcUser is not null,
             true, // emailVerified — we set it to true on creation
             kcUser?.Id);
-    }
-
-    private static string? FormatCpf(string? cpf)
-    {
-        if (string.IsNullOrWhiteSpace(cpf)) return null;
-        var digits = new string(cpf.Where(char.IsDigit).ToArray());
-        if (digits.Length != 11) return cpf;
-        return $"{digits[..3]}.{digits[3..6]}.{digits[6..9]}-{digits[9..]}";
     }
 
     private static string? FormatCnpj(string? cnpj)

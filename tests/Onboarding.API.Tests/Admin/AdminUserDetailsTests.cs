@@ -1,25 +1,29 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
 using NSubstitute;
 using Onboarding.API.Tests.Authentication;
 using Onboarding.Application.Admin.DTOs;
 using Onboarding.Application.Common;
-using Onboarding.Domain.Aggregates.ClientAggregate;
-using Onboarding.Domain.ValueObjects;
+using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Shouldly;
 
 namespace Onboarding.API.Tests.Admin;
 
-/// <summary>
-/// Integration tests for GET /api/admin/users/{id} — User details (ADMIN-02).
-/// </summary>
 [Collection(WebAppFactoryCollection.Name)]
 public sealed class AdminUserDetailsTests : IAsyncLifetime
 {
     private AdminTestFactory? _factory;
     private HttpClient? _client;
+
+    private static Company CreateTestCompany(Guid? id = null, string email = "empresa@test.com")
+    {
+        var terms = TermsAcceptance.Create("1.0", "127.0.0.1");
+        var company = Company.Register("Empresa Teste", "11222333000181", email, "11999999999", terms);
+        if (id.HasValue)
+            typeof(Company).BaseType!.GetProperty("Id")!.SetValue(company, id.Value);
+        return company;
+    }
 
     public Task InitializeAsync()
     {
@@ -33,109 +37,66 @@ public sealed class AdminUserDetailsTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _client?.Dispose();
-        if (_factory is not null)
-            await _factory.DisposeAsync();
+        if (_factory is not null) await _factory.DisposeAsync();
     }
 
     [Fact]
     [Trait("Category", "Integration")]
     public async Task GetUserDetails_ValidId_ReturnsFullData()
     {
-        // Arrange
-        var clientId = Guid.NewGuid();
-        var client = Client.RegisterPessoaFisica("Joao Silva", "529.982.247-25", "joao@test.com", "11999999999");
-        typeof(Client).GetProperty(nameof(Client.Id))!.SetValue(client, clientId);
+        var companyId = Guid.NewGuid();
+        var company = CreateTestCompany(companyId);
 
         _factory!.AdminRepositoryMock
-            .GetByIdAsync(clientId, Arg.Any<CancellationToken>())
-            .Returns(client);
+            .GetByIdAsync(companyId, Arg.Any<CancellationToken>())
+            .Returns(company);
 
         _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
-            .Returns(new KeycloakUser("kc-uuid", "joao@test.com"));
+            .GetUserByEmailAsync("client", "empresa@test.com", Arg.Any<CancellationToken>())
+            .Returns(new KeycloakUser("kc-uuid", "empresa@test.com"));
 
-        // Act
-        var response = await _client!.GetAsync($"/api/admin/users/{clientId}");
+        var response = await _client!.GetAsync($"/api/admin/users/{companyId}");
 
-        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<UserDetailDto>();
         body.ShouldNotBeNull();
-        body.Name.ShouldBe("Joao Silva");
-        body.Email.ShouldBe("joao@test.com");
+        body.RazaoSocial.ShouldBe("Empresa Teste");
+        body.Email.ShouldBe("empresa@test.com");
     }
 
     [Fact]
     [Trait("Category", "Integration")]
     public async Task GetUserDetails_InvalidId_ReturnsNotFound()
     {
-        // Arrange
         var nonExistentId = Guid.NewGuid();
         _factory!.AdminRepositoryMock
             .GetByIdAsync(nonExistentId, Arg.Any<CancellationToken>())
-            .Returns((Client?)null);
+            .Returns((Company?)null);
 
-        // Act
         var response = await _client!.GetAsync($"/api/admin/users/{nonExistentId}");
-
-        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
     [Fact]
     [Trait("Category", "Integration")]
-    public async Task GetUserDetails_PfUser_ReturnsCpf_NotCnpj()
+    public async Task GetUserDetails_Company_ReturnsCnpj()
     {
-        // Arrange
-        var clientId = Guid.NewGuid();
-        var client = Client.RegisterPessoaFisica("Joao Silva", "529.982.247-25", "joao@test.com", "11999999999");
-        typeof(Client).GetProperty(nameof(Client.Id))!.SetValue(client, clientId);
+        var companyId = Guid.NewGuid();
+        var company = CreateTestCompany(companyId);
 
         _factory!.AdminRepositoryMock
-            .GetByIdAsync(clientId, Arg.Any<CancellationToken>())
-            .Returns(client);
-
-        _factory.KeycloakUserServiceMock
-            .GetUserByEmailAsync("client", "joao@test.com", Arg.Any<CancellationToken>())
-            .Returns(new KeycloakUser("kc-uuid", "joao@test.com"));
-
-        // Act
-        var response = await _client!.GetAsync($"/api/admin/users/{clientId}");
-
-        // Assert
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var body = await response.Content.ReadFromJsonAsync<UserDetailDto>();
-        body.ShouldNotBeNull();
-        body.Document.ShouldNotBeNull();
-        body.Document.ShouldContain("529.982.247-25"); // CPF formatted
-    }
-
-    [Fact]
-    [Trait("Category", "Integration")]
-    public async Task GetUserDetails_PjUser_ReturnsCnpj_NotCpf()
-    {
-        // Arrange
-        var clientId = Guid.NewGuid();
-        var client = Client.RegisterPessoaJuridica("Empresa LTDA", "11.222.333/0001-81", "empresa@test.com", "11999999999");
-        typeof(Client).GetProperty(nameof(Client.Id))!.SetValue(client, clientId);
-
-        _factory!.AdminRepositoryMock
-            .GetByIdAsync(clientId, Arg.Any<CancellationToken>())
-            .Returns(client);
+            .GetByIdAsync(companyId, Arg.Any<CancellationToken>())
+            .Returns(company);
 
         _factory.KeycloakUserServiceMock
             .GetUserByEmailAsync("client", "empresa@test.com", Arg.Any<CancellationToken>())
             .Returns(new KeycloakUser("kc-uuid", "empresa@test.com"));
 
-        // Act
-        var response = await _client!.GetAsync($"/api/admin/users/{clientId}");
+        var response = await _client!.GetAsync($"/api/admin/users/{companyId}");
 
-        // Assert
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         var body = await response.Content.ReadFromJsonAsync<UserDetailDto>();
         body.ShouldNotBeNull();
-        body.Document.ShouldNotBeNull();
-        body.Document.ShouldContain("11.222.333/0001-81"); // CNPJ formatted
-        body.RazaoSocial.ShouldBe("Empresa LTDA");
+        body.Cnpj.ShouldNotBeNull();
     }
 }

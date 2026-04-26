@@ -6,7 +6,7 @@ using Onboarding.Domain.Repositories;
 namespace Onboarding.Application.Admin.Queries;
 
 /// <summary>
-/// Query: paginated list of users with optional search and status filters (ADMIN-01).
+/// Query: paginated list of companies with optional search and status filters (ADMIN-01).
 /// </summary>
 public sealed record GetPaginatedUsersQuery(
     int Page = 1,
@@ -40,32 +40,28 @@ public sealed class GetPaginatedUsersHandler
 
         var dtoItems = new List<UserSummaryDto>(items.Count);
 
-        foreach (var client in items)
+        foreach (var company in items)
         {
             bool enabled = false;
 
             try
             {
-                var kcUser = await _keycloakUserService.GetUserByEmailAsync("client", client.Email.Value, ct);
+                var kcUser = await _keycloakUserService.GetUserByEmailAsync("client", company.Email.Value, ct);
                 enabled = kcUser is not null;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to get Keycloak status for user {Email}", client.Email.Value);
+                _logger.LogWarning(ex, "Failed to get Keycloak status for company {Email}", company.Email.Value);
             }
 
-            var document = client.Type.ToString() == "PessoaFisica"
-                ? FormatCpf(client.Cpf?.Value)
-                : FormatCnpj(client.Cnpj?.Value);
-
             dtoItems.Add(new UserSummaryDto(
-                client.Id,
-                client.Name,
-                client.Email.Value,
-                document,
-                client.Type.ToString() == "PessoaFisica" ? "PF" : "PJ",
+                company.Id,
+                company.RazaoSocial,
+                company.Email.Value,
+                FormatCnpj(company.Cnpj?.Value),
+                "PJ",
                 enabled,
-                client.DeletedAt));
+                company.DeletedAt));
         }
 
         return new PaginatedResult<UserSummaryDto>(
@@ -73,14 +69,6 @@ public sealed class GetPaginatedUsersHandler
             totalCount,
             query.Page,
             query.PageSize);
-    }
-
-    private static string? FormatCpf(string? cpf)
-    {
-        if (string.IsNullOrWhiteSpace(cpf)) return null;
-        var digits = new string(cpf.Where(char.IsDigit).ToArray());
-        if (digits.Length != 11) return cpf;
-        return $"{digits[..3]}.{digits[3..6]}.{digits[6..9]}-{digits[9..]}";
     }
 
     private static string? FormatCnpj(string? cnpj)

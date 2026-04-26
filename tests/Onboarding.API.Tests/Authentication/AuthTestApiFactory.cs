@@ -19,7 +19,7 @@ namespace Onboarding.API.Tests.Authentication;
 /// </summary>
 internal sealed class AuthTestApiFactory : WebApplicationFactory<Program>
 {
-    public IClientRepository RepositoryMock { get; } = Substitute.For<IClientRepository>();
+    public ICompanyRepository RepositoryMock { get; } = Substitute.For<ICompanyRepository>();
     public IKeycloakTokenService TokenServiceMock { get; } = Substitute.For<IKeycloakTokenService>();
     public IKeycloakUserService KeycloakUserServiceMock { get; } = Substitute.For<IKeycloakUserService>();
     public IPasswordResetTokenRepository TokenRepositoryMock { get; } = Substitute.For<IPasswordResetTokenRepository>();
@@ -53,7 +53,7 @@ internal sealed class AuthTestApiFactory : WebApplicationFactory<Program>
                 .AddCheck("stub-healthy", () => HealthCheckResult.Healthy("stub-ok"), ["ready"]);
 
             // Replace real infrastructure with mocks (no DB, no Keycloak required)
-            services.AddScoped<IClientRepository>(_ => RepositoryMock);
+            services.AddScoped<ICompanyRepository>(_ => RepositoryMock);
             services.AddScoped<IKeycloakTokenService>(_ => TokenServiceMock);
             services.AddScoped<IKeycloakUserService>(_ => KeycloakUserServiceMock);
             services.AddScoped<IPasswordResetTokenRepository>(_ => TokenRepositoryMock);

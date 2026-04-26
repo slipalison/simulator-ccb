@@ -8,12 +8,12 @@ using Onboarding.Domain.Repositories;
 namespace Onboarding.Application.Admin.Commands;
 
 /// <summary>
-/// Command: update user data (ADMIN-03).
+/// Command: update company data (ADMIN-03).
 /// </summary>
 public sealed record UpdateUserCommand(
     Guid UserId,
-    string Name,
-    string? RazaoSocial,
+    string Name,       // Mapped to RazaoSocial
+    string? RazaoSocial, // Ignored — kept for backward compat during transition
     string Email,
     string Phone,
     string AdminSub,
@@ -23,56 +23,54 @@ public sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand
 {
     private readonly IAdminRepository _adminRepository;
     private readonly IAuditService _auditService;
-    private readonly IClientRepository _clientRepository;
+    private readonly ICompanyRepository _companyRepository;
     private readonly ILogger<UpdateUserCommandHandler> _logger;
 
     public UpdateUserCommandHandler(
         IAdminRepository adminRepository,
         IAuditService auditService,
-        IClientRepository clientRepository,
+        ICompanyRepository companyRepository,
         ILogger<UpdateUserCommandHandler> logger)
     {
         _adminRepository = adminRepository;
         _auditService = auditService;
-        _clientRepository = clientRepository;
+        _companyRepository = companyRepository;
         _logger = logger;
     }
 
     public async Task<Unit> HandleAsync(UpdateUserCommand command, CancellationToken ct = default)
     {
-        var client = await _adminRepository.GetByIdAsync(command.UserId, ct)
+        var company = await _adminRepository.GetByIdAsync(command.UserId, ct)
             ?? throw new KeyNotFoundException("User not found.");
 
         // Check email uniqueness if email changed
-        if (!client.Email.Value.Equals(command.Email, StringComparison.OrdinalIgnoreCase))
+        if (!company.Email.Value.Equals(command.Email, StringComparison.OrdinalIgnoreCase))
         {
-            if (await _clientRepository.ExistsByEmailAsync(command.Email, ct))
+            if (await _companyRepository.ExistsByEmailAsync(command.Email, ct))
                 throw new ArgumentException("Email already in use.");
         }
 
         // Capture snapshot before update
         var before = JsonSerializer.Serialize(new
         {
-            client.Name,
-            Email = client.Email.Value,
-            Phone = client.Phone.Value,
-            client.RazaoSocial
+            company.RazaoSocial,
+            Email = company.Email.Value,
+            Phone = company.Phone.Value
         });
 
-        // Apply domain update
-        client.Update(command.Name, command.RazaoSocial, command.Email, command.Phone);
+        // Apply domain update — Name maps to RazaoSocial
+        company.Update(command.Name, command.Email, command.Phone);
 
         // Capture snapshot after update
         var after = JsonSerializer.Serialize(new
         {
-            client.Name,
-            Email = client.Email.Value,
-            Phone = client.Phone.Value,
-            client.RazaoSocial
+            company.RazaoSocial,
+            Email = company.Email.Value,
+            Phone = company.Phone.Value
         });
 
         // Persist
-        await _adminRepository.UpdateAsync(client, ct);
+        await _adminRepository.UpdateAsync(company, ct);
         await _adminRepository.SaveChangesAsync(ct);
 
         // Audit log
@@ -81,7 +79,7 @@ public sealed class UpdateUserCommandHandler : ICommandHandler<UpdateUserCommand
             actorEmail: command.AdminEmail,
             action: ActionType.UserUpdated,
             targetUserId: command.UserId,
-            targetUserName: client.Email.Value,
+            targetUserName: company.Email.Value,
             details: JsonSerializer.Serialize(new { Before = before, After = after }),
             ct: ct);
 

@@ -149,8 +149,8 @@ public sealed class AdminUserController : ControllerBase
 
         var command = new UpdateUserCommand(
             id,
-            request.Name ?? string.Empty,
-            request.RazaoSocial,
+            request.RazaoSocial ?? string.Empty,
+            null,
             request.Email ?? string.Empty,
             request.Phone ?? string.Empty,
             auditContext.Sub,

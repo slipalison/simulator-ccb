@@ -32,7 +32,7 @@ public static class InfrastructureServiceExtensions
                 ?? throw new InvalidOperationException(
                     "Connection string 'AppDb' not found in configuration.")));
 
-        services.AddScoped<IClientRepository, ClientRepository>();
+        services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<IAdminRepository, AdminRepository>();
         services.AddScoped<IAdminAuditLogRepository, AdminAuditLogRepository>();
         services.AddScoped<IAuditService, AuditService>();

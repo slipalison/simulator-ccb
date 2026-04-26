@@ -1,16 +1,15 @@
 namespace Onboarding.Application.Admin.DTOs;
 
 /// <summary>
-/// Detailed user data including Keycloak status (ADMIN-02).
+/// Detailed company data including Keycloak status (ADMIN-02).
 /// </summary>
 public sealed record UserDetailDto(
     Guid Id,
-    string Name,
+    string RazaoSocial,
     string Email,
     string Phone,
-    string? Document,
-    string Type,
-    string? RazaoSocial,
+    string? Cnpj,
+    string Type,  // Always "PJ"
     DateTime CreatedAt,
     DateTime? DeletedAt,
     bool KeycloakEnabled,

@@ -26,7 +26,7 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
 {
     public IAdminRepository AdminRepositoryMock { get; } = Substitute.For<IAdminRepository>();
     public IAuditService AuditServiceMock { get; } = Substitute.For<IAuditService>();
-    public IClientRepository ClientRepositoryMock { get; } = Substitute.For<IClientRepository>();
+    public ICompanyRepository CompanyRepositoryMock { get; } = Substitute.For<ICompanyRepository>();
     public IKeycloakUserService KeycloakUserServiceMock { get; } = Substitute.For<IKeycloakUserService>();
     public IPasswordResetTokenRepository TokenRepositoryMock { get; } = Substitute.For<IPasswordResetTokenRepository>();
     public IEmailService EmailServiceMock { get; } = Substitute.For<IEmailService>();
@@ -61,7 +61,7 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
             // Replace all infrastructure with mocks
             services.AddScoped<IAdminRepository>(_ => AdminRepositoryMock);
             services.AddScoped<IAuditService>(_ => AuditServiceMock);
-            services.AddScoped<IClientRepository>(_ => ClientRepositoryMock);
+            services.AddScoped<ICompanyRepository>(_ => CompanyRepositoryMock);
             services.AddScoped<IKeycloakUserService>(_ => KeycloakUserServiceMock);
             services.AddScoped<IPasswordResetTokenRepository>(_ => TokenRepositoryMock);
             services.AddScoped<IEmailService>(_ => EmailServiceMock);

@@ -4,7 +4,6 @@ namespace Onboarding.Application.Admin.DTOs;
 /// Request body for PUT /api/admin/users/{id} (ADMIN-03).
 /// </summary>
 public sealed record UpdateUserRequest(
-    string Name,
-    string? RazaoSocial,
+    string RazaoSocial,
     string Email,
     string Phone);

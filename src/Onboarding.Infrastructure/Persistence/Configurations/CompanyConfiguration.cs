@@ -1,30 +1,23 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Onboarding.Domain.Aggregates.ClientAggregate;
+using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Domain.ValueObjects;
 
 namespace Onboarding.Infrastructure.Persistence.Configurations;
 
-public sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
+public sealed class CompanyConfiguration : IEntityTypeConfiguration<Company>
 {
-    public void Configure(EntityTypeBuilder<Client> builder)
+    public void Configure(EntityTypeBuilder<Company> builder)
     {
-        builder.ToTable("clients");
+        builder.ToTable("companies");
         builder.HasKey(c => c.Id);
 
-        builder.Property(c => c.Name)
-            .HasColumnName("name")
+        builder.Property(c => c.RazaoSocial)
+            .HasColumnName("razao_social")
             .HasMaxLength(200)
             .IsRequired();
 
-        builder.Property(c => c.Type)
-            .HasColumnName("type")
-            .HasConversion<string>()
-            .IsRequired();
-
         // Value object mapping: store only the normalized Value string.
-        // HasConversion Create() calls are safe here: stored values were written by the same
-        // app using the same factory methods, so validation never throws during materialization.
         builder.Property(c => c.Email)
             .HasColumnName("email")
             .HasConversion(
@@ -40,13 +33,6 @@ public sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
                 s => PhoneNumber.Create(s))
             .HasMaxLength(20);
 
-        builder.Property(c => c.Cpf)
-            .HasColumnName("cpf")
-            .HasConversion(
-                vo => vo == null ? null : vo.Value,
-                s => s == null ? null : Cpf.Create(s))
-            .HasMaxLength(11);
-
         builder.Property(c => c.Cnpj)
             .HasColumnName("cnpj")
             .HasConversion(
@@ -54,18 +40,28 @@ public sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
                 s => s == null ? null : Cnpj.Create(s))
             .HasMaxLength(14);
 
-        builder.Property(c => c.RazaoSocial)
-            .HasColumnName("razao_social")
-            .HasMaxLength(200);
+        builder.Property(c => c.KeycloakUserId)
+            .HasColumnName("keycloak_user_id")
+            .HasMaxLength(256);
 
-        // Unique indexes — DB-level safety net for REG-05.
-        // PostgreSQL treats NULLs as non-equal in unique indexes by default.
-        // HasFilter ensures the unique constraint only applies to non-null rows (partial index).
+        // TermsAcceptance as owned type (D-11, D-13)
+        builder.OwnsOne(c => c.TermsAcceptance, ta =>
+        {
+            ta.Property(t => t.AcceptedAt)
+                .HasColumnName("terms_accepted_at")
+                .IsRequired();
+            ta.Property(t => t.TermsVersion)
+                .HasColumnName("terms_version")
+                .HasMaxLength(20)
+                .IsRequired();
+            ta.Property(t => t.IpAddress)
+                .HasColumnName("terms_ip_address")
+                .HasMaxLength(45)
+                .IsRequired();
+        });
+
+        // Unique indexes — DB-level safety net for REG-02.
         builder.HasIndex(c => c.Email).IsUnique();
-
-        builder.HasIndex(c => c.Cpf)
-            .IsUnique()
-            .HasFilter("cpf IS NOT NULL");
 
         builder.HasIndex(c => c.Cnpj)
             .IsUnique()

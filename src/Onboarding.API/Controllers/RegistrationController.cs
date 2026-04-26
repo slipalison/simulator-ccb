@@ -78,16 +78,15 @@ public sealed class RegistrationController : ControllerBase
                 Detail = "The provided document number is invalid."
             });
         }
-        catch (DuplicateClientException ex)
+        catch (DuplicateCompanyException ex)
         {
             // REG-05 + SEC-08: 409 Conflict with generic message — no hint about which field
-            // (CPF, CNPJ, or email) caused the conflict. Do not include ex.Message.
-            _logger.LogInformation(ex, "Duplicate client registration attempt");
+            _logger.LogInformation(ex, "Duplicate company registration attempt");
             return Conflict(new ProblemDetails
             {
                 Title = "Registration conflict",
                 Status = StatusCodes.Status409Conflict,
-                Detail = "A client with the provided information already exists."
+                Detail = "A company with the provided information already exists."
             });
         }
         catch (RegistrationFailedException ex)

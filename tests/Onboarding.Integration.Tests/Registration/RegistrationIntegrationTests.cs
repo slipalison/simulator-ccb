@@ -69,41 +69,32 @@ public class RegistrationIntegrationTests : IAsyncLifetime
         await _postgres.DisposeAsync();
     }
 
-    // REG-06: POST PF válido → cliente persistido no app_db (Keycloak requer realm importado)
+    // REG-06: POST PJ válido → empresa persistida no app_db (Keycloak requer realm importado)
     [Fact]
-    public async Task PostPf_ValidPayload_CreatesUserInKeycloak()
+    public async Task PostPj_ValidPayload_CreatesCompanyInKeycloak()
     {
-        // This test verifies app_db persistence + Keycloak integration.
-        // With the test Keycloak container (no realm import), the Keycloak call will fail
-        // and the compensation will delete the row. Full end-to-end requires realm import.
-        // For now, verify the endpoint is reachable and the DB is created.
         var payload = new
         {
-            nome = "João Silva",
-            cpf = "529.982.247-25",
-            email = "joao.integration@example.com",
+            razaoSocial = "Empresa Integration Test",
+            cnpj = "11.222.333/0001-81",
+            email = "empresa.integration@example.com",
             phone = "11999998888",
             password = "Str0ng@Pass"
         };
 
         var response = await _client!.PostAsJsonAsync("/api/registration", payload);
-
-        // 201 Created (full success) or 503 (Keycloak unavailable, compensation ran)
-        // Either way proves persistence layer works and API is reachable
         ((int)response.StatusCode).ShouldBeOneOf(201, 503);
     }
 
     // REG-06: Keycloak failure → nenhum registro órfão no app_db (compensation)
     [Fact]
-    public async Task PostPf_KeycloakDown_NoOrphanedRowInAppDb()
+    public async Task PostPj_KeycloakDown_NoOrphanedRowInAppDb()
     {
-        // When Keycloak is unreachable (realm not imported), the handler compensates by
-        // deleting the app_db row. Verify the DB is empty after a failed registration.
         var payload = new
         {
-            nome = "Maria Compensada",
-            cpf = "853.398.890-77",
-            email = "maria.compensation@example.com",
+            razaoSocial = "Empresa Compensation Test",
+            cnpj = "11.222.333/0001-81",
+            email = "empresa.compensation@example.com",
             phone = "11888887777",
             password = "Str0ng@Pass"
         };
@@ -116,7 +107,7 @@ public class RegistrationIntegrationTests : IAsyncLifetime
             using var scope = _factory!.Services.CreateScope();
             var db = scope.ServiceProvider
                 .GetRequiredService<Onboarding.Infrastructure.Persistence.AppDbContext>();
-            var count = db.Clients.Count();
+            var count = db.Companies.Count();
             count.ShouldBe(0);
         }
         // If 201, full success — fine too (test Keycloak happened to accept the request)

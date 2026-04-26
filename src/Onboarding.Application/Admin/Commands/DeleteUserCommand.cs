@@ -8,7 +8,7 @@ using Onboarding.Domain.Repositories;
 namespace Onboarding.Application.Admin.Commands;
 
 /// <summary>
-/// Command: LGPD-compliant user deletion (ADMIN-05).
+/// Command: LGPD-compliant company deletion (ADMIN-05).
 /// </summary>
 public sealed record DeleteUserCommand(
     Guid UserId,
@@ -37,35 +37,32 @@ public sealed class DeleteUserCommandHandler : ICommandHandler<DeleteUserCommand
 
     public async Task<Unit> HandleAsync(DeleteUserCommand command, CancellationToken ct = default)
     {
-        var client = await _adminRepository.GetByIdAsync(command.UserId, ct)
+        var company = await _adminRepository.GetByIdAsync(command.UserId, ct)
             ?? throw new KeyNotFoundException("User not found.");
 
         // Validate confirm email
-        if (!command.ConfirmEmail.Equals(client.Email.Value, StringComparison.OrdinalIgnoreCase))
+        if (!command.ConfirmEmail.Equals(company.Email.Value, StringComparison.OrdinalIgnoreCase))
             throw new ArgumentException("Email confirmation does not match.");
 
         // Check already deleted
-        if (client.IsDeleted)
+        if (company.IsDeleted)
             throw new InvalidOperationException("User is already deleted.");
 
         // Capture original email BEFORE anonymization (critical!)
-        var originalEmail = client.Email.Value;
+        var originalEmail = company.Email.Value;
 
         // Capture snapshot BEFORE anonymization
         var before = JsonSerializer.Serialize(new
         {
-            client.Name,
-            Email = client.Email.Value,
-            Phone = client.Phone.Value,
-            client.Cpf,
-            client.Cnpj,
-            client.RazaoSocial,
-            Type = client.Type.ToString()
+            company.RazaoSocial,
+            Email = company.Email.Value,
+            Phone = company.Phone.Value,
+            Cnpj = company.Cnpj?.Value
         });
 
         // Anonymize PII in database first
-        client.Anonymize();
-        await _adminRepository.UpdateAsync(client, ct);
+        company.Anonymize();
+        await _adminRepository.UpdateAsync(company, ct);
         await _adminRepository.SaveChangesAsync(ct);
 
         // Delete from Keycloak — use ORIGINAL email
@@ -82,14 +79,11 @@ public sealed class DeleteUserCommandHandler : ICommandHandler<DeleteUserCommand
         // Capture snapshot AFTER anonymization
         var after = JsonSerializer.Serialize(new
         {
-            client.Name,
-            Email = client.Email.Value,
-            Phone = client.Phone.Value,
-            Cpf = (string?)null,
+            company.RazaoSocial,
+            Email = company.Email.Value,
+            Phone = company.Phone.Value,
             Cnpj = (string?)null,
-            RazaoSocial = (string?)null,
-            Type = client.Type.ToString(),
-            client.DeletedAt
+            company.DeletedAt
         });
 
         // Audit log

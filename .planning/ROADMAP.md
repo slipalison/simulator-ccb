@@ -1014,7 +1014,12 @@ Plans:
   5. Nova EF Core migration cria tabela `companies` e `employees` e remove tabela `clients` — `docker compose down -v && docker compose up` sobe tudo limpo
   6. Isolamento entre empresas: `CompanyConfiguration` e `EmployeeConfiguration` com `HasQueryFilter` filtrando por `CompanyId` — nenhum employee de outra empresa é acessível
   7. Todos os testes unitários do domain passando (Company, Employee, Cnpj, Cpf, TermsAcceptance, EmployeeAccessGroup)
-**Plans:** TBD
+**Plans:** 4 plans
+Plans:
+- [ ] 37-01-PLAN.md — Domain layer: Company + TermsAcceptance + Employee + AccessGroup + Permissions + repositories + delete Client aggregate
+- [ ] 37-02-PLAN.md — Domain tests: Company, Employee, TermsAcceptance, AccessGroup, Permissions tests + delete Client/PF tests (TDD)
+- [ ] 37-03-PLAN.md — Infrastructure: EF Core configs, AppDbContext, HasQueryFilter, repositories, migration (drop clients, create companies/employees/access_groups)
+- [ ] 37-04-PLAN.md — Application + API: Migrate admin CQRS/DTOs, migrate controllers, delete Client endpoints, Program.cs DI, full build verification
 
 ### Phase 38: Employee Registration & Management API
 **Goal:** Backend endpoints para registro PJ, cadastro de funcionários e CRUD completo de funcionários — tudo com isolamento obrigatório por empresa.
@@ -1091,7 +1096,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 37. Domain Model Redesign | 0/TBD | 📋 Planned | — |
+| 37. Domain Model Redesign | 0/4 | 📋 Planned | — |
 | 38. Employee Registration & Management API | 0/TBD | 📋 Planned | — |
 | 39. Keycloak Groups & Permissions | 0/TBD | 📋 Planned | — |
 | 40. Client Frontend — PJ Registration & Employee Management | 0/TBD | 📋 Planned | — |

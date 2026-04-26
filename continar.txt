@@ -1,10 +1,10 @@
- ◼ Task 1: Backend isFirstLogin + endpoint
-  ◻ Task 2: Keycloak mapper + Vinxi callback
-  ◻ Create SUMMARY.md for quick task
-
-
-
-  claude --dangerously-skip-permissions -resume ecf13653-f91c-4c14-8b2c-b62a64c904ca
 
   
 
+Phase 39: Keycloak Groups & Permissions — Keycloak group-based authorization for PJ/Employee access control
+/clear then:
+/gsd-discuss-phase 39 — discuss next phase before planning ← recommended
+/gsd-plan-phase 39 — plan next phase (skip discuss)
+/gsd-execute-phase 39 — execute next phase (skip planning)
+
+ opencode -s ses_2381b858cffeKeSN4s6bIEOSsd

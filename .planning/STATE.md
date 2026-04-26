@@ -25,10 +25,10 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 
 ## Current Position
 
-Phase: 40 (client-frontend-pj-registration) — EXECUTING
+Phase: 40 (client-frontend-pj-registration) — COMPLETE
 Plan: 4 of 4
-Status: Plan 04 complete — Dashboard with 6 mock cards, group-based routing, PJ-only ProfilePage, zero PF references
-Last activity: 2026-04-26 -- Plan 03 executed
+Status: All 4 plans executed. Phase 40 complete — PJ registration wizard, employee management UI, dashboard mock, permission routing, PF removal verified.
+Last activity: 2026-04-26 -- Phase 40 complete
 
 ## Milestone Breakdown
 

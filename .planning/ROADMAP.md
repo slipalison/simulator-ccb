@@ -997,7 +997,7 @@ Plans:
 - [ ] **Phase 37: Domain Model Redesign** - Company + Employee aggregates, TermsAcceptance value object, remove PF flow. New EF Core migration. Base zerada. (REG-02, REG-04, REG-05)
 - [ ] **Phase 38: Employee Registration & Management API** - PJ registration endpoint, employee CRUD API, company isolation via global query filter. (REG-01, REG-03, MGMT-01..05)
 - [x] **Phase 39: Keycloak Groups & Permissions** - Configure Keycloak groups (admin-empresa, viewer, dashboard), JWT claims mapping, backend permission enforcement, company isolation checks. (PERM-01..05)
-- [ ] **Phase 40: Client Frontend — PJ Registration & Employee Management** - PJ registration form with terms acceptance, employee list/block/reset/edit/delete, remove PF flow from frontend, dashboard mock. (DASH-01) ✅ Plans complete
+- [x] **Phase 40: Client Frontend — PJ Registration & Employee Management** - PJ registration form with terms acceptance, employee list/block/reset/edit/delete, remove PF flow from frontend, dashboard mock. (DASH-01) ✅ Complete (2026-04-26)
 - [ ] **Phase 41: BackOffice Employee Management + Audit** - BackOffice views employees from any company, force reset/block. Extend audit log for employee actions. (ADM-01, ADM-02, AUD-01, AUD-02)
 - [ ] **Phase 42: CI Coverage Enforcement** - GitHub Actions with 80% test coverage enforcement for backend (.NET) and frontend (React/Vinxi). (CI-01)
 
@@ -1112,7 +1112,7 @@ Plans:
 | 37. Domain Model Redesign | 4/4 | ✅ Complete | 2026-04-26 |
 | 38. Employee Registration & Management API | 3/3 | ✅ Complete | 2026-04-26 |
 | 39. Keycloak Groups & Permissions | 3/3 | ✅ Complete | 2026-04-26 |
-| 40. Client Frontend — PJ Registration & Employee Management | 3/4 | 🔄 Executing | 2026-04-26 |
+| 40. Client Frontend — PJ Registration & Employee Management | 4/4 | ✅ Complete | 2026-04-26 |
 | 41. BackOffice Employee Management + Audit | 0/TBD | 📋 Planned | — |
 | 42. CI Coverage Enforcement | 0/TBD | 📋 Planned | — |
 
@@ -1128,9 +1128,9 @@ Plans:
 | **v4.0** CI/CD + Security | 21-28 | 20 | ✅ Complete | 25 requirements |
 | **v5.0** Auth Code Flow + Admins + Audit | 29-34 | TBD | ✅ Complete | 11 requirements |
 | **v6.0** Gestão Completa de Administradores | 35-36 | 5 | ✅ Complete | 14 requirements |
-| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-42 | 7 plans done, 3 remaining | 🔄 Active | 21 requirements |
+| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-42 | 10 plans done, 0 remaining | ✅ Phase 40 done | 21 requirements |
 | **Total** | **42 phases** | **110+ plans** | **6 milestones done** | **142 requirements** |
 
 ---
 
-*Last updated: 2026-04-26 — Phase 39 complete (PERM-01..05 verified)*
+*Last updated: 2026-04-26 — Phase 40 complete (DASH-01, REG-01/05, MGMT-01..05, PERM-04 frontend)*

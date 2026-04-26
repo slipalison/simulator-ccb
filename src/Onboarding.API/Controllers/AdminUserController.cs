@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Onboarding.API.Security;
 using Onboarding.Application.Admin.Commands;
 using Onboarding.Application.Admin.DTOs;
 using Onboarding.Application.Admin.Queries;
@@ -17,7 +18,7 @@ namespace Onboarding.API.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/admin")]
-[Authorize(AuthenticationSchemes = "BearerBackoffice", Roles = "admin")]
+[Authorize(AuthenticationSchemes = "BearerBackoffice", Policy = PermissionPolicies.CrossCompanyAccess)]
 public sealed class AdminUserController : ControllerBase
 {
     // Company/Employee handlers (Phase 37 — D-19)

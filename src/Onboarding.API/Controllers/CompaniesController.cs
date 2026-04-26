@@ -5,6 +5,7 @@ using Onboarding.Application.Common;
 using Onboarding.Application.Companies.Commands;
 using Onboarding.Application.Companies.DTOs;
 using Onboarding.Application.Companies.Queries;
+using Onboarding.API.Security;
 using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Domain.Exceptions;
 using Onboarding.Domain.Repositories;
@@ -155,7 +156,7 @@ public sealed class CompaniesController : ControllerBase
 
     /// <summary>POST /api/companies/{companyId}/employees — Register employee (PF) for company (REG-03, MGMT-01).</summary>
     [HttpPost("{companyId:guid}/employees")]
-    [Authorize(AuthenticationSchemes = "BearerClient")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.EmployeeWrite)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -231,7 +232,7 @@ public sealed class CompaniesController : ControllerBase
 
     /// <summary>GET /api/companies/{companyId}/employees — Paginated employee listing (MGMT-02).</summary>
     [HttpGet("{companyId:guid}/employees")]
-    [Authorize(AuthenticationSchemes = "BearerClient")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.EmployeeRead)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetEmployees(
@@ -249,7 +250,7 @@ public sealed class CompaniesController : ControllerBase
 
     /// <summary>POST /api/companies/{companyId}/employees/{id:guid}/toggle-status — Block/unblock employee (MGMT-03).</summary>
     [HttpPost("{companyId:guid}/employees/{id:guid}/toggle-status")]
-    [Authorize(AuthenticationSchemes = "BearerClient")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.EmployeeWrite)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -281,7 +282,7 @@ public sealed class CompaniesController : ControllerBase
 
     /// <summary>POST /api/companies/{companyId}/employees/{id:guid}/reset-password — Reset employee password (MGMT-04).</summary>
     [HttpPost("{companyId:guid}/employees/{id:guid}/reset-password")]
-    [Authorize(AuthenticationSchemes = "BearerClient")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.EmployeeWrite)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -313,7 +314,7 @@ public sealed class CompaniesController : ControllerBase
 
     /// <summary>PUT /api/companies/{companyId}/employees/{id:guid} — Update employee data (MGMT-05).</summary>
     [HttpPut("{companyId:guid}/employees/{id:guid}")]
-    [Authorize(AuthenticationSchemes = "BearerClient")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.EmployeeWrite)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -345,7 +346,7 @@ public sealed class CompaniesController : ControllerBase
 
     /// <summary>DELETE /api/companies/{companyId}/employees/{id:guid} — LGPD delete employee (MGMT-05).</summary>
     [HttpDelete("{companyId:guid}/employees/{id:guid}")]
-    [Authorize(AuthenticationSchemes = "BearerClient")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.EmployeeDelete)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -377,7 +378,7 @@ public sealed class CompaniesController : ControllerBase
 
     /// <summary>PUT /api/companies/{companyId}/employees/{id:guid}/access-group — Change access group (T-38-11).</summary>
     [HttpPut("{companyId:guid}/employees/{id:guid}/access-group")]
-    [Authorize(AuthenticationSchemes = "BearerClient")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.AccessGroupsManage)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]

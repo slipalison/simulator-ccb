@@ -44,7 +44,7 @@ public sealed class AdminAuditLogConfiguration : IEntityTypeConfiguration<AdminA
 
         builder.Property(a => a.Details)
             .HasColumnName("details")
-            .HasColumnType("jsonb");
+            .HasColumnType("text");
 
         builder.Property(a => a.IpAddress)
             .HasColumnName("ip_address")

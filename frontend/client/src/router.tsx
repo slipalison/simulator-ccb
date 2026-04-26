@@ -6,7 +6,7 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import { NotFoundPage } from "@/components/pages/NotFoundPage";
-import { RegistrationForm } from "@/components/molecules/RegistrationForm";
+import { RegisterPage } from "@/components/pages/RegisterPage";
 import { AuthLoginPage } from "@/components/pages/AuthLoginPage";
 import { AuthCallbackPage } from "@/components/pages/AuthCallbackPage";
 import { AuthErrorPage } from "@/components/pages/AuthErrorPage";
@@ -57,7 +57,7 @@ const profileRoute = createRoute({
 const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/register",
-  component: RegistrationForm,
+  component: RegisterPage,
 });
 
 // Auth login (redirect-only): /auth/login

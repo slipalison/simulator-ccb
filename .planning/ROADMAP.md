@@ -1016,9 +1016,9 @@ Plans:
   7. Todos os testes unitários do domain passando (Company, Employee, Cnpj, Cpf, TermsAcceptance, EmployeeAccessGroup)
 **Plans:** 4 plans
 Plans:
-- [ ] 37-01-PLAN.md — Domain layer: Company + TermsAcceptance + Employee + AccessGroup + Permissions + repositories + delete Client aggregate
-- [ ] 37-02-PLAN.md — Domain tests: Company, Employee, TermsAcceptance, AccessGroup, Permissions tests + delete Client/PF tests (TDD)
-- [ ] 37-03-PLAN.md — Infrastructure: EF Core configs, AppDbContext, HasQueryFilter, repositories, migration (drop clients, create companies/employees/access_groups)
+- [x] 37-01-PLAN.md — Domain layer: Company + TermsAcceptance + Employee + AccessGroup + Permissions + repositories + delete Client aggregate
+- [x] 37-02-PLAN.md — Domain tests: Company, Employee, TermsAcceptance, AccessGroup, Permissions tests + delete Client/PF tests (TDD)
+- [x] 37-03-PLAN.md — Infrastructure: EF Core configs, AppDbContext, HasQueryFilter, repositories, migration (drop clients, create companies/employees/access_groups)
 - [ ] 37-04-PLAN.md — Application + API: Migrate admin CQRS/DTOs, migrate controllers, delete Client endpoints, Program.cs DI, full build verification
 
 ### Phase 38: Employee Registration & Management API
@@ -1115,7 +1115,7 @@ Plans:
 | **v4.0** CI/CD + Security | 21-28 | 20 | ✅ Complete | 25 requirements |
 | **v5.0** Auth Code Flow + Admins + Audit | 29-34 | TBD | ✅ Complete | 11 requirements |
 | **v6.0** Gestão Completa de Administradores | 35-36 | 5 | ✅ Complete | 14 requirements |
-| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-42 | 2/4 done (Phase 37) | 🔄 Active | 21 requirements |
+| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-42 | 3/4 done (Phase 37) | 🔄 Active | 21 requirements |
 | **Total** | **42 phases** | **110+ plans** | **6 milestones done** | **142 requirements** |
 
 ---

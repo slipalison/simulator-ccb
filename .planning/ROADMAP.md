@@ -1123,9 +1123,9 @@ Plans:
 | **v4.0** CI/CD + Security | 21-28 | 20 | ✅ Complete | 25 requirements |
 | **v5.0** Auth Code Flow + Admins + Audit | 29-34 | TBD | ✅ Complete | 11 requirements |
 | **v6.0** Gestão Completa de Administradores | 35-36 | 5 | ✅ Complete | 14 requirements |
-| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-42 | 4+3 plans | 🔄 Active | 21 requirements |
+| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-42 | 7 plans done, 3 remaining | 🔄 Active | 21 requirements |
 | **Total** | **42 phases** | **110+ plans** | **6 milestones done** | **142 requirements** |
 
 ---
 
-*Last updated: 2026-04-26 — Phase 38 complete, Phase 39 planned*
+*Last updated: 2026-04-26 — Phase 39 complete (PERM-01..05 verified)*

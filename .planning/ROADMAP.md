@@ -1034,7 +1034,11 @@ Plans:
   6. PUT `/api/companies/{companyId}/employees/{id}` edita dados do funcionário (nome, email, telefone) — persiste no Keycloak (MGMT-04)
   7. DELETE `/api/companies/{companyId}/employees/{id}` realiza exclusão LGPD — anonimiza dados no PostgreSQL + delete no Keycloak (MGMT-05)
   8. Nenhum endpoint retorna dados de funcionários de outra empresa — company isolation enforced em todos os queries (PERM-05 backend preview)
-**Plans:** TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 38-01-PLAN.md — Company Registration endpoint (POST /api/companies/registration) + admin company query handlers
+- [ ] 38-02-PLAN.md — Employee CRUD API (register, list, block/unblock, reset password, edit, LGPD delete, access group change) — company-scoped endpoints
+- [ ] 38-03-PLAN.md — Admin-side employee handlers (list across companies, block/unblock/delete any employee) — replacing Phase 37 stubs
 
 ### Phase 39: Keycloak Groups & Permissions
 **Goal:** Keycloak groups configurados (admin-empresa, viewer, dashboard). Backend lê groups do JWT e aplica permissões. Isolamento entre empresas enforced no backend.
@@ -1097,7 +1101,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 37. Domain Model Redesign | 4/4 | ✅ Complete | 2026-04-26 |
-| 38. Employee Registration & Management API | 0/TBD | 📋 Planned | — |
+| 38. Employee Registration & Management API | 0/3 | 📋 Planned | — |
 | 39. Keycloak Groups & Permissions | 0/TBD | 📋 Planned | — |
 | 40. Client Frontend — PJ Registration & Employee Management | 0/TBD | 📋 Planned | — |
 | 41. BackOffice Employee Management + Audit | 0/TBD | 📋 Planned | — |

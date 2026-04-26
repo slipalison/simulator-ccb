@@ -1,6 +1,12 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 
 // ---------------------------------------------------------------------------
+// Access group type — matches Keycloak group names (Phase 39)
+// ---------------------------------------------------------------------------
+
+export type AccessGroup = "admin-empresa" | "viewer" | "dashboard";
+
+// ---------------------------------------------------------------------------
 // Context definition
 // ---------------------------------------------------------------------------
 
@@ -10,6 +16,8 @@ interface AuthContextValue {
     isLoading: boolean;
     userName: string | null;
     email: string | null;
+    accessGroup: AccessGroup | null;
+    companyId: string | null;
   };
   /** Redirects to /auth/login (Vinxi server → Keycloak ACF) */
   login: () => void;
@@ -28,6 +36,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [userName, setUserName] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  const [accessGroup, setAccessGroup] = useState<AccessGroup | null>(null);
+  const [companyId, setCompanyId] = useState<string | null>(null);
 
   // Session restoration on mount via /auth/me
   useEffect(() => {
@@ -39,10 +49,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             userName: string;
             email: string;
             isAuthenticated: boolean;
+            accessGroup?: string | null;
+            companyId?: string | null;
           };
           setUserName(data.userName);
           setEmail(data.email);
           setIsAuthenticated(data.isAuthenticated);
+          setAccessGroup(
+            data.accessGroup
+              ? (data.accessGroup as AccessGroup)
+              : null
+          );
+          setCompanyId(data.companyId ?? null);
         }
       } catch {
         // Session invalid — user needs to login
@@ -65,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        auth: { isAuthenticated, isLoading, userName, email },
+        auth: { isAuthenticated, isLoading, userName, email, accessGroup, companyId },
         login,
         logout,
       }}

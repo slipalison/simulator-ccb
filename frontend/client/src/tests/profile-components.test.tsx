@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // GREEN tests — Profile components and API client
 // ---------------------------------------------------------------------------
-// Updated in plan 33-01: getProfileClient now uses cookies (no Bearer token).
+// Updated in plan 40-01: PJ-only profile with CompanyProfileDto and group badges.
 // ---------------------------------------------------------------------------
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
@@ -9,7 +9,7 @@ import { render, screen } from "@testing-library/react";
 import { ProfileField } from "@/components/atoms/ProfileField";
 import { ProfileBadge } from "@/components/atoms/ProfileBadge";
 import { ProfileCard } from "@/components/molecules/ProfileCard";
-import type { ClientProfileDto } from "@/lib/types";
+import type { CompanyProfileDto } from "@/lib/types";
 
 // ---------------------------------------------------------------------------
 // ProfileField tests
@@ -34,34 +34,45 @@ describe("ProfileField", () => {
 });
 
 // ---------------------------------------------------------------------------
-// ProfileBadge tests
+// ProfileBadge tests — now group-based (admin-empresa, viewer, dashboard)
 // ---------------------------------------------------------------------------
 
 describe("ProfileBadge", () => {
-  it("shows Pessoa Física for PF type", () => {
-    render(<ProfileBadge type="PessoaFisica" />);
+  it("shows Admin Empresa for admin-empresa group", () => {
+    render(<ProfileBadge group="admin-empresa" />);
 
-    expect(screen.getByText("Pessoa Física")).toBeInTheDocument();
+    expect(screen.getByText("Admin Empresa")).toBeInTheDocument();
   });
 
-  it("shows Pessoa Jurídica for PJ type", () => {
-    render(<ProfileBadge type="PessoaJuridica" />);
+  it("shows Viewer for viewer group", () => {
+    render(<ProfileBadge group="viewer" />);
 
-    expect(screen.getByText("Pessoa Jurídica")).toBeInTheDocument();
+    expect(screen.getByText("Viewer")).toBeInTheDocument();
   });
 
-  it("applies green styling to PF badge", () => {
-    const { container } = render(<ProfileBadge type="PessoaFisica" />);
+  it("shows Dashboard for dashboard group", () => {
+    render(<ProfileBadge group="dashboard" />);
 
-    // Implementation uses bg-green-100 (Tailwind) — contains "green"
+    expect(screen.getByText("Dashboard")).toBeInTheDocument();
+  });
+
+  it("applies green styling to admin-empresa badge", () => {
+    const { container } = render(<ProfileBadge group="admin-empresa" />);
+
     const badge = container.querySelector("span");
     expect(badge?.className).toContain("green");
   });
 
-  it("applies blue styling to PJ badge", () => {
-    const { container } = render(<ProfileBadge type="PessoaJuridica" />);
+  it("applies gray styling to viewer badge", () => {
+    const { container } = render(<ProfileBadge group="viewer" />);
 
-    // Implementation uses bg-blue-100 (Tailwind) — contains "blue"
+    const badge = container.querySelector("span");
+    expect(badge?.className).toContain("gray");
+  });
+
+  it("applies blue styling to dashboard badge", () => {
+    const { container } = render(<ProfileBadge group="dashboard" />);
+
     const badge = container.querySelector("span");
     expect(badge?.className).toContain("blue");
   });
@@ -71,26 +82,12 @@ describe("ProfileBadge", () => {
 // ProfileCard test data
 // ---------------------------------------------------------------------------
 
-const mockPFProfile: ClientProfileDto = {
-  id: "test-id-123",
-  name: "João da Silva",
-  email: "joao@email.com",
-  phone: "(11) 99999-9999",
-  type: "PessoaFisica",
-  cpf: "123.456.789-00",
-  cnpj: null,
-  razaoSocial: null,
-};
-
-const mockPJProfile: ClientProfileDto = {
+const mockCompanyProfile: CompanyProfileDto = {
   id: "test-id-456",
-  name: "Empresa LTDA",
-  email: "contato@empresa.com.br",
-  phone: "(11) 3333-4444",
-  type: "PessoaJuridica",
-  cpf: null,
-  cnpj: "12.345.678/0001-90",
   razaoSocial: "Empresa LTDA",
+  cnpj: "12345678000190",
+  email: "contato@empresa.com.br",
+  phone: "11999990000",
 };
 
 // ---------------------------------------------------------------------------
@@ -98,55 +95,31 @@ const mockPJProfile: ClientProfileDto = {
 // ---------------------------------------------------------------------------
 
 describe("ProfileCard", () => {
-  it("renders PF profile fields", () => {
-    render(<ProfileCard profile={mockPFProfile} />);
-
-    expect(screen.getByText("João da Silva")).toBeInTheDocument();
-    expect(screen.getByText("123.456.789-00")).toBeInTheDocument();
-    expect(screen.getByText("joao@email.com")).toBeInTheDocument();
-    expect(screen.getByText("(11) 99999-9999")).toBeInTheDocument();
-  });
-
-  it("renders PJ profile fields", () => {
-    render(<ProfileCard profile={mockPJProfile} />);
+  it("renders company profile fields", () => {
+    render(<ProfileCard profile={mockCompanyProfile} accessGroup="admin-empresa" />);
 
     expect(screen.getByText("Empresa LTDA")).toBeInTheDocument();
-    expect(screen.getByText("12.345.678/0001-90")).toBeInTheDocument();
+    expect(screen.getByText("12345678000190")).toBeInTheDocument();
     expect(screen.getByText("contato@empresa.com.br")).toBeInTheDocument();
-    expect(screen.getByText("(11) 3333-4444")).toBeInTheDocument();
+    expect(screen.getByText("11999990000")).toBeInTheDocument();
   });
 
-  it("does not show CPF field label for PJ profiles", () => {
-    render(<ProfileCard profile={mockPJProfile} />);
-
-    // PJ profile should not display the CPF label
-    expect(screen.queryByText("CPF")).not.toBeInTheDocument();
+  it("displays Admin Empresa badge for admin-empresa group", () => {
+    render(<ProfileCard profile={mockCompanyProfile} accessGroup="admin-empresa" />);
+    expect(screen.getByText("Admin Empresa")).toBeInTheDocument();
   });
 
-  it("does not show CNPJ field label for PF profiles", () => {
-    render(<ProfileCard profile={mockPFProfile} />);
-
-    // PF profile should not display the CNPJ label
-    expect(screen.queryByText("CNPJ")).not.toBeInTheDocument();
-  });
-
-  it("displays ProfileBadge with correct type", () => {
-    const { rerender } = render(<ProfileCard profile={mockPFProfile} />);
-    expect(screen.getByText("Pessoa Física")).toBeInTheDocument();
-
-    rerender(<ProfileCard profile={mockPJProfile} />);
-    expect(screen.getByText("Pessoa Jurídica")).toBeInTheDocument();
+  it("displays Viewer badge for viewer group", () => {
+    render(<ProfileCard profile={mockCompanyProfile} accessGroup="viewer" />);
+    expect(screen.getByText("Viewer")).toBeInTheDocument();
   });
 });
 
 // ---------------------------------------------------------------------------
-// getProfileClient tests — cookie-based ACF version
-// ---------------------------------------------------------------------------
-// getProfileClient() uses credentials: "include" (httpOnly cookie auth).
-// No Bearer token needed — auth is handled by Vinxi auth-server via cookies.
+// getProfileClient tests — PJ-only, company endpoint
 // ---------------------------------------------------------------------------
 
-describe("getProfileClient — cookie-based ACF", () => {
+describe("getProfileClient — company profile ACF", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -155,16 +128,13 @@ describe("getProfileClient — cookie-based ACF", () => {
     vi.restoreAllMocks();
   });
 
-  it("fetches profile with credentials: include (cookie auth)", async () => {
-    const mockProfile: ClientProfileDto = {
+  it("fetches company profile with credentials: include (cookie auth)", async () => {
+    const mockProfile: CompanyProfileDto = {
       id: "test-id",
-      name: "Test User",
-      email: "test@email.com",
-      phone: "(11) 99999-9999",
-      type: "PessoaFisica",
-      cpf: "123.456.789-00",
-      cnpj: null,
-      razaoSocial: null,
+      razaoSocial: "Test Company",
+      cnpj: "12345678000190",
+      email: "test@company.com",
+      phone: "11999990000",
     };
 
     global.fetch = vi.fn().mockResolvedValue({
@@ -176,7 +146,7 @@ describe("getProfileClient — cookie-based ACF", () => {
     const result = await getProfileClient();
 
     expect(result).toEqual(mockProfile);
-    expect(global.fetch).toHaveBeenCalledWith("/api/clients/me", {
+    expect(global.fetch).toHaveBeenCalledWith("/api/companies/me", {
       method: "GET",
       credentials: "include",
       headers: { "Content-Type": "application/json" },

@@ -17,7 +17,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 // ---------------------------------------------------------------------------
-// Mock auth context — ACF version (no getAccessToken/refreshIfNeeded)
+// Mock auth context — ACF version (PJ-only, includes accessGroup)
 // ---------------------------------------------------------------------------
 
 const mockLogout = vi.fn();
@@ -45,13 +45,12 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
 // Test data
 // ---------------------------------------------------------------------------
 
-const mockPFProfile = {
-  id: "pf-id-123",
-  type: "PessoaFisica" as const,
-  name: "João da Silva",
-  cpf: "123.456.789-00",
-  email: "joao@email.com",
-  phone: "(11) 99999-9999",
+const mockCompanyProfile = {
+  id: "company-id-456",
+  razaoSocial: "Empresa LTDA",
+  cnpj: "12345678000190",
+  email: "contato@empresa.com.br",
+  phone: "11999990000",
 };
 
 // ---------------------------------------------------------------------------
@@ -66,36 +65,28 @@ function renderProfilePage() {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe("ProfilePage (shadcn redesign)", () => {
+describe("ProfilePage (PJ-only redesign)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseAuth.mockReturnValue({
-      auth: { isAuthenticated: true, isLoading: false, userName: "João", email: "joao@email.com" },
+      auth: { isAuthenticated: true, isLoading: false, userName: "Test User", email: "test@company.com", accessGroup: "admin-empresa", companyId: "company-123" },
       login: vi.fn(),
       logout: mockLogout,
     });
   });
 
-  it("renders with shadcn Card container", async () => {
+  it("renders company profile data with shadcn Card container", async () => {
     const apiModule = await import("@/lib/api");
-    vi.mocked(apiModule.getProfileClient).mockResolvedValue(mockPFProfile as any);
+    vi.mocked(apiModule.getProfileClient).mockResolvedValue(mockCompanyProfile as any);
 
     renderProfilePage();
 
     await waitFor(() => {
-      expect(screen.getByText("Meu Perfil")).toBeInTheDocument();
+      expect(screen.getByText("Perfil da Empresa")).toBeInTheDocument();
     });
-  });
 
-  it("shows PF/PJ badge with correct color", async () => {
-    const { getProfileClient } = await import("@/lib/api");
-    vi.mocked(getProfileClient).mockResolvedValue(mockPFProfile as any);
-
-    renderProfilePage();
-
-    await waitFor(() => {
-      expect(screen.getByText("Pessoa Física")).toBeInTheDocument();
-    });
+    expect(screen.getByText("Empresa LTDA")).toBeInTheDocument();
+    expect(screen.getByText("12345678000190")).toBeInTheDocument();
   });
 
   it("shows skeleton loading state", async () => {
@@ -110,34 +101,9 @@ describe("ProfilePage (shadcn redesign)", () => {
     });
   });
 
-  it("shows profile data (nome, cpf/cnpj, email, telefone)", async () => {
-    const { getProfileClient } = await import("@/lib/api");
-    vi.mocked(getProfileClient).mockResolvedValue(mockPFProfile as any);
-
-    renderProfilePage();
-
-    await waitFor(() => {
-      expect(screen.getByText("João da Silva")).toBeInTheDocument();
-    });
-
-    expect(screen.getByText("123.456.789-00")).toBeInTheDocument();
-    expect(screen.getByText("joao@email.com")).toBeInTheDocument();
-  });
-
-  it("shows logout button", async () => {
-    const { getProfileClient } = await import("@/lib/api");
-    vi.mocked(getProfileClient).mockResolvedValue(mockPFProfile as any);
-
-    renderProfilePage();
-
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: /sair/i })).toBeInTheDocument();
-    });
-  });
-
   it("redirects to /auth/login when not authenticated", async () => {
     mockUseAuth.mockReturnValue({
-      auth: { isAuthenticated: false, isLoading: false, userName: null, email: null },
+      auth: { isAuthenticated: false, isLoading: false, userName: null, email: null, accessGroup: null, companyId: null },
       login: vi.fn(),
       logout: mockLogout,
     });

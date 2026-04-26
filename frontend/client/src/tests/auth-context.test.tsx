@@ -10,7 +10,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
   return <AuthProvider>{children}</AuthProvider>;
 }
 
-describe("AuthContext — ACF redirect-based auth", () => {
+describe("AuthContext — ACF redirect-based auth with group info", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockFetch.mockReset();
@@ -30,9 +30,11 @@ describe("AuthContext — ACF redirect-based auth", () => {
     expect(result.current.auth.isAuthenticated).toBe(false);
     expect(result.current.auth.userName).toBeNull();
     expect(result.current.auth.email).toBeNull();
+    expect(result.current.auth.accessGroup).toBeNull();
+    expect(result.current.auth.companyId).toBeNull();
   });
 
-  it("sets isAuthenticated + userName + email when /auth/me returns 200", async () => {
+  it("sets isAuthenticated + userName + email + accessGroup + companyId when /auth/me returns 200", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: () =>
@@ -40,7 +42,8 @@ describe("AuthContext — ACF redirect-based auth", () => {
           isAuthenticated: true,
           userName: "João Silva",
           email: "joao@example.com",
-          sub: "user-123",
+          accessGroup: "admin-empresa",
+          companyId: "company-123",
         }),
     });
 
@@ -53,6 +56,31 @@ describe("AuthContext — ACF redirect-based auth", () => {
     expect(result.current.auth.isAuthenticated).toBe(true);
     expect(result.current.auth.userName).toBe("João Silva");
     expect(result.current.auth.email).toBe("joao@example.com");
+    expect(result.current.auth.accessGroup).toBe("admin-empresa");
+    expect(result.current.auth.companyId).toBe("company-123");
+  });
+
+  it("defaults accessGroup and companyId to null when /auth/me omits them (backward compat)", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          isAuthenticated: true,
+          userName: "Test User",
+          email: "test@example.com",
+          // accessGroup and companyId not present
+        }),
+    });
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.auth.isLoading).toBe(false);
+    });
+
+    expect(result.current.auth.isAuthenticated).toBe(true);
+    expect(result.current.auth.accessGroup).toBeNull();
+    expect(result.current.auth.companyId).toBeNull();
   });
 
   it("login() redirects to /auth/login", async () => {

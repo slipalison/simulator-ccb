@@ -1,17 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v7.0
-milestone_name: PJ-Only Onboarding + Gestão de Funcionários
-status: complete
-stopped_at: Phase 37 complete
-last_updated: "2026-04-26T17:00:00.000Z"
+milestone: v1.0
+milestone_name: — Foundation
+status: executing
+last_updated: "2026-04-26T03:47:23.901Z"
 last_activity: 2026-04-26
 progress:
   total_phases: 42
-  completed_phases: 37
-  total_plans: 89
-  completed_plans: 89
-  percent: 98
+  completed_phases: 32
+  total_plans: 87
+  completed_plans: 81
+  percent: 93
 ---
 
 # Project State
@@ -21,15 +20,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — isolamento entre empresas é requisito de primeira classe.
-**Current focus:** Milestone v7.0 — Phase 37 complete
+**Current focus:** Phase 38 — employee-registration-management-api
 **Last activity:** 2026-04-26
 
 ## Current Position
 
-Phase: 37 (Complete)
-Plan: 4/4
-Status: Phase 37 Domain Model Redesign — Company/Employee/AccessGroup/TermsAcceptance implementados, Client removido, build limpo
-Last activity: 2026-04-26
+Phase: 38 (employee-registration-management-api) — EXECUTING
+Plan: 1 of 3
+Status: Executing Phase 38
+Last activity: 2026-04-26 -- Phase 38 execution started
 
 ## Milestone Breakdown
 

@@ -997,7 +997,7 @@ Plans:
 - [ ] **Phase 37: Domain Model Redesign** - Company + Employee aggregates, TermsAcceptance value object, remove PF flow. New EF Core migration. Base zerada. (REG-02, REG-04, REG-05)
 - [ ] **Phase 38: Employee Registration & Management API** - PJ registration endpoint, employee CRUD API, company isolation via global query filter. (REG-01, REG-03, MGMT-01..05)
 - [x] **Phase 39: Keycloak Groups & Permissions** - Configure Keycloak groups (admin-empresa, viewer, dashboard), JWT claims mapping, backend permission enforcement, company isolation checks. (PERM-01..05)
-- [ ] **Phase 40: Client Frontend — PJ Registration & Employee Management** - PJ registration form with terms acceptance, employee list/block/reset/edit/delete, remove PF flow from frontend, dashboard mock. (DASH-01)
+- [ ] **Phase 40: Client Frontend — PJ Registration & Employee Management** - PJ registration form with terms acceptance, employee list/block/reset/edit/delete, remove PF flow from frontend, dashboard mock. (DASH-01) ✅ Plans complete
 - [ ] **Phase 41: BackOffice Employee Management + Audit** - BackOffice views employees from any company, force reset/block. Extend audit log for employee actions. (ADM-01, ADM-02, AUD-01, AUD-02)
 - [ ] **Phase 42: CI Coverage Enforcement** - GitHub Actions with 80% test coverage enforcement for backend (.NET) and frontend (React/Vinxi). (CI-01)
 
@@ -1073,9 +1073,9 @@ Plans:
 **Plans:** 4 plans
 Plans:
 - [x] 40-01-PLAN.md — Auth context extension (group/permissions), employee API client, PJ validation schemas, Sidebar, router restructure
-- [ ] 40-02-PLAN.md — PJ-only 2-step registration wizard with terms acceptance, PF removal
-- [ ] 40-03-PLAN.md — Employee management UI (list, search, edit, block, reset password, LGPD delete, change access group)
-- [ ] 40-04-PLAN.md — Dashboard mock (6 cards), permission-based routing, ProfilePage PJ adaptation, PF removal verification
+- [x] 40-02-PLAN.md — PJ-only 2-step registration wizard with terms acceptance, PF removal
+- [x] 40-03-PLAN.md — Employee management UI (list, search, edit, block, reset password, LGPD delete, change access group)
+- [x] 40-04-PLAN.md — Dashboard mock (6 cards), permission-based routing, ProfilePage PJ adaptation, PF removal verification
 
 ### Phase 41: BackOffice Employee Management + Audit
 **Goal:** BackOffice pode visualizar funcionários de qualquer empresa, auditar ações e dar suporte. Audit log estendido para ações de funcionários.

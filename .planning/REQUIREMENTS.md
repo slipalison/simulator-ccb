@@ -45,7 +45,7 @@
 
 ## DASH — Dashboard
 
-- [ ] **DASH-01**: Tela de dashboard com dados estáticos (mock) — total de funcionários ativos/inativos, logins recentes, ações por período
+- [x] **DASH-01**: Tela de dashboard com dados estáticos (mock) — total de funcionários ativos/inativos, logins recentes, ações por período
 
 ---
 
@@ -110,7 +110,7 @@
 | PERM-05 | Phase 39 | ✅ Complete |
 | AUD-01 | Phase 41 | Pending |
 | AUD-02 | Phase 41 | Pending |
-| DASH-01 | Phase 40 | Pending |
+| DASH-01 | Phase 40 | ✅ Complete |
 | ADM-01 | Phase 41 | Pending |
 | ADM-02 | Phase 41 | Pending |
 | CI-01 | Phase 42 | Pending |

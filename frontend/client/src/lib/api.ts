@@ -53,6 +53,7 @@ export async function registerCompany(
   const response = await fetch("/api/companies/registration", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
+    credentials: "include",
     body: JSON.stringify(data),
   });
 

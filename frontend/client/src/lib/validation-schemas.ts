@@ -105,13 +105,18 @@ export type CompanyData = z.infer<typeof companyDataSchema>;
 // Company Registration — Step 2: Access data + terms
 // ---------------------------------------------------------------------------
 
+export function stripPhoneMask(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
 export const companyAccessSchema = z
   .object({
     email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
     phone: z
       .string()
       .min(1, "Telefone é obrigatório")
-      .regex(/^\+?\d{10,11}$/, "Telefone deve conter 10 ou 11 dígitos"),
+      .transform(stripPhoneMask)
+      .refine((v) => /^\d{10,11}$/.test(v), "Telefone deve conter 10 ou 11 dígitos"),
     password: passwordSchema,
     confirmPassword: z.string().min(1, "Confirmação de senha é obrigatória"),
     termsAccepted: z.literal(true, {
@@ -138,7 +143,8 @@ export const editEmployeeSchema = z.object({
   phone: z
     .string()
     .min(1, "Telefone é obrigatório")
-    .regex(/^\+?\d{10,11}$/, "Telefone deve conter 10 ou 11 dígitos"),
+    .transform(stripPhoneMask)
+    .refine((v) => /^\d{10,11}$/.test(v), "Telefone deve conter 10 ou 11 dígitos"),
 });
 
 export type EditEmployeeData = z.infer<typeof editEmployeeSchema>;

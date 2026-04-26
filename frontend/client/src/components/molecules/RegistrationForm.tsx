@@ -151,7 +151,7 @@ export function RegistrationForm() {
         razaoSocial: companyData.razaoSocial,
         cnpj: stripCnpjMask(companyData.cnpj),
         email: data.email,
-        phone: data.phone,
+        phone: data.phone.replace(/\D/g, ""),
         password: data.password,
         termsAccepted: data.termsAccepted,
         termsVersion: "1.0",

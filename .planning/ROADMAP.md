@@ -1000,6 +1000,7 @@ Plans:
 - [x] **Phase 40: Client Frontend — PJ Registration & Employee Management** - PJ registration form with terms acceptance, employee list/block/reset/edit/delete, remove PF flow from frontend, dashboard mock. (DASH-01) ✅ Complete (2026-04-26)
 - [ ] **Phase 41: BackOffice Employee Management + Audit** - BackOffice views employees from any company, force reset/block. Extend audit log for employee actions. (ADM-01, ADM-02, AUD-01, AUD-02)
 - [ ] **Phase 42: CI Coverage Enforcement** - GitHub Actions with 80% test coverage enforcement for backend (.NET) and frontend (React/Vinxi). (CI-01)
+- [ ] **Phase 43: E2E Playwright Validation** - Playwright E2E tests: create PJ, login, dashboard, create employee, login employee, validate permissions UI + JWT claims. (E2E-01, E2E-02, E2E-03, E2E-04, E2E-05)
 
 ---
 
@@ -1096,12 +1097,30 @@ Plans:
 **Depends on:** Phase 40, Phase 41
 **Requirements:** CI-01
 **Success Criteria** (what must be TRUE):
-  1. GitHub Actions workflow roda em push para main e em PRs com 3 jobs paralelos: `backend` (.NET build + test + coverage), `frontend-client` (build + lint + type check), `frontend-backoffice` (build + lint + type check)
-  2. Backend job falha se cobertura < 80% (`dotnet test /p:CollectCoverage=true /p:ThresholdType=line /p:Threshold=80`)
-  3. Frontend jobs falham se `eslint --max-warnings 0` ou `tsc --noEmit` falharem
-  4. Coverage report gerado em formato cobertura ou lcov para backend; jest coverage para frontends
-  5. Workflow usa cache: `~/.nuget/packages` para .NET, `node_modules/.cache` para frontends
+   1. GitHub Actions workflow roda em push para main e em PRs com 3 jobs paralelos: `backend` (.NET build + test + coverage), `frontend-client` (build + lint + type check), `frontend-backoffice` (build + lint + type check)
+   2. Backend job falha se cobertura < 80% (`dotnet test /p:CollectCoverage=true /p:ThresholdType=line /p:Threshold=80`)
+   3. Frontend jobs falham se `eslint --max-warnings 0` ou `tsc --noEmit` falharem
+   4. Coverage report gerado em formato cobertura ou lcov para backend; jest coverage para frontends
+   5. Workflow usa cache: `~/.nuget/packages` para .NET, `node_modules/.cache` para frontends
 **Plans:** TBD
+
+### Phase 43: E2E Playwright Validation
+**Goal:** Fluxo E2E completo com Playwright validando todo o pipeline: cadastro PJ → login → dashboard → criação funcionário → login funcionário → validação permissões UI + JWT claims
+**Depends on:** Phase 40
+**Requirements:** E2E-01, E2E-02, E2E-03, E2E-04, E2E-05
+**Success Criteria** (what must be TRUE):
+   1. E2E test: Cadastro PJ completo (razão social, CNPJ, email, senha, aceite de termos) → auto-login → redireciona para dashboard
+   2. E2E test: Dashboard exibe cards mock (total funcionários, ativos, inativos, logins recentes, ações por período)
+   3. E2E test: PJ cria funcionário via UI → funcionário aparece na lista com status ativo e group `viewer`
+   4. E2E test: Login como funcionário → redirect baseado no access group (viewer → read-only, admin-empresa → management, dashboard → dashboard)
+   5. E2E test: JWT decode revela groups/roles corretos — viewer não vê botões de ação, admin-empresa vê tudo
+   6. E2E test: PJ muda access group do funcionário → login novamente → permissões UI atualizadas
+   7. Todos os E2E tests passam com `npx playwright test` no `frontend/client`
+**Plans:** 3 plans
+Plans:
+- [ ] 43-01-PLAN.md — Playwright infrastructure (config, auth setups, page objects, fixtures) + Registration E2E test (E2E-01)
+- [ ] 43-02-PLAN.md — Dashboard cards E2E test (E2E-02) + Employee management E2E test (E2E-03)
+- [ ] 43-03-PLAN.md — Employee login redirect E2E test (E2E-04) + Permission UI + JWT verification (E2E-05) + Access group change (E2E-06)
 
 ---
 
@@ -1115,6 +1134,7 @@ Plans:
 | 40. Client Frontend — PJ Registration & Employee Management | 4/4 | ✅ Complete | 2026-04-26 |
 | 41. BackOffice Employee Management + Audit | 0/TBD | 📋 Planned | — |
 | 42. CI Coverage Enforcement | 0/TBD | 📋 Planned | — |
+| 43. E2E Playwright Validation | 0/3 | 📋 Planned | — |
 
 ---
 
@@ -1128,7 +1148,7 @@ Plans:
 | **v4.0** CI/CD + Security | 21-28 | 20 | ✅ Complete | 25 requirements |
 | **v5.0** Auth Code Flow + Admins + Audit | 29-34 | TBD | ✅ Complete | 11 requirements |
 | **v6.0** Gestão Completa de Administradores | 35-36 | 5 | ✅ Complete | 14 requirements |
-| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-42 | 10 plans done, 0 remaining | ✅ Phase 40 done | 21 requirements |
+| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-43 | 10 plans done, 0 remaining | ✅ Phase 40 done | 21 requirements |
 | **Total** | **42 phases** | **110+ plans** | **6 milestones done** | **142 requirements** |
 
 ---

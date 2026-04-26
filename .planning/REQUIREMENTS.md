@@ -28,11 +28,11 @@
 
 ## PERM — Permissões e Grupos de Acesso
 
-- [ ] **PERM-01**: Funcionário com role `admin-empresa` tem mesmos poderes do PJ dono (gerenciar funcionários, ver audit, atribuir grupos)
-- [ ] **PERM-02**: Funcionário com role `viewer` pode visualizar dados de funcionários da empresa mas não pode editar, bloquear ou excluir
-- [ ] **PERM-03**: Funcionário com role `dashboard` pode acessar a tela de dashboard
-- [ ] **PERM-04**: PJ pode atribuir/remover grupos de acesso dos seus funcionários (transições entre admin-empresa, viewer, dashboard)
-- [ ] **PERM-05**: Isolamento estrito entre empresas — PJ nunca vê/edita dados de funcionários de outra PJ (enforced no backend via filtro de empresa)
+- [x] **PERM-01**: Funcionário com role `admin-empresa` tem mesmos poderes do PJ dono (gerenciar funcionários, ver audit, atribuir grupos)
+- [x] **PERM-02**: Funcionário com role `viewer` pode visualizar dados de funcionários da empresa mas não pode editar, bloquear ou excluir
+- [x] **PERM-03**: Funcionário com role `dashboard` pode acessar a tela de dashboard
+- [x] **PERM-04**: PJ pode atribuir/remover grupos de acesso dos seus funcionários (transições entre admin-empresa, viewer, dashboard)
+- [x] **PERM-05**: Isolamento estrito entre empresas — PJ nunca vê/edita dados de funcionários de outra PJ (enforced no backend via filtro de empresa)
 
 ---
 
@@ -103,11 +103,11 @@
 | MGMT-03 | Phase 38 | Pending |
 | MGMT-04 | Phase 38 | Pending |
 | MGMT-05 | Phase 38 | Pending |
-| PERM-01 | Phase 39 | Pending |
-| PERM-02 | Phase 39 | Pending |
-| PERM-03 | Phase 39 | Pending |
-| PERM-04 | Phase 39 | Pending |
-| PERM-05 | Phase 39 | Pending |
+| PERM-01 | Phase 39 | ✅ Complete |
+| PERM-02 | Phase 39 | ✅ Complete |
+| PERM-03 | Phase 39 | ✅ Complete |
+| PERM-04 | Phase 39 | ✅ Complete |
+| PERM-05 | Phase 39 | ✅ Complete |
 | AUD-01 | Phase 41 | Pending |
 | AUD-02 | Phase 41 | Pending |
 | DASH-01 | Phase 40 | Pending |

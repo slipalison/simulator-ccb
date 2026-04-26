@@ -995,7 +995,7 @@ Plans:
 
 - [ ] **Phase 37: Domain Model Redesign** - Company + Employee aggregates, TermsAcceptance value object, remove PF flow. New EF Core migration. Base zerada. (REG-02, REG-04, REG-05)
 - [ ] **Phase 38: Employee Registration & Management API** - PJ registration endpoint, employee CRUD API, company isolation via global query filter. (REG-01, REG-03, MGMT-01..05)
-- [ ] **Phase 39: Keycloak Groups & Permissions** - Configure Keycloak groups (admin-empresa, viewer, dashboard), JWT claims mapping, backend permission enforcement, company isolation checks. (PERM-01..05)
+- [x] **Phase 39: Keycloak Groups & Permissions** - Configure Keycloak groups (admin-empresa, viewer, dashboard), JWT claims mapping, backend permission enforcement, company isolation checks. (PERM-01..05)
 - [ ] **Phase 40: Client Frontend — PJ Registration & Employee Management** - PJ registration form with terms acceptance, employee list/block/reset/edit/delete, remove PF flow from frontend, dashboard mock. (DASH-01)
 - [ ] **Phase 41: BackOffice Employee Management + Audit** - BackOffice views employees from any company, force reset/block. Extend audit log for employee actions. (ADM-01, ADM-02, AUD-01, AUD-02)
 - [ ] **Phase 42: CI Coverage Enforcement** - GitHub Actions with 80% test coverage enforcement for backend (.NET) and frontend (React/Vinxi). (CI-01)
@@ -1053,9 +1053,9 @@ Plans:
   6. JWT do Keycloak inclui claims de grupos em `realm_access.roles` ou `groups` — backend mapeia para permissões via `ClaimsPrincipal`
 **Plans:** 3 plans
 Plans:
-- [ ] 39-01-PLAN.md — Keycloak client-realm.json groups + Group Membership mapper + IKeycloakUserService group methods
-- [ ] 39-02-PLAN.md — ClientClaimsMiddleware, ICurrentCompanyPermissionsService, GroupsClaimsTransformation, 7 authorization policies, Program.cs wiring
-- [ ] 39-03-PLAN.md — Handler extensions (RegisterCompany groups sync, RegisterEmployee group assignment, ChangeAccessGroup Keycloak sync) + CompaniesController permission policies
+- [x] 39-01-PLAN.md — Keycloak client-realm.json groups + Group Membership mapper + IKeycloakUserService group methods
+- [x] 39-02-PLAN.md — ClientClaimsMiddleware, ICurrentCompanyPermissionsService, GroupsClaimsTransformation, 7 authorization policies, Program.cs wiring
+- [x] 39-03-PLAN.md — Handler extensions (RegisterCompany groups sync, RegisterEmployee group assignment, ChangeAccessGroup Keycloak sync) + CompaniesController permission policies
 
 ### Phase 40: Client Frontend — PJ Registration & Employee Management
 **Goal:** Frontend client redesenhado para cadastro PJ-only com gestão de funcionários. Dashboard mock com dados estáticos. Remoção completa do fluxo PF.
@@ -1106,7 +1106,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 37. Domain Model Redesign | 4/4 | ✅ Complete | 2026-04-26 |
 | 38. Employee Registration & Management API | 3/3 | ✅ Complete | 2026-04-26 |
-| 39. Keycloak Groups & Permissions | 0/3 | 📋 Planned | — |
+| 39. Keycloak Groups & Permissions | 3/3 | ✅ Complete | 2026-04-26 |
 | 40. Client Frontend — PJ Registration & Employee Management | 0/TBD | 📋 Planned | — |
 | 41. BackOffice Employee Management + Audit | 0/TBD | 📋 Planned | — |
 | 42. CI Coverage Enforcement | 0/TBD | 📋 Planned | — |

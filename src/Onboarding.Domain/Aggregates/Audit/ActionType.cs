@@ -23,4 +23,13 @@ public enum ActionType
     AdminPasswordReset = 15,
     AdminDisabled = 16,
     AdminReactivated = 17,
+    // Phase 37 — Company/Employee actions
+    CompanyRegistered = 18,
+    EmployeeCreated = 19,
+    EmployeeEdited = 20,
+    EmployeeBlocked = 21,
+    EmployeeUnblocked = 22,
+    EmployeePasswordReset = 23,
+    EmployeeDeleted = 24,
+    AccessGroupChanged = 25,
 }

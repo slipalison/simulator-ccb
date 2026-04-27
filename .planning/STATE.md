@@ -6,7 +6,7 @@ status: executing
 last_updated: "2026-04-26T16:08:00Z"
 last_activity: 2026-04-26
 progress:
-  total_phases: 41
+  total_phases: 43
   completed_phases: 34
   total_plans: 87
   completed_plans: 87
@@ -20,15 +20,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — isolamento entre empresas é requisito de primeira classe.
-**Current focus:** Phase 40 — client-frontend-pj-registration
+**Current focus:** Phase 43 — E2E Playwright Validation
 **Last activity:** 2026-04-26
 
 ## Current Position
 
-Phase: 40 (client-frontend-pj-registration) — COMPLETE
-Plan: 4 of 4
-Status: All 4 plans executed. Phase 40 complete — PJ registration wizard, employee management UI, dashboard mock, permission routing, PF removal verified.
-Last activity: 2026-04-26 -- Phase 40 complete
+Phase: 43 (e2e-playwright-validation) — EXECUTING
+Plan: 1 of 3 complete
+Status: Plan 01 done — Playwright infrastructure + E2E-01 registration test. Plans 02-03 pending.
+Last activity: 2026-04-27 -- Plan 43-01 executed
 
 ## Milestone Breakdown
 
@@ -47,11 +47,16 @@ Last activity: 2026-04-26 -- Phase 40 complete
 | 37 | Domain Model Redesign | REG-02, REG-04, REG-05 | ✅ Complete |
 | 38 | Employee Registration & Management API | REG-01, REG-03, MGMT-01..05 | ✅ Complete |
 | 39 | Keycloak Groups & Permissions | PERM-01..05 | ✅ Complete |
-| 40 | Client Frontend — PJ Registration & Employee Management | DASH-01, REG-01, REG-05, MGMT-01..05, PERM-04 | 🔄 Executing |
-| 41 | BackOffice Employee Management + Audit | ADM-01, ADM-02, AUD-01, AUD-02 | 📋 Planned |
-| 42 | CI Coverage Enforcement | CI-01 | 📋 Planned |
+| 40 | Client Frontend — PJ Registration & Employee Management | DASH-01, REG-01, REG-05, MGMT-01..05, PERM-04 | ✅ Complete |
+| 41 | BackOffice Employee Management + Audit | ADM-01, ADM-02, AUD-01, AUD-02 | ✅ Complete |
+| 42 | CI Coverage Enforcement | CI-01 | ✅ Complete |
+| 43 | E2E Playwright Validation | E2E-01..05 | 🔄 Executing |
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 43 added: E2E Playwright Validation — create PJ, login, dashboard, create employee, login employee, validate permissions UI + JWT
 
 ### Decisions
 
@@ -68,6 +73,10 @@ Recent decisions affecting current work:
 - [Phase 37-03]: Cnpj e Cpf nullable no DB — necessário para Anonymize() LGPD que seta VO para null!
 - [Phase 39-03]: Keycloak group sync follows eventual consistency — failures logged but not rethrown, DB is source of truth
 - [Phase 39-03]: CrossCompanyAccess policy replaces Roles=admin on AdminUserController — semantically equivalent
+- [Phase 43-01]: ESM-compatible Playwright setup files using import.meta.url instead of __dirname
+- [Phase 43-01]: Single worker mode (workers: 1) to avoid Keycloak brute-force lockout
+- [Phase 43-01]: No webServer config — Docker Compose must be running before E2E tests
+- [Phase 43-01]: Test credentials via env vars only (E2E_PJ_EMAIL, E2E_PJ_PASSWORD, E2E_VIEWER_EMAIL, E2E_VIEWER_PASSWORD)
 - [Phase 21-frontend-separation]: DECISÃO DE ARQUITETURA — Dois projetos frontend independentes (`frontend/client` e `frontend/backoffice`) são obrigatórios — nenhum compartilhamento de código, builds separadas, deploys independentes
 - [Phase 21-frontend-separation]: Regra de ouro: código duplicado é aceitável, import cruzado é proibido
 - [v5.0-audit-log]: AuditLog é append-only — nenhuma operação UPDATE ou DELETE é permitida na tabela
@@ -75,7 +84,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Phase 14 (E2E Testing): Playwright installation, E2E tests — *deferred*
+- Phase 14 (E2E Testing): Playwright installed in Phase 43, E2E tests in progress
 - Admin user seed: Need admin user in Keycloak with "admin" role for manual testing — *needed for manual testing*
 
 ### Blockers/Concerns

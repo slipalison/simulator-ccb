@@ -1,36 +1,47 @@
 import { test as setup, expect } from '@playwright/test';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const authFile = path.join(__dirname, '../../playwright/.auth/viewer.json');
+const viewerFile = path.join(__dirname, '../../playwright/.auth/viewer-creds.json');
 
-/**
- * Setup: authenticate as viewer employee and save storageState.
- * Assumes the viewer employee was already created by the admin-empresa setup.
- */
 setup('authenticate as viewer', async ({ page }) => {
-  // Navigate to app — triggers ACF redirect to Keycloak
+  let viewerEmail: string;
+  let viewerPassword: string;
+
+  // Use env vars if available, otherwise read from admin-empresa setup
+  if (process.env.E2E_VIEWER_EMAIL && process.env.E2E_VIEWER_PASSWORD) {
+    viewerEmail = process.env.E2E_VIEWER_EMAIL;
+    viewerPassword = process.env.E2E_VIEWER_PASSWORD;
+  } else {
+    const creds = JSON.parse(fs.readFileSync(viewerFile, 'utf-8'));
+    viewerEmail = creds.email;
+    viewerPassword = creds.temporaryPassword;
+  }
+
   await page.goto('http://localhost:5173/');
 
-  // Wait for Keycloak login page to appear
   await expect(page.locator('#username')).toBeVisible({ timeout: 30000 });
 
-  // Fill credentials from environment variables
-  await page.locator('#username').fill(process.env.E2E_VIEWER_EMAIL!);
-  await page.locator('#password').fill(process.env.E2E_VIEWER_PASSWORD!);
+  await page.locator('#username').fill(viewerEmail);
+  await page.locator('#password').fill(viewerPassword);
   await page.locator('#kc-login').click();
 
-  // Wait for redirect back to the app after ACF callback
+  // Handle Keycloak UPDATE_PASSWORD required action for new employees
+  const passwordNew = page.locator('#password-new');
+  if (await passwordNew.isVisible({ timeout: 5000 }).catch(() => false)) {
+    const newPassword = process.env.E2E_PJ_PASSWORD || 'E2e@Test2026';
+    await passwordNew.fill(newPassword);
+    await page.locator('#password-confirm').fill(newPassword);
+    await page.locator('#kc-login').click();
+  }
+
   await page.waitForURL('http://localhost:5173/**', { timeout: 60000 });
-
-  // Verify authenticated — viewer default route is /employees
   await expect(page).toHaveURL(/localhost:5173\/(employees|profile)/, { timeout: 15000 });
-
-  // Verify sidebar is visible (only rendered when authenticated)
   await expect(page.locator('nav')).toBeVisible({ timeout: 15000 });
 
-  // Save storage state (includes httpOnly cookies)
   await page.context().storageState({ path: authFile });
 });

@@ -422,6 +422,11 @@ node_modules/
 dist/
 build/
 
+# Playwright E2E test artifacts
+playwright/.auth/
+test-results/
+playwright-report/
+
 #################################################
 # Terraform / IaC (se usar)
 #################################################

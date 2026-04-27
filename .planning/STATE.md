@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-04-25)
 ## Current Position
 
 Phase: 43 (e2e-playwright-validation) — EXECUTING
-Plan: 1 of 3 complete
-Status: Plan 01 done — Playwright infrastructure + E2E-01 registration test. Plans 02-03 pending.
-Last activity: 2026-04-27 -- Plan 43-01 executed
+Plan: 2 of 3 complete
+Status: Plans 01-02 done — Playwright infra + E2E-01 registration + E2E-02 dashboard + E2E-03 employee management. Plan 03 pending.
+Last activity: 2026-04-27 -- Plan 43-02 executed
 
 ## Milestone Breakdown
 
@@ -76,7 +76,8 @@ Recent decisions affecting current work:
 - [Phase 43-01]: ESM-compatible Playwright setup files using import.meta.url instead of __dirname
 - [Phase 43-01]: Single worker mode (workers: 1) to avoid Keycloak brute-force lockout
 - [Phase 43-01]: No webServer config — Docker Compose must be running before E2E tests
-- [Phase 43-01]: Test credentials via env vars only (E2E_PJ_EMAIL, E2E_PJ_PASSWORD, E2E_VIEWER_EMAIL, E2E_VIEWER_PASSWORD)
+- [Phase 43-02]: E2E-03 creates employees via API (POST /registration) since no UI form exists in Phase 40
+- [Phase 43-02]: Card title locators in dashboard.page.ts must match exact CardTitle text from DashboardCards.tsx
 - [Phase 21-frontend-separation]: DECISÃO DE ARQUITETURA — Dois projetos frontend independentes (`frontend/client` e `frontend/backoffice`) são obrigatórios — nenhum compartilhamento de código, builds separadas, deploys independentes
 - [Phase 21-frontend-separation]: Regra de ouro: código duplicado é aceitável, import cruzado é proibido
 - [v5.0-audit-log]: AuditLog é append-only — nenhuma operação UPDATE ou DELETE é permitida na tabela

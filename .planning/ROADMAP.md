@@ -1118,9 +1118,9 @@ Plans:
    7. Todos os E2E tests passam com `npx playwright test` no `frontend/client`
 **Plans:** 3 plans
 Plans:
-- [ ] 43-01-PLAN.md — Playwright infrastructure (config, auth setups, page objects, fixtures) + Registration E2E test (E2E-01)
-- [ ] 43-02-PLAN.md — Dashboard cards E2E test (E2E-02) + Employee management E2E test (E2E-03)
-- [ ] 43-03-PLAN.md — Employee login redirect E2E test (E2E-04) + Permission UI + JWT verification (E2E-05) + Access group change (E2E-06)
+- [x] 43-01-PLAN.md — Playwright infrastructure (config, auth setups, page objects, fixtures) + Registration E2E test (E2E-01) (completed 2026-04-27)
+- [x] 43-02-PLAN.md — Dashboard cards E2E test (E2E-02) + Employee management E2E test (E2E-03) (completed 2026-04-27)
+- [x] 43-03-PLAN.md — Employee login redirect E2E test (E2E-04) + Permission UI + JWT verification (E2E-05) + Access group change (E2E-06) (completed 2026-04-27)
 
 ---
 
@@ -1134,7 +1134,7 @@ Plans:
 | 40. Client Frontend — PJ Registration & Employee Management | 4/4 | ✅ Complete | 2026-04-26 |
 | 41. BackOffice Employee Management + Audit | 0/TBD | ✅ Complete | 2026-04-26 |
 | 42. CI Coverage Enforcement | 0/TBD | ✅ Complete | 2026-04-26 |
-| 43. E2E Playwright Validation | 1/3 | 🔄 Executing | — |
+| 43. E2E Playwright Validation | 3/3 | ✅ Complete | 2026-04-27 |
 
 ---
 
@@ -1148,9 +1148,9 @@ Plans:
 | **v4.0** CI/CD + Security | 21-28 | 20 | ✅ Complete | 25 requirements |
 | **v5.0** Auth Code Flow + Admins + Audit | 29-34 | TBD | ✅ Complete | 11 requirements |
 | **v6.0** Gestão Completa de Administradores | 35-36 | 5 | ✅ Complete | 14 requirements |
-| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-43 | 17+ plans done, Phase 43 executing | 🔄 Active | 21 requirements |
+| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-43 | 19+ plans | ✅ Complete | 21 requirements |
 | **Total** | **42 phases** | **110+ plans** | **6 milestones done** | **142 requirements** |
 
 ---
 
-*Last updated: 2026-04-27 — Phase 43-01: Playwright infrastructure + E2E-01 registration test*
+*Last updated: 2026-04-27 — Phase 43 complete: all E2E Playwright tests implemented*

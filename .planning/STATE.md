@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: — Foundation
-status: executing
-last_updated: "2026-04-26T16:08:00Z"
-last_activity: 2026-04-26
+status: complete
+last_updated: "2026-04-27T11:40:00Z"
+last_activity: 2026-04-27
 progress:
   total_phases: 43
-  completed_phases: 34
-  total_plans: 87
-  completed_plans: 87
+  completed_phases: 43
+  total_plans: 90
+  completed_plans: 90
   percent: 100
 ---
 
@@ -20,15 +20,15 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — isolamento entre empresas é requisito de primeira classe.
-**Current focus:** Phase 43 — E2E Playwright Validation
-**Last activity:** 2026-04-26
+**Current focus:** Phase 43 complete — E2E Playwright Validation finished
+**Last activity:** 2026-04-27
 
 ## Current Position
 
-Phase: 43 (e2e-playwright-validation) — EXECUTING
-Plan: 2 of 3 complete
-Status: Plans 01-02 done — Playwright infra + E2E-01 registration + E2E-02 dashboard + E2E-03 employee management. Plan 03 pending.
-Last activity: 2026-04-27 -- Plan 43-02 executed
+Phase: 43 (e2e-playwright-validation) — COMPLETE
+Plan: 3 of 3 complete
+Status: All 3 plans done — Playwright infra + E2E-01 registration + E2E-02 dashboard + E2E-03 employee management + E2E-04 employee login + E2E-05 permission UI + E2E-06 access group change. 13 tests in 8 files.
+Last activity: 2026-04-27 -- Plan 43-03 executed
 
 ## Milestone Breakdown
 
@@ -38,7 +38,7 @@ Last activity: 2026-04-27 -- Plan 43-02 executed
 **Milestone v4.0 — CI/CD Pipeline + Cybersecurity:** ✅ COMPLETE (8/8 phases, 20/20 plans)
 **Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** ✅ COMPLETE (6/6 phases)
 **Milestone v6.0 — Gestão Completa de Administradores:** ✅ COMPLETE (2/2 phases)
-**Milestone v7.0 — PJ-Only Onboarding + Gestão de Funcionários:** 🔄 Active (Phases 37-42)
+**Milestone v7.0 — PJ-Only Onboarding + Gestão de Funcionários:** ✅ COMPLETE (Phases 37-43)
 
 ## Milestone v7.0 Phase Breakdown
 
@@ -50,7 +50,7 @@ Last activity: 2026-04-27 -- Plan 43-02 executed
 | 40 | Client Frontend — PJ Registration & Employee Management | DASH-01, REG-01, REG-05, MGMT-01..05, PERM-04 | ✅ Complete |
 | 41 | BackOffice Employee Management + Audit | ADM-01, ADM-02, AUD-01, AUD-02 | ✅ Complete |
 | 42 | CI Coverage Enforcement | CI-01 | ✅ Complete |
-| 43 | E2E Playwright Validation | E2E-01..05 | 🔄 Executing |
+| 43 | E2E Playwright Validation | E2E-01..07 | ✅ Complete |
 
 ## Accumulated Context
 
@@ -78,6 +78,9 @@ Recent decisions affecting current work:
 - [Phase 43-01]: No webServer config — Docker Compose must be running before E2E tests
 - [Phase 43-02]: E2E-03 creates employees via API (POST /registration) since no UI form exists in Phase 40
 - [Phase 43-02]: Card title locators in dashboard.page.ts must match exact CardTitle text from DashboardCards.tsx
+- [Phase 43-03]: Employee-login spec uses fresh ACF logins (no storageState) to test redirect behavior from scratch
+- [Phase 43-03]: Permission-ui spec runs in both viewer and admin-empresa projects — test.skip() guards admin-empresa-only test
+- [Phase 43-03]: Dashboard employee login test conditional on E2E_DASHBOARD_EMAIL env var (skipped if not set)
 - [Phase 21-frontend-separation]: DECISÃO DE ARQUITETURA — Dois projetos frontend independentes (`frontend/client` e `frontend/backoffice`) são obrigatórios — nenhum compartilhamento de código, builds separadas, deploys independentes
 - [Phase 21-frontend-separation]: Regra de ouro: código duplicado é aceitável, import cruzado é proibido
 - [v5.0-audit-log]: AuditLog é append-only — nenhuma operação UPDATE ou DELETE é permitida na tabela

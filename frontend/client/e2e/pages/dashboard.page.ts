@@ -23,11 +23,12 @@ export class DashboardPage {
     this.title = page.locator('h1', { hasText: 'Dashboard' });
 
     // Cards identified by their heading text (from DashboardCards component)
+    // Titles must match the exact CardTitle text rendered by each card in DashboardCards.tsx
     this.totalEmployeesCard = page.getByText('Total Funcionários');
-    this.activeEmployeesCard = page.getByText('Funcionários Ativos');
-    this.blockedEmployeesCard = page.getByText('Funcionários Inativos');
+    this.activeEmployeesCard = page.getByText('Ativos');
+    this.blockedEmployeesCard = page.getByText('Bloqueados');
     this.recentLoginsCard = page.getByText('Logins Recentes');
-    this.recentActionsCard = page.getByText('Ações por Período');
+    this.recentActionsCard = page.getByText('Ações Recentes');
     this.lastLoginCard = page.getByText('Último Login');
   }
 

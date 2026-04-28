@@ -286,7 +286,24 @@ router.get(
         accessGroup = "dashboard";
       }
 
-      const companyId = (payload.company_id as string) || (payload["custom:company_id"] as string) || null;
+      let companyId: string | null = (payload.company_id as string) || (payload["custom:company_id"] as string) || null;
+
+      if (!companyId && sub) {
+        try {
+          const API_URL = process.env.API_INTERNAL_URL || "http://api:8080";
+          const profileRes = await fetch(`${API_URL}/api/companies/me`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (profileRes.ok) {
+            const profile = (await profileRes.json()) as { id?: string };
+            if (profile.id) {
+              companyId = profile.id;
+            }
+          }
+        } catch {
+          // Profile fetch failed — companyId remains null
+        }
+      }
 
       return {
         isAuthenticated: true,

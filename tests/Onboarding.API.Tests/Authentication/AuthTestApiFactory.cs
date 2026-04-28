@@ -58,6 +58,8 @@ internal sealed class AuthTestApiFactory : WebApplicationFactory<Program>
             services.AddScoped<IKeycloakUserService>(_ => KeycloakUserServiceMock);
             services.AddScoped<IPasswordResetTokenRepository>(_ => TokenRepositoryMock);
             services.AddScoped<IEmailService>(_ => EmailServiceMock);
+            services.AddScoped<IEmployeeRepository>(_ => Substitute.For<IEmployeeRepository>());
+            services.AddScoped<IAccessGroupRepository>(_ => Substitute.For<IAccessGroupRepository>());
 
             // Disable JWT validation for tests — PostConfigure overrides app configuration
             // D-04/D-05: in tests we use FakeJwtTokenHelper to generate HMAC-signed tokens

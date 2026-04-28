@@ -1,5 +1,5 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
 using Onboarding.Application.Common;
 using Onboarding.Domain.Aggregates.EmployeeAggregate;
 using Onboarding.Domain.Repositories;
@@ -14,15 +14,21 @@ namespace Onboarding.API.Middleware;
 /// Runs AFTER UseAuthentication (needs authenticated user) and BEFORE UseAuthorization
 /// (sets permissions that authorization policies will check).
 ///
+/// Because no DefaultScheme is configured, UseAuthentication() does not auto-authenticate.
+/// This middleware explicitly calls AuthenticateAsync("BearerClient") when an Authorization
+/// header is present but the user is not yet authenticated, ensuring permissions are
+/// resolved before UseAuthorization runs.
+///
 /// Flow per request:
 /// 1. Skip /api/admin routes (backoffice handles own auth)
-/// 2. Skip unauthenticated users
-/// 3. Read JWT "sub" claim
-/// 4. Look up Company by KeycloakUserId == sub
+/// 2. Force BearerClient authentication if Authorization header present but user not yet authenticated
+/// 3. Skip unauthenticated users
+/// 4. Read JWT "sub" claim
+/// 5. Look up Company by KeycloakUserId == sub
 ///    - If found (PJ owner): set all permissions + IsCompanyOwner=true
-/// 5. If no company, look up Employee by KeycloakUserId == sub
+/// 6. If no company, look up Employee by KeycloakUserId == sub
 ///    - If found: look up AccessGroup → set permissions from AccessGroup.Permissions
-/// 6. If nothing found: CompanyId = Guid.Empty → HasQueryFilter returns empty → 403
+/// 7. If nothing found: CompanyId = Guid.Empty → HasQueryFilter returns empty → 403
 /// </summary>
 public static class ClientClaimsMiddleware
 {
@@ -35,6 +41,19 @@ public static class ClientClaimsMiddleware
             {
                 await next();
                 return;
+            }
+
+            // Force BearerClient authentication if not already done.
+            // Without DefaultScheme, UseAuthentication() does not auto-authenticate,
+            // so we must explicitly authenticate here before checking IsAuthenticated.
+            if (context.User.Identity?.IsAuthenticated != true
+                && context.Request.Headers.ContainsKey("Authorization"))
+            {
+                var result = await context.AuthenticateAsync("BearerClient");
+                if (result.Succeeded && result.Principal != null)
+                {
+                    context.User = result.Principal;
+                }
             }
 
             // Skip if user is NOT authenticated
@@ -89,7 +108,6 @@ public static class ClientClaimsMiddleware
 
             if (employee != null)
             {
-                // Look up the employee's AccessGroup
                 var accessGroup = await accessGroupRepository.GetByIdAsync(employee.AccessGroupId, context.RequestAborted);
 
                 companyService.CompanyId = employee.CompanyId;

@@ -434,3 +434,4 @@ playwright-report/
 .terraform/
 *.tfstate*
 frontend/client/playwright/.auth/viewer-creds.json
+.playwright-mcp

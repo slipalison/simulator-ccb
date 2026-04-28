@@ -688,22 +688,13 @@ From codebase analysis, these `data-testid` values are available for E2E selecto
 | A5 | `npx playwright test` is the correct run command in `frontend/client` | Standard Stack | If the command path or working directory is wrong, CI integration would fail. [CITED: Playwright official docs] |
 | A6 | Playwright's `page.context().cookies()` can read httpOnly cookies for JWT verification | JWT Verification | This is a Playwright API feature; verified from docs. If wrong, JWT test would need an alternative approach. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should E2E tests run against Docker Compose or a dedicated test environment?**
-   - What we know: Docker Compose runs all services (Keycloak, API, frontend, DB, observability). E2E needs Keycloak + API + frontend.
-   - What's unclear: Whether to document "run Docker Compose first" as a prerequisite vs. using `webServer` config to start only the frontend.
-   - Recommendation: Document Docker Compose as prerequisite. Do NOT use `webServer` config — it would only start the frontend, not Keycloak or the API. Add a pre-check in the Playwright config that verifies `http://localhost:5173` is reachable.
+1. **Should E2E tests run against Docker Compose or a dedicated test environment?** — RESOLVED: Docker Compose as prerequisite. NO webServer config. Add pre-check in Playwright config verifying localhost:5173 reachable.
 
-2. **Should we add missing `data-testid` attributes to components?**
-   - What we know: Several key components (Header, Dashboard cards, Registration form fields) lack `data-testid` attributes.
-   - What's unclear: Whether to prioritize adding them as part of this phase or use alternative selectors (getByRole, getByPlaceholder).
-   - Recommendation: Add `data-testid` to Header, Dashboard cards, and Registration form steps during the implementation phase. It's low effort and makes tests more resilient.
+2. **Should we add missing `data-testid` attributes to components?** — RESOLVED: Use text/role locators as fallback. Add data-testid to Header, Dashboard cards, and Registration form steps only if needed during implementation.
 
-3. **How to handle the "create employee" flow — does it require a dialog or a separate page?**
-   - What we know: The current EmployeesPage doesn't have a "Create Employee" button — employees are created via the backend API directly. The E2E success criterion says "PJ creates employee via UI."
-   - What's unclear: Whether Phase 40 implemented a UI form for creating employees or just management of existing ones.
-   - Recommendation: Verify by checking the backend `POST /api/companies/{companyId}/employees/registration` endpoint and whether a UI form exists. If no UI form exists, the E2E test will need to use API calls to create the employee, then verify the UI reflects it. UPDATE: From the EmployeesPage.tsx code, the `RegistrationForm` handles company registration, but **employee registration** may use the API directly. This needs verification — the EmployeesPage shows management dialogs but not a "Create Employee" dialog.
+3. **How to handle the "create employee" flow — does it require a dialog or a separate page?** — RESOLVED: No "Create Employee" UI button exists in Phase 40. E2E test creates employee via API (`POST /api/companies/{companyId}/employees/registration`), then verifies UI reflects the new employee.
 
 ## Environment Availability
 

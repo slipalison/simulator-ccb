@@ -170,19 +170,131 @@ router.get(
         Buffer.from(parts[1], "base64").toString("utf-8")
       ) as Record<string, unknown>;
 
-      const sub = (payload.sub as string) || "";
-      const email = (payload.email as string) || "";
-      const name =
+      // Extract claims from JWT; fall back to UserInfo/Admin API if claims are missing
+      let sub = (payload.sub as string) || "";
+      let email = (payload.email as string) || "";
+      let name =
         (payload.name as string) ||
         (payload.preferred_username as string) ||
         email.split("@")[0] ||
         "User";
+      let groups = payload.groups as string[] | undefined;
+
+      // If sub or email are missing from the access token, fetch from UserInfo endpoint
+      if (!sub || !email || !groups) {
+        try {
+          const userInfoUrl = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/userinfo`;
+          const userInfoRes = await fetch(userInfoUrl, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (userInfoRes.ok) {
+            const userInfo = (await userInfoRes.json()) as Record<string, unknown>;
+            if (!sub) sub = (userInfo.sub as string) || "";
+            if (!email) email = (userInfo.email as string) || "";
+            // Use the UUID sub from UserInfo if available (Keycloak returns UUID as sub)
+            if (userInfo.sub && typeof userInfo.sub === "string" && userInfo.sub.includes("-")) {
+              sub = userInfo.sub;
+            }
+            if (name === "User" || !name) {
+              name = (userInfo.name as string) ||
+                (userInfo.preferred_username as string) ||
+                email.split("@")[0] ||
+                "User";
+            }
+          }
+        } catch {
+          // UserInfo fetch failed — continue with JWT claims only
+        }
+      }
+
+      // If groups still missing, fetch user groups and email via Keycloak Admin API
+      if ((!groups || !email) && sub) {
+        try {
+          // Get service account token for admin API access
+          const adminTokenUrl = `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/token`;
+          const adminTokenRes = await fetch(adminTokenUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: "grant_type=client_credentials&client_id=onboarding-api-admin&client_secret=" + encodeURIComponent(CLIENT_SECRET),
+          });
+          if (adminTokenRes.ok) {
+            const adminTokenData = (await adminTokenRes.json()) as { access_token: string };
+            const adminToken = adminTokenData.access_token;
+
+            // First, resolve sub to UUID if it looks like an email (Keycloak Admin API needs UUID)
+            let userId = sub;
+            if (sub.includes("@")) {
+              const searchUrl = `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/users?email=${encodeURIComponent(sub)}&exact=true`;
+              const searchRes = await fetch(searchUrl, {
+                headers: { Authorization: `Bearer ${adminToken}` },
+              });
+              if (searchRes.ok) {
+                const users = (await searchRes.json()) as Array<{ id: string }>;
+                if (users.length > 0) {
+                  userId = users[0].id;
+                  sub = userId; // Update sub to UUID
+                }
+              }
+            }
+
+            // Fetch user groups
+            if (!groups) {
+              const userGroupsUrl = `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/users/${encodeURIComponent(userId)}/groups`;
+              const groupsRes = await fetch(userGroupsUrl, {
+                headers: { Authorization: `Bearer ${adminToken}` },
+              });
+            if (groupsRes.ok) {
+              const userGroups = (await groupsRes.json()) as Array<{ name: string }>;
+              groups = userGroups.map((g) => g.name);
+            }
+          }
+
+            // Fetch user email
+            if (!email) {
+              const userUrl = `${KEYCLOAK_URL}/admin/realms/${KEYCLOAK_REALM}/users/${encodeURIComponent(userId)}`;
+              const userRes = await fetch(userUrl, {
+                headers: { Authorization: `Bearer ${adminToken}` },
+              });
+              if (userRes.ok) {
+                const userData = (await userRes.json()) as { email?: string };
+                if (userData.email) {
+                  email = userData.email;
+                }
+              }
+            }
+          }
+        } catch {
+          // Admin API fetch failed — continue with JWT claims only
+        }
+      }
+
+      const realmRoles = (payload.realm_access as Record<string, unknown>)?.roles as string[] | undefined;
+      // Merge groups from API with groups from token (token groups take precedence if present)
+
+      let accessGroup: string | null = null;
+      if (groups?.includes("admin-empresa")) {
+        accessGroup = "admin-empresa";
+      } else if (groups?.includes("viewer")) {
+        accessGroup = "viewer";
+      } else if (groups?.includes("dashboard")) {
+        accessGroup = "dashboard";
+      } else if (realmRoles?.includes("admin-empresa")) {
+        accessGroup = "admin-empresa";
+      } else if (realmRoles?.includes("viewer")) {
+        accessGroup = "viewer";
+      } else if (realmRoles?.includes("dashboard")) {
+        accessGroup = "dashboard";
+      }
+
+      const companyId = (payload.company_id as string) || (payload["custom:company_id"] as string) || null;
 
       return {
         isAuthenticated: true,
         userName: name,
         email,
         sub,
+        accessGroup,
+        companyId,
       };
     } catch {
       event.node.res.statusCode = 401;

@@ -129,7 +129,7 @@ No new threat surface beyond what was in the plan's threat model. All mitigation
 - Sidebar shows permitted links per group: ✅ (admin-empresa: all, viewer: Employees+Profile, dashboard: all three)
 - Zero PF references in client frontend: ✅ (only comment in types.ts)
 - TypeScript compiles without errors: ✅ (`npx tsc --noEmit` — 0 errors)
-- Commit hashes 4ea15eb and 71e3544 found in git log: ✅
+- Commit hashes 4ea15eb, 71e3544, c0038db found in git log: ✅
 
 ---
 *Phase: 40-client-frontend-pj-registration*

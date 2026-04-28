@@ -102,6 +102,24 @@ public sealed class RegisterCompanyCommandHandler
             }
         }
 
+        // 8c. Assign the company owner to the admin-empresa group
+        try
+        {
+            var adminEmpresaGroupId = await _keycloakUserService.GetGroupByNameAsync(targetRealm, "admin-empresa", ct);
+            if (adminEmpresaGroupId is not null)
+            {
+                await _keycloakUserService.AddUserToGroupAsync(targetRealm, keycloakUserId, adminEmpresaGroupId, ct);
+            }
+            else
+            {
+                _logger.LogWarning("Keycloak group 'admin-empresa' not found. Could not assign company owner {UserId} to admin-empresa group.", keycloakUserId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to assign company owner {UserId} to 'admin-empresa' group.", keycloakUserId);
+        }
+
         // 9. Audit (REG-03)
         await _auditService.RecordAsync(
             actorSub: "",

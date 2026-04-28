@@ -6,6 +6,61 @@
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
+// Auto-refresh: when an API call returns 401, try to refresh the access token
+// via /auth/refresh. If refresh succeeds, retry the original request once.
+// If refresh also fails, redirect to /auth/login.
+// ---------------------------------------------------------------------------
+
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+async function refreshAccessToken(): Promise<boolean> {
+  if (isRefreshing && refreshPromise) {
+    return refreshPromise;
+  }
+
+  isRefreshing = true;
+  refreshPromise = (async () => {
+    try {
+      const res = await fetch("/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+      });
+      return res.ok;
+    } catch {
+      return false;
+    } finally {
+      isRefreshing = false;
+    }
+  })();
+
+  return refreshPromise;
+}
+
+async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  const response = await fetch(url, { credentials: "include", ...init });
+
+  if (response.status !== 401) {
+    return response;
+  }
+
+  const refreshed = await refreshAccessToken();
+
+  if (!refreshed) {
+    window.location.href = "/auth/login";
+    return response;
+  }
+
+  const retry = await fetch(url, { credentials: "include", ...init });
+
+  if (retry.status === 401) {
+    window.location.href = "/auth/login";
+  }
+
+  return retry;
+}
+
+// ---------------------------------------------------------------------------
 // Registration API client
 // ---------------------------------------------------------------------------
 
@@ -103,9 +158,8 @@ export class ProfileError extends Error {
  * Endpoint: GET /api/companies/me
  */
 export async function getProfileClient(): Promise<CompanyProfileDto> {
-  const response = await fetch("/api/companies/me", {
+  const response = await apiFetch("/api/companies/me", {
     method: "GET",
-    credentials: "include",
     headers: {
       "Content-Type": "application/json",
     },
@@ -156,9 +210,8 @@ export async function getEmployees(
     ? `/api/companies/${companyId}/employees?${queryString}`
     : `/api/companies/${companyId}/employees`;
 
-  const response = await fetch(url, {
+  const response = await apiFetch(url, {
     method: "GET",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
   });
 
@@ -178,11 +231,10 @@ export async function toggleEmployeeStatus(
   employeeId: string,
   activate: boolean
 ): Promise<void> {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/companies/${companyId}/employees/${employeeId}/toggle-status`,
     {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ activate }),
     }
@@ -206,11 +258,10 @@ export async function resetEmployeePassword(
   companyId: string,
   employeeId: string
 ): Promise<{ temporaryPassword: string }> {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/companies/${companyId}/employees/${employeeId}/reset-password`,
     {
       method: "POST",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
     }
   );
@@ -236,11 +287,10 @@ export async function updateEmployee(
   employeeId: string,
   data: { nome: string; email: string; phone: string }
 ): Promise<EmployeeDto> {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/companies/${companyId}/employees/${employeeId}`,
     {
       method: "PUT",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     }
@@ -271,11 +321,10 @@ export async function deleteEmployee(
   companyId: string,
   employeeId: string
 ): Promise<void> {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/companies/${companyId}/employees/${employeeId}`,
     {
       method: "DELETE",
-      credentials: "include",
     }
   );
 
@@ -298,11 +347,10 @@ export async function changeEmployeeAccessGroup(
   employeeId: string,
   accessGroupName: string
 ): Promise<void> {
-  const response = await fetch(
+  const response = await apiFetch(
     `/api/companies/${companyId}/employees/${employeeId}/access-group`,
     {
       method: "PUT",
-      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ accessGroupName }),
     }

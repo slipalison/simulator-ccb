@@ -37,6 +37,7 @@
       ],
       "protocol": "openid-connect",
       "defaultClientScopes": [
+        "openid",
         "profile",
         "email",
         "roles"
@@ -65,9 +66,11 @@
       "defaultClientScopes": [
         "web-origins",
         "acr",
+        "openid",
         "roles",
         "profile",
-        "email"
+        "email",
+        "basic"
       ],
       "optionalClientScopes": [
         "offline_access"
@@ -125,6 +128,29 @@
       }
     },
     {
+      "name": "basic",
+      "description": "OpenID Connect built-in scope: basic (provides sub claim)",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "sub",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-sub-mapper",
+          "consentRequired": false,
+          "config": {
+            "introspection.token.claim": "true",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
       "name": "profile",
       "description": "OpenID Connect built-in scope: profile",
       "protocol": "openid-connect",
@@ -141,6 +167,8 @@
           "config": {
             "userinfo.token.claim": "true",
             "user.attribute": "username",
+            "claim.name": "preferred_username",
+            "jsonType.label": "String",
             "id.token.claim": "true",
             "access.token.claim": "true"
           }
@@ -175,6 +203,8 @@
           "config": {
             "userinfo.token.claim": "true",
             "user.attribute": "email",
+            "claim.name": "email",
+            "jsonType.label": "String",
             "id.token.claim": "true",
             "access.token.claim": "true"
           }
@@ -187,6 +217,8 @@
           "config": {
             "userinfo.token.claim": "true",
             "user.attribute": "emailVerified",
+            "claim.name": "email_verified",
+            "jsonType.label": "boolean",
             "id.token.claim": "true",
             "access.token.claim": "true"
           }
@@ -209,7 +241,6 @@
           "protocolMapper": "oidc-usermodel-realm-role-mapper",
           "consentRequired": false,
           "config": {
-            "user.attribute": "foo",
             "access.token.claim": "true",
             "id.token.claim": "true",
             "userinfo.token.claim": "true",
@@ -234,7 +265,10 @@
             "full.path": "false",
             "id.token.claim": "true",
             "access.token.claim": "true",
-            "userinfo.token.claim": "true"
+            "userinfo.token.claim": "true",
+            "claim.name": "groups",
+            "jsonType.label": "String",
+            "multivalued": "true"
           }
         }
       ]
@@ -250,45 +284,5 @@
         ]
       }
     ]
-  },
-  "clientProfiles": {
-    "profiles": [
-      {
-        "name": "no-wildcard-redirects",
-        "description": "Prevents wildcard redirect URIs on all clients",
-        "executors": [
-          {
-            "executor": "secure-redirect-uris-enforcer",
-            "configuration": {
-              "allow-wildcard-in-redirect-uri": false,
-              "allow-open-redirect": false,
-              "allow-http-scheme": true,
-              "allow-ipv4-loopback-address": true,
-              "allow-ipv6-loopback-address": true,
-              "oauth-2-1-compliant": false
-            }
-          }
-        ]
-      }
-    ]
-  },
-  "clientPolicies": {
-    "policies": [
-      {
-        "name": "enforce-no-wildcard-redirects",
-        "description": "Apply no-wildcard profile to all clients",
-        "enabled": true,
-        "conditions": [
-          {
-            "condition": "any-client",
-            "config": {}
-          }
-        ],
-        "profiles": [
-          "no-wildcard-redirects"
-        ]
-      }
-    ]
-  },
-  "id": "client"
+  }
 }

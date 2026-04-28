@@ -45,7 +45,7 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                         .HasColumnName("admin_user_name");
 
                     b.Property<string>("Details")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("text")
                         .HasColumnName("details");
 
                     b.Property<string>("IpAddress")

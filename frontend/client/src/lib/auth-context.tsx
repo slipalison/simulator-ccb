@@ -55,10 +55,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [companyId, setCompanyId] = useState<string | null>(null);
 
   // Session restoration on mount via /auth/me
+  // If /auth/me fails with 401, try /auth/refresh first (access token
+  // may be expired but refresh token is still valid), then retry /auth/me.
   useEffect(() => {
     async function tryRestore() {
       try {
-        const res = await fetch("/auth/me", { credentials: "include" });
+        let res = await fetch("/auth/me", { credentials: "include" });
+
+        if (res.status === 401) {
+          const refreshRes = await fetch("/auth/refresh", {
+            method: "POST",
+            credentials: "include",
+          });
+          if (refreshRes.ok) {
+            res = await fetch("/auth/me", { credentials: "include" });
+          }
+        }
+
         if (res.ok) {
           const data = (await res.json()) as {
             userName: string;

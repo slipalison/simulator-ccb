@@ -1,16 +1,35 @@
 ﻿---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: — Foundation
-status: complete
-last_updated: "2026-04-27T11:40:00Z"
-last_activity: 2026-04-27
+milestone: v7.0
+milestone_name: PJ-Only Onboarding + Gestão de Funcionários
+status: in_progress
+last_updated: "2026-04-28T00:00:00Z"
+last_activity: 2026-04-28
 progress:
-  total_phases: 43
-  completed_phases: 43
-  total_plans: 90
-  completed_plans: 90
-  percent: 100
+  total_phases: 7
+  completed_phases: 3
+  total_plans: 19
+  completed_plans: 19
+  percent: 70
+  gaps:
+    - id: GAP-6
+      priority: P0
+      description: "Sem formulário de registro de funcionário no frontend client"
+    - id: GAP-8-9
+      priority: P0
+      description: "Backoffice chama /users (404) — falta páginas Empresas/Funcionários"
+    - id: GAP-1-4
+      priority: P1
+      description: "AccessGroupName sempre vazio nos handlers (client + admin)"
+    - id: GAP-2
+      priority: P1
+      description: "KeycloakEnabled ausente no EmployeeListItemDto"
+    - id: GAP-3
+      priority: P1
+      description: "changeEmployeeAccessGroup: frontend manda name, backend espera GUID"
+    - id: GAP-11
+      priority: P2
+      description: "KEYCLOAK_REALM=client pode faltar no docker-compose"
 ---
 
 # Project State
@@ -20,15 +39,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-25)
 
 **Core value:** Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — isolamento entre empresas é requisito de primeira classe.
-**Current focus:** Phase 43 complete — E2E Playwright Validation finished
-**Last activity:** 2026-04-27
+**Current focus:** Fixing v7.0 gaps — backend OK, frontend integration quebrada
+**Last activity:** 2026-04-28
 
 ## Current Position
 
-Phase: 43 (e2e-playwright-validation) — COMPLETE
-Plan: 3 of 3 complete
-Status: All 3 plans done — Playwright infra + E2E-01 registration + E2E-02 dashboard + E2E-03 employee management + E2E-04 employee login + E2E-05 permission UI + E2E-06 access group change. 13 tests in 8 files.
-Last activity: 2026-04-27 -- Plan 43-03 executed
+Phase: v7.0 gap fixes — IN PROGRESS
+Status: Backend implementado, mas 5 gaps de integração frontend impedem entrega real. Plans foram executados mas resultados não validados end-to-end.
+Last activity: 2026-04-28 -- Audit revelou gaps P0+P1
 
 ## Milestone Breakdown
 
@@ -38,7 +56,7 @@ Last activity: 2026-04-27 -- Plan 43-03 executed
 **Milestone v4.0 — CI/CD Pipeline + Cybersecurity:** ✅ COMPLETE (8/8 phases, 20/20 plans)
 **Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** ✅ COMPLETE (6/6 phases)
 **Milestone v6.0 — Gestão Completa de Administradores:** ✅ COMPLETE (2/2 phases)
-**Milestone v7.0 — PJ-Only Onboarding + Gestão de Funcionários:** ✅ COMPLETE (Phases 37-43)
+**Milestone v7.0 — PJ-Only Onboarding + Gestão de Funcionários:** 🔧 IN PROGRESS (3/7 phases truly complete, 4 phases com gaps de integração)
 
 ## Milestone v7.0 Phase Breakdown
 
@@ -47,10 +65,10 @@ Last activity: 2026-04-27 -- Plan 43-03 executed
 | 37 | Domain Model Redesign | REG-02, REG-04, REG-05 | ✅ Complete |
 | 38 | Employee Registration & Management API | REG-01, REG-03, MGMT-01..05 | ✅ Complete |
 | 39 | Keycloak Groups & Permissions | PERM-01..05 | ✅ Complete |
-| 40 | Client Frontend — PJ Registration & Employee Management | DASH-01, REG-01, REG-05, MGMT-01..05, PERM-04 | ✅ Complete |
-| 41 | BackOffice Employee Management + Audit | ADM-01, ADM-02, AUD-01, AUD-02 | ✅ Complete |
+| 40 | Client Frontend — PJ Registration & Employee Management | DASH-01, REG-01, REG-05, MGMT-01..05, PERM-04 | 🔧 Gaps: sem formulário registro funcionário, accessGroupId vs name, AccessGroupName vazio, KeycloakEnabled ausente |
+| 41 | BackOffice Employee Management + Audit | ADM-01, ADM-02, AUD-01, AUD-02 | 🔧 Gaps: chama /users (404), falta páginas Empresas/Funcionários |
 | 42 | CI Coverage Enforcement | CI-01 | ✅ Complete |
-| 43 | E2E Playwright Validation | E2E-01..07 | ✅ Complete |
+| 43 | E2E Playwright Validation | E2E-01..07 | ⚠️ Passa mas mascara gaps (cria employee via API, não via UI) |
 
 ## Accumulated Context
 
@@ -88,10 +106,25 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-- Phase 14 (E2E Testing): Playwright installed in Phase 43, E2E tests in progress
-- Admin user seed: Need admin user in Keycloak with "admin" role for manual testing — *needed for manual testing*
+- Phase 14 (E2E Testing v2.0): Absorvido pela Phase 43
+- Admin user seed: Need admin user in Keycloak with "admin" role for manual testing
+
+### v7.0 Integration Gaps (blocking milestone completion)
+
+**P0 — Crítico (funcionalidade inexistente)**:
+1. **GAP-6**: Sem formulário "Novo Funcionário" no frontend client — E2E cria employee via API, não via UI
+2. **GAP-8+9**: Backoffice chama `/api/admin/users/*` (endpoints removidos na Phase 37) — seção Usuários = 404. Faltam páginas Empresas + Funcionários
+
+**P1 — Funcionalidade quebrada**:
+3. **GAP-1+4**: `AccessGroupName` sempre vazio/string vazia nos handlers de listagem (client + admin)
+4. **GAP-2**: `KeycloakEnabled` ausente no `EmployeeListItemDto` — frontend não mostra status do funcionário
+5. **GAP-3**: `changeEmployeeAccessGroup()` frontend manda `{ accessGroupName: string }`, backend espera `{ accessGroupId: guid }` — troca de grupo retorna 400
+
+**P2 — Verificar**:
+6. **GAP-11**: `KEYCLOAK_REALM=client` pode faltar no docker-compose (hardcoded "onboarding" como fallback)
 
 ### Blockers/Concerns
 
 - Isolamento entre empresas é CRÍTICO — qualquer bug que permita PJ ver dados de outra PJ é vulnerabilidade de segurança
 - Migração de PF para "funcionário" requer redesign do domain model (aggregate Client PF/PJ → Company + Employee)
+- Backoffice precisa reescrever API client para usar `/companies` e `/employees` ao invés de `/users`

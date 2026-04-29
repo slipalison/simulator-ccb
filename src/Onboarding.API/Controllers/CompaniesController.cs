@@ -7,6 +7,7 @@ using Onboarding.Application.Companies.DTOs;
 using Onboarding.Application.Companies.Queries;
 using Onboarding.API.Security;
 using Onboarding.Domain.Aggregates.CompanyAggregate;
+using Onboarding.Domain.Aggregates.EmployeeAggregate;
 using Onboarding.Domain.Exceptions;
 using Onboarding.Domain.Repositories;
 
@@ -35,6 +36,7 @@ public sealed class CompaniesController : ControllerBase
     private readonly ICommandHandler<DeleteEmployeeCommand, Unit> _deleteEmployeeHandler;
     private readonly ICommandHandler<ChangeEmployeeAccessGroupCommand, Unit> _changeAccessGroupHandler;
     private readonly ICurrentCompanyService _currentCompanyService;
+    private readonly IAccessGroupRepository _accessGroupRepository;
     private readonly ILogger<CompaniesController> _logger;
 
     public CompaniesController(
@@ -50,6 +52,7 @@ public sealed class CompaniesController : ControllerBase
         ICommandHandler<DeleteEmployeeCommand, Unit> deleteEmployeeHandler,
         ICommandHandler<ChangeEmployeeAccessGroupCommand, Unit> changeAccessGroupHandler,
         ICurrentCompanyService currentCompanyService,
+        IAccessGroupRepository accessGroupRepository,
         ILogger<CompaniesController> logger)
     {
         _repository = repository;
@@ -59,6 +62,7 @@ public sealed class CompaniesController : ControllerBase
         _registerEmployeeValidator = registerEmployeeValidator;
         _getEmployeesHandler = getEmployeesHandler;
         _currentCompanyService = currentCompanyService;
+        _accessGroupRepository = accessGroupRepository;
         _logger = logger;
     }
 
@@ -408,6 +412,21 @@ public sealed class CompaniesController : ControllerBase
         }
     }
 
+    /// <summary>GET /api/companies/{companyId}/access-groups — List access groups for the company (PERM-04).</summary>
+    [HttpGet("{companyId:guid}/access-groups")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.EmployeeRead)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetAccessGroups(Guid companyId, CancellationToken ct)
+    {
+        if (companyId != _currentCompanyService.CompanyId)
+            return Forbid();
+
+        var groups = await _accessGroupRepository.GetByCompanyIdAsync(companyId, ct);
+        var dtos = groups.Select(g => new AccessGroupDto(g.Id, g.Name, (IReadOnlyList<string>)g.Permissions)).ToList();
+        return Ok(dtos);
+    }
+
     private static CompanyProfileDto MapToDto(Company company) => new(
         Id: company.Id,
         RazaoSocial: company.RazaoSocial,
@@ -440,3 +459,6 @@ public sealed record UpdateEmployeeRequest(string? Nome, string? Email, string? 
 
 /// <summary>Request DTO for changing employee access group.</summary>
 public sealed record ChangeAccessGroupRequest(Guid AccessGroupId);
+
+/// <summary>DTO for access group listing.</summary>
+public sealed record AccessGroupDto(Guid Id, string Name, IReadOnlyList<string> Permissions);

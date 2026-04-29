@@ -16,25 +16,26 @@ public sealed class GetEmployeeDetailsHandler
 {
     private readonly IEmployeeRepository _employeeRepository;
     private readonly ICompanyRepository _companyRepository;
+    private readonly IAccessGroupRepository _accessGroupRepository;
 
     public GetEmployeeDetailsHandler(
         IEmployeeRepository employeeRepository,
-        ICompanyRepository companyRepository)
+        ICompanyRepository companyRepository,
+        IAccessGroupRepository accessGroupRepository)
     {
         _employeeRepository = employeeRepository;
         _companyRepository = companyRepository;
+        _accessGroupRepository = accessGroupRepository;
     }
 
     public async Task<EmployeeSummaryDto> HandleAsync(
         GetEmployeeDetailsQuery query, CancellationToken ct = default)
     {
-        // Admin bypasses HasQueryFilter — can see employees from any company
         var employee = await _employeeRepository.GetByIdIgnoreFilterAsync(query.EmployeeId, ct)
             ?? throw new KeyNotFoundException($"Employee with ID {query.EmployeeId} not found.");
 
-        // Resolve company name
         var company = await _companyRepository.GetByIdAsync(employee.CompanyId, ct);
-        var companyRazaoSocial = company?.RazaoSocial;
+        var accessGroup = await _accessGroupRepository.GetByIdAsync(employee.AccessGroupId, ct);
 
         return new EmployeeSummaryDto(
             Id: employee.Id,
@@ -43,9 +44,9 @@ public sealed class GetEmployeeDetailsHandler
             Email: employee.Email.Value,
             Phone: employee.Phone.Value,
             CompanyId: employee.CompanyId,
-            CompanyRazaoSocial: companyRazaoSocial,
+            CompanyRazaoSocial: company?.RazaoSocial,
             AccessGroupId: employee.AccessGroupId,
-            AccessGroupName: null, // TODO: resolve in future phase
+            AccessGroupName: accessGroup?.Name,
             IsDeleted: employee.IsDeleted,
             KeycloakUserId: employee.KeycloakUserId);
     }

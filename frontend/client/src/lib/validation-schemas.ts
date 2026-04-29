@@ -150,6 +150,30 @@ export const editEmployeeSchema = z.object({
 export type EditEmployeeData = z.infer<typeof editEmployeeSchema>;
 
 // ---------------------------------------------------------------------------
+// Register Employee Schema
+// ---------------------------------------------------------------------------
+
+export const registerEmployeeSchema = z.object({
+  nome: z
+    .string()
+    .min(1, "Nome é obrigatório")
+    .min(2, "Nome deve ter pelo menos 2 caracteres"),
+  cpf: z
+    .string()
+    .min(1, "CPF é obrigatório")
+    .regex(/^\d{11}$/, "CPF deve conter 11 dígitos")
+    .refine((val) => validateCpf(val), { message: "CPF inválido" }),
+  email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
+  phone: z
+    .string()
+    .min(1, "Telefone é obrigatório")
+    .transform(stripPhoneMask)
+    .refine((v) => /^\d{10,11}$/.test(v), "Telefone deve conter 10 ou 11 dígitos"),
+});
+
+export type RegisterEmployeeData = z.infer<typeof registerEmployeeSchema>;
+
+// ---------------------------------------------------------------------------
 // Login Schema
 // ---------------------------------------------------------------------------
 

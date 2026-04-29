@@ -1131,8 +1131,8 @@ Plans:
 | 37. Domain Model Redesign | 4/4 | ✅ Complete | 2026-04-26 |
 | 38. Employee Registration & Management API | 3/3 | ✅ Complete | 2026-04-26 |
 | 39. Keycloak Groups & Permissions | 3/3 | ✅ Complete | 2026-04-26 |
-| 40. Client Frontend — PJ Registration & Employee Management | 4/4 | ✅ Complete | 2026-04-26 |
-| 41. BackOffice Employee Management + Audit | 0/TBD | ✅ Complete | 2026-04-26 |
+| 40. Client Frontend — PJ Registration & Employee Management | 4/4 | 🔧 Gaps | 2026-04-26 |
+| 41. BackOffice Employee Management + Audit | 0/TBD | 🔧 Gaps | 2026-04-26 |
 | 42. CI Coverage Enforcement | 0/TBD | ✅ Complete | 2026-04-26 |
 | 43. E2E Playwright Validation | 3/3 | ✅ Complete | 2026-04-27 |
 
@@ -1148,7 +1148,7 @@ Plans:
 | **v4.0** CI/CD + Security | 21-28 | 20 | ✅ Complete | 25 requirements |
 | **v5.0** Auth Code Flow + Admins + Audit | 29-34 | TBD | ✅ Complete | 11 requirements |
 | **v6.0** Gestão Completa de Administradores | 35-36 | 5 | ✅ Complete | 14 requirements |
-| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-43 | 19+ plans | ✅ Complete | 21 requirements |
+| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-43 | 19+ plans | 🔧 In Progress (gaps) | 21 requirements |
 | **Total** | **42 phases** | **110+ plans** | **6 milestones done** | **142 requirements** |
 
 ---

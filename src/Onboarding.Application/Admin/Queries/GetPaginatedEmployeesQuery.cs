@@ -21,13 +21,16 @@ public sealed class GetPaginatedEmployeesHandler
 {
     private readonly IEmployeeRepository _employeeRepository;
     private readonly ICompanyRepository _companyRepository;
+    private readonly IAccessGroupRepository _accessGroupRepository;
 
     public GetPaginatedEmployeesHandler(
         IEmployeeRepository employeeRepository,
-        ICompanyRepository companyRepository)
+        ICompanyRepository companyRepository,
+        IAccessGroupRepository accessGroupRepository)
     {
         _employeeRepository = employeeRepository;
         _companyRepository = companyRepository;
+        _accessGroupRepository = accessGroupRepository;
     }
 
     public async Task<PaginatedResult<EmployeeSummaryDto>> HandleAsync(
@@ -38,18 +41,15 @@ public sealed class GetPaginatedEmployeesHandler
 
         if (query.CompanyId.HasValue)
         {
-            // Filtered by company — admin can narrow results
             (employees, totalCount) = await _employeeRepository.GetPagedByCompanyAsync(
                 query.CompanyId.Value, query.Page, query.PageSize, query.Search, query.Status, ct);
         }
         else
         {
-            // All companies — admin sees everything (bypasses HasQueryFilter)
             (employees, totalCount) = await _employeeRepository.GetPagedAllAsync(
                 query.Page, query.PageSize, query.Search, query.Status, ct);
         }
 
-        // Batch-load company names for the returned employee CompanyIds
         var companyIds = employees.Select(e => e.CompanyId).Distinct().ToList();
         var companies = new Dictionary<Guid, string>();
         foreach (var cid in companyIds)
@@ -57,6 +57,15 @@ public sealed class GetPaginatedEmployeesHandler
             var company = await _companyRepository.GetByIdAsync(cid, ct);
             if (company is not null)
                 companies[cid] = company.RazaoSocial;
+        }
+
+        var accessGroupIds = employees.Select(e => e.AccessGroupId).Distinct().ToList();
+        var accessGroups = new Dictionary<Guid, string>();
+        foreach (var agId in accessGroupIds)
+        {
+            var ag = await _accessGroupRepository.GetByIdAsync(agId, ct);
+            if (ag is not null)
+                accessGroups[agId] = ag.Name;
         }
 
         var dtos = employees.Select(e => new EmployeeSummaryDto(
@@ -68,7 +77,7 @@ public sealed class GetPaginatedEmployeesHandler
             CompanyId: e.CompanyId,
             CompanyRazaoSocial: companies.GetValueOrDefault(e.CompanyId),
             AccessGroupId: e.AccessGroupId,
-            AccessGroupName: null, // TODO: resolve from AccessGroup repository in future phase
+            AccessGroupName: accessGroups.GetValueOrDefault(e.AccessGroupId),
             IsDeleted: e.IsDeleted,
             KeycloakUserId: e.KeycloakUserId)).ToList();
 

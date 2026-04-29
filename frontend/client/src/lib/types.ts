@@ -27,7 +27,8 @@ export interface EmployeeDto {
   cpf: string | null;
   email: string;
   phone: string;
-  accessGroupName: string; // "admin-empresa" | "viewer" | "dashboard"
+  accessGroupId: string;
+  accessGroupName: string;
   isDeleted: boolean;
   keycloakEnabled: boolean;
 }

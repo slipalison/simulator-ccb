@@ -31,21 +31,29 @@ public sealed class EmployeeRepository : IEmployeeRepository
     }
 
     public async Task<Employee?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await _db.Employees.FindAsync([id], ct);
+        => await _db.Employees
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(e => e.Id == id, ct);
 
     public async Task<Employee?> GetByKeycloakSubAsync(string keycloakSub, CancellationToken ct = default)
-        => await _db.Employees.FirstOrDefaultAsync(e => e.KeycloakUserId == keycloakSub, ct);
+        => await _db.Employees
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(e => e.KeycloakUserId == keycloakSub, ct);
 
     public async Task<bool> ExistsByCpfAsync(string cpf, CancellationToken ct = default)
     {
         var cpfVo = Cpf.Create(cpf);
-        return await _db.Employees.AnyAsync(e => e.Cpf == cpfVo, ct);
+        return await _db.Employees
+            .IgnoreQueryFilters()
+            .AnyAsync(e => e.Cpf == cpfVo, ct);
     }
 
     public async Task<bool> ExistsByEmailAsync(string email, CancellationToken ct = default)
     {
         var emailVo = Email.Create(email);
-        return await _db.Employees.AnyAsync(e => e.Email == emailVo, ct);
+        return await _db.Employees
+            .IgnoreQueryFilters()
+            .AnyAsync(e => e.Email == emailVo, ct);
     }
 
     /// <summary>
@@ -57,8 +65,11 @@ public sealed class EmployeeRepository : IEmployeeRepository
         Guid companyId, int page, int pageSize, string? search, string? status,
         CancellationToken ct = default)
     {
-        // Use explicit CompanyId filter — supports both filtered (PJ) and unfiltered (admin) access
+        // Explicit CompanyId filter is sufficient — controller validates companyId matches current user's company.
+        // IgnoreQueryFilters because HasQueryFilter captures ICurrentCompanyService at model-build time,
+        // which has CompanyId=Guid.Empty for all subsequent requests.
         var query = _db.Employees
+            .IgnoreQueryFilters()
             .Where(e => e.CompanyId == companyId)
             .AsNoTracking();
 
@@ -162,7 +173,9 @@ public sealed class EmployeeRepository : IEmployeeRepository
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {
-        var employee = await _db.Employees.FindAsync([id], ct);
+        var employee = await _db.Employees
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(e => e.Id == id, ct);
         if (employee is not null)
         {
             _db.Employees.Remove(employee);

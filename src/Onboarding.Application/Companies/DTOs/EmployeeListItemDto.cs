@@ -9,5 +9,7 @@ public sealed record EmployeeListItemDto(
     string? Cpf,
     string Email,
     string Phone,
+    Guid AccessGroupId,
     string AccessGroupName,
-    bool IsDeleted);
+    bool IsDeleted,
+    bool KeycloakEnabled);

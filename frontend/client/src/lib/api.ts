@@ -191,6 +191,45 @@ export class EmployeeApiError extends Error {
   }
 }
 
+export interface RegisterEmployeeResult {
+  employeeId: string;
+  temporaryPassword: string;
+}
+
+export async function registerEmployee(
+  companyId: string,
+  data: { nome: string; cpf: string; email: string; phone: string; accessGroupId?: string }
+): Promise<RegisterEmployeeResult> {
+  const response = await apiFetch(
+    `/api/companies/${companyId}/employees`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }
+  );
+
+  if (response.status === 422) {
+    const problemDetails = (await response.json()) as { errors?: Record<string, string[]> };
+    throw new RegistrationValidationError(problemDetails.errors ?? {});
+  }
+
+  if (response.status === 409) {
+    throw new DuplicateClientError("A user with this email already exists.");
+  }
+
+  if (response.status === 400) {
+    const body = await response.json().catch(() => ({}));
+    throw new EmployeeApiError(body.detail || "Invalid data.", 400);
+  }
+
+  if (!response.ok) {
+    throw new EmployeeApiError("Failed to register employee.", response.status);
+  }
+
+  return response.json() as Promise<RegisterEmployeeResult>;
+}
+
 /**
  * List employees for the current company with pagination and optional filters.
  * GET /api/companies/{companyId}/employees
@@ -345,14 +384,14 @@ export async function deleteEmployee(
 export async function changeEmployeeAccessGroup(
   companyId: string,
   employeeId: string,
-  accessGroupName: string
+  accessGroupId: string
 ): Promise<void> {
   const response = await apiFetch(
     `/api/companies/${companyId}/employees/${employeeId}/access-group`,
     {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessGroupName }),
+      body: JSON.stringify({ accessGroupId }),
     }
   );
 
@@ -364,6 +403,30 @@ export async function changeEmployeeAccessGroup(
     const body = await response.json().catch(() => ({}));
     throw new EmployeeApiError(body.detail || "Failed to change access group.", response.status);
   }
+}
+
+export interface AccessGroupDto {
+  id: string;
+  name: string;
+  permissions: string[];
+}
+
+export async function getAccessGroups(
+  companyId: string
+): Promise<AccessGroupDto[]> {
+  const response = await apiFetch(
+    `/api/companies/${companyId}/access-groups`,
+    {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    }
+  );
+
+  if (!response.ok) {
+    throw new EmployeeApiError("Failed to fetch access groups.", response.status);
+  }
+
+  return response.json() as Promise<AccessGroupDto[]>;
 }
 
 // ---------------------------------------------------------------------------

@@ -9,9 +9,8 @@ import { NotFoundPage } from "@/components/pages/NotFoundPage";
 import { AdminLoginPage } from "@/components/pages/AdminLoginPage";
 import { AdminAccessDeniedPage } from "@/components/pages/AdminAccessDeniedPage";
 import { AuthErrorPage } from "@/components/pages/AuthErrorPage";
-import { AdminUsersPage } from "@/components/pages/AdminUsersPage";
-import { AdminUserDetailPage } from "@/components/pages/AdminUserDetailPage";
-import { AdminUserEditPage } from "@/components/pages/AdminUserEditPage";
+import { AdminCompaniesPage } from "@/components/pages/AdminCompaniesPage";
+import { AdminEmployeesPage } from "@/components/pages/AdminEmployeesPage";
 import { CreateAdminPage } from "@/components/pages/CreateAdminPage";
 import { PasswordChangePage } from "@/components/pages/PasswordChangePage";
 import { AuditLogPage } from "@/components/pages/AuditLogPage";
@@ -53,43 +52,33 @@ const authErrorRoute = createRoute({
   component: AuthErrorPage,
 });
 
-// Rota admin users: /admin/users
+// Rota admin companies: /admin/companies
+const adminCompaniesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/companies",
+  component: () => (
+    <AdminLayout>
+      <AdminCompaniesPage />
+    </AdminLayout>
+  ),
+});
+
+// Rota admin employees: /admin/employees
+const adminEmployeesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/employees",
+  component: () => (
+    <AdminLayout>
+      <AdminEmployeesPage />
+    </AdminLayout>
+  ),
+});
+
+// Rota admin users (legacy redirect): /admin/users → /admin/companies
 const adminUsersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/users",
-  component: () => (
-    <AdminLayout>
-      <AdminUsersPage />
-    </AdminLayout>
-  ),
-} as any);
-
-// Rota admin user detail: /admin/users/$id
-const adminUserDetailRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/admin/users/$id",
-  component: () => {
-    const { id } = adminUserDetailRoute.useParams();
-    return (
-      <AdminLayout>
-        <AdminUserDetailPage userId={id as string} />
-      </AdminLayout>
-    );
-  },
-} as any);
-
-// Rota admin user edit: /admin/users/$id/edit (MUST be before detail route)
-const adminUserEditRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/admin/users/$id/edit",
-  component: () => {
-    const { id } = adminUserEditRoute.useParams();
-    return (
-      <AdminLayout>
-        <AdminUserEditPage userId={id as string} />
-      </AdminLayout>
-    );
-  },
+  component: RedirectCompanies,
 } as any);
 
 // Rota admin create: /admin/create
@@ -143,8 +132,8 @@ const routeTree = rootRoute.addChildren([
   adminAccessDeniedRoute,
   authErrorRoute,
   adminUsersRoute,
-  adminUserEditRoute,
-  adminUserDetailRoute,
+  adminCompaniesRoute,
+  adminEmployeesRoute,
   adminCreateRoute,
   adminPasswordChangeRoute,
   adminAuditLogRoute,
@@ -170,6 +159,16 @@ function IndexRoute() {
 
   useEffect(() => {
     navigate({ to: "/admin/login" as any, replace: true });
+  }, [navigate]);
+
+  return null;
+}
+
+function RedirectCompanies() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    navigate({ to: "/admin/companies" as any, replace: true });
   }, [navigate]);
 
   return null;

@@ -47,11 +47,18 @@ function AdminSidebar() {
     <aside className="w-56 border-r bg-card p-4" data-testid="admin-sidebar">
       <nav className="space-y-1">
         <a
-          href="/admin/users"
+          href="/admin/companies"
           className="block py-2 px-3 text-sm rounded-md hover:bg-accent transition-colors"
-          data-testid="sidebar-users-link"
+          data-testid="sidebar-companies-link"
         >
-          Usuarios
+          Empresas
+        </a>
+        <a
+          href="/admin/employees"
+          className="block py-2 px-3 text-sm rounded-md hover:bg-accent transition-colors"
+          data-testid="sidebar-employees-link"
+        >
+          Funcionários
         </a>
         <a
           href="/admin/administrators"

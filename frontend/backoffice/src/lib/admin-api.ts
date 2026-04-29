@@ -98,8 +98,15 @@ function _adminFetchOptions(
 }
 
 // ---------------------------------------------------------------------------
-// Admin User Listing — GET /api/admin/users
+// Legacy aliases (backward compat for tests) — redirect /users → /companies + /employees
 // ---------------------------------------------------------------------------
+
+export interface PaginatedResult<T> {
+  items: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+}
 
 export interface UserSummaryDto {
   id: string;
@@ -110,48 +117,6 @@ export interface UserSummaryDto {
   enabled: boolean;
   deletedAt?: string;
 }
-
-export interface PaginatedResult<T> {
-  items: T[];
-  totalCount: number;
-  page: number;
-  pageSize: number;
-}
-
-export interface ListUsersParams {
-  page?: number;
-  pageSize?: number;
-  search?: string;
-  status?: string;
-}
-
-export async function listUsers(
-  params: ListUsersParams = {}
-): Promise<PaginatedResult<UserSummaryDto>> {
-  const searchParams = new URLSearchParams();
-  if (params.page) searchParams.set("page", String(params.page));
-  if (params.pageSize) searchParams.set("pageSize", String(params.pageSize));
-  if (params.search) searchParams.set("search", params.search);
-  if (params.status) searchParams.set("status", params.status);
-
-  const queryString = searchParams.toString();
-  const url = queryString ? `/api/admin/users?${queryString}` : "/api/admin/users";
-
-  const response = await fetchWithAuth(url, {
-    method: "GET",
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    throw new AdminApiError("Falha ao listar usuarios.");
-  }
-
-  return response.json() as Promise<PaginatedResult<UserSummaryDto>>;
-}
-
-// ---------------------------------------------------------------------------
-// Admin User Detail — GET /api/admin/users/{id}
-// ---------------------------------------------------------------------------
 
 export interface UserDetailDto {
   id: string;
@@ -168,26 +133,12 @@ export interface UserDetailDto {
   keycloakUserId?: string;
 }
 
-export async function getUserDetail(userId: string): Promise<UserDetailDto> {
-  const response = await fetchWithAuth(`/api/admin/users/${userId}`, {
-    method: "GET",
-    credentials: "include",
-  });
-
-  if (response.status === 404) {
-    throw new AdminApiError("Usuario nao encontrado.", 404);
-  }
-
-  if (!response.ok) {
-    throw new AdminApiError("Falha ao carregar dados do usuario.");
-  }
-
-  return response.json() as Promise<UserDetailDto>;
+export interface ListUsersParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
 }
-
-// ---------------------------------------------------------------------------
-// Admin User Update — PUT /api/admin/users/{id}
-// ---------------------------------------------------------------------------
 
 export interface UpdateUserDto {
   name?: string;
@@ -196,106 +147,221 @@ export interface UpdateUserDto {
   address?: string;
 }
 
-export async function updateUser(
-  userId: string,
-  data: UpdateUserDto
-): Promise<UserDetailDto> {
-  const response = await fetchWithAuth(`/api/admin/users/${userId}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+export async function listUsers(params: ListUsersParams = {}): Promise<PaginatedResult<UserSummaryDto>> {
+  const r = await listCompanies(params);
+  return {
+    ...r,
+    items: r.items.map(c => ({
+      id: c.id,
+      name: c.razaoSocial,
+      email: c.email,
+      document: c.cnpj,
+      type: "PJ" as const,
+      enabled: !c.isDeleted,
+      deletedAt: undefined,
+    })),
+  };
+}
+
+export async function getUserDetail(userId: string): Promise<UserDetailDto> {
+  const c = await getCompanyDetails(userId);
+  return {
+    id: c.id,
+    name: c.razaoSocial,
+    email: c.email,
+    phone: c.phone,
+    document: c.cnpj,
+    type: "PJ",
+    razaoSocial: c.razaoSocial,
+    createdAt: "",
+    deletedAt: undefined,
+    keycloakEnabled: !c.isDeleted,
+    keycloakEmailVerified: true,
+    keycloakUserId: undefined,
+  };
+}
+
+export async function updateUser(_userId?: string, _data?: unknown): Promise<UserDetailDto> {
+  throw new AdminApiError("Use PUT /api/admin/companies/{id} instead.", 410);
+}
+
+export async function blockUser(_userId?: string, _reason?: string): Promise<void> {
+  throw new AdminApiError("Use POST /api/admin/employees/{id}/block instead.", 410);
+}
+
+export async function unblockUser(_userId?: string, _reason?: string): Promise<void> {
+  throw new AdminApiError("Use POST /api/admin/employees/{id}/unblock instead.", 410);
+}
+
+export async function deleteUser(_userId?: string): Promise<void> {
+  throw new AdminApiError("Use DELETE /api/admin/employees/{id} instead.", 410);
+}
+
+// ---------------------------------------------------------------------------
+// Admin Companies — GET /api/admin/companies
+// ---------------------------------------------------------------------------
+
+export interface CompanySummaryDto {
+  id: string;
+  razaoSocial: string;
+  email: string;
+  phone: string;
+  cnpj?: string;
+  isDeleted: boolean;
+}
+
+export interface ListCompaniesParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+}
+
+export async function listCompanies(
+  params: ListCompaniesParams = {}
+): Promise<PaginatedResult<CompanySummaryDto>> {
+  const searchParams = new URLSearchParams();
+  if (params.page) searchParams.set("page", String(params.page));
+  if (params.pageSize) searchParams.set("pageSize", String(params.pageSize));
+  if (params.search) searchParams.set("search", params.search);
+  if (params.status) searchParams.set("status", params.status);
+
+  const queryString = searchParams.toString();
+  const url = queryString ? `/api/admin/companies?${queryString}` : "/api/admin/companies";
+
+  const response = await fetchWithAuth(url, { method: "GET", credentials: "include" });
+
+  if (!response.ok) {
+    throw new AdminApiError("Falha ao listar empresas.");
+  }
+
+  return response.json() as Promise<PaginatedResult<CompanySummaryDto>>;
+}
+
+export async function getCompanyDetails(companyId: string): Promise<CompanySummaryDto> {
+  const response = await fetchWithAuth(`/api/admin/companies/${companyId}`, {
+    method: "GET",
     credentials: "include",
   });
 
   if (response.status === 404) {
-    throw new AdminApiError("Usuario nao encontrado.", 404);
-  }
-
-  if (response.status === 400) {
-    const body = await response.json().catch(() => ({}));
-    throw new AdminApiError(body.detail || "Dados invalidos.", 400);
+    throw new AdminApiError("Empresa nao encontrada.", 404);
   }
 
   if (!response.ok) {
-    throw new AdminApiError("Falha ao atualizar usuario.");
+    throw new AdminApiError("Falha ao carregar dados da empresa.");
   }
 
-  return response.json() as Promise<UserDetailDto>;
+  return response.json() as Promise<CompanySummaryDto>;
 }
 
 // ---------------------------------------------------------------------------
-// Admin User Block — POST /api/admin/users/{id}/block
+// Admin Employees — GET /api/admin/employees
 // ---------------------------------------------------------------------------
 
-export async function blockUser(
-  userId: string,
-  reason: string
-): Promise<void> {
-  const response = await fetchWithAuth(`/api/admin/users/${userId}/block`, {
+export interface EmployeeSummaryDto {
+  id: string;
+  nome: string;
+  cpf: string;
+  email: string;
+  phone: string;
+  companyId: string;
+  companyRazaoSocial?: string;
+  accessGroupId: string;
+  accessGroupName?: string;
+  isDeleted: boolean;
+  keycloakUserId?: string;
+}
+
+export interface ListEmployeesParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: string;
+  companyId?: string;
+}
+
+export async function listEmployees(
+  params: ListEmployeesParams = {}
+): Promise<PaginatedResult<EmployeeSummaryDto>> {
+  const searchParams = new URLSearchParams();
+  if (params.page) searchParams.set("page", String(params.page));
+  if (params.pageSize) searchParams.set("pageSize", String(params.pageSize));
+  if (params.search) searchParams.set("search", params.search);
+  if (params.status) searchParams.set("status", params.status);
+  if (params.companyId) searchParams.set("companyId", params.companyId);
+
+  const queryString = searchParams.toString();
+  const url = queryString ? `/api/admin/employees?${queryString}` : "/api/admin/employees";
+
+  const response = await fetchWithAuth(url, { method: "GET", credentials: "include" });
+
+  if (!response.ok) {
+    throw new AdminApiError("Falha ao listar funcionários.");
+  }
+
+  return response.json() as Promise<PaginatedResult<EmployeeSummaryDto>>;
+}
+
+export async function getEmployeeDetails(employeeId: string): Promise<EmployeeSummaryDto> {
+  const response = await fetchWithAuth(`/api/admin/employees/${employeeId}`, {
+    method: "GET",
+    credentials: "include",
+  });
+
+  if (response.status === 404) {
+    throw new AdminApiError("Funcionário nao encontrado.", 404);
+  }
+
+  if (!response.ok) {
+    throw new AdminApiError("Falha ao carregar dados do funcionário.");
+  }
+
+  return response.json() as Promise<EmployeeSummaryDto>;
+}
+
+export async function blockEmployee(employeeId: string): Promise<void> {
+  const response = await fetchWithAuth(`/api/admin/employees/${employeeId}/block`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ reason }),
     credentials: "include",
   });
 
   if (response.status === 404) {
-    throw new AdminApiError("Usuario nao encontrado.", 404);
+    throw new AdminApiError("Funcionário nao encontrado.", 404);
   }
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new AdminApiError(body.detail || "Falha ao bloquear usuario.");
+    throw new AdminApiError("Falha ao bloquear funcionário.");
   }
 }
 
-// ---------------------------------------------------------------------------
-// Admin User Delete — DELETE /api/admin/users/{id}
-// ---------------------------------------------------------------------------
+export async function unblockEmployee(employeeId: string): Promise<void> {
+  const response = await fetchWithAuth(`/api/admin/employees/${employeeId}/unblock`, {
+    method: "POST",
+    credentials: "include",
+  });
 
-export async function deleteUser(
-  userId: string
-): Promise<void> {
-  const response = await fetchWithAuth(`/api/admin/users/${userId}`, {
+  if (response.status === 404) {
+    throw new AdminApiError("Funcionário nao encontrado.", 404);
+  }
+
+  if (!response.ok) {
+    throw new AdminApiError("Falha ao desbloquear funcionário.");
+  }
+}
+
+export async function deleteEmployee(employeeId: string): Promise<void> {
+  const response = await fetchWithAuth(`/api/admin/employees/${employeeId}`, {
     method: "DELETE",
     credentials: "include",
   });
 
   if (response.status === 404) {
-    throw new AdminApiError("Usuario nao encontrado.", 404);
-  }
-
-  if (response.status === 409) {
-    throw new AdminApiError("Usuario ja foi deletado.", 409);
+    throw new AdminApiError("Funcionário nao encontrado.", 404);
   }
 
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new AdminApiError(body.detail || "Falha ao deletar usuario.");
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Admin User Unblock — POST /api/admin/users/{id}/unblock
-// ---------------------------------------------------------------------------
-
-export async function unblockUser(
-  userId: string,
-  reason?: string
-): Promise<void> {
-  const response = await fetchWithAuth(`/api/admin/users/${userId}/unblock`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ reason: reason ?? null }),
-    credentials: "include",
-  });
-
-  if (response.status === 404) {
-    throw new AdminApiError("Usuario nao encontrado.", 404);
-  }
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new AdminApiError(body.detail || "Falha ao desbloquear usuario.");
+    throw new AdminApiError("Falha ao excluir funcionário.");
   }
 }
 

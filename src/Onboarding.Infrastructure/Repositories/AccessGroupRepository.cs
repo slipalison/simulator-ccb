@@ -36,17 +36,21 @@ public sealed class AccessGroupRepository : IAccessGroupRepository
     }
 
     public async Task<AccessGroup?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await _db.AccessGroups.FindAsync([id], ct);
-
-    public async Task<IReadOnlyList<AccessGroup>> GetByCompanyIdAsync(Guid companyId, CancellationToken ct = default)
         => await _db.AccessGroups
-            .Where(a => a.CompanyId == companyId)
-            .OrderBy(a => a.Name)
-            .ToListAsync(ct);
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
 
     public async Task<AccessGroup?> GetByCompanyAndNameAsync(Guid companyId, string name, CancellationToken ct = default)
         => await _db.AccessGroups
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(a => a.CompanyId == companyId && a.Name == name, ct);
+
+    public async Task<IReadOnlyList<AccessGroup>> GetByCompanyIdAsync(Guid companyId, CancellationToken ct = default)
+        => await _db.AccessGroups
+            .IgnoreQueryFilters()
+            .Where(a => a.CompanyId == companyId)
+            .OrderBy(a => a.Name)
+            .ToListAsync(ct);
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {

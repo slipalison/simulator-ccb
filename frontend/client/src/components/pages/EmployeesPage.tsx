@@ -3,7 +3,7 @@ import { useAuth } from "@/lib/auth-context";
 import { Navigate } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, RefreshCw } from "lucide-react";
+import { Users, RefreshCw, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import {
   getEmployees,
@@ -22,6 +22,7 @@ import { BlockUnblockDialog } from "@/components/molecules/BlockUnblockDialog";
 import { ResetPasswordDialog } from "@/components/molecules/ResetPasswordDialog";
 import { DeleteEmployeeDialog } from "@/components/molecules/DeleteEmployeeDialog";
 import { ChangeAccessGroupDialog } from "@/components/molecules/ChangeAccessGroupDialog";
+import { RegisterEmployeeDialog } from "@/components/molecules/RegisterEmployeeDialog";
 
 // ---------------------------------------------------------------------------
 // Dialog state
@@ -33,7 +34,8 @@ type DialogState =
   | { type: "block-unblock"; employee: EmployeeDto; action: "block" | "unblock" }
   | { type: "reset-password"; employee: EmployeeDto; temporaryPassword: string | null }
   | { type: "delete"; employee: EmployeeDto }
-  | { type: "change-access-group"; employee: EmployeeDto };
+  | { type: "change-access-group"; employee: EmployeeDto }
+  | { type: "register" };
 
 const PAGE_SIZE = 20;
 
@@ -119,6 +121,19 @@ export function EmployeesPage() {
     setDialog({ type: "change-access-group", employee });
   };
 
+  const handleOpenRegister = () => {
+    setDialog({ type: "register" });
+  };
+
+  const handleEmployeeRegistered = (result: { employeeId: string; temporaryPassword: string }) => {
+    toast.success("Funcionário cadastrado!", {
+      description: `Senha temporária: ${result.temporaryPassword}`,
+      duration: 15000,
+    });
+    setDialog({ type: "none" });
+    fetchEmployees();
+  };
+
   const handleCloseDialog = () => {
     setDialog({ type: "none" });
   };
@@ -177,10 +192,10 @@ export function EmployeesPage() {
     }
   };
 
-  const handleChangeGroup = async (employeeId: string, newGroupName: string) => {
+  const handleChangeGroup = async (employeeId: string, newGroupId: string) => {
     if (!companyId) return;
     try {
-      await changeEmployeeAccessGroup(companyId, employeeId, newGroupName);
+      await changeEmployeeAccessGroup(companyId, employeeId, newGroupId);
       toast.success("Grupo de acesso alterado.");
       handleCloseDialog();
       fetchEmployees();
@@ -206,16 +221,29 @@ export function EmployeesPage() {
           <Users className="h-5 w-5 text-primary" aria-hidden="true" />
           <h2 className="text-xl font-semibold">Funcionários</h2>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchEmployees}
-          disabled={isLoading}
-          data-testid="refresh-button"
-        >
-          <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} aria-hidden="true" />
-          Atualizar
-        </Button>
+        <div className="flex gap-2">
+          {accessGroup === "admin-empresa" && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleOpenRegister}
+              data-testid="register-employee-button"
+            >
+              <UserPlus className="h-4 w-4 mr-1" aria-hidden="true" />
+              Novo Funcionário
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchEmployees}
+            disabled={isLoading}
+            data-testid="refresh-button"
+          >
+            <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? "animate-spin" : ""}`} aria-hidden="true" />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       <EmployeeSearchBar
@@ -325,6 +353,14 @@ export function EmployeesPage() {
           onClose={handleCloseDialog}
         />
       )}
+
+      {/* Register Employee Dialog */}
+      <RegisterEmployeeDialog
+        open={dialog.type === "register"}
+        companyId={companyId ?? ""}
+        onRegistered={handleEmployeeRegistered}
+        onClose={handleCloseDialog}
+      />
     </div>
   );
 }

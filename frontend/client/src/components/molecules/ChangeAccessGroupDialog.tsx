@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,12 +19,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import type { EmployeeDto } from "@/lib/types";
-
-const ACCESS_GROUPS = [
-  { value: "admin-empresa", label: "Admin Empresa" },
-  { value: "viewer", label: "Viewer" },
-  { value: "dashboard", label: "Dashboard" },
-] as const;
+import { getAccessGroups, type AccessGroupDto } from "@/lib/api";
 
 const GROUP_BADGE_MAP: Record<string, { label: string; className: string }> = {
   "admin-empresa": {
@@ -41,36 +36,53 @@ const GROUP_BADGE_MAP: Record<string, { label: string; className: string }> = {
   },
 };
 
+const GROUP_LABEL_MAP: Record<string, string> = {
+  "admin-empresa": "Admin Empresa",
+  viewer: "Viewer",
+  dashboard: "Dashboard",
+};
+
 interface ChangeAccessGroupDialogProps {
   open: boolean;
   employee: EmployeeDto;
   companyId: string;
-  onConfirm: (employeeId: string, newGroupName: string) => Promise<void>;
+  onConfirm: (employeeId: string, newGroupId: string) => Promise<void>;
   onClose: () => void;
 }
 
 export function ChangeAccessGroupDialog({
   open,
   employee,
-  companyId: _companyId,
+  companyId,
   onConfirm,
   onClose,
 }: ChangeAccessGroupDialogProps) {
-  const [selectedGroup, setSelectedGroup] = useState(employee.accessGroupName);
+  const [selectedGroupId, setSelectedGroupId] = useState(employee.accessGroupId);
+  const [accessGroups, setAccessGroups] = useState<AccessGroupDto[]>([]);
+  const [isLoadingGroups, setIsLoadingGroups] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!open || !companyId) return;
+    setIsLoadingGroups(true);
+    getAccessGroups(companyId)
+      .then(setAccessGroups)
+      .catch(() => setAccessGroups([]))
+      .finally(() => setIsLoadingGroups(false));
+  }, [open, companyId]);
 
   const currentBadge = GROUP_BADGE_MAP[employee.accessGroupName] ?? {
     label: employee.accessGroupName,
     className: "bg-gray-100 text-gray-500 border-gray-200",
   };
 
-  const hasChanged = selectedGroup !== employee.accessGroupName;
+  const hasChanged = selectedGroupId !== employee.accessGroupId;
 
   const handleConfirm = async () => {
     if (!hasChanged) return;
     setIsSubmitting(true);
     try {
-      await onConfirm(employee.id, selectedGroup);
+      await onConfirm(employee.id, selectedGroupId);
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -79,7 +91,7 @@ export function ChangeAccessGroupDialog({
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen && !isSubmitting) {
-      setSelectedGroup(employee.accessGroupName);
+      setSelectedGroupId(employee.accessGroupId);
       onClose();
     }
   };
@@ -107,17 +119,17 @@ export function ChangeAccessGroupDialog({
           <div className="space-y-2">
             <Label htmlFor="new-access-group">Novo grupo</Label>
             <Select
-              value={selectedGroup}
-              onValueChange={setSelectedGroup}
-              disabled={isSubmitting}
+              value={selectedGroupId}
+              onValueChange={setSelectedGroupId}
+              disabled={isSubmitting || isLoadingGroups}
             >
               <SelectTrigger id="new-access-group" data-testid="new-access-group-select">
-                <SelectValue placeholder="Selecione o grupo" />
+                <SelectValue placeholder={isLoadingGroups ? "Carregando..." : "Selecione o grupo"} />
               </SelectTrigger>
               <SelectContent>
-                {ACCESS_GROUPS.map((group) => (
-                  <SelectItem key={group.value} value={group.value}>
-                    {group.label}
+                {accessGroups.map((group) => (
+                  <SelectItem key={group.id} value={group.id}>
+                    {GROUP_LABEL_MAP[group.name] ?? group.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -138,7 +150,7 @@ export function ChangeAccessGroupDialog({
           <Button
             type="button"
             variant="default"
-            disabled={isSubmitting || !hasChanged}
+            disabled={isSubmitting || !hasChanged || isLoadingGroups}
             onClick={handleConfirm}
             data-testid="change-group-confirm-button"
           >

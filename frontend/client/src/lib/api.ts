@@ -409,6 +409,7 @@ export interface AccessGroupDto {
   id: string;
   name: string;
   permissions: string[];
+  isDefault: boolean;
 }
 
 export async function getAccessGroups(
@@ -428,6 +429,96 @@ export async function getAccessGroups(
 
   return response.json() as Promise<AccessGroupDto[]>;
 }
+
+export async function createAccessGroup(
+  companyId: string,
+  data: { name: string; permissions: string[] }
+): Promise<AccessGroupDto> {
+  const response = await apiFetch(
+    `/api/companies/${companyId}/access-groups`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }
+  );
+
+  if (response.status === 400) {
+    const body = await response.json().catch(() => ({}));
+    throw new EmployeeApiError(body.detail || "Invalid data.", 400);
+  }
+
+  if (!response.ok) {
+    throw new EmployeeApiError("Failed to create access group.", response.status);
+  }
+
+  return response.json() as Promise<AccessGroupDto>;
+}
+
+export async function updateAccessGroup(
+  companyId: string,
+  accessGroupId: string,
+  data: { name?: string; permissions?: string[] }
+): Promise<AccessGroupDto> {
+  const response = await apiFetch(
+    `/api/companies/${companyId}/access-groups/${accessGroupId}`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }
+  );
+
+  if (response.status === 400) {
+    const body = await response.json().catch(() => ({}));
+    throw new EmployeeApiError(body.detail || "Invalid data.", 400);
+  }
+
+  if (!response.ok) {
+    throw new EmployeeApiError("Failed to update access group.", response.status);
+  }
+
+  return response.json() as Promise<AccessGroupDto>;
+}
+
+export async function deleteAccessGroup(
+  companyId: string,
+  accessGroupId: string
+): Promise<void> {
+  const response = await apiFetch(
+    `/api/companies/${companyId}/access-groups/${accessGroupId}`,
+    {
+      method: "DELETE",
+    }
+  );
+
+  if (response.status === 400) {
+    const body = await response.json().catch(() => ({}));
+    throw new EmployeeApiError(body.detail || "Cannot delete access group.", 400);
+  }
+
+  if (!response.ok) {
+    throw new EmployeeApiError("Failed to delete access group.", response.status);
+  }
+}
+
+export const PERMISSION_LABELS: Record<string, string> = {
+  "employees:read": "Ver funcionários",
+  "employees:write": "Gerenciar funcionários",
+  "employees:delete": "Excluir funcionários",
+  "audit:read": "Ver auditoria",
+  "dashboard:access": "Acesso ao dashboard",
+  "access-groups:manage": "Gerenciar grupos",
+};
+
+export const PERMISSION_OPTIONS = [
+  { value: "employees:read", label: "Ver funcionários" },
+  { value: "employees:write", label: "Gerenciar funcionários" },
+  { value: "employees:delete", label: "Excluir funcionários" },
+  { value: "audit:read", label: "Ver auditoria" },
+  { value: "dashboard:access", label: "Acesso ao dashboard" },
+  { value: "access-groups:manage", label: "Gerenciar grupos" },
+];
 
 // ---------------------------------------------------------------------------
 // Forgot/Reset Password API clients

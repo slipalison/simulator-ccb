@@ -34,4 +34,8 @@ public enum ActionType
     AccessGroupChanged = 25,
     // Phase 38 — Company update
     CompanyUpdated = 26,
+    // Phase 44 — Custom Access Groups CRUD
+    AccessGroupCreated = 27,
+    AccessGroupUpdated = 28,
+    AccessGroupDeleted = 29,
 }

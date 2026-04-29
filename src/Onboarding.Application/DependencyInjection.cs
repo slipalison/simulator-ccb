@@ -37,6 +37,11 @@ public static class ApplicationServiceExtensions
         services.AddScoped<ICommandHandler<Companies.Commands.DeleteEmployeeCommand, Unit>, Companies.Commands.DeleteEmployeeCommandHandler>();
         services.AddScoped<ICommandHandler<ChangeEmployeeAccessGroupCommand, Unit>, ChangeEmployeeAccessGroupCommandHandler>();
 
+        // Access group CRUD commands (Phase 44 — PERM-06)
+        services.AddScoped<ICommandHandler<CreateAccessGroupCommand, AccessGroupDto>, CreateAccessGroupCommandHandler>();
+        services.AddScoped<ICommandHandler<UpdateAccessGroupCommand, AccessGroupDto>, UpdateAccessGroupCommandHandler>();
+        services.AddScoped<ICommandHandler<DeleteAccessGroupCommand, Unit>, DeleteAccessGroupCommandHandler>();
+
         // Employee listing query (Phase 38 — MGMT-02)
         services.AddScoped<IQueryHandler<GetCompanyEmployeesQuery, PaginatedResult<EmployeeListItemDto>>, GetCompanyEmployeesQueryHandler>();
 

@@ -13,6 +13,7 @@ import { AuthErrorPage } from "@/components/pages/AuthErrorPage";
 import { ProfilePage } from "@/components/pages/ProfilePage";
 import { DashboardPage } from "@/components/pages/DashboardPage";
 import { EmployeesPage } from "@/components/pages/EmployeesPage";
+import { AccessGroupsPage } from "@/components/pages/AccessGroupsPage";
 import { ForgotPasswordPage } from "@/components/pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/components/pages/ResetPasswordPage";
 import { AppLayout } from "@/components/templates/AppLayout";
@@ -44,6 +45,13 @@ const employeesRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/employees",
   component: EmployeesPage,
+});
+
+// Access Groups: /access-groups (admin-empresa manages groups)
+const accessGroupsRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/access-groups",
+  component: AccessGroupsPage,
 });
 
 // Company Profile: /profile (visible to all authenticated groups)
@@ -105,18 +113,14 @@ const indexRoute = createRoute({
 
 // Route tree
 const routeTree = rootRoute.addChildren([
-  indexRoute,
+  authenticatedRoute.addChildren([dashboardRoute, employeesRoute, accessGroupsRoute, profileRoute]),
   registerRoute,
   authLoginRoute,
   authCallbackRoute,
   authErrorRoute,
   forgotPasswordRoute,
   resetPasswordRoute,
-  authenticatedRoute.addChildren([
-    dashboardRoute,
-    employeesRoute,
-    profileRoute,
-  ]),
+  indexRoute,
 ]);
 
 // Router instance

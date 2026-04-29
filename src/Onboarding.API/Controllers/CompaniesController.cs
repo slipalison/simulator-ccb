@@ -35,6 +35,9 @@ public sealed class CompaniesController : ControllerBase
     private readonly ICommandHandler<UpdateEmployeeCommand, Unit> _updateEmployeeHandler;
     private readonly ICommandHandler<DeleteEmployeeCommand, Unit> _deleteEmployeeHandler;
     private readonly ICommandHandler<ChangeEmployeeAccessGroupCommand, Unit> _changeAccessGroupHandler;
+    private readonly ICommandHandler<CreateAccessGroupCommand, AccessGroupDto> _createAccessGroupHandler;
+    private readonly ICommandHandler<UpdateAccessGroupCommand, AccessGroupDto> _updateAccessGroupHandler;
+    private readonly ICommandHandler<DeleteAccessGroupCommand, Unit> _deleteAccessGroupHandler;
     private readonly ICurrentCompanyService _currentCompanyService;
     private readonly IAccessGroupRepository _accessGroupRepository;
     private readonly ILogger<CompaniesController> _logger;
@@ -51,6 +54,9 @@ public sealed class CompaniesController : ControllerBase
         ICommandHandler<UpdateEmployeeCommand, Unit> updateEmployeeHandler,
         ICommandHandler<DeleteEmployeeCommand, Unit> deleteEmployeeHandler,
         ICommandHandler<ChangeEmployeeAccessGroupCommand, Unit> changeAccessGroupHandler,
+        ICommandHandler<CreateAccessGroupCommand, AccessGroupDto> createAccessGroupHandler,
+        ICommandHandler<UpdateAccessGroupCommand, AccessGroupDto> updateAccessGroupHandler,
+        ICommandHandler<DeleteAccessGroupCommand, Unit> deleteAccessGroupHandler,
         ICurrentCompanyService currentCompanyService,
         IAccessGroupRepository accessGroupRepository,
         ILogger<CompaniesController> logger)
@@ -61,6 +67,14 @@ public sealed class CompaniesController : ControllerBase
         _registerEmployeeHandler = registerEmployeeHandler;
         _registerEmployeeValidator = registerEmployeeValidator;
         _getEmployeesHandler = getEmployeesHandler;
+        _toggleStatusHandler = toggleStatusHandler;
+        _resetPasswordHandler = resetPasswordHandler;
+        _updateEmployeeHandler = updateEmployeeHandler;
+        _deleteEmployeeHandler = deleteEmployeeHandler;
+        _changeAccessGroupHandler = changeAccessGroupHandler;
+        _createAccessGroupHandler = createAccessGroupHandler;
+        _updateAccessGroupHandler = updateAccessGroupHandler;
+        _deleteAccessGroupHandler = deleteAccessGroupHandler;
         _currentCompanyService = currentCompanyService;
         _accessGroupRepository = accessGroupRepository;
         _logger = logger;
@@ -423,8 +437,106 @@ public sealed class CompaniesController : ControllerBase
             return Forbid();
 
         var groups = await _accessGroupRepository.GetByCompanyIdAsync(companyId, ct);
-        var dtos = groups.Select(g => new AccessGroupDto(g.Id, g.Name, (IReadOnlyList<string>)g.Permissions)).ToList();
+        var dtos = groups.Select(g => new AccessGroupDto(g.Id, g.Name, (IReadOnlyList<string>)g.Permissions, g.IsDefault)).ToList();
         return Ok(dtos);
+    }
+
+    /// <summary>POST /api/companies/{companyId}/access-groups — Create a custom access group (PERM-06).</summary>
+    [HttpPost("{companyId:guid}/access-groups")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.AccessGroupsManage)]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> CreateAccessGroup(Guid companyId, [FromBody] CreateAccessGroupRequest request, CancellationToken ct)
+    {
+        if (companyId != _currentCompanyService.CompanyId)
+            return Forbid();
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        var command = new CreateAccessGroupCommand(companyId, request.Name, request.Permissions, actorSub, actorEmail, ipAddress);
+
+        try
+        {
+            var result = await _createAccessGroupHandler.HandleAsync(command, ct);
+            return CreatedAtAction(nameof(GetAccessGroups), new { companyId }, result);
+        }
+        catch (BadRequestException ex)
+        {
+            return BadRequest(new { title = "Bad request", status = 400, detail = ex.Message });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    /// <summary>PUT /api/companies/{companyId}/access-groups/{id} — Update a custom access group (PERM-06).</summary>
+    [HttpPut("{companyId:guid}/access-groups/{id:guid}")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.AccessGroupsManage)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> UpdateAccessGroup(Guid companyId, Guid id, [FromBody] UpdateAccessGroupRequest request, CancellationToken ct)
+    {
+        if (companyId != _currentCompanyService.CompanyId)
+            return Forbid();
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        var command = new UpdateAccessGroupCommand(companyId, id, request.Name, request.Permissions, actorSub, actorEmail, ipAddress);
+
+        try
+        {
+            var result = await _updateAccessGroupHandler.HandleAsync(command, ct);
+            return Ok(result);
+        }
+        catch (BadRequestException ex)
+        {
+            return BadRequest(new { title = "Bad request", status = 400, detail = ex.Message });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+    }
+
+    /// <summary>DELETE /api/companies/{companyId}/access-groups/{id} — Delete a custom access group (PERM-06).</summary>
+    [HttpDelete("{companyId:guid}/access-groups/{id:guid}")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.AccessGroupsManage)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteAccessGroup(Guid companyId, Guid id, CancellationToken ct)
+    {
+        if (companyId != _currentCompanyService.CompanyId)
+            return Forbid();
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+
+        var command = new DeleteAccessGroupCommand(companyId, id, actorSub, actorEmail, ipAddress);
+
+        try
+        {
+            await _deleteAccessGroupHandler.HandleAsync(command, ct);
+            return NoContent();
+        }
+        catch (BadRequestException ex)
+        {
+            return BadRequest(new { title = "Bad request", status = 400, detail = ex.Message });
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
     }
 
     private static CompanyProfileDto MapToDto(Company company) => new(
@@ -460,5 +572,11 @@ public sealed record UpdateEmployeeRequest(string? Nome, string? Email, string? 
 /// <summary>Request DTO for changing employee access group.</summary>
 public sealed record ChangeAccessGroupRequest(Guid AccessGroupId);
 
-/// <summary>DTO for access group listing.</summary>
-public sealed record AccessGroupDto(Guid Id, string Name, IReadOnlyList<string> Permissions);
+/// <summary>DTO for access group listing — includes IsDefault flag.</summary>
+public sealed record AccessGroupDto(Guid Id, string Name, IReadOnlyList<string> Permissions, bool IsDefault);
+
+/// <summary>Request DTO for creating an access group.</summary>
+public sealed record CreateAccessGroupRequest(string Name, IReadOnlyList<string> Permissions);
+
+/// <summary>Request DTO for updating an access group.</summary>
+public sealed record UpdateAccessGroupRequest(string? Name, IReadOnlyList<string>? Permissions);

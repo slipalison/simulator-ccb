@@ -1,6 +1,7 @@
 using Keycloak.AuthServices.Sdk.Admin.Models;
 using Keycloak.AuthServices.Sdk.Admin.Requests.Users;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Onboarding.Application.Common;
 using Onboarding.Domain.Exceptions;
 using System.Net.Http.Json;
@@ -16,10 +17,12 @@ public sealed record KeycloakGroupRepresentation(string? Id, string? Name);
 public sealed class KeycloakUserService : IKeycloakUserService
 {
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<KeycloakUserService> _logger;
 
-    public KeycloakUserService(IHttpClientFactory httpClientFactory)
+    public KeycloakUserService(IHttpClientFactory httpClientFactory, ILogger<KeycloakUserService> logger)
     {
         _httpClientFactory = httpClientFactory;
+        _logger = logger;
     }
 
     private HttpClient GetClient(string targetRealm)
@@ -426,5 +429,16 @@ public sealed class KeycloakUserService : IKeycloakUserService
         var groups = await response.Content.ReadFromJsonAsync<List<KeycloakGroupRepresentation>>(cancellationToken: ct);
         var group = groups?.FirstOrDefault(g => g.Name == groupName);
         return group?.Id;
+    }
+
+    public async Task DeleteGroupAsync(string targetRealm, string keycloakGroupId, CancellationToken ct = default)
+    {
+        var client = GetClient(targetRealm);
+        var response = await client.DeleteAsync($"admin/realms/{targetRealm}/groups/{keycloakGroupId}", ct);
+
+        if (!response.IsSuccessStatusCode && response.StatusCode != System.Net.HttpStatusCode.NotFound)
+        {
+            _logger.LogWarning("Failed to delete Keycloak group {GroupId} in realm {Realm}: {StatusCode}", keycloakGroupId, targetRealm, response.StatusCode);
+        }
     }
 }

@@ -80,6 +80,11 @@ public interface IKeycloakUserService
     /// Gets a Keycloak group by name. Returns the group ID (UUID string) or null if not found.
     /// </summary>
     Task<string?> GetGroupByNameAsync(string targetRealm, string groupName, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a Keycloak group by ID. Idempotent: 404 (not found) is not an error.
+    /// </summary>
+    Task DeleteGroupAsync(string targetRealm, string keycloakGroupId, CancellationToken ct = default);
 }
 
 /// <summary>

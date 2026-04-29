@@ -64,4 +64,24 @@ public sealed class AccessGroup : Entity<Guid>
 
         Permissions = permissionList;
     }
+
+    /// <summary>
+    /// The set of default group names that cannot be edited or deleted.
+    /// </summary>
+    public static readonly HashSet<string> DefaultGroupNames = ["admin-empresa", "viewer", "dashboard"];
+
+    /// <summary>
+    /// Whether this group is a default (seeded) group that cannot be edited or deleted.
+    /// </summary>
+    public bool IsDefault => DefaultGroupNames.Contains(Name);
+
+    /// <summary>
+    /// Updates the group name. Validates non-empty and non-default.
+    /// </summary>
+    public void UpdateName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Access group name is required.", nameof(name));
+        Name = name;
+    }
 }

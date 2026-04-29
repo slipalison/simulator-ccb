@@ -6,11 +6,11 @@ status: in_progress
 last_updated: "2026-04-28T00:00:00Z"
 last_activity: 2026-04-28
 progress:
-  total_phases: 7
+  total_phases: 8
   completed_phases: 3
   total_plans: 19
   completed_plans: 19
-  percent: 70
+  percent: 65
   gaps:
     - id: GAP-6
       priority: P0
@@ -30,6 +30,12 @@ progress:
     - id: GAP-11
       priority: P2
       description: "KEYCLOAK_REALM=client pode faltar no docker-compose"
+    - id: GAP-hasqueryfilter
+      priority: P0
+      description: "HasQueryFilter captura ICurrentCompanyService do primeiro request (Guid.Empty), quebrando EmployeeRepository e AccessGroupRepository — fix aplicado com IgnoreQueryFilters"
+    - id: GAP-register-error-ux
+      priority: P1
+      description: "RegisterEmployeeDialog engolia erros da API sem mostrar ao usuário — fix aplicado: apiError state + exibição"
 ---
 
 # Project State
@@ -56,7 +62,7 @@ Last activity: 2026-04-28 -- Audit revelou gaps P0+P1
 **Milestone v4.0 — CI/CD Pipeline + Cybersecurity:** ✅ COMPLETE (8/8 phases, 20/20 plans)
 **Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** ✅ COMPLETE (6/6 phases)
 **Milestone v6.0 — Gestão Completa de Administradores:** ✅ COMPLETE (2/2 phases)
-**Milestone v7.0 — PJ-Only Onboarding + Gestão de Funcionários:** 🔧 IN PROGRESS (3/7 phases truly complete, 4 phases com gaps de integração)
+**Milestone v7.0 — PJ-Only Onboarding + Gestão de Funcionários:** 🔧 IN PROGRESS (3/8 phases truly complete, 4 phases com gaps de integração, 1 phase planned)
 
 ## Milestone v7.0 Phase Breakdown
 
@@ -69,6 +75,7 @@ Last activity: 2026-04-28 -- Audit revelou gaps P0+P1
 | 41 | BackOffice Employee Management + Audit | ADM-01, ADM-02, AUD-01, AUD-02 | 🔧 Gaps: chama /users (404), falta páginas Empresas/Funcionários |
 | 42 | CI Coverage Enforcement | CI-01 | ✅ Complete |
 | 43 | E2E Playwright Validation | E2E-01..07 | ⚠️ Passa mas mascara gaps (cria employee via API, não via UI) |
+| 44 | Custom Access Groups CRUD | PERM-04 (extended), PERM-06 | 📋 Planned |
 
 ## Accumulated Context
 
@@ -88,6 +95,8 @@ Recent decisions affecting current work:
 - [v7.0]: Dashboard com dados estáticos (mock)
 - [v7.0]: Base zerada — docker compose down -v para recriar tudo
 - [v7.0]: AccessGroup como entidade no banco com permissões resource:action (employees:read, employees:write, etc.)
+- [v7.0]: Default groups (admin-empresa, viewer, dashboard) são imutáveis — PJ pode criar/editar/deletar groups customizados com qualquer combinação de permissões
+- [v7.0]: Novo requisito PERM-06: CRUD de access groups customizados — extensível conforme o sistema cresce
 - [Phase 37-03]: Cnpj e Cpf nullable no DB — necessário para Anonymize() LGPD que seta VO para null!
 - [Phase 39-03]: Keycloak group sync follows eventual consistency — failures logged but not rethrown, DB is source of truth
 - [Phase 39-03]: CrossCompanyAccess policy replaces Roles=admin on AdminUserController — semantically equivalent

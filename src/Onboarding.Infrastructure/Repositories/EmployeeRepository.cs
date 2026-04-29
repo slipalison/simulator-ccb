@@ -182,4 +182,9 @@ public sealed class EmployeeRepository : IEmployeeRepository
             await _db.SaveChangesAsync(ct);
         }
     }
+
+    public async Task<bool> ExistsByAccessGroupIdAsync(Guid accessGroupId, CancellationToken ct = default)
+        => await _db.Employees
+            .IgnoreQueryFilters()
+            .AnyAsync(e => e.AccessGroupId == accessGroupId, ct);
 }

@@ -1,11 +1,11 @@
 import { Link, useMatchRoute } from "@tanstack/react-router";
 import { useAuth, type AccessGroup } from "@/lib/auth-context";
-import { LayoutDashboard, Users, Building2 } from "lucide-react";
+import { LayoutDashboard, Users, Building2, Shield } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Sidebar navigation with permission-based link visibility (D-03, D-19, D-20, D-21)
 // ---------------------------------------------------------------------------
-// admin-empresa: sees Dashboard, Employees (full), Profile
+// admin-empresa: sees Dashboard, Employees (full), Access Groups, Profile
 // viewer: sees Employees (read-only), Profile
 // dashboard: sees Dashboard, Employees (read-only), Profile
 // ---------------------------------------------------------------------------
@@ -15,6 +15,7 @@ interface NavItem {
   href: string;
   icon: React.ReactNode;
   groups: AccessGroup[];
+  permission?: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -29,6 +30,13 @@ const NAV_ITEMS: NavItem[] = [
     href: "/employees",
     icon: <Users className="h-5 w-5" />,
     groups: ["admin-empresa", "viewer", "dashboard"],
+  },
+  {
+    label: "Grupos de Acesso",
+    href: "/access-groups",
+    icon: <Shield className="h-5 w-5" />,
+    groups: ["admin-empresa"],
+    permission: "access-groups:manage",
   },
   {
     label: "Perfil Empresa",

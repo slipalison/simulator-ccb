@@ -28,9 +28,15 @@ public interface IEmployeeRepository
         int page, int pageSize, string? search, string? status, CancellationToken ct = default);
 
     /// <summary>
-    /// Fetches a single employee by ID, bypassing HasQueryFilter — for admin lookups (MGMT-02).
+    /// Fetches a single employee by ID, bypassing HasQueryFilter — admin lookup (MGMT-02).
     /// </summary>
     Task<Employee?> GetByIdIgnoreFilterAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Checks if any employee is assigned to the given access group ID.
+    /// Used to prevent deleting an access group that has employees linked to it.
+    /// </summary>
+    Task<bool> ExistsByAccessGroupIdAsync(Guid accessGroupId, CancellationToken ct = default);
 
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 }

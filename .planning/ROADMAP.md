@@ -1001,6 +1001,7 @@ Plans:
 - [ ] **Phase 41: BackOffice Employee Management + Audit** - BackOffice views employees from any company, force reset/block. Extend audit log for employee actions. (ADM-01, ADM-02, AUD-01, AUD-02)
 - [ ] **Phase 42: CI Coverage Enforcement** - GitHub Actions with 80% test coverage enforcement for backend (.NET) and frontend (React/Vinxi). (CI-01)
 - [ ] **Phase 43: E2E Playwright Validation** - Playwright E2E tests: create PJ, login, dashboard, create employee, login employee, validate permissions UI + JWT claims. (E2E-01, E2E-02, E2E-03, E2E-04, E2E-05)
+- [ ] **Phase 44: Custom Access Groups CRUD** - PJ cria/edita/deleta grupos de acesso customizados com permissões granulares. Frontend UI com tabela, dialogs e validação. Default groups (admin-empresa, viewer, dashboard) são imutáveis. (PERM-04 extended, PERM-06)
 
 ---
 
@@ -1124,6 +1125,23 @@ Plans:
 
 ---
 
+### Phase 44: Custom Access Groups CRUD
+**Goal:** PJ pode criar, editar e deletar grupos de acesso customizados com permissões granulares, em vez de ficar limitado aos 3 grupos fixos (admin-empresa, viewer, dashboard). Sistema extensível para crescimento.
+**Depends on:** Phase 40 (Client Frontend)
+**Requirements:** PERM-04 (extended), PERM-06
+**Success Criteria** (what must be TRUE):
+  1. POST `/api/companies/{companyId}/access-groups` cria um novo access group com nome e permissões selecionadas — apenas PJ com `access-groups:manage` pode criar
+  2. PUT `/api/companies/{companyId}/access-groups/{id}` edita nome e/ou permissões de um access group — grupos default (admin-empresa, viewer, dashboard) NÃO podem ser editados nem deletados
+  3. DELETE `/api/companies/{companyId}/access-groups/{id}` deleta um access group customizado — não permite deletar groups default; não permite deletar group com employees vinculados (retorna 400)
+  4. Frontend client mostra página "Grupos de Acesso" com tabela listando todos os groups da empresa, botão "Novo Grupo" (visível apenas com `access-groups:manage`), e ações de editar/deletar (desabilitadas para groups default)
+  5. Dialog de criação mostra nome + checkboxes de permissões (employees:read, employees:write, employees:delete, audit:read, dashboard:access, access-groups:manage)
+  6. Dialog de edição preenche nome e permissões atuais; validação impede nome vazio e nenhuma permissão selecionada
+  7. Ao deletar um group com employees vinculados, o diálogo sugere mover employees para outro group antes ou confirma desvinculação
+  8. Ao registrar novo funcionário, o dropdown de access groups lista TODOS os groups (default + custom) — `RegisterEmployeeDialog` já busca da API
+**Plans:** TBD
+
+---
+
 ## Milestone v7.0 — Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -1135,6 +1153,7 @@ Plans:
 | 41. BackOffice Employee Management + Audit | 0/TBD | 🔧 Gaps | 2026-04-26 |
 | 42. CI Coverage Enforcement | 0/TBD | ✅ Complete | 2026-04-26 |
 | 43. E2E Playwright Validation | 3/3 | ✅ Complete | 2026-04-27 |
+| 44. Custom Access Groups CRUD | 0/TBD | 📋 Planned | — |
 
 ---
 
@@ -1148,9 +1167,9 @@ Plans:
 | **v4.0** CI/CD + Security | 21-28 | 20 | ✅ Complete | 25 requirements |
 | **v5.0** Auth Code Flow + Admins + Audit | 29-34 | TBD | ✅ Complete | 11 requirements |
 | **v6.0** Gestão Completa de Administradores | 35-36 | 5 | ✅ Complete | 14 requirements |
-| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-43 | 19+ plans | 🔧 In Progress (gaps) | 21 requirements |
-| **Total** | **42 phases** | **110+ plans** | **6 milestones done** | **142 requirements** |
+| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-44 | 19+ plans | 🔧 In Progress (gaps) | 21+ requirements |
+| **Total** | **43 phases** | **110+ plans** | **6 milestones done** | **143+ requirements** |
 
 ---
 
-*Last updated: 2026-04-27 — Phase 43 complete: all E2E Playwright tests implemented*
+*Last updated: 2026-04-28 — Phase 44 added: Custom Access Groups CRUD*

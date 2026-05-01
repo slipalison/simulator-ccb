@@ -81,6 +81,10 @@ public sealed class CompaniesController : ControllerBase
     }
 
     /// <summary>GET /api/companies/me — returns the authenticated company's profile.</summary>
+    /// <remarks>
+    /// Works for both PJ owners (looked up by keycloakSub) and PF employees
+    /// (resolved via ICurrentCompanyService set by ClientClaimsMiddleware).
+    /// </remarks>
     [HttpGet("me")]
     [Authorize(AuthenticationSchemes = "BearerClient")]
     [ProducesResponseType(StatusCodes.Status200OK)]
@@ -88,19 +92,27 @@ public sealed class CompaniesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetMe(CancellationToken ct)
     {
-        // Primary: use "sub" (Keycloak user ID) — opaque, stable, non-personal identifier
         var keycloakSub = User.FindFirst("sub")?.Value;
-        if (!string.IsNullOrEmpty(keycloakSub))
+        if (string.IsNullOrEmpty(keycloakSub))
         {
-            var company = await _repository.GetByKeycloakSubAsync(keycloakSub, ct);
-            if (company is not null) return Ok(MapToDto(company));
-
-            _logger.LogWarning("Authenticated user with sub {Sub} not found in database", keycloakSub);
-            return NotFound();
+            _logger.LogWarning("Authenticated request missing 'sub' claim in JWT");
+            return Unauthorized();
         }
 
-        _logger.LogWarning("Authenticated request missing 'sub' claim in JWT");
-        return Unauthorized();
+        // Try PJ owner lookup first (sub matches Company.KeycloakUserId)
+        var company = await _repository.GetByKeycloakSubAsync(keycloakSub, ct);
+        if (company is not null) return Ok(MapToDto(company));
+
+        // PF employee: ClientClaimsMiddleware already resolved CompanyId from employee lookup
+        var companyId = _currentCompanyService.CompanyId;
+        if (companyId != Guid.Empty)
+        {
+            company = await _repository.GetByIdAsync(companyId, ct);
+            if (company is not null) return Ok(MapToDto(company));
+        }
+
+        _logger.LogWarning("Authenticated user with sub {Sub} not found in database", keycloakSub);
+        return NotFound();
     }
 
     /// <summary>POST /api/companies/registration — Register a new PJ company (REG-01).</summary>
@@ -571,9 +583,6 @@ public sealed record UpdateEmployeeRequest(string? Nome, string? Email, string? 
 
 /// <summary>Request DTO for changing employee access group.</summary>
 public sealed record ChangeAccessGroupRequest(Guid AccessGroupId);
-
-/// <summary>DTO for access group listing — includes IsDefault flag.</summary>
-public sealed record AccessGroupDto(Guid Id, string Name, IReadOnlyList<string> Permissions, bool IsDefault);
 
 /// <summary>Request DTO for creating an access group.</summary>
 public sealed record CreateAccessGroupRequest(string Name, IReadOnlyList<string> Permissions);

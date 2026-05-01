@@ -68,6 +68,6 @@ public sealed class CreateAccessGroupCommandHandler
             ipAddress: command.IpAddress,
             ct: ct);
 
-        return new AccessGroupDto(accessGroup.Id, accessGroup.Name, accessGroup.Permissions);
+        return new AccessGroupDto(accessGroup.Id, accessGroup.Name, accessGroup.Permissions, accessGroup.IsDefault);
     }
 }

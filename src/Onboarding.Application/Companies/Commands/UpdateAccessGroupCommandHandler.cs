@@ -90,6 +90,6 @@ public sealed class UpdateAccessGroupCommandHandler
             ipAddress: command.IpAddress,
             ct: ct);
 
-        return new AccessGroupDto(group.Id, group.Name, group.Permissions);
+        return new AccessGroupDto(group.Id, group.Name, group.Permissions, group.IsDefault);
     }
 }

@@ -21,6 +21,9 @@ public class RegistrationIntegrationTests : IAsyncLifetime
         .WithResourceMapping(
             new FileInfo(Path.Combine(AppContext.BaseDirectory, "../../../../../keycloak/backoffice-realm.json")),
             "/opt/keycloak/data/import/")
+        .WithResourceMapping(
+            new FileInfo(Path.Combine(AppContext.BaseDirectory, "../../../../../keycloak/client-realm.json")),
+            "/opt/keycloak/data/import/")
         .WithCommand("--import-realm")
         .Build();
 
@@ -76,10 +79,11 @@ public class RegistrationIntegrationTests : IAsyncLifetime
         var payload = new
         {
             razaoSocial = "Empresa Integration Test",
-            cnpj = "11.222.333/0001-81",
+            cnpj = "11.444.777/0001-61",
             email = "empresa.integration@example.com",
             phone = "11999998888",
-            password = "Str0ng@Pass"
+            password = "Str0ng@Pass",
+            termsAccepted = true
         };
 
         var response = await _client!.PostAsJsonAsync("/api/companies/registration", payload);
@@ -93,10 +97,11 @@ public class RegistrationIntegrationTests : IAsyncLifetime
         var payload = new
         {
             razaoSocial = "Empresa Compensation Test",
-            cnpj = "11.222.333/0001-81",
+            cnpj = "11.444.777/0001-61",
             email = "empresa.compensation@example.com",
             phone = "11888887777",
-            password = "Str0ng@Pass"
+            password = "Str0ng@Pass",
+            termsAccepted = true
         };
 
         var response = await _client!.PostAsJsonAsync("/api/companies/registration", payload);

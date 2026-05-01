@@ -3,6 +3,7 @@ using System.Text.Json;
 using Keycloak.AuthServices.Sdk.Admin;
 using Keycloak.AuthServices.Sdk.Admin.Models;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Onboarding.Infrastructure.Keycloak;
 using Shouldly;
@@ -14,6 +15,7 @@ public sealed class KeycloakUserServiceFirstLoginTests
 {
     private readonly IHttpClientFactory _httpClientFactoryMock = Substitute.For<IHttpClientFactory>();
     private readonly IConfiguration _configurationMock = Substitute.For<IConfiguration>();
+    private readonly ILogger<KeycloakUserService> _loggerMock = Substitute.For<ILogger<KeycloakUserService>>();
     private readonly KeycloakUserService _sut;
     private readonly FakeHttpMessageHandler _httpHandler = new();
 
@@ -28,7 +30,7 @@ public sealed class KeycloakUserServiceFirstLoginTests
         _httpClientFactoryMock.CreateClient("keycloak-admin-client")
             .Returns(httpClient);
             
-        _sut = new KeycloakUserService(_httpClientFactoryMock);
+        _sut = new KeycloakUserService(_httpClientFactoryMock, _loggerMock);
     }
 
     [Fact]

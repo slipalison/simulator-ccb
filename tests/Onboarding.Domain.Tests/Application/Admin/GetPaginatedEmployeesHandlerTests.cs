@@ -13,13 +13,15 @@ public class GetPaginatedEmployeesHandlerTests
 {
     private readonly IEmployeeRepository _employeeRepository;
     private readonly ICompanyRepository _companyRepository;
+    private readonly IAccessGroupRepository _accessGroupRepository;
     private readonly GetPaginatedEmployeesHandler _sut;
 
     public GetPaginatedEmployeesHandlerTests()
     {
         _employeeRepository = Substitute.For<IEmployeeRepository>();
         _companyRepository = Substitute.For<ICompanyRepository>();
-        _sut = new GetPaginatedEmployeesHandler(_employeeRepository, _companyRepository);
+        _accessGroupRepository = Substitute.For<IAccessGroupRepository>();
+        _sut = new GetPaginatedEmployeesHandler(_employeeRepository, _companyRepository, _accessGroupRepository);
     }
 
     private static Employee CreateTestEmployee(string nome = "João Silva", string cpf = "52998224725", string email = "joao@empresa.com", Guid? companyId = null, Guid? accessGroupId = null)

@@ -12,12 +12,16 @@ namespace Onboarding.Domain.Tests.Application.Companies.EmployeeManagement;
 public class GetCompanyEmployeesQueryHandlerTests
 {
     private readonly IEmployeeRepository _employeeRepository;
+    private readonly IAccessGroupRepository _accessGroupRepository;
+    private readonly IKeycloakUserService _keycloakUserService;
     private readonly GetCompanyEmployeesQueryHandler _sut;
 
     public GetCompanyEmployeesQueryHandlerTests()
     {
         _employeeRepository = Substitute.For<IEmployeeRepository>();
-        _sut = new GetCompanyEmployeesQueryHandler(_employeeRepository);
+        _accessGroupRepository = Substitute.For<IAccessGroupRepository>();
+        _keycloakUserService = Substitute.For<IKeycloakUserService>();
+        _sut = new GetCompanyEmployeesQueryHandler(_employeeRepository, _accessGroupRepository, _keycloakUserService);
     }
 
     private Employee CreateTestEmployee(Guid companyId, Guid? id = null)

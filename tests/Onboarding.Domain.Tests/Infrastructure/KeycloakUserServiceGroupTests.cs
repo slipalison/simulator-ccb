@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Onboarding.Infrastructure.Keycloak;
 using Shouldly;
@@ -9,12 +10,14 @@ namespace Onboarding.Domain.Tests.Infrastructure;
 public class KeycloakUserServiceGroupTests
 {
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<KeycloakUserService> _logger;
     private readonly MockHttpMessageHandler _httpMessageHandler;
     private readonly KeycloakUserService _sut;
 
     public KeycloakUserServiceGroupTests()
     {
         _httpClientFactory = Substitute.For<IHttpClientFactory>();
+        _logger = Substitute.For<ILogger<KeycloakUserService>>();
         _httpMessageHandler = new MockHttpMessageHandler();
         var httpClient = new HttpClient(_httpMessageHandler)
         {
@@ -22,7 +25,7 @@ public class KeycloakUserServiceGroupTests
         };
 
         _httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
-        _sut = new KeycloakUserService(_httpClientFactory);
+        _sut = new KeycloakUserService(_httpClientFactory, _logger);
     }
 
     // --- CreateGroupAsync ---

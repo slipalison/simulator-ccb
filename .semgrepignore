@@ -25,3 +25,6 @@
 # IDE
 **/.idea/
 **/.vscode/
+
+# Playwright auth storage (test tokens, not real secrets)
+**/playwright/.auth/

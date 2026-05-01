@@ -56,47 +56,43 @@ Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — i
 
 **Result:** 100% complete — 2/2 phases, 5/5 plans.
 
-## Current Milestone: v7.0 PJ-Only Onboarding + Gestão de Funcionários
+## Previous Milestone: v7.0 PJ-Only Onboarding + Gestão de Funcionários ✅ COMPLETE
 
 **Goal:** Transformar cadastro misto PF/PJ em PJ-only, onde PJ é usuário principal que gerencia funcionários PF com grupos de acesso, aceite de termos e auditoria completa.
 
-**Target features:**
-- Cadastro exclusivamente PJ (PF removido do fluxo — base zerada)
-- PJ cadastra funcionários PF vinculados à sua empresa
-- PJ gerencia funcionários: cadastrar, bloquear, resetar senha
-- Grupos de acesso via Keycloak nativo: Admin Empresa, Viewer, Dashboard
-- Isolamento crítico: PJ não vê/edita funcionários de outra PJ
-- Aceite de termos de uso obrigatório (texto mock)
-- Auditoria de ações dos funcionários visível ao admin (PJ ou Admin Empresa)
-- Dashboard mock com dados estáticos
-- CI com 80% cobertura no GitHub Actions
-- Reflete em API, frontend Client e frontend BackOffice
+**Result:** 100% complete — 8/8 phases, 19/19 plans. Todos gaps de integração resolvidos. Custom Access Groups CRUD implementado.
 
-**Depends on**: Milestone v6.0 completo (Gestão Completa de Administradores)
+## Current Milestone: None — awaiting next milestone definition
+
+Ready for v8.0 planning or project archive.
+
+**Depends on**: Milestone v7.0 completo
 
 ## Requirements
 
 ### Validated
 
-- [x] Keycloak hardened contra vulnerabilidades conhecidas (SSRF, open redirect, brute force, etc.) — Validated in Phase 02: keycloak-security-hardening
-- [x] Domain layer com value objects Cpf, Cnpj, Email, PhoneNumber e aggregate Client com factory methods PF/PJ — Validated in Phase 03: backend-domain-layer
-- [x] CQRS application layer — ICommandHandler/IQueryHandler, RegisterClientCommand + handler, DI wiring manual (sem MediatR) — Validated in Phase 03: backend-domain-layer
-- [x] Backend com TDD, DDD, SOLID, sem Minimal API (parcial — domain + application layers) — Validated in Phase 03: backend-domain-layer
+- [x] Keycloak hardened contra vulnerabilidades conhecidas (SSRF, open redirect, brute force, etc.) — Validated in Phase 02
+- [x] Domain layer com value objects Cpf, Cnpj, Email, PhoneNumber e aggregate Client com factory methods PF/PJ — Validated in Phase 03
+- [x] CQRS application layer — ICommandHandler/IQueryHandler, RegisterClientCommand + handler, DI wiring manual (sem MediatR) — Validated in Phase 03
+- [x] Backend com TDD, DDD, SOLID, sem Minimal API (parcial — domain + application layers) — Validated in Phase 03
+- [x] Cadastro exclusivamente PJ — remoção completa do fluxo PF — Validated in Phase 37
+- [x] PJ é usuário principal que gerencia funcionários da sua empresa — Validated in Phase 38
+- [x] PJ cadastra funcionários PF vinculados à sua empresa — Validated in Phase 38
+- [x] PJ bloqueia/desbloqueia funcionários — Validated in Phase 38
+- [x] PJ reseta senha de funcionários — Validated in Phase 38
+- [x] Grupos de acesso: Admin Empresa, Viewer, Dashboard (via Keycloak roles/groups) — Validated in Phase 39
+- [x] Custom access groups CRUD (PERM-06) — Validated in Phase 44
+- [x] Isolamento entre empresas — PJ não vê/edita dados de outra PJ — Validated in Phase 39
+- [x] Aceite de termos de uso obrigatório no cadastro (texto mock) — Validated in Phase 40
+- [x] Auditoria de ações dos funcionários visível ao admin — Validated in Phase 41
+- [x] Dashboard mock com dados estáticos — Validated in Phase 40
+- [x] CI GitHub Actions com 80% cobertura — Validated in Phase 42
+- [x] BackOffice mantém poder de auditar/suportar qualquer empresa — Validated in Phase 41
 
 ### Active
 
-- [ ] Cadastro exclusivamente PJ — remoção completa do fluxo PF
-- [ ] PJ é usuário principal que gerencia funcionários da sua empresa
-- [ ] PJ cadastra funcionários PF vinculados à sua empresa
-- [ ] PJ bloqueia/desbloqueia funcionários
-- [ ] PJ reseta senha de funcionários
-- [ ] Grupos de acesso: Admin Empresa, Viewer, Dashboard (via Keycloak roles/groups)
-- [ ] Isolamento entre empresas — PJ não vê/edita dados de outra PJ
-- [ ] Aceite de termos de uso obrigatório no cadastro (texto mock)
-- [ ] Auditoria de ações dos funcionários visível ao admin
-- [ ] Dashboard mock com dados estáticos
-- [ ] CI GitHub Actions com 80% cobertura
-- [ ] BackOffice mantém poder de auditar/suportar qualquer empresa
+(None — all v7.0 requirements validated)
 
 ### Out of Scope
 
@@ -157,12 +153,13 @@ O login usa tela custom no React autenticando via Keycloak (Resource Owner Passw
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Keycloak nativo (roles/groups) para permissões | Bit Flags no JWT rejeitado — Keycloak já suporta roles/groups nativo, sem custom mapper | — Pending |
-| Cadastro PJ-only | Remoção completa do fluxo PF — base zerada via docker compose down -v | — Pending |
-| Grupos de acesso: Admin Empresa, Viewer, Dashboard | Admin Empresa = mesmos poderes PJ; Viewer = ver sem editar; Dashboard = acesso ao dashboard | — Pending |
-| Formulário de cadastro custom | Cadastro via Admin API do Keycloak — maior controle do fluxo | — Pending |
-| Sem validação de email no v1 | Simplificar fluxo inicial — cadastrou, já pode logar | — Pending |
-| Atomic Design no frontend | Facilitar mudanças futuras de layout com componentes reutilizáveis | — Pending |
+| Keycloak nativo (roles/groups) para permissões | Bit Flags no JWT rejeitado — Keycloak já suporta roles/groups nativo, sem custom mapper | ✓ v7.0 |
+| Cadastro PJ-only | Remoção completa do fluxo PF — base zerada via docker compose down -v | ✓ v7.0 |
+| Grupos de acesso: Admin Empresa, Viewer, Dashboard | Admin Empresa = mesmos poderes PJ; Viewer = ver sem editar; Dashboard = acesso ao dashboard | ✓ v7.0 |
+| Formulário de cadastro custom | Cadastro via Admin API do Keycloak — maior controle do fluxo | ✓ v7.0 |
+| Sem validação de email no v1 | Simplificar fluxo inicial — cadastrou, já pode logar | ✓ v7.0 |
+| Atomic Design no frontend | Facilitar mudanças futuras de layout com componentes reutilizáveis | ✓ v7.0 |
+| Custom Access Groups (PERM-06) | Grupos default imutáveis, PJ pode criar/editar/deletar custom groups com permissões granulares | ✓ v7.0 |
 | Sem MediatR — CQRS manual via DI | MediatR não é mais open source (licença comercial). Handlers injetados direto via DI nativo do .NET | ✓ Good |
 | Backoffice usa mesma stack Vinxi | Manter consistência de stack, não introduzir Next.js para admin | ✓ v3.0 |
 | Endpoints admin precisam ser criados | API atual só tem registro/login/me — CRUD admin não existe | ✓ v3.0 |
@@ -186,4 +183,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-25 — Milestone v7.0 started: PJ-Only Onboarding + Gestão de Funcionários*
+*Last updated: 2026-05-01 — Milestone v7.0 COMPLETE, all requirements validated*

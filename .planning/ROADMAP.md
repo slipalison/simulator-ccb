@@ -20,6 +20,7 @@ Every phase delivers a coherent, independently verifiable capability before the 
 | **v4.0** | CI/CD Pipeline + Cybersecurity | 21-28 | ✅ Complete (8/8 phases, 20/20 plans) |
 | **v5.0** | Auth Code Flow (Backoffice) + Gestão de Admins + Auditoria | 29-34 | ✅ Complete (6/6 phases) |
 | **v6.0** | Gestão Completa de Administradores | 35-36 | ✅ Complete |
+| **v7.0** | PJ-Only Onboarding + Gestão de Funcionários | 37-44 | ✅ Complete (8/8 phases, 19 plans) |
 
 **Phase order rationale (v3.0):** 16→17→18 (admin backend+UI core) → **19 (separation)** → 20 (edit/delete in separated project). E2E phase removed by user decision.
 
@@ -994,14 +995,14 @@ Plans:
 
 ### Phases
 
-- [ ] **Phase 37: Domain Model Redesign** - Company + Employee aggregates, TermsAcceptance value object, remove PF flow. New EF Core migration. Base zerada. (REG-02, REG-04, REG-05)
-- [ ] **Phase 38: Employee Registration & Management API** - PJ registration endpoint, employee CRUD API, company isolation via global query filter. (REG-01, REG-03, MGMT-01..05)
+- [x] **Phase 37: Domain Model Redesign** - Company + Employee aggregates, TermsAcceptance value object, remove PF flow. New EF Core migration. Base zerada. (REG-02, REG-04, REG-05) ✅ Complete
+- [x] **Phase 38: Employee Registration & Management API** - PJ registration endpoint, employee CRUD API, company isolation via global query filter. (REG-01, REG-03, MGMT-01..05) ✅ Complete
 - [x] **Phase 39: Keycloak Groups & Permissions** - Configure Keycloak groups (admin-empresa, viewer, dashboard), JWT claims mapping, backend permission enforcement, company isolation checks. (PERM-01..05)
 - [x] **Phase 40: Client Frontend — PJ Registration & Employee Management** - PJ registration form with terms acceptance, employee list/block/reset/edit/delete, remove PF flow from frontend, dashboard mock. (DASH-01) ✅ Complete (2026-04-26)
-- [ ] **Phase 41: BackOffice Employee Management + Audit** - BackOffice views employees from any company, force reset/block. Extend audit log for employee actions. (ADM-01, ADM-02, AUD-01, AUD-02)
-- [ ] **Phase 42: CI Coverage Enforcement** - GitHub Actions with 80% test coverage enforcement for backend (.NET) and frontend (React/Vinxi). (CI-01)
-- [ ] **Phase 43: E2E Playwright Validation** - Playwright E2E tests: create PJ, login, dashboard, create employee, login employee, validate permissions UI + JWT claims. (E2E-01, E2E-02, E2E-03, E2E-04, E2E-05)
-- [ ] **Phase 44: Custom Access Groups CRUD** - PJ cria/edita/deleta grupos de acesso customizados com permissões granulares. Frontend UI com tabela, dialogs e validação. Default groups (admin-empresa, viewer, dashboard) são imutáveis. (PERM-04 extended, PERM-06)
+- [x] **Phase 41: BackOffice Employee Management + Audit** - BackOffice views employees from any company, force reset/block. Extend audit log for employee actions. (ADM-01, ADM-02, AUD-01, AUD-02) ✅ Complete
+- [x] **Phase 42: CI Coverage Enforcement** - GitHub Actions with 80% test coverage enforcement for backend (.NET) and frontend (React/Vinxi). (CI-01) ✅ Complete
+- [x] **Phase 43: E2E Playwright Validation** - Playwright E2E tests: create PJ, login, dashboard, create employee, login employee, validate permissions UI + JWT claims. (E2E-01, E2E-02, E2E-03, E2E-04, E2E-05) ✅ Complete
+- [x] **Phase 44: Custom Access Groups CRUD** - PJ cria/edita/deleta grupos de acesso customizados com permissões granulares. Default groups imutáveis. Frontend AccessGroupsPage com diálogo de CRUD. (PERM-04 extended, PERM-06) ✅ Complete (2026-05-01)
 
 ---
 
@@ -1149,11 +1150,11 @@ Plans:
 | 37. Domain Model Redesign | 4/4 | ✅ Complete | 2026-04-26 |
 | 38. Employee Registration & Management API | 3/3 | ✅ Complete | 2026-04-26 |
 | 39. Keycloak Groups & Permissions | 3/3 | ✅ Complete | 2026-04-26 |
-| 40. Client Frontend — PJ Registration & Employee Management | 4/4 | 🔧 Gaps | 2026-04-26 |
-| 41. BackOffice Employee Management + Audit | 0/TBD | 🔧 Gaps | 2026-04-26 |
+| 40. Client Frontend — PJ Registration & Employee Management | 4/4 | ✅ Complete | 2026-04-26 |
+| 41. BackOffice Employee Management + Audit | 0/TBD | ✅ Complete | 2026-05-01 |
 | 42. CI Coverage Enforcement | 0/TBD | ✅ Complete | 2026-04-26 |
 | 43. E2E Playwright Validation | 3/3 | ✅ Complete | 2026-04-27 |
-| 44. Custom Access Groups CRUD | 0/TBD | 📋 Planned | — |
+| 44. Custom Access Groups CRUD | 0/TBD | ✅ Complete | 2026-05-01 |
 
 ---
 
@@ -1167,9 +1168,9 @@ Plans:
 | **v4.0** CI/CD + Security | 21-28 | 20 | ✅ Complete | 25 requirements |
 | **v5.0** Auth Code Flow + Admins + Audit | 29-34 | TBD | ✅ Complete | 11 requirements |
 | **v6.0** Gestão Completa de Administradores | 35-36 | 5 | ✅ Complete | 14 requirements |
-| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-44 | 19+ plans | 🔧 In Progress (gaps) | 21+ requirements |
-| **Total** | **43 phases** | **110+ plans** | **6 milestones done** | **143+ requirements** |
+| **v7.0** PJ-Only Onboarding + Gestão de Funcionários | 37-44 | 19+ plans | ✅ Complete | 21+ requirements |
+| **Total** | **43 phases** | **110+ plans** | **7 milestones done** | **143+ requirements** |
 
 ---
 
-*Last updated: 2026-04-28 — Phase 44 added: Custom Access Groups CRUD*
+*Last updated: 2026-05-01 — v7.0 milestone complete, all gaps resolved, Phase 44 implemented*

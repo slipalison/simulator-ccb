@@ -9,6 +9,9 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Options;
 using NSubstitute;
 using Onboarding.API.Tests.Authentication;
+using Onboarding.Application.Admin.Commands;
+using Onboarding.Application.Admin.DTOs;
+using Onboarding.Application.Admin.Queries;
 using Onboarding.Application.Common;
 using Onboarding.Application.Services;
 using Onboarding.Domain.Repositories;
@@ -26,7 +29,7 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
 {
     public IAdminRepository AdminRepositoryMock { get; } = Substitute.For<IAdminRepository>();
     public IAuditService AuditServiceMock { get; } = Substitute.For<IAuditService>();
-    public IClientRepository ClientRepositoryMock { get; } = Substitute.For<IClientRepository>();
+    public ICompanyRepository CompanyRepositoryMock { get; } = Substitute.For<ICompanyRepository>();
     public IKeycloakUserService KeycloakUserServiceMock { get; } = Substitute.For<IKeycloakUserService>();
     public IPasswordResetTokenRepository TokenRepositoryMock { get; } = Substitute.For<IPasswordResetTokenRepository>();
     public IEmailService EmailServiceMock { get; } = Substitute.For<IEmailService>();
@@ -61,10 +64,28 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
             // Replace all infrastructure with mocks
             services.AddScoped<IAdminRepository>(_ => AdminRepositoryMock);
             services.AddScoped<IAuditService>(_ => AuditServiceMock);
-            services.AddScoped<IClientRepository>(_ => ClientRepositoryMock);
+            services.AddScoped<ICompanyRepository>(_ => CompanyRepositoryMock);
             services.AddScoped<IKeycloakUserService>(_ => KeycloakUserServiceMock);
             services.AddScoped<IPasswordResetTokenRepository>(_ => TokenRepositoryMock);
             services.AddScoped<IEmailService>(_ => EmailServiceMock);
+
+            // Mock Company/Employee handlers (stub handlers throw NotImplementedException)
+            services.AddScoped<IQueryHandler<GetPaginatedCompaniesQuery, PaginatedResult<CompanySummaryDto>>>(
+                _ => Substitute.For<IQueryHandler<GetPaginatedCompaniesQuery, PaginatedResult<CompanySummaryDto>>>());
+            services.AddScoped<IQueryHandler<GetCompanyDetailsQuery, CompanySummaryDto>>(
+                _ => Substitute.For<IQueryHandler<GetCompanyDetailsQuery, CompanySummaryDto>>());
+            services.AddScoped<IQueryHandler<GetPaginatedEmployeesQuery, PaginatedResult<EmployeeSummaryDto>>>(
+                _ => Substitute.For<IQueryHandler<GetPaginatedEmployeesQuery, PaginatedResult<EmployeeSummaryDto>>>());
+            services.AddScoped<IQueryHandler<GetEmployeeDetailsQuery, EmployeeSummaryDto>>(
+                _ => Substitute.For<IQueryHandler<GetEmployeeDetailsQuery, EmployeeSummaryDto>>());
+            services.AddScoped<ICommandHandler<UpdateCompanyCommand, Unit>>(
+                _ => Substitute.For<ICommandHandler<UpdateCompanyCommand, Unit>>());
+            services.AddScoped<ICommandHandler<DeleteEmployeeCommand, Unit>>(
+                _ => Substitute.For<ICommandHandler<DeleteEmployeeCommand, Unit>>());
+            services.AddScoped<ICommandHandler<BlockEmployeeCommand, Unit>>(
+                _ => Substitute.For<ICommandHandler<BlockEmployeeCommand, Unit>>());
+            services.AddScoped<ICommandHandler<UnblockEmployeeCommand, Unit>>(
+                _ => Substitute.For<ICommandHandler<UnblockEmployeeCommand, Unit>>());
 
             // Disable JWT validation for tests — PostConfigure overrides app configuration
             services.PostConfigure<JwtBearerOptions>(
@@ -72,7 +93,7 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
                 {
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
-                    options.TokenValidationParameters.ValidateLifetime = false;
+                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep
                     options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
                     options.TokenValidationParameters.ValidateIssuerSigningKey = true;
                 });
@@ -82,7 +103,7 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
                 {
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
-                    options.TokenValidationParameters.ValidateLifetime = false;
+                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep
                     options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
                     options.TokenValidationParameters.ValidateIssuerSigningKey = true;
                 });

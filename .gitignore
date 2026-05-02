@@ -422,9 +422,18 @@ node_modules/
 dist/
 build/
 
+# Playwright E2E test artifacts
+playwright/.auth/
+frontend/client/playwright/.auth/
+frontend/backoffice/playwright/.auth/
+test-results/
+playwright-report/
+
 #################################################
 # Terraform / IaC (se usar)
 #################################################
 
 .terraform/
 *.tfstate*
+frontend/client/playwright/.auth/viewer-creds.json
+.playwright-mcp

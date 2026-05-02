@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Keycloak.AuthServices.Sdk.Admin.Models;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Onboarding.Domain.Exceptions;
 using Onboarding.Infrastructure.Keycloak;
@@ -12,12 +13,14 @@ namespace Onboarding.Domain.Tests.Infrastructure;
 public class KeycloakUserServiceTests
 {
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<KeycloakUserService> _logger;
     private readonly MockHttpMessageHandler _httpMessageHandler;
     private readonly KeycloakUserService _sut;
 
     public KeycloakUserServiceTests()
     {
         _httpClientFactory = Substitute.For<IHttpClientFactory>();
+        _logger = Substitute.For<ILogger<KeycloakUserService>>();
         _httpMessageHandler = new MockHttpMessageHandler();
         var httpClient = new HttpClient(_httpMessageHandler)
         {
@@ -25,7 +28,7 @@ public class KeycloakUserServiceTests
         };
 
         _httpClientFactory.CreateClient(Arg.Any<string>()).Returns(httpClient);
-        _sut = new KeycloakUserService(_httpClientFactory);
+        _sut = new KeycloakUserService(_httpClientFactory, _logger);
     }
 
     [Fact]
@@ -181,6 +184,17 @@ public class MockHttpMessageHandler : HttpMessageHandler
             {
                 response.Content = JsonContent.Create(body);
             }
+            _handler._responses.Add((r => r.Method == _method && r.RequestUri!.PathAndQuery.Contains(_path), response));
+        }
+
+        public void RespondWithHeaders(HttpStatusCode code, Action<HttpResponseMessage> configure, object? body = null)
+        {
+            var response = new HttpResponseMessage(code);
+            if (body != null)
+            {
+                response.Content = JsonContent.Create(body);
+            }
+            configure(response);
             _handler._responses.Add((r => r.Method == _method && r.RequestUri!.PathAndQuery.Contains(_path), response));
         }
     }

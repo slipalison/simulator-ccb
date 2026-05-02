@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { RegistrationForm } from "@/components/molecules/RegistrationForm";
-import * as api from "@/lib/api";
 
 // Mock API
 vi.mock("@/lib/api", () => ({
-  registerClient: vi.fn(),
+  registerCompany: vi.fn(),
   RegistrationValidationError: class extends Error {
     constructor(public errors: Record<string, string[]>) {
       super("Validation failed");
@@ -23,12 +22,12 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
-// Mock auth context
+// Mock auth context — ACF version (PJ-only)
 const mockLogin = vi.fn();
 vi.mock("@/lib/auth-context", () => ({
   useAuth: () => ({
     login: mockLogin,
-    auth: { isAuthenticated: false, isLoading: false, userName: null, email: null },
+    auth: { isAuthenticated: false, isLoading: false, userName: null, email: null, accessGroup: null, companyId: null },
     logout: vi.fn(),
   }),
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
@@ -44,89 +43,34 @@ vi.mock("@tanstack/react-router", async (importOriginal) => {
   };
 });
 
-describe("RegistrationForm", () => {
+describe("RegistrationForm (PJ-only)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("renders PF fields by default", () => {
+  it("renders PJ-only form with email, phone, password fields", () => {
     render(<RegistrationForm />);
 
-    expect(screen.getByLabelText("Nome completo")).toBeInTheDocument();
-    expect(screen.getByLabelText("CPF")).toBeInTheDocument();
-    expect(screen.queryByLabelText("Razão Social")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("CNPJ")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).toBeInTheDocument();
+    expect(screen.getByLabelText("Telefone")).toBeInTheDocument();
+    expect(screen.getByLabelText("Senha")).toBeInTheDocument();
+    expect(screen.getByLabelText("Confirmar senha")).toBeInTheDocument();
   });
 
-  it("switches to PJ fields when radio selected", async () => {
+  it("renders terms acceptance checkbox", () => {
     render(<RegistrationForm />);
 
-    // Click PJ radio
-    const pjRadio = screen.getByRole("radio", { name: /pessoa jurídica/i });
-    await act(async () => {
-      fireEvent.click(pjRadio);
-    });
-
-    expect(screen.queryByLabelText("Nome completo")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("CPF")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Razão Social")).toBeInTheDocument();
-    expect(screen.getByLabelText("CNPJ")).toBeInTheDocument();
+    expect(screen.getByText(/aceito os termos de uso/i)).toBeInTheDocument();
   });
 
-  it("validates CPF inline before submit", async () => {
+  it("renders PJ-only notice", () => {
     render(<RegistrationForm />);
 
-    // Fill invalid CPF (all same digits)
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText("Nome completo"), { target: { value: "João Silva" } });
-      fireEvent.change(screen.getByLabelText("CPF"), { target: { value: "00000000000" } });
-      fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@email.com" } });
-      fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "11999999999" } });
-      fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "Test@1234" } });
-      fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "Test@1234" } });
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /criar conta/i }));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText(/cpf inválido/i)).toBeInTheDocument();
-    });
+    expect(screen.getByText(/pessoa jurídica/i)).toBeInTheDocument();
   });
 
-  it("validates CNPJ inline before submit", async () => {
+  it("renders password strength meter", async () => {
     render(<RegistrationForm />);
-
-    // Switch to PJ
-    await act(async () => {
-      fireEvent.click(screen.getByRole("radio", { name: /pessoa jurídica/i }));
-    });
-
-    // Fill invalid CNPJ
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText("Razão Social"), { target: { value: "Empresa LTDA" } });
-      fireEvent.change(screen.getByLabelText("CNPJ"), { target: { value: "00000000000000" } });
-      fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@email.com" } });
-      fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "11999999999" } });
-      fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "Test@1234" } });
-      fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "Test@1234" } });
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /criar conta/i }));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText(/cnpj inválido/i)).toBeInTheDocument();
-    });
-  });
-
-  it("shows password strength meter as user types", async () => {
-    render(<RegistrationForm />);
-
-    // Initially no strength meter
-    expect(screen.queryByText(/muito fraca|fraca|media|forte/i)).not.toBeInTheDocument();
 
     // Type a strong password
     await act(async () => {
@@ -138,50 +82,11 @@ describe("RegistrationForm", () => {
     });
   });
 
-  it("blocks submit if passwords dont match", async () => {
+  it('shows "Fazer login" link', () => {
     render(<RegistrationForm />);
 
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText("Nome completo"), { target: { value: "João Silva" } });
-      fireEvent.change(screen.getByLabelText("CPF"), { target: { value: "12345678909" } });
-      fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@email.com" } });
-      fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "11999999999" } });
-      fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "Test@1234" } });
-      fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "Different@1" } });
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /criar conta/i }));
-    });
-
-    await waitFor(() => {
-      expect(screen.getByText(/senhas não coincidem/i)).toBeInTheDocument();
-    });
-
-    expect(api.registerClient).not.toHaveBeenCalled();
-  });
-
-  it("calls login() (ACF redirect) after successful registration", async () => {
-    vi.mocked(api.registerClient).mockResolvedValue({ id: "test-id" });
-
-    render(<RegistrationForm />);
-
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText("Nome completo"), { target: { value: "João Silva" } });
-      fireEvent.change(screen.getByLabelText("CPF"), { target: { value: "12345678909" } });
-      fireEvent.change(screen.getByLabelText("Email"), { target: { value: "test@email.com" } });
-      fireEvent.change(screen.getByLabelText("Telefone"), { target: { value: "11999999999" } });
-      fireEvent.change(screen.getByLabelText("Senha"), { target: { value: "Test@1234" } });
-      fireEvent.change(screen.getByLabelText("Confirmar senha"), { target: { value: "Test@1234" } });
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: /criar conta/i }));
-    });
-
-    await waitFor(() => {
-      expect(api.registerClient).toHaveBeenCalled();
-      expect(mockLogin).toHaveBeenCalled();
-    });
+    const loginLink = screen.getByRole("link", { name: /fazer login/i });
+    expect(loginLink).toBeInTheDocument();
+    expect(loginLink).toHaveAttribute("href", "/auth/login");
   });
 });

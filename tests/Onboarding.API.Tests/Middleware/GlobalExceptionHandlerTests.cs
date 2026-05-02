@@ -21,7 +21,7 @@ namespace Onboarding.API.Tests.Middleware;
 /// <summary>
 /// Tests for GlobalExceptionHandler middleware — verifies that unhandled exceptions from controllers
 /// are mapped to correct HTTP status codes without leaking stack traces.
-/// Tests use the ClientsController (GET /api/clients/me) which throws through the repository mock.
+/// Tests use the CompaniesController (GET /api/companies/me) which throws through the repository mock.
 /// </summary>
 [Collection(WebAppFactoryCollection.Name)]
 public class GlobalExceptionHandlerTests : IAsyncLifetime
@@ -57,7 +57,7 @@ public class GlobalExceptionHandlerTests : IAsyncLifetime
             .GetByKeycloakSubAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Simulated internal error"));
 
-        var response = await _client!.SendAsync(AuthenticatedGet("/api/clients/me"));
+        var response = await _client!.SendAsync(AuthenticatedGet("/api/companies/me"));
 
         response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
         var body = await response.Content.ReadAsStringAsync();
@@ -73,7 +73,7 @@ public class GlobalExceptionHandlerTests : IAsyncLifetime
             .GetByKeycloakSubAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new KeyNotFoundException("Entity not found"));
 
-        var response = await _client!.SendAsync(AuthenticatedGet("/api/clients/me"));
+        var response = await _client!.SendAsync(AuthenticatedGet("/api/companies/me"));
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
@@ -84,7 +84,7 @@ public class GlobalExceptionHandlerTests : IAsyncLifetime
             .GetByKeycloakSubAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new UnauthorizedAccessException("Access denied"));
 
-        var response = await _client!.SendAsync(AuthenticatedGet("/api/clients/me"));
+        var response = await _client!.SendAsync(AuthenticatedGet("/api/companies/me"));
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 }

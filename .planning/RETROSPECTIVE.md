@@ -247,5 +247,58 @@
 
 ---
 
-*Documento gerado em 2026-04-08 após conclusão do Milestone v1.0*
-*Autor: AI Assistant com workflow GSD*
+## Milestone: v7.0 — PJ-Only Onboarding + Gestão de Funcionários
+
+**Shipped:** 2026-05-01
+**Phases:** 8 | **Plans:** 19
+
+### What Was Built
+
+- Domain model redesign: Company + Employee aggregates replace Client (PF/PJ)
+- PJ-only registration with terms acceptance and CNPJ validation
+- Employee CRUD API with company isolation (HasQueryFilter)
+- Keycloak groups native permissions (admin-empresa, viewer, dashboard)
+- Client frontend: PJ registration wizard, employee management page, dashboard mock
+- Custom Access Groups CRUD — PJ can create/edit/delete groups with granular permissions
+- BackOffice employee management across companies with audit trail
+- E2E Playwright validation for critical flows
+- CI coverage enforcement (GitHub Actions)
+
+### What Worked
+
+- HasQueryFilter for company isolation — clean and enforceable
+- Keycloak groups as permission source — no custom mapper needed
+- RegisterEmployeeDialog with accessGroupId — UI form was built after E2E tests initially used API
+- Compensation pattern (app_db first, Keycloak second) continued to work well
+- Atomic commits per task — easy to track and rollback
+
+### What Was Inefficient
+
+- Gap audit (2026-04-28) revealed 8 integration gaps that were already fixed in code — STATE.md lagged behind
+- Phase 41 and 42 had no PLAN/SUMMARY files — had to validate from codebase retroactively
+- No verification files (VERIFICATION.md) completed for phases 37-44 — verification gaps from previous milestones
+- Debug sessions from v1-v6 milestones never closed — accumulated technical debt in planning artifacts
+
+### Patterns Established
+
+- AccessGroup entity pattern: default groups immutable, custom groups extensible with resource:action permissions
+- Company isolation: EF Core global query filter + defense-in-depth application checks + Admin bypass with IgnoreQueryFilters
+- Frontend permission gating: `accessGroup` field drives UI visibility, backend enforces via authorization policies
+
+### Key Lessons
+
+- STATE.md must be updated immediately when code changes — retroactive validation wastes time
+- Every phase needs SUMMARY.md even if implemented without a formal plan
+- Integration gap audits should verify code, not just planning artifacts
+- Backend coverage at ~77% needs dedicated test writing sessions
+
+### Cost Observations
+
+- v7.0 phases spanned ~6 days (2026-04-25 to 2026-05-01)
+- 46+ commits for v7.0 milestone
+- Backend: ~11,228 LOC C# in 174 files
+- Frontend: ~20,384 LOC TS/TSX in 200 files
+
+---
+
+*Milestone v7.0 retrospective added 2026-05-01*

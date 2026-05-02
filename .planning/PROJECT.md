@@ -2,11 +2,11 @@
 
 ## What This Is
 
-Sistema de onboarding para cadastro de clientes Pessoa Física (PF) e Pessoa Jurídica (PJ). O usuário se cadastra com dados básicos e senha, é direcionado ao login, e após autenticação visualiza seus dados cadastrais em modo leitura. A segurança é prioridade — Keycloak hardened, infraestrutura containerizada.
+Sistema de onboarding para cadastro exclusivo de Pessoas Jurídicas (PJ). O PJ é o usuário principal que gerencia funcionários (PF) da sua empresa — cadastra, bloqueia, reseta senha e define permissões. Isolamento total entre empresas: PJ não vê/edita funcionários de outra PJ. BackOffice mantém poder de auditoria e suporte global. Segurança é prioridade — Keycloak hardened, permissões via roles/groups nativos.
 
 ## Core Value
 
-Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
+Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — isolamento entre empresas é requisito de primeira classe. Se a segurança falhar, nada mais importa.
 
 ## Previous Milestone: v3.0 Painel de Backoffice Admin ✅ COMPLETE
 
@@ -50,50 +50,60 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 **Result:** 100% complete — 6/6 phases (29–34). Dois realms isolados (backoffice/client), auth PKCE funcionando, audit log operacional.
 
-## Current Milestone: v6.0 Gestão Completa de Administradores
+## Previous Milestone: v6.0 Gestão Completa de Administradores ✅ COMPLETE
 
 **Goal:** Admin pode gerenciar outros admins com operações completas — listar com paginação/filtros, editar, resetar senha e desativar/reativar — com segurança e auditoria obrigatórias em cada operação.
 
-**Target features:**
-- Listagem paginada de admins com filtros (nome, email, status)
-- Editar admin (nome + email — atualiza no Keycloak)
-- Resetar senha (gera nova senha temporária exibida uma vez, Keycloak força troca)
-- Desativar/reativar admin (disable/enable no Keycloak — preserva histórico de auditoria)
-- Todas as ações auditadas via IAuditService existente
-- Segurança: admin não pode operar sobre si mesmo; último admin ativo não pode ser desativado
+**Result:** 100% complete — 2/2 phases, 5/5 plans.
 
-**Depends on**: Milestone v5.0 completo (Auth Code Flow + Admins + Auditoria)
+## Previous Milestone: v7.0 PJ-Only Onboarding + Gestão de Funcionários ✅ COMPLETE
+
+**Goal:** Transformar cadastro misto PF/PJ em PJ-only, onde PJ é usuário principal que gerencia funcionários PF com grupos de acesso, aceite de termos e auditoria completa.
+
+**Result:** 100% complete — 8/8 phases, 19/19 plans. Todos gaps de integração resolvidos. Custom Access Groups CRUD implementado.
+
+## Current Milestone: None — awaiting next milestone definition
+
+Ready for v8.0 planning or project archive.
+
+**Depends on**: Milestone v7.0 completo
 
 ## Requirements
 
 ### Validated
 
-- [x] Keycloak hardened contra vulnerabilidades conhecidas (SSRF, open redirect, brute force, etc.) — Validated in Phase 02: keycloak-security-hardening
-- [x] Domain layer com value objects Cpf, Cnpj, Email, PhoneNumber e aggregate Client com factory methods PF/PJ — Validated in Phase 03: backend-domain-layer
-- [x] CQRS application layer — ICommandHandler/IQueryHandler, RegisterClientCommand + handler, DI wiring manual (sem MediatR) — Validated in Phase 03: backend-domain-layer
-- [x] Backend com TDD, DDD, SOLID, sem Minimal API (parcial — domain + application layers) — Validated in Phase 03: backend-domain-layer
+- [x] Keycloak hardened contra vulnerabilidades conhecidas (SSRF, open redirect, brute force, etc.) — Validated in Phase 02
+- [x] Domain layer com value objects Cpf, Cnpj, Email, PhoneNumber e aggregate Client com factory methods PF/PJ — Validated in Phase 03
+- [x] CQRS application layer — ICommandHandler/IQueryHandler, RegisterClientCommand + handler, DI wiring manual (sem MediatR) — Validated in Phase 03
+- [x] Backend com TDD, DDD, SOLID, sem Minimal API (parcial — domain + application layers) — Validated in Phase 03
+- [x] Cadastro exclusivamente PJ — remoção completa do fluxo PF — Validated in Phase 37
+- [x] PJ é usuário principal que gerencia funcionários da sua empresa — Validated in Phase 38
+- [x] PJ cadastra funcionários PF vinculados à sua empresa — Validated in Phase 38
+- [x] PJ bloqueia/desbloqueia funcionários — Validated in Phase 38
+- [x] PJ reseta senha de funcionários — Validated in Phase 38
+- [x] Grupos de acesso: Admin Empresa, Viewer, Dashboard (via Keycloak roles/groups) — Validated in Phase 39
+- [x] Custom access groups CRUD (PERM-06) — Validated in Phase 44
+- [x] Isolamento entre empresas — PJ não vê/edita dados de outra PJ — Validated in Phase 39
+- [x] Aceite de termos de uso obrigatório no cadastro (texto mock) — Validated in Phase 40
+- [x] Auditoria de ações dos funcionários visível ao admin — Validated in Phase 41
+- [x] Dashboard mock com dados estáticos — Validated in Phase 40
+- [x] CI GitHub Actions com 80% cobertura — Validated in Phase 42
+- [x] BackOffice mantém poder de auditar/suportar qualquer empresa — Validated in Phase 41
 
 ### Active
 
-- [ ] Frontend client migrado de ROPC para Authorization Code Flow + PKCE (public client)
-- [ ] Frontend backoffice migrado de ROPC para Authorization Code Flow (confidential client)
-- [ ] Keycloak realm configurado com redirect URIs para Auth Code Flow em ambos os clientes
-- [ ] Backend endpoints de ROPC (login, refresh) substituídos ou adaptados para Auth Code Flow
-- [ ] Forced password change no primeiro login via Keycloak requiredActions (funciona nativamente com Auth Code Flow)
-- [ ] Admin autenticado pode criar novos administradores no backoffice
-- [ ] Sistema gera senha temporária para novos admins (Keycloak força troca via requiredActions)
-- [ ] Novos admins recebem role "admin" no Keycloak automaticamente
-- [ ] Auditoria de ações administrativas (criação de admin, bloqueio, exclusão, edição de usuários)
-- [ ] Log de auditoria visível no portal de backoffice com filtros por data, tipo e ator
+(None — all v7.0 requirements validated)
 
 ### Out of Scope
 
 - Validação de email no cadastro — não necessário no v1
 - OAuth social login (Google, GitHub, etc.) — complexidade adicional sem valor para v1
-- Edição de dados cadastrais pelo usuário final — v1 é somente leitura
 - Mobile app — web-first
 - Notificações push/email — sem necessidade no v1
-- Migração de ROPC para Auth Code + PKCE — implementado em v5.0
+- Bit Flags no JWT — Keycloak nativo (roles/groups) é a abordagem escolhida
+- Dashboard real com dados dinâmicos — mock estático por enquanto
+- Impersonação de funcionários por PJ — fora do escopo de segurança
+- 2FA obrigatório para funcionários — requer configuração de realm separada
 
 ## Context
 
@@ -108,13 +118,14 @@ Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Key
 
 ### Fluxo Principal
 
-1. Usuário acessa tela de cadastro → escolhe PF ou PJ
-2. Preenche dados básicos + senha
-3. API C# valida dados, persiste no PostgreSQL, cria user no Keycloak via Admin API
-4. Redirecionamento para tela de login
-5. Usuário faz login (tela custom → autenticação Keycloak)
-6. Token JWT retornado → redirecionamento para tela de perfil
-7. Tela de perfil exibe dados cadastrais (read-only)
+1. PJ acessa tela de cadastro → preenche dados da empresa + senha + aceita termos de uso
+2. API C# valida dados, persiste no PostgreSQL, cria user no Keycloak via Admin API
+3. Redirecionamento para tela de login
+4. PJ faz login → Token JWT retornado → redirecionamento para Dashboard
+5. PJ pode cadastrar funcionários PF para sua empresa
+6. PJ pode gerenciar funcionários: bloquear, resetar senha, editar permissões
+7. Funcionário PF faz login → vê apenas suas telas conforme permissões
+8. Admin da empresa + PJ dono podem auditar ações dos funcionários
 
 ### Segurança — Prioridade
 
@@ -142,10 +153,13 @@ O login usa tela custom no React autenticando via Keycloak (Resource Owner Passw
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Login custom (ROPC Grant) | Usuário quer controle total da UI de login | ✓ Migrado para Auth Code Flow + PKCE em v5.0 |
-| Formulário de cadastro custom | Cadastro via Admin API do Keycloak — maior controle do fluxo | — Pending |
-| Sem validação de email no v1 | Simplificar fluxo inicial — cadastrou, já pode logar | — Pending |
-| Atomic Design no frontend | Facilitar mudanças futuras de layout com componentes reutilizáveis | — Pending |
+| Keycloak nativo (roles/groups) para permissões | Bit Flags no JWT rejeitado — Keycloak já suporta roles/groups nativo, sem custom mapper | ✓ v7.0 |
+| Cadastro PJ-only | Remoção completa do fluxo PF — base zerada via docker compose down -v | ✓ v7.0 |
+| Grupos de acesso: Admin Empresa, Viewer, Dashboard | Admin Empresa = mesmos poderes PJ; Viewer = ver sem editar; Dashboard = acesso ao dashboard | ✓ v7.0 |
+| Formulário de cadastro custom | Cadastro via Admin API do Keycloak — maior controle do fluxo | ✓ v7.0 |
+| Sem validação de email no v1 | Simplificar fluxo inicial — cadastrou, já pode logar | ✓ v7.0 |
+| Atomic Design no frontend | Facilitar mudanças futuras de layout com componentes reutilizáveis | ✓ v7.0 |
+| Custom Access Groups (PERM-06) | Grupos default imutáveis, PJ pode criar/editar/deletar custom groups com permissões granulares | ✓ v7.0 |
 | Sem MediatR — CQRS manual via DI | MediatR não é mais open source (licença comercial). Handlers injetados direto via DI nativo do .NET | ✓ Good |
 | Backoffice usa mesma stack Vinxi | Manter consistência de stack, não introduzir Next.js para admin | ✓ v3.0 |
 | Endpoints admin precisam ser criados | API atual só tem registro/login/me — CRUD admin não existe | ✓ v3.0 |
@@ -169,4 +183,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-16 — Phase 33 complete: client app migrado ROPC→ACF+PKCE, Vinxi auth-server.ts, 2 custom Keycloak themes (onboarding-client + onboarding-backoffice). Milestone v5.0 completo. 279 testes passando. 4 achados críticos no code review aguardando fix.*
+*Last updated: 2026-05-01 — Milestone v7.0 COMPLETE, all requirements validated*

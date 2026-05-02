@@ -5,7 +5,7 @@
 // proxied to the backend service running in the Docker network.
 // ---------------------------------------------------------------------------
 
-import { defineEventHandler, getHeaders, readRawBody } from "h3";
+import { defineEventHandler, getHeaders, getCookie, readRawBody } from "h3";
 
 const BACKEND_URL = "http://api:8080";
 
@@ -28,6 +28,12 @@ export default defineEventHandler(async (event) => {
     if (typeof value === "string") {
       fetchHeaders[key] = value;
     }
+  }
+
+  // Inject Authorization header from client_access_token cookie (ACF httpOnly)
+  const accessToken = getCookie(event, "client_access_token");
+  if (accessToken) {
+    fetchHeaders["authorization"] = `Bearer ${accessToken}`;
   }
 
   const init: RequestInit & { duplex?: string } = {

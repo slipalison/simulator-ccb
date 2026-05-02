@@ -19,7 +19,7 @@ namespace Onboarding.API.Tests.Authentication;
 /// </summary>
 internal sealed class AuthTestApiFactory : WebApplicationFactory<Program>
 {
-    public IClientRepository RepositoryMock { get; } = Substitute.For<IClientRepository>();
+    public ICompanyRepository RepositoryMock { get; } = Substitute.For<ICompanyRepository>();
     public IKeycloakTokenService TokenServiceMock { get; } = Substitute.For<IKeycloakTokenService>();
     public IKeycloakUserService KeycloakUserServiceMock { get; } = Substitute.For<IKeycloakUserService>();
     public IPasswordResetTokenRepository TokenRepositoryMock { get; } = Substitute.For<IPasswordResetTokenRepository>();
@@ -53,11 +53,13 @@ internal sealed class AuthTestApiFactory : WebApplicationFactory<Program>
                 .AddCheck("stub-healthy", () => HealthCheckResult.Healthy("stub-ok"), ["ready"]);
 
             // Replace real infrastructure with mocks (no DB, no Keycloak required)
-            services.AddScoped<IClientRepository>(_ => RepositoryMock);
+            services.AddScoped<ICompanyRepository>(_ => RepositoryMock);
             services.AddScoped<IKeycloakTokenService>(_ => TokenServiceMock);
             services.AddScoped<IKeycloakUserService>(_ => KeycloakUserServiceMock);
             services.AddScoped<IPasswordResetTokenRepository>(_ => TokenRepositoryMock);
             services.AddScoped<IEmailService>(_ => EmailServiceMock);
+            services.AddScoped<IEmployeeRepository>(_ => Substitute.For<IEmployeeRepository>());
+            services.AddScoped<IAccessGroupRepository>(_ => Substitute.For<IAccessGroupRepository>());
 
             // Disable JWT validation for tests — PostConfigure overrides app configuration
             // D-04/D-05: in tests we use FakeJwtTokenHelper to generate HMAC-signed tokens
@@ -73,7 +75,7 @@ internal sealed class AuthTestApiFactory : WebApplicationFactory<Program>
                     };
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
-                    options.TokenValidationParameters.ValidateLifetime = false;
+                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep
                     options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
                     options.TokenValidationParameters.ValidateIssuerSigningKey = true;
                 });
@@ -87,7 +89,7 @@ internal sealed class AuthTestApiFactory : WebApplicationFactory<Program>
                     };
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
-                    options.TokenValidationParameters.ValidateLifetime = false;
+                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep
                     options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
                     options.TokenValidationParameters.ValidateIssuerSigningKey = true;
                 });

@@ -32,10 +32,9 @@ public class AuthorizationMiddlewareTests : IAsyncLifetime
 
     [Fact]
     [Trait("Category", "Unit")]
-    public async Task GetClientsMe_WithoutToken_Returns401()
+    public async Task GetCompaniesMe_WithoutToken_Returns401()
     {
-        // D-03: [Authorize] on GET /api/clients/me — no Bearer = 401
-        var response = await _client!.GetAsync("/api/clients/me");
+        var response = await _client!.GetAsync("/api/companies/me");
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
     }

@@ -6,35 +6,66 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import { NotFoundPage } from "@/components/pages/NotFoundPage";
-import { RegistrationForm } from "@/components/molecules/RegistrationForm";
+import { RegisterPage } from "@/components/pages/RegisterPage";
 import { AuthLoginPage } from "@/components/pages/AuthLoginPage";
 import { AuthCallbackPage } from "@/components/pages/AuthCallbackPage";
 import { AuthErrorPage } from "@/components/pages/AuthErrorPage";
 import { ProfilePage } from "@/components/pages/ProfilePage";
+import { DashboardPage } from "@/components/pages/DashboardPage";
+import { EmployeesPage } from "@/components/pages/EmployeesPage";
+import { AccessGroupsPage } from "@/components/pages/AccessGroupsPage";
 import { ForgotPasswordPage } from "@/components/pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/components/pages/ResetPasswordPage";
-import { useAuth } from "@/lib/auth-context";
-import { useEffect } from "react";
+import { AppLayout } from "@/components/templates/AppLayout";
+import { useAuth, getDefaultRouteForGroup } from "@/lib/auth-context";
 import { z } from "zod";
 
-// Root route com notFoundComponent para roteamento type-safe de 404
+// Root route: notFoundComponent for type-safe 404 routing
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
   notFoundComponent: NotFoundPage,
 });
 
-// Rota index: / -> AuthLoginPage (se nao logado) ou redirect para /profile (se logado)
-const indexRoute = createRoute({
+// Auth guard layout — wraps authenticated routes with AppLayout + Sidebar
+const authenticatedRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/",
-  component: RootRoute,
+  id: "authenticated",
+  component: AppLayout,
 });
 
-// Rota de registro: /register (formulario unico PF/PJ)
+// Dashboard: /dashboard (default for admin-empresa and dashboard groups)
+const dashboardRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/dashboard",
+  component: DashboardPage,
+});
+
+// Employees: /employees (admin-empresa sees all actions, viewer sees read-only)
+const employeesRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/employees",
+  component: EmployeesPage,
+});
+
+// Access Groups: /access-groups (admin-empresa manages groups)
+const accessGroupsRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/access-groups",
+  component: AccessGroupsPage,
+});
+
+// Company Profile: /profile (visible to all authenticated groups)
+const profileRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/profile",
+  component: ProfilePage,
+} as any);
+
+// Registration wizard: /register (PJ-only, no sidebar — full page)
 const registerRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/register",
-  component: RegistrationForm,
+  component: RegisterPage,
 });
 
 // Auth login (redirect-only): /auth/login
@@ -58,21 +89,14 @@ const authErrorRoute = createRoute({
   component: AuthErrorPage,
 });
 
-// Rota de perfil: /profile (protegida)
-const profileRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/profile",
-  component: ProfilePage,
-} as any);
-
-// Rota de forgot password: /forgot-password
+// Forgot password: /forgot-password
 const forgotPasswordRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/forgot-password",
   component: ForgotPasswordPage,
 });
 
-// Rota de reset password: /reset-password?token=xxx
+// Reset password: /reset-password?token=xxx
 const resetPasswordRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/reset-password",
@@ -80,22 +104,29 @@ const resetPasswordRoute = createRoute({
   validateSearch: z.object({ token: z.string().optional() }),
 });
 
-// Arvore de rotas
+// Index route: / → redirect to /dashboard if authenticated, or show login page
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  component: RootRoute,
+});
+
+// Route tree
 const routeTree = rootRoute.addChildren([
-  indexRoute,
+  authenticatedRoute.addChildren([dashboardRoute, employeesRoute, accessGroupsRoute, profileRoute]),
   registerRoute,
   authLoginRoute,
   authCallbackRoute,
   authErrorRoute,
-  profileRoute,
   forgotPasswordRoute,
   resetPasswordRoute,
+  indexRoute,
 ]);
 
-// Instancia do router
+// Router instance
 export const router = createRouter({ routeTree });
 
-// Registro obrigatorio para type safety do TypeScript
+// Mandatory TypeScript registration for type safety
 declare module "@tanstack/react-router" {
   interface Register {
     router: typeof router;
@@ -104,18 +135,19 @@ declare module "@tanstack/react-router" {
 
 // ---------------------------------------------------------------------------
 // RootRoute: shows AuthLoginPage for unauthenticated users
-// If authenticated, useEffect will redirect to /profile
+// If authenticated, redirect based on access group (D-22)
 // ---------------------------------------------------------------------------
 
 function RootRoute() {
   const { auth } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (auth.isAuthenticated) {
-      navigate({ to: "/profile" as any, replace: true });
-    }
-  }, [auth.isAuthenticated, navigate]);
+  if (auth.isAuthenticated) {
+    // D-22: redirect based on group — admin-empresa/viewer → /employees, dashboard → /dashboard
+    const defaultRoute = getDefaultRouteForGroup(auth.accessGroup);
+    navigate({ to: defaultRoute as any, replace: true });
+    return null;
+  }
 
   return <AuthLoginPage />;
 }

@@ -4,7 +4,7 @@ import { z } from "zod";
 // CPF validation (modulo 11 algorithm)
 // ---------------------------------------------------------------------------
 
-function validateCpf(cpf: string): boolean {
+export function validateCpf(cpf: string): boolean {
   const digits = cpf.replace(/\D/g, "");
   if (digits.length !== 11) return false;
 
@@ -36,7 +36,7 @@ function validateCpf(cpf: string): boolean {
 // CNPJ validation (modulo 11 algorithm)
 // ---------------------------------------------------------------------------
 
-function validateCnpj(cnpj: string): boolean {
+export function validateCnpj(cnpj: string): boolean {
   const digits = cnpj.replace(/\D/g, "");
   if (digits.length !== 14) return false;
 
@@ -70,7 +70,7 @@ function validateCnpj(cnpj: string): boolean {
 // Password validation — mirrors Keycloak password policy (SEC-02)
 // ---------------------------------------------------------------------------
 
-const passwordSchema = z
+export const passwordSchema = z
   .string()
   .min(8, "Senha deve ter pelo menos 8 caracteres")
   .regex(/[A-Z]/, "Senha deve conter pelo menos uma letra maiúscula")
@@ -82,36 +82,10 @@ const passwordSchema = z
   );
 
 // ---------------------------------------------------------------------------
-// PF Registration Schema
+// Company Registration — Step 1: Company data (PJ-only)
 // ---------------------------------------------------------------------------
 
-export const pfRegistrationSchema = z.object({
-  nome: z
-    .string()
-    .min(1, "Nome é obrigatório")
-    .min(2, "Nome deve ter pelo menos 2 caracteres"),
-  cpf: z
-    .string()
-    .min(1, "CPF é obrigatório")
-    .regex(/^\d{11}$/, "CPF deve conter 11 dígitos")
-    .refine((val) => validateCpf(val), {
-      message: "CPF inválido",
-    }),
-  email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
-  phone: z
-    .string()
-    .min(1, "Telefone é obrigatório")
-    .regex(/^\+?\d{10,11}$/, "Telefone deve conter 10 ou 11 dígitos"),
-  password: passwordSchema,
-});
-
-export type PfRegistrationData = z.infer<typeof pfRegistrationSchema>;
-
-// ---------------------------------------------------------------------------
-// PJ Registration Schema
-// ---------------------------------------------------------------------------
-
-export const pjRegistrationSchema = z.object({
+export const companyDataSchema = z.object({
   razaoSocial: z
     .string()
     .min(1, "Razão Social é obrigatória")
@@ -123,15 +97,81 @@ export const pjRegistrationSchema = z.object({
     .refine((val) => validateCnpj(val), {
       message: "CNPJ inválido",
     }),
+});
+
+export type CompanyData = z.infer<typeof companyDataSchema>;
+
+// ---------------------------------------------------------------------------
+// Company Registration — Step 2: Access data + terms
+// ---------------------------------------------------------------------------
+
+export function stripPhoneMask(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+export const companyAccessSchema = z
+  .object({
+    email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
+    phone: z
+      .string()
+      .min(1, "Telefone é obrigatório")
+      .transform(stripPhoneMask)
+      .refine((v) => /^\d{10,11}$/.test(v), "Telefone deve conter 10 ou 11 dígitos"),
+    password: passwordSchema,
+    confirmPassword: z.string().min(1, "Confirmação de senha é obrigatória"),
+    termsAccepted: z.literal(true, {
+      message: "Você deve aceitar os Termos de Uso",
+    }),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "As senhas não coincidem",
+    path: ["confirmPassword"],
+  });
+
+export type CompanyAccessData = z.infer<typeof companyAccessSchema>;
+
+// ---------------------------------------------------------------------------
+// Edit Employee Schema
+// ---------------------------------------------------------------------------
+
+export const editEmployeeSchema = z.object({
+  nome: z
+    .string()
+    .min(1, "Nome é obrigatório")
+    .min(2, "Nome deve ter pelo menos 2 caracteres"),
   email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
   phone: z
     .string()
     .min(1, "Telefone é obrigatório")
-    .regex(/^\+?\d{10,11}$/, "Telefone deve conter 10 ou 11 dígitos"),
-  password: passwordSchema,
+    .transform(stripPhoneMask)
+    .refine((v) => /^\d{10,11}$/.test(v), "Telefone deve conter 10 ou 11 dígitos"),
 });
 
-export type PjRegistrationData = z.infer<typeof pjRegistrationSchema>;
+export type EditEmployeeData = z.infer<typeof editEmployeeSchema>;
+
+// ---------------------------------------------------------------------------
+// Register Employee Schema
+// ---------------------------------------------------------------------------
+
+export const registerEmployeeSchema = z.object({
+  nome: z
+    .string()
+    .min(1, "Nome é obrigatório")
+    .min(2, "Nome deve ter pelo menos 2 caracteres"),
+  cpf: z
+    .string()
+    .min(1, "CPF é obrigatório")
+    .regex(/^\d{11}$/, "CPF deve conter 11 dígitos")
+    .refine((val) => validateCpf(val), { message: "CPF inválido" }),
+  email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
+  phone: z
+    .string()
+    .min(1, "Telefone é obrigatório")
+    .transform(stripPhoneMask)
+    .refine((v) => /^\d{10,11}$/.test(v), "Telefone deve conter 10 ou 11 dígitos"),
+});
+
+export type RegisterEmployeeData = z.infer<typeof registerEmployeeSchema>;
 
 // ---------------------------------------------------------------------------
 // Login Schema
@@ -143,103 +183,3 @@ export const loginSchema = z.object({
 });
 
 export type LoginData = z.infer<typeof loginSchema>;
-
-// ---------------------------------------------------------------------------
-// Unified Registration Schema (PF/PJ dynamic)
-// ---------------------------------------------------------------------------
-
-export const registrationSchema = z
-  .object({
-    personType: z.enum(["PF", "PJ"]),
-    email: z.string().min(1, "Email é obrigatório").email("Email inválido"),
-    phone: z
-      .string()
-      .min(1, "Telefone é obrigatório")
-      .regex(/^\+?\d{10,11}$/, "Telefone deve conter 10 ou 11 dígitos"),
-    password: passwordSchema,
-    confirmPassword: z.string().min(1, "Confirmação de senha é obrigatória"),
-    // PF fields
-    nome: z.string().optional(),
-    cpf: z.string().optional(),
-    // PJ fields
-    razaoSocial: z.string().optional(),
-    cnpj: z.string().optional(),
-  })
-  .superRefine((data, ctx) => {
-    // Password match validation
-    if (data.password !== data.confirmPassword) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "As senhas não coincidem",
-        path: ["confirmPassword"],
-      });
-    }
-
-    // Conditional PF validation
-    if (data.personType === "PF") {
-      if (!data.nome || data.nome.trim().length < 2) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Nome é obrigatório e deve ter pelo menos 2 caracteres",
-          path: ["nome"],
-        });
-      }
-      if (!data.cpf) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "CPF é obrigatório",
-          path: ["cpf"],
-        });
-      } else {
-        const digits = data.cpf.replace(/\D/g, "");
-        if (digits.length !== 11) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "CPF deve conter 11 dígitos",
-            path: ["cpf"],
-          });
-        } else if (!validateCpf(digits)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "CPF inválido",
-            path: ["cpf"],
-          });
-        }
-      }
-    }
-
-    // Conditional PJ validation
-    if (data.personType === "PJ") {
-      if (!data.razaoSocial || data.razaoSocial.trim().length < 2) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "Razão Social é obrigatória e deve ter pelo menos 2 caracteres",
-          path: ["razaoSocial"],
-        });
-      }
-      if (!data.cnpj) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: "CNPJ é obrigatório",
-          path: ["cnpj"],
-        });
-      } else {
-        const digits = data.cnpj.replace(/\D/g, "");
-        if (digits.length !== 14) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "CNPJ deve conter 14 dígitos",
-            path: ["cnpj"],
-          });
-        } else if (!validateCnpj(digits)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "CNPJ inválido",
-            path: ["cnpj"],
-          });
-        }
-      }
-    }
-  });
-
-export type RegistrationData = z.infer<typeof registrationSchema>;

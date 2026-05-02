@@ -5,13 +5,16 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Authorization;
 using Onboarding.API.Configuration;
 using Onboarding.API.Middleware;
 using Onboarding.API.Observability;
 using Onboarding.API.Security;
+using Onboarding.Application.Common;
+using Onboarding.Domain.Aggregates.EmployeeAggregate;
+using Onboarding.Infrastructure.Persistence;
 using Onboarding.Application;
 using Onboarding.Infrastructure;
-using Onboarding.Infrastructure.Persistence;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -188,7 +191,29 @@ try
             };
         });
 
-    builder.Services.AddAuthorization();
+    builder.Services.AddAuthorization(options =>
+    {
+        // 6 permission-based policies (D-06)
+        options.AddPolicy(PermissionPolicies.EmployeeRead,
+            policy => policy.Requirements.Add(new PermissionRequirement(Permissions.EmployeesRead)));
+        options.AddPolicy(PermissionPolicies.EmployeeWrite,
+            policy => policy.Requirements.Add(new PermissionRequirement(Permissions.EmployeesWrite)));
+        options.AddPolicy(PermissionPolicies.EmployeeDelete,
+            policy => policy.Requirements.Add(new PermissionRequirement(Permissions.EmployeesDelete)));
+        options.AddPolicy(PermissionPolicies.AuditRead,
+            policy => policy.Requirements.Add(new PermissionRequirement(Permissions.AuditRead)));
+        options.AddPolicy(PermissionPolicies.DashboardAccess,
+            policy => policy.Requirements.Add(new PermissionRequirement(Permissions.DashboardAccess)));
+        options.AddPolicy(PermissionPolicies.AccessGroupsManage,
+            policy => policy.Requirements.Add(new PermissionRequirement(Permissions.AccessGroupsManage)));
+
+        // Cross-company policy (D-07) — admin role from backoffice realm
+        options.AddPolicy(PermissionPolicies.CrossCompanyAccess,
+            policy => policy.RequireRole("admin"));
+
+        // BearerClient + policy combination can be done via
+        // [Authorize(AuthenticationSchemes = "BearerClient", Policy = "...")]
+    });
 
     // Keycloak role-based authorization — reads realm_access.roles from JWT
     // and adds them as flat "role" claims so [Authorize(Roles = "admin")] works.
@@ -200,6 +225,15 @@ try
         options.EnableRolesMapping = Keycloak.AuthServices.Authorization.RolesClaimTransformationSource.ResourceAccess;
         options.RolesResource = "onboarding-api-admin";
     });
+
+    // Permission-based authorization handler (D-08)
+    builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+
+    // Claims transformation for client realm groups (D-03)
+    builder.Services.AddSingleton<IClaimsTransformation, GroupsClaimsTransformation>();
+
+    // Permissions service — scoped per-request, set by ClientClaimsMiddleware (D-10)
+    builder.Services.AddScoped<ICurrentCompanyPermissionsService, CurrentCompanyPermissionsService>();
 
     // CORS — allow frontend origin with credentials (cookies)
     const string corsPolicy = "AllowFrontendWithCredentials";
@@ -217,7 +251,7 @@ try
     // Application layer — handlers, validators
     builder.Services.AddApplication();
 
-    // Infrastructure layer — DbContext, ClientRepository, KeycloakUserService, KC Admin HTTP client
+    // Infrastructure layer — DbContext, repositories, KeycloakUserService, KC Admin HTTP client
     builder.Services.AddInfrastructure(builder.Configuration);
 
     // Cookie settings — environment-configured Secure flag
@@ -245,6 +279,7 @@ try
     app.UseAdminSession();       // Convert backoffice_access_token cookie → Bearer header for /api/admin/*
     app.UseClientSession();      // Convert client_access_token cookie → Bearer header for /api/* (non-admin)
     app.UseAuthentication();   // D-04: populate HttpContext.User — MUST come after session middleware
+    app.UseClientClaims();     // Phase 39 D-09: resolve JWT sub → Company/Employee → permissions
     app.UseAuthorization();    // D-06: enforce [Authorize] attributes — MUST come after UseAuthentication
 
     // Liveness: process is alive — no dependency checks (D-26: used by Docker Compose healthcheck)

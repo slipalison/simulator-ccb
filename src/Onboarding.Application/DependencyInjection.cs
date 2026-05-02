@@ -8,9 +8,10 @@ using Onboarding.Application.Admin.Validators;
 using Onboarding.Application.Auth.Commands;
 using Onboarding.Application.Auth.DTOs;
 using Onboarding.Application.Auth.Validators;
-using Onboarding.Application.Clients.Commands;
-using Onboarding.Application.Clients.Validators;
 using Onboarding.Application.Common;
+using Onboarding.Application.Companies.Commands;
+using Onboarding.Application.Companies.DTOs;
+using Onboarding.Application.Companies.Queries;
 
 namespace Onboarding.Application;
 
@@ -22,12 +23,27 @@ public static class ApplicationServiceExtensions
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        services.AddScoped<
-            ICommandHandler<RegisterClientCommand, Guid>,
-            RegisterClientCommandHandler>();
+        // Company registration commands (Phase 38 — REG-01, REG-02)
+        services.AddScoped<ICommandHandler<RegisterCompanyCommand, RegisterCompanyResult>, RegisterCompanyCommandHandler>();
+        services.AddScoped<IValidator<RegisterCompanyCommand>, RegisterCompanyCommandValidator>();
 
-        // FluentValidation — manual registration (no auto-pipeline, deprecated in FV 12)
-        services.AddScoped<IValidator<RegisterClientCommand>, RegisterClientCommandValidator>();
+        // Employee registration & management commands (Phase 38 — REG-03, MGMT-01..05)
+        // These are Companies-scoped commands (company isolation via CompanyId), different from Admin stubs
+        services.AddScoped<ICommandHandler<RegisterEmployeeCommand, RegisterEmployeeResult>, RegisterEmployeeCommandHandler>();
+        services.AddScoped<IValidator<RegisterEmployeeCommand>, RegisterEmployeeCommandValidator>();
+        services.AddScoped<ICommandHandler<ToggleEmployeeStatusCommand, Unit>, ToggleEmployeeStatusCommandHandler>();
+        services.AddScoped<ICommandHandler<ResetEmployeePasswordCommand, ResetEmployeePasswordResult>, ResetEmployeePasswordCommandHandler>();
+        services.AddScoped<ICommandHandler<UpdateEmployeeCommand, Unit>, UpdateEmployeeCommandHandler>();
+        services.AddScoped<ICommandHandler<Companies.Commands.DeleteEmployeeCommand, Unit>, Companies.Commands.DeleteEmployeeCommandHandler>();
+        services.AddScoped<ICommandHandler<ChangeEmployeeAccessGroupCommand, Unit>, ChangeEmployeeAccessGroupCommandHandler>();
+
+        // Access group CRUD commands (Phase 44 — PERM-06)
+        services.AddScoped<ICommandHandler<CreateAccessGroupCommand, AccessGroupDto>, CreateAccessGroupCommandHandler>();
+        services.AddScoped<ICommandHandler<UpdateAccessGroupCommand, AccessGroupDto>, UpdateAccessGroupCommandHandler>();
+        services.AddScoped<ICommandHandler<DeleteAccessGroupCommand, Unit>, DeleteAccessGroupCommandHandler>();
+
+        // Employee listing query (Phase 38 — MGMT-02)
+        services.AddScoped<IQueryHandler<GetCompanyEmployeesQuery, PaginatedResult<EmployeeListItemDto>>, GetCompanyEmployeesQueryHandler>();
 
         // Auth commands (Phase 6 — AUTH-02, AUTH-04)
         services.AddScoped<ICommandHandler<LoginCommand, TokenResponse>, LoginCommandHandler>();
@@ -41,21 +57,17 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IValidator<ForgotPasswordCommand>, ForgotPasswordCommandValidator>();
         services.AddScoped<IValidator<ResetPasswordCommand>, ResetPasswordCommandValidator>();
 
-        // Admin queries (Phase 16 — ADMIN-01, ADMIN-02)
-        services.AddScoped<IQueryHandler<GetPaginatedUsersQuery, PaginatedResult<UserSummaryDto>>, GetPaginatedUsersHandler>();
-        services.AddScoped<IQueryHandler<GetUserDetailsQuery, UserDetailDto>, GetUserDetailsHandler>();
+        // Admin queries — Company/Employee (Phase 37 — D-19)
+        services.AddScoped<IQueryHandler<GetPaginatedCompaniesQuery, PaginatedResult<CompanySummaryDto>>, GetPaginatedCompaniesHandler>();
+        services.AddScoped<IQueryHandler<GetCompanyDetailsQuery, CompanySummaryDto>, GetCompanyDetailsHandler>();
+        services.AddScoped<IQueryHandler<GetPaginatedEmployeesQuery, PaginatedResult<EmployeeSummaryDto>>, GetPaginatedEmployeesHandler>();
+        services.AddScoped<IQueryHandler<GetEmployeeDetailsQuery, EmployeeSummaryDto>, GetEmployeeDetailsHandler>();
 
-        // Admin commands (Phase 16 — ADMIN-03, ADMIN-04, ADMIN-05)
-        services.AddScoped<ICommandHandler<UpdateUserCommand, Unit>, UpdateUserCommandHandler>();
-        services.AddScoped<ICommandHandler<BlockUserCommand, Unit>, BlockUserCommandHandler>();
-        services.AddScoped<ICommandHandler<UnblockUserCommand, Unit>, UnblockUserCommandHandler>();
-        services.AddScoped<ICommandHandler<DeleteUserCommand, Unit>, DeleteUserCommandHandler>();
-
-        // Admin validators
-        services.AddScoped<IValidator<UpdateUserCommand>, UpdateUserCommandValidator>();
-        services.AddScoped<IValidator<BlockUserCommand>, BlockUserCommandValidator>();
-        services.AddScoped<IValidator<UnblockUserCommand>, UnblockUserCommandValidator>();
-        services.AddScoped<IValidator<DeleteUserCommand>, DeleteUserCommandValidator>();
+        // Admin commands — Company (Phase 38) + Employee (Phase 38 — MGMT-03, MGMT-05)
+        services.AddScoped<ICommandHandler<UpdateCompanyCommand, Unit>, UpdateCompanyCommandHandler>();
+        services.AddScoped<ICommandHandler<Admin.Commands.DeleteEmployeeCommand, Unit>, Admin.Commands.DeleteEmployeeCommandHandler>();
+        services.AddScoped<ICommandHandler<BlockEmployeeCommand, Unit>, BlockEmployeeCommandHandler>();
+        services.AddScoped<ICommandHandler<UnblockEmployeeCommand, Unit>, UnblockEmployeeCommandHandler>();
 
         // Admin management commands (Phase 29 — V5.0-01, V5.0-02)
         services.AddScoped<ICommandHandler<CreateAdminCommand, CreateAdminResult>, CreateAdminCommandHandler>();

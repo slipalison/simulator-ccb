@@ -1,4 +1,4 @@
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -22,6 +22,7 @@ interface AdminActionsDropdownProps {
   onResetPassword: (admin: AdminUserDto) => void;
   onDeactivate: (admin: AdminUserDto) => void;
   onReactivate: (admin: AdminUserDto) => void;
+  isResettingPassword?: boolean;
 }
 
 export function AdminActionsDropdown({
@@ -30,9 +31,10 @@ export function AdminActionsDropdown({
   onResetPassword,
   onDeactivate,
   onReactivate,
+  isResettingPassword = false,
 }: AdminActionsDropdownProps) {
   const { admin: authAdmin } = useAdminAuth();
-  const isSelf = authAdmin.adminId !== null && authAdmin.adminId === admin.id;
+  const isSelf = authAdmin.adminId !== null && authAdmin.adminId.toLowerCase() === admin.id.toLowerCase();
 
   if (isSelf) {
     return (
@@ -68,6 +70,7 @@ export function AdminActionsDropdown({
           size="icon"
           className="h-8 w-8"
           aria-label="Abrir menu de ações"
+          aria-haspopup="true"
           data-testid="actions-dropdown-trigger"
         >
           <MoreHorizontal className="h-4 w-4" />
@@ -82,9 +85,17 @@ export function AdminActionsDropdown({
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={() => onResetPassword(admin)}
+          disabled={isResettingPassword}
           data-testid="action-reset-password"
         >
-          Resetar senha
+          {isResettingPassword ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Resetando...
+            </>
+          ) : (
+            "Resetar senha"
+          )}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         {admin.isEnabled ? (

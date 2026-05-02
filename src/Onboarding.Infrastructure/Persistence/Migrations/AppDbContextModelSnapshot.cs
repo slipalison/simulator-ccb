@@ -17,7 +17,7 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.5")
+                .HasAnnotation("ProductVersion", "10.0.7")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -45,7 +45,7 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                         .HasColumnName("admin_user_name");
 
                     b.Property<string>("Details")
-                        .HasColumnType("jsonb")
+                        .HasColumnType("text")
                         .HasColumnName("details");
 
                     b.Property<string>("IpAddress")
@@ -80,7 +80,7 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                     b.ToTable("admin_audit_logs", (string)null);
                 });
 
-            modelBuilder.Entity("Onboarding.Domain.Aggregates.ClientAggregate.Client", b =>
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.CompanyAggregate.Company", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -90,11 +90,6 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                         .HasMaxLength(14)
                         .HasColumnType("character varying(14)")
                         .HasColumnName("cnpj");
-
-                    b.Property<string>("Cpf")
-                        .HasMaxLength(11)
-                        .HasColumnType("character varying(11)")
-                        .HasColumnName("cpf");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("timestamp with time zone")
@@ -107,13 +102,9 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                         .HasColumnName("email");
 
                     b.Property<string>("KeycloakUserId")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("name");
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)")
+                        .HasColumnName("keycloak_user_id");
 
                     b.Property<string>("Phone")
                         .IsRequired()
@@ -122,14 +113,10 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                         .HasColumnName("phone");
 
                     b.Property<string>("RazaoSocial")
+                        .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("razao_social");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("type");
 
                     b.HasKey("Id");
 
@@ -137,14 +124,114 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("cnpj IS NOT NULL");
 
-                    b.HasIndex("Cpf")
-                        .IsUnique()
-                        .HasFilter("cpf IS NOT NULL");
-
                     b.HasIndex("Email")
                         .IsUnique();
 
-                    b.ToTable("clients", (string)null);
+                    b.ToTable("companies", (string)null);
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.EmployeeAggregate.AccessGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Permissions")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("permissions");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("IX_access_groups_company_id");
+
+                    b.HasIndex("CompanyId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("IX_access_groups_company_id_name");
+
+                    b.ToTable("access_groups", (string)null);
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.EmployeeAggregate.Employee", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccessGroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("access_group_id");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("company_id");
+
+                    b.Property<string>("Cpf")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("cpf");
+
+                    b.Property<DateTimeOffset?>("DeletedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deleted_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("KeycloakUserId")
+                        .HasMaxLength(36)
+                        .HasColumnType("character varying(36)")
+                        .HasColumnName("keycloak_user_id");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome");
+
+                    b.Property<string>("Phone")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccessGroupId")
+                        .HasDatabaseName("IX_employees_access_group_id");
+
+                    b.HasIndex("CompanyId")
+                        .HasDatabaseName("IX_employees_company_id");
+
+                    b.HasIndex("Cpf")
+                        .IsUnique()
+                        .HasDatabaseName("IX_employees_cpf")
+                        .HasFilter("cpf IS NOT NULL");
+
+                    b.HasIndex("Email")
+                        .IsUnique()
+                        .HasDatabaseName("IX_employees_email");
+
+                    b.ToTable("employees", (string)null);
                 });
 
             modelBuilder.Entity("Onboarding.Domain.Aggregates.PasswordReset.PasswordResetToken", b =>
@@ -187,6 +274,65 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_password_reset_tokens_token");
 
                     b.ToTable("password_reset_tokens", (string)null);
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.CompanyAggregate.Company", b =>
+                {
+                    b.OwnsOne("Onboarding.Domain.Aggregates.CompanyAggregate.TermsAcceptance", "TermsAcceptance", b1 =>
+                        {
+                            b1.Property<Guid>("CompanyId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateTimeOffset>("AcceptedAt")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("terms_accepted_at");
+
+                            b1.Property<string>("IpAddress")
+                                .IsRequired()
+                                .HasMaxLength(45)
+                                .HasColumnType("character varying(45)")
+                                .HasColumnName("terms_ip_address");
+
+                            b1.Property<string>("TermsVersion")
+                                .IsRequired()
+                                .HasMaxLength(20)
+                                .HasColumnType("character varying(20)")
+                                .HasColumnName("terms_version");
+
+                            b1.HasKey("CompanyId");
+
+                            b1.ToTable("companies");
+
+                            b1.WithOwner()
+                                .HasForeignKey("CompanyId");
+                        });
+
+                    b.Navigation("TermsAcceptance")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.EmployeeAggregate.AccessGroup", b =>
+                {
+                    b.HasOne("Onboarding.Domain.Aggregates.CompanyAggregate.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.EmployeeAggregate.Employee", b =>
+                {
+                    b.HasOne("Onboarding.Domain.Aggregates.EmployeeAggregate.AccessGroup", null)
+                        .WithMany()
+                        .HasForeignKey("AccessGroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Onboarding.Domain.Aggregates.CompanyAggregate.Company", null)
+                        .WithMany()
+                        .HasForeignKey("CompanyId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

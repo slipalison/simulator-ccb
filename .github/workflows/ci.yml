@@ -161,7 +161,7 @@ jobs:
           /p:CoverletOutputFormat=cobertura
           /p:CoverletOutput=${{ github.workspace }}/coverage/domain.cobertura.xml
           /p:ExcludeByAttribute=\"ExcludeFromCodeCoverage\"
-          /p:Exclude=\"[Onboarding.Infrastructure]*,[Onboarding.API]Program\"
+          /p:Exclude=\"[Onboarding.API]Program\"
           /p:ExcludeByFile=\"**/Program.cs%2c**/*.generated.cs\"
 
       - name: Test - API
@@ -176,7 +176,7 @@ jobs:
           /p:CoverletOutputFormat=cobertura
           /p:CoverletOutput=${{ github.workspace }}/coverage/api.cobertura.xml
           /p:ExcludeByAttribute=\"ExcludeFromCodeCoverage\"
-          /p:Exclude=\"[Onboarding.Infrastructure]*,[Onboarding.API]Program\"
+          /p:Exclude=\"[Onboarding.API]Program\"
           /p:ExcludeByFile=\"**/Program.cs%2c**/*.generated.cs\"
 
       - name: Test - Integration
@@ -192,7 +192,7 @@ jobs:
           /p:CoverletOutputFormat=cobertura
           /p:CoverletOutput=${{ github.workspace }}/coverage/integration.cobertura.xml
           /p:ExcludeByAttribute=\"ExcludeFromCodeCoverage\"
-          /p:Exclude=\"[Onboarding.Infrastructure]*,[Onboarding.API]Program\"
+          /p:Exclude=\"[Onboarding.API]Program\"
           /p:ExcludeByFile=\"**/Program.cs%2c**/*.generated.cs\"
 
       - name: Merge coverage reports

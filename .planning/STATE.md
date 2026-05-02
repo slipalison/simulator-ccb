@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Gestão de Fundos
-status: defining_requirements
+status: roadmap_created
 last_updated: "2026-05-02T00:00:00Z"
 last_activity: 2026-05-02
 progress:
-  total_phases: 0
+  total_phases: 8
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,15 +21,17 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — isolamento entre empresas é requisito de primeira classe.
-**Current focus:** Milestone v8.0 Gestão de Fundos — requirements defined, roadmap pending
-**Last activity:** 2026-05-02 — Requirements defined, spawning roadmapper
+**Current focus:** Phase 45 — Domain Layer (v8.0 Gestão de Fundos)
+**Last activity:** 2026-05-02 — Roadmap created for v8.0
 
 ## Current Position
 
-Phase: Not started (roadmap pending)
+Phase: 45 of 52 (Domain Layer)
 Plan: —
-Status: Requirements defined, creating roadmap
-Last activity: 2026-05-02 — Milestone v8.0 requirements defined
+Status: Roadmap created, ready to plan Phase 45
+Last activity: 2026-05-02 — v8.0 roadmap created
+
+Progress: [░░░░░░░░░░] 0%
 
 ## Milestone Breakdown
 
@@ -40,7 +42,7 @@ Last activity: 2026-05-02 — Milestone v8.0 requirements defined
 **Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** ✅ COMPLETE (6/6 phases)
 **Milestone v6.0 — Gestão Completa de Administradores:** ✅ COMPLETE (2/2 phases)
 **Milestone v7.0 — PJ-Only Onboarding + Gestão de Funcionários:** ✅ COMPLETE (8/8 phases, 19/19 plans)
-**Milestone v8.0 — Gestão de Fundos:** 📋 Requirements defined, roadmap pending
+**Milestone v8.0 — Gestão de Fundos:** 📋 Roadmap created, 0/8 phases complete
 
 ## Accumulated Context
 
@@ -56,7 +58,7 @@ Last activity: 2026-05-02 — Milestone v8.0 requirements defined
 - Zero new NuGet packages — existing stack covers all needs
 - FundoCedente is a full domain entity with payload (exposure limits, date ranges)
 - Cedente is polymorphic PF/PJ — reuses Cpf/Cnpj value objects
-- Build order: Domain → Infrastructure → Auth → Application → API → Frontend Client → Frontend Backoffice → Tests
+- Build order: Domain → Infrastructure → Application → API → Frontend Client → Frontend Backoffice → Tests
 
 ### Deferred Items (from v7.0)
 
@@ -72,9 +74,11 @@ Last activity: 2026-05-02 — Milestone v8.0 requirements defined
 
 ### Blockers/Concerns
 
-- Isolamento entre empresas é CRÍTICO — qualquer bug que permita PJ ver dados de outra PJ é vulnerabilidade de segurança
+- Isolamento multi-tenant é CRÍTICO — qualquer leak entre empresas é vulnerabilidade de segurança
+- Cedente is PF/PJ polymorphic — single entity with conditional CPF/CNPJ validation
 
 ## Session Continuity
 
 Last session: 2026-05-02
-Stopped at: Requirements defined, spawning roadmapper for v8.0
+Stopped at: Roadmap created for v8.0, ready to plan Phase 45
+Resume file: None

@@ -126,22 +126,56 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CAD-01..CAD-04 | Phase 46 | Pending |
-| CAD-05..CAD-08 | Phase 46 | Pending |
-| CAD-09..CAD-13 | Phase 47 | Pending |
-| CAD-14..CAD-18 | Phase 46 | Pending |
-| CAD-19..CAD-22 | Phase 46 | Pending |
-| REL-01..REL-03 | Phase 48 | Pending |
-| REL-04..REL-07 | Phase 48 | Pending |
-| REL-08..REL-09 | Phase 48 | Pending |
-| TEN-01..TEN-03 | Phase 45 | Pending |
-| PERM-01..PERM-03 | Phase 45 | Pending |
-| ADM-01..ADM-04 | Phase 49 | Pending |
-| FRO-01..FRO-05 | Phase 50 | Pending |
+| CAD-01 | Phase 47 | Pending |
+| CAD-02 | Phase 47 | Pending |
+| CAD-03 | Phase 47 | Pending |
+| CAD-04 | Phase 46 | Pending |
+| CAD-05 | Phase 47 | Pending |
+| CAD-06 | Phase 47 | Pending |
+| CAD-07 | Phase 47 | Pending |
+| CAD-08 | Phase 46 | Pending |
+| CAD-09 | Phase 47 | Pending |
+| CAD-10 | Phase 47 | Pending |
+| CAD-11 | Phase 47 | Pending |
+| CAD-12 | Phase 46 | Pending |
+| CAD-13 | Phase 45 | Pending |
+| CAD-14 | Phase 47 | Pending |
+| CAD-15 | Phase 47 | Pending |
+| CAD-16 | Phase 47 | Pending |
+| CAD-17 | Phase 47 | Pending |
+| CAD-18 | Phase 46 | Pending |
+| CAD-19 | Phase 47 | Pending |
+| CAD-20 | Phase 47 | Pending |
+| CAD-21 | Phase 47 | Pending |
+| CAD-22 | Phase 46 | Pending |
+| REL-01 | Phase 49 | Pending |
+| REL-02 | Phase 49 | Pending |
+| REL-03 | Phase 49 | Pending |
+| REL-04 | Phase 49 | Pending |
+| REL-05 | Phase 49 | Pending |
+| REL-06 | Phase 49 | Pending |
+| REL-07 | Phase 49 | Pending |
+| REL-08 | Phase 45 | Pending |
+| REL-09 | Phase 49 | Pending |
+| TEN-01 | Phase 46 | Pending |
+| TEN-02 | Phase 46 | Pending |
+| TEN-03 | Phase 45 | Pending |
+| PERM-01 | Phase 45 | Pending |
+| PERM-02 | Phase 48 | Pending |
+| PERM-03 | Phase 48 | Pending |
+| ADM-01 | Phase 51 | Pending |
+| ADM-02 | Phase 51 | Pending |
+| ADM-03 | Phase 51 | Pending |
+| ADM-04 | Phase 47 | Pending |
+| FRO-01 | Phase 50 | Pending |
+| FRO-02 | Phase 50 | Pending |
+| FRO-03 | Phase 50 | Pending |
+| FRO-04 | Phase 51 | Pending |
+| FRO-05 | Phase 50 | Pending |
 
 **Coverage:**
-- v1 requirements: 37 total
-- Mapped to phases: 37
+- v8 requirements: 46 total
+- Mapped to phases: 46
 - Unmapped: 0 ✓
 
 ---

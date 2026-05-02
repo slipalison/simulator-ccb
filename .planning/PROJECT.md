@@ -62,9 +62,26 @@ Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — i
 
 **Result:** 100% complete — 8/8 phases, 19/19 plans. Todos gaps de integração resolvidos. Custom Access Groups CRUD implementado.
 
-## Current Milestone: None — awaiting next milestone definition
+## Current Milestone: v8.0 Gestão de Fundos
 
-Ready for v8.0 planning or project archive.
+**Goal:** Adicionar módulo de cadastros de fundos de investimento ao sistema existente — consultorias, custodiantes, fundos, cedentes e tipos de ativo — com isolamento multi-tenant obrigatório e administração no backoffice.
+
+**Target features:**
+- CRUD ConsultoriaFundo (gestora/consultoria) com CNPJ validado
+- CRUD Custodiante (instituição financeira custodiante) com CNPJ validado
+- CRUD Fundo (fundo de investimento) com state machine de status e referências a consultoria/custodiante
+- CRUD Cedente (PF/PJ que cede créditos) com CPF/CNPJ validado
+- CRUD TipoAtivo (catálogo global CVM)
+- Relacionamentos N-N: Fundo↔Cedente (com limites de exposição), Cedente↔TipoAtivo, Fundo↔TipoAtivo
+- Permissões de fundos integradas ao sistema de access groups existente
+- Frontend client para gestão de fundos
+- Frontend backoffice para visualização administrativa com audit trail
+
+**Key decisions:**
+- D-01: ConsultoriaFundo/Custodiante/Cedente são company-scoped (têm ClienteId, HasQueryFilter) — cada empresa cadastra os seus
+- D-02: FundoStatus = state machine: RASCUNHO→ATIVO↔SUSPENSO→EM_LIQUIDACAO→ENCERRADO
+- D-03: TipoAtivo é global (sem ClienteId) — catálogo CVM compartilhado por todas as empresas
+- D-04: LimiteExposicao ilimitado = sentinel value (-1) — simples, explícito, evita nullable confusion
 
 **Depends on**: Milestone v7.0 completo
 
@@ -92,7 +109,52 @@ Ready for v8.0 planning or project archive.
 
 ### Active
 
-(None — all v7.0 requirements validated)
+- [ ] **CAD-01**: PJ can register ConsultoriaFundo with razao social, CNPJ validated, optional nome fantasia, email, telefone, status
+- [ ] **CAD-02**: PJ can list ConsultoriaFundo with pagination (20/page) and search
+- [ ] **CAD-03**: PJ can update ConsultoriaFundo fields
+- [ ] **CAD-04**: Duplicate CNPJ for ConsultoriaFundo within same company returns 409
+- [ ] **CAD-05**: PJ can register Custodiante with razao social, CNPJ validated, optional codigo interno, email,telefone, status
+- [ ] **CAD-06**: PJ can list Custodiante with pagination and search
+- [ ] **CAD-07**: PJ can update Custodiante fields
+- [ ] **CAD-08**: Duplicate CNPJ for Custodiante within same company returns 409
+- [ ] **CAD-09**: PJ can register Fundo with nome, CNPJ, ConsultoriaFundo, Custodiante, TipoFundo, optional classe/segmento/datas
+- [ ] **CAD-10**: PJ can list Fundo with pagination and search
+- [ ] **CAD-11**: PJ can update Fundo data
+- [ ] **CAD-12**: Duplicate CNPJ for Fundo within same company returns 409
+- [ ] **CAD-13**: Fundo status follows state machine (RASCUNHO→ATIVO↔SUSPENSO→EM_LIQUIDACAO→ENCERRADO)
+- [ ] **CAD-14**: PJ can register Cedente PF with validated CPF
+- [ ] **CAD-15**: PJ can register Cedente PJ with validated CNPJ
+- [ ] **CAD-16**: PJ can list Cedente with pagination and search
+- [ ] **CAD-17**: PJ can update Cedente data
+- [ ] **CAD-18**: Duplicate CPF/CNPJ for Cedente within same company returns 409
+- [ ] **CAD-19**: Admin can create TipoAtivo with unique codigo, descricao, categoria, status
+- [ ] **CAD-20**: Admin can list TipoAtivo (global catalog)
+- [ ] **CAD-21**: Admin can update TipoAtivo
+- [ ] **CAD-22**: Duplicate codigo for TipoAtivo returns 409
+- [ ] **REL-01**: PJ can associate Cedente to Fundo with exposure limits and date range
+- [ ] **REL-02**: PJ can list Cedentes associated to a Fundo
+- [ ] **REL-03**: PJ can update FundoCedente exposure limits, dates, status
+- [ ] **REL-04**: PJ can associate Tipos de Ativo to a Cedente
+- [ ] **REL-05**: PJ can list/remove Tipos de Ativo from a Cedente
+- [ ] **REL-06**: PJ can associate Tipos de Ativo to a Fundo
+- [ ] **REL-07**: PJ can list/remove Tipos de Ativo from a Fundo
+- [ ] **REL-08**: LimiteExposicaoPercentual unlimited = sentinel value (-1)
+- [ ] **REL-09**: FundoCedente enforces ONE active association per Fundo-Cedente pair
+- [ ] **TEN-01**: Fundo/FundoCedente company-scoped with HasQueryFilter
+- [ ] **TEN-02**: ConsultoriaFundo/Custodiante/Cedente company-scoped with HasQueryFilter
+- [ ] **TEN-03**: TipoAtivo global (no ClienteId, no HasQueryFilter)
+- [ ] **PERM-01**: Fund permissions (funds:read/write/delete/manage) added to Permissions.cs
+- [ ] **PERM-02**: Fund CRUD endpoints require appropriate permission claims
+- [ ] **PERM-03**: Existing access groups extended with fund permissions
+- [ ] **ADM-01**: Backoffice admin can list Fundo across all companies
+- [ ] **ADM-02**: Backoffice admin can view Fundo details
+- [ ] **ADM-03**: Backoffice admin can list ConsultoriaFundo/Custodiante/Cedente across all companies
+- [ ] **ADM-04**: All fund management actions logged to audit trail
+- [ ] **FRO-01**: Client sidebar includes Fundos section
+- [ ] **FRO-02**: FundosPage shows list with search, pagination, status badges
+- [ ] **FRO-03**: Forms use Zod validation mirroring backend rules
+- [ ] **FRO-04**: Backoffice fund views are read-only for auditing
+- [ ] **FRO-05**: Fundo status dropdown restricted by state machine
 
 ### Out of Scope
 
@@ -101,7 +163,11 @@ Ready for v8.0 planning or project archive.
 - Mobile app — web-first
 - Notificações push/email — sem necessidade no v1
 - Bit Flags no JWT — Keycloak nativo (roles/groups) é a abordagem escolhida
-- Dashboard real com dados dinâmicos — mock estático por enquanto
+- Dashboard real com dados dinâmicos — mock estático por enquanto (fundos será dinâmico em v8)
+- Processamento financeiro — módulo é cadastral, sem movimentação
+- Upload de documentos — complexidade alta, deferido
+- Integração com APIs externas (CVM, BACEN) — deferido para v2+
+- Soft delete — fundos usam status transitions, entidades auxiliares usam ATIVO/INATIVO
 - Impersonação de funcionários por PJ — fora do escopo de segurança
 - 2FA obrigatório para funcionários — requer configuração de realm separada
 
@@ -122,10 +188,12 @@ Ready for v8.0 planning or project archive.
 2. API C# valida dados, persiste no PostgreSQL, cria user no Keycloak via Admin API
 3. Redirecionamento para tela de login
 4. PJ faz login → Token JWT retornado → redirecionamento para Dashboard
-5. PJ pode cadastrar funcionários PF para sua empresa
-6. PJ pode gerenciar funcionários: bloquear, resetar senha, editar permissões
-7. Funcionário PF faz login → vê apenas suas telas conforme permissões
-8. Admin da empresa + PJ dono podem auditar ações dos funcionários
+5. PJ pode gerenciar funcionários: bloquear, resetar senha, editar permissões
+6. Funcionário PF faz login → vê apenas suas telas conforme permissões
+7. Admin da empresa + PJ dono podem auditar ações dos funcionários
+8. PJ pode cadastrar e gerenciar fundos de investimento, consultorias, custodiantes, cedentes e tipos de ativo
+9. Fundos têm ciclo de status: rascunho → ativo ↔ suspenso → em liquidação → encerrado
+10. Backoffice audita todas as ações de gestão de fundos跨越 empresas
 
 ### Segurança — Prioridade
 
@@ -159,7 +227,10 @@ O login usa tela custom no React autenticando via Keycloak (Resource Owner Passw
 | Formulário de cadastro custom | Cadastro via Admin API do Keycloak — maior controle do fluxo | ✓ v7.0 |
 | Sem validação de email no v1 | Simplificar fluxo inicial — cadastrou, já pode logar | ✓ v7.0 |
 | Atomic Design no frontend | Facilitar mudanças futuras de layout com componentes reutilizáveis | ✓ v7.0 |
-| Custom Access Groups (PERM-06) | Grupos default imutáveis, PJ pode criar/editar/deletar custom groups com permissões granulares | ✓ v7.0 |
+| Cedente/Custodiante company-scoped (D-01) | Cada empresa cadastra os seus — HasQueryFilter reforça isolamento | — v8.0 Pending |
+| FundoStatus = state machine (D-02) | RASCUNHO→ATIVO↔SUSPENSO→EM_LIQUIDACAO→ENCERRADO — transições inválidas rejeitadas | — v8.0 Pending |
+| TipoAtivo global (D-03) | Catálogo CVM — sem ClienteId, compartilhado entre empresas | — v8.0 Pending |
+| LimiteExposicao sentinel -1 (D-04) | Valor -1 = ilimitado — evita nullable confusion | — v8.0 Pending |
 | Sem MediatR — CQRS manual via DI | MediatR não é mais open source (licença comercial). Handlers injetados direto via DI nativo do .NET | ✓ Good |
 | Backoffice usa mesma stack Vinxi | Manter consistência de stack, não introduzir Next.js para admin | ✓ v3.0 |
 | Endpoints admin precisam ser criados | API atual só tem registro/login/me — CRUD admin não existe | ✓ v3.0 |
@@ -183,4 +254,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-01 — Milestone v7.0 COMPLETE, all requirements validated*
+*Last updated: 2026-05-02 — Milestone v8.0 Gestão de Fundos started*

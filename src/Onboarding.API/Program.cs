@@ -274,6 +274,7 @@ try
     // Global exception handler — prevents stack trace exposure, returns standardized ProblemDetails
     app.UseGlobalExceptionHandler();
 
+    app.UseSecurityHeaders();           // Sec-Fetch validation + Cache-Control + security headers (ZAP 90005, 10049)
     app.UseSerilogRequestLogging();     // D-05: per-request log with method/path/status/duration
     app.UseCors("AllowFrontendWithCredentials"); // Must come before UseAuthentication
     app.UseAdminSession();       // Convert backoffice_access_token cookie → Bearer header for /api/admin/*

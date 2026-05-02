@@ -1,4 +1,7 @@
-# OWASP ZAP Basex — Rule Exclusions
+# OWASP ZAP Baseline — Rule Exclusions
 # Format: pluginId	URL	Evidence	FalsePositiveReason
-# Empty file = no exclusions. Add rows as false positives are identified.
 # See: https://www.zaproxy.org/docs/desktop/addons/automation-framework/context/#excludes
+#
+# ── Resolved alerts (no longer fire after middleware changes) ──────────
+# 90005	*	Sec-Fetch-Dest/Mode/Site/User Header Missing	Resolved: SecurityHeadersMiddleware validates Sec-Fetch-* headers on /api/* paths and adds Cache-Control: no-store to all responses
+# 10049	*	Storable and Cacheable Content	Resolved: SecurityHeadersMiddleware adds Cache-Control: no-store, no-cache, max-age=0 to all responses

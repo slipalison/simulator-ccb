@@ -77,32 +77,36 @@ public static class SecurityHeadersMiddleware
                 }
             }
 
+            // Register response headers via OnStarting — runs just before headers are flushed,
+            // so they're still mutable even for responses that have already started sending body
+            // (e.g., login/refresh endpoints that set cookies via response.Headers which flush early).
+            context.Response.OnStarting(() =>
+            {
+                // Cache-Control: no-store — prevents sensitive API responses from being cached (ZAP 10049)
+                // Applies to all paths including /healthz, /robots.txt, /sitemap.xml
+                context.Response.Headers.CacheControl = "no-store, no-cache, max-age=0";
+                context.Response.Headers.Pragma = "no-cache";
+                context.Response.Headers.Expires = "0";
+
+                if (!context.Response.Headers.ContainsKey("X-Content-Type-Options"))
+                {
+                    context.Response.Headers.XContentTypeOptions = "nosniff";
+                }
+
+                if (!context.Response.Headers.ContainsKey("X-Frame-Options"))
+                {
+                    context.Response.Headers.XFrameOptions = "DENY";
+                }
+
+                if (!context.Response.Headers.ContainsKey("Referrer-Policy"))
+                {
+                    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+                }
+
+                return Task.CompletedTask;
+            });
+
             await next(context);
-
-            // ── Response headers (applied to ALL responses) ─────────────────────
-            // Cache-Control: no-store — prevents sensitive API responses from being cached (ZAP 10049)
-            // Applies to all paths including /healthz, /robots.txt, /sitemap.xml
-            context.Response.Headers.CacheControl = "no-store, no-cache, max-age=0";
-            context.Response.Headers.Pragma = "no-cache";
-            context.Response.Headers.Expires = "0";
-
-            // X-Content-Type-Options: prevents MIME-sniffing
-            if (!context.Response.Headers.ContainsKey("X-Content-Type-Options"))
-            {
-                context.Response.Headers.XContentTypeOptions = "nosniff";
-            }
-
-            // X-Frame-Options: prevents clickjacking via iframe
-            if (!context.Response.Headers.ContainsKey("X-Frame-Options"))
-            {
-                context.Response.Headers.XFrameOptions = "DENY";
-            }
-
-            // Referrer-Policy: limit referrer info
-            if (!context.Response.Headers.ContainsKey("Referrer-Policy"))
-            {
-                context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-            }
         });
     }
 }

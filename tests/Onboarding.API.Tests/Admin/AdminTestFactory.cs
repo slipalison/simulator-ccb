@@ -88,24 +88,22 @@ internal sealed class AdminTestFactory : WebApplicationFactory<Program>
                 _ => Substitute.For<ICommandHandler<UnblockEmployeeCommand, Unit>>());
 
             // Disable JWT validation for tests — PostConfigure overrides app configuration
-            // nosemgrep: csharp.lang.security.ad.jwt-tokenvalidationparameters-no-expiry-validation
             services.PostConfigure<JwtBearerOptions>(
                 "BearerBackoffice", options =>
                 {
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
-                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep: csharp.lang.security.ad.jwt-tokenvalidationparameters-no-expiry-validation — intentional: test tokens must not expire mid-test
+                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep
                     options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
                     options.TokenValidationParameters.ValidateIssuerSigningKey = true;
                 });
 
-            // nosemgrep: csharp.lang.security.ad.jwt-tokenvalidationparameters-no-expiry-validation
             services.PostConfigure<JwtBearerOptions>(
                 "BearerClient", options =>
                 {
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
-                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep: csharp.lang.security.ad.jwt-tokenvalidationparameters-no-expiry-validation — intentional: test tokens must not expire mid-test
+                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep
                     options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
                     options.TokenValidationParameters.ValidateIssuerSigningKey = true;
                 });

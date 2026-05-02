@@ -75,7 +75,7 @@ internal sealed class AuthTestApiFactory : WebApplicationFactory<Program>
                     };
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
-                    options.TokenValidationParameters.ValidateLifetime = false;
+                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep
                     options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
                     options.TokenValidationParameters.ValidateIssuerSigningKey = true;
                 });
@@ -89,7 +89,7 @@ internal sealed class AuthTestApiFactory : WebApplicationFactory<Program>
                     };
                     options.TokenValidationParameters.ValidateIssuer = false;
                     options.TokenValidationParameters.ValidateAudience = false;
-                    options.TokenValidationParameters.ValidateLifetime = false;
+                    options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep
                     options.TokenValidationParameters.IssuerSigningKey = FakeJwtTokenHelper.SecurityKey;
                     options.TokenValidationParameters.ValidateIssuerSigningKey = true;
                 });

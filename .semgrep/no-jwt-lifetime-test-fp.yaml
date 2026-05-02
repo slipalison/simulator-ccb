@@ -1,0 +1,13 @@
+rules:
+  - id: jwt-tokenvalidationparameters-no-expiry-validation
+    languages: [csharp]
+    severity: WARNING
+    message: >-
+      The TokenValidationParameters.ValidateLifetime is set to false, meaning JWT
+      token lifetime is not validated. Intentional in test code — suppressed via
+      paths.exclude.
+    pattern: |
+      options.TokenValidationParameters.ValidateLifetime = false
+    paths:
+      exclude:
+        - "tests/**"

@@ -302,7 +302,11 @@ Plans:
   2. All fund CRUD endpoints require appropriate permission claims (funds:read for GET, funds:write for POST/PUT, funds:delete for DELETE) — requests without claims receive 403 Forbidden
   3. AdminFundosController exposes read-only GET endpoints that bypass HasQueryFilter for cross-company admin visibility of Fundos, ConsultoriaFundo, Custodiante, and Cedente
   4. Existing access groups (admin-empresa, viewer) are extended with fund permissions by default — admin-empresa gets funds:manage, viewer gets funds:read
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 48-01-PLAN.md — FundosController (ConsultoriaFundo/Custodiante/TipoAtivo) + permission policies + GlobalExceptionHandler enhancement
+- [ ] 48-02-PLAN.md — FundosController (Fundo/Cedente) + AdminFundosController + access group extension
 
 ### Phase 49: FundoCedente & Relationship CRUD
 **Goal**: PJ can manage N-N relationships between Fundo↔Cedente (with payload), Cedente↔TipoAtivo, and Fundo↔TipoAtivo with full business rule enforcement
@@ -370,7 +374,7 @@ Note: Phase 50 depends on Phase 49 (relationships). Phase 51 depends on Phase 48
 | 45. Domain Layer | v8.0 | 0/? | Not started | - |
 | 46. Infrastructure Layer | v8.0 | 0/? | Not started | - |
 | 47. Application Layer | v8.0 | 0/3 | Not started | - |
-| 48. API + Permissions | v8.0 | 0/? | Not started | - |
+| 48. API + Permissions | v8.0 | 0/2 | In progress | - |
 | 49. FundoCedente & Relationships | v8.0 | 0/? | Not started | - |
 | 50. Frontend Client | v8.0 | 0/? | Not started | - |
 | 51. Frontend Backoffice | v8.0 | 0/? | Not started | - |

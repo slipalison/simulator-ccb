@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Gestão de Fundos
-status: context_gathered
-last_updated: "2026-05-03T18:00:00Z"
+status: planned
+last_updated: "2026-05-03T19:00:00Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 8
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 ## Current Position
 
-Phase: 46 of 52 (Infrastructure Layer) — 🔄 Context gathered
-Plan: Context captured, ready for planning
-Status: CONTEXT.md created. Key decisions: D-09 shadow properties for CedenteDocumento, D-11 partial unique index for FundoCedente, D-12 EmployeeRepository pattern for repos
+Phase: 46 of 52 (Infrastructure Layer) — 📋 Planned
+Plan: 2 plans in 2 waves
+Status: Plans created incorporating D-09 through D-17 decisions. Key: shadow properties for CedenteDocumento DU (D-09), OwnsMany for owned collections (D-15), partial unique indexes (D-11), EmployeeRepository pattern (D-12).
 
 Progress: [█░░░░░░░░░] 12%
 

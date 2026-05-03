@@ -56,8 +56,8 @@ public sealed class RegisterConsultoriaFundoCommandHandler
 
         // 4. Audit (ADM-04)
         await _auditService.RecordAsync(
-            actorSub: "",
-            actorEmail: "",
+            actorSub: command.ActorSub,
+            actorEmail: command.ActorEmail,
             action: ActionType.ConsultoriaCreated,
             targetUserId: consultoria.Id,
             targetUserName: command.RazaoSocial,

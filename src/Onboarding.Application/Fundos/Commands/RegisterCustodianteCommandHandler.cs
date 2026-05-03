@@ -56,8 +56,8 @@ public sealed class RegisterCustodianteCommandHandler
 
         // 4. Audit (ADM-04)
         await _auditService.RecordAsync(
-            actorSub: "",
-            actorEmail: "",
+            actorSub: command.ActorSub,
+            actorEmail: command.ActorEmail,
             action: ActionType.CustodianteCreated,
             targetUserId: custodiante.Id,
             targetUserName: command.RazaoSocial,

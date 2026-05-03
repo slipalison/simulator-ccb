@@ -9,4 +9,6 @@ public sealed record UpdateFundoCommand(
     string Nome,
     string? ClasseAnbima,
     string? Segmento,
-    DateTimeOffset? DataConstituicao);
+    DateTimeOffset? DataConstituicao,
+    string ActorSub,
+    string ActorEmail);

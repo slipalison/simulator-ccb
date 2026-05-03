@@ -38,7 +38,9 @@ public class RegisterCustodianteCommandHandlerTests
         Cnpj: "11444777000161",
         CodigoInterno: "CUST-001",
         Email: "custodiante@teste.com",
-        Telefone: "11999999999"
+        Telefone: "11999999999",
+        ActorSub: "test-sub-123",
+        ActorEmail: "actor@teste.com"
     );
 
     [Fact]

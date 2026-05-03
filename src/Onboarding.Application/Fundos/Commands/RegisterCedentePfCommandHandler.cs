@@ -63,8 +63,8 @@ public sealed class RegisterCedentePfCommandHandler
 
         // 5. Audit (ADM-04)
         await _auditService.RecordAsync(
-            actorSub: "",
-            actorEmail: "",
+            actorSub: command.ActorSub,
+            actorEmail: command.ActorEmail,
             action: ActionType.CedenteCreated,
             targetUserId: cedente.Id,
             targetUserName: command.Nome,

@@ -32,7 +32,9 @@ public class UpdateCedenteCommandHandlerTests
         Email: "atualizado@teste.com",
         Telefone: "11888888888",
         Endereco: "Rua Nova, 456",
-        Status: CedenteStatus.ATIVO
+        Status: CedenteStatus.ATIVO,
+        ActorSub: "test-sub-123",
+        ActorEmail: "actor@teste.com"
     );
 
     [Fact]

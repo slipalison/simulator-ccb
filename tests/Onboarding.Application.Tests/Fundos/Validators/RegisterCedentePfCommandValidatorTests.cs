@@ -12,7 +12,9 @@ public class RegisterCedentePfCommandValidatorTests
         Nome: "João da Silva",
         Email: "joao@teste.com",
         Telefone: "11999999999",
-        Endereco: "Rua Teste, 123"
+        Endereco: "Rua Teste, 123",
+        ActorSub: "test-sub-123",
+        ActorEmail: "actor@teste.com"
     );
 
     [Fact]

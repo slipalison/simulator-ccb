@@ -11,4 +11,6 @@ public sealed record CreateTipoAtivoCommand(
     string Descricao,
     TipoAtivoCategoria Categoria,
     string? Subcategoria,
-    int OrdemExibicao = 0);
+    int OrdemExibicao = 0,
+    string ActorSub = "",
+    string ActorEmail = "");

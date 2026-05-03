@@ -51,8 +51,8 @@ public sealed class CreateTipoAtivoCommandHandler
 
         // 4. Audit (ADM-04)
         await _auditService.RecordAsync(
-            actorSub: "",
-            actorEmail: "",
+            actorSub: command.ActorSub,
+            actorEmail: command.ActorEmail,
             action: ActionType.TipoAtivoCreated,
             targetUserId: tipoAtivo.Id,
             targetUserName: command.Descricao,

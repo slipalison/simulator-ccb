@@ -12,7 +12,9 @@ public class RegisterConsultoriaFundoCommandValidatorTests
         Cnpj: "11444777000161",
         NomeFantasia: "Consultoria Teste",
         Email: "consultoria@teste.com",
-        Telefone: "11999999999"
+        Telefone: "11999999999",
+        ActorSub: "test-sub-123",
+        ActorEmail: "actor@teste.com"
     );
 
     [Fact]

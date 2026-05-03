@@ -11,4 +11,6 @@ public sealed record UpdateCedenteCommand(
     string? Email,
     string? Telefone,
     string? Endereco,
-    CedenteStatus Status);
+    CedenteStatus Status,
+    string ActorSub,
+    string ActorEmail);

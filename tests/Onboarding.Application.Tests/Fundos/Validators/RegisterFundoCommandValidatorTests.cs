@@ -16,7 +16,9 @@ public class RegisterFundoCommandValidatorTests
         TipoFundo: TipoFundo.RendaFixa,
         ClasseAnbima: "Classe A",
         Segmento: "Segmento 1",
-        DataConstituicao: null
+        DataConstituicao: null,
+        ActorSub: "test-sub-123",
+        ActorEmail: "actor@teste.com"
     );
 
     [Fact]

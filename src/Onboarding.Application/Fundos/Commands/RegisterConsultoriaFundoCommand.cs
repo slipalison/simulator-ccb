@@ -9,4 +9,6 @@ public sealed record RegisterConsultoriaFundoCommand(
     string Cnpj,
     string? NomeFantasia,
     string? Email,
-    string? Telefone);
+    string? Telefone,
+    string ActorSub,
+    string ActorEmail);

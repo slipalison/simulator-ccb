@@ -9,4 +9,6 @@ public sealed record RegisterCedentePjCommand(
     string RazaoSocial,
     string? Email,
     string? Telefone,
-    string? Endereco);
+    string? Endereco,
+    string ActorSub,
+    string ActorEmail);

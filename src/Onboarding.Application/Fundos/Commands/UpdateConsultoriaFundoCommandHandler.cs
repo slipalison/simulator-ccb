@@ -46,8 +46,8 @@ public sealed class UpdateConsultoriaFundoCommandHandler
         _logger.LogInformation("ConsultoriaFundo {Id} updated", command.Id);
 
         await _auditService.RecordAsync(
-            actorSub: "",
-            actorEmail: "",
+            actorSub: command.ActorSub,
+            actorEmail: command.ActorEmail,
             action: ActionType.ConsultoriaUpdated,
             targetUserId: consultoria.Id,
             targetUserName: command.RazaoSocial,

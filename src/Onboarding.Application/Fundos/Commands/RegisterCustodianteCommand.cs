@@ -9,4 +9,6 @@ public sealed record RegisterCustodianteCommand(
     string Cnpj,
     string? CodigoInterno,
     string? Email,
-    string? Telefone);
+    string? Telefone,
+    string ActorSub,
+    string ActorEmail);

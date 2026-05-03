@@ -10,4 +10,6 @@ public sealed record UpdateTipoAtivoCommand(
     string Descricao,
     string? Subcategoria,
     TipoAtivoStatus Status,
-    int OrdemExibicao);
+    int OrdemExibicao,
+    string ActorSub = "",
+    string ActorEmail = "");

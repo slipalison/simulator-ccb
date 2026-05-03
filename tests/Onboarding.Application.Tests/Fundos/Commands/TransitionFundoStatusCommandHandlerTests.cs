@@ -61,7 +61,7 @@ public class TransitionFundoStatusCommandHandlerTests
     {
         // Arrange
         var fundo = CreateFundoWithStatus(FundoStatus.RASCUNHO);
-        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.ATIVO);
+        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.ATIVO, "test-sub-123", "actor@teste.com");
         _repository.GetByIdAsync(fundo.Id, Arg.Any<CancellationToken>()).Returns(fundo);
 
         // Act
@@ -77,7 +77,7 @@ public class TransitionFundoStatusCommandHandlerTests
     {
         // Arrange
         var fundo = CreateFundoWithStatus(FundoStatus.ATIVO);
-        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.SUSPENSO);
+        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.SUSPENSO, "test-sub-123", "actor@teste.com");
         _repository.GetByIdAsync(fundo.Id, Arg.Any<CancellationToken>()).Returns(fundo);
 
         // Act
@@ -92,7 +92,7 @@ public class TransitionFundoStatusCommandHandlerTests
     {
         // Arrange
         var fundo = CreateFundoWithStatus(FundoStatus.SUSPENSO);
-        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.ATIVO);
+        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.ATIVO, "test-sub-123", "actor@teste.com");
         _repository.GetByIdAsync(fundo.Id, Arg.Any<CancellationToken>()).Returns(fundo);
 
         // Act
@@ -107,7 +107,7 @@ public class TransitionFundoStatusCommandHandlerTests
     {
         // Arrange
         var fundo = CreateFundoWithStatus(FundoStatus.ATIVO);
-        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.EM_LIQUIDACAO);
+        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.EM_LIQUIDACAO, "test-sub-123", "actor@teste.com");
         _repository.GetByIdAsync(fundo.Id, Arg.Any<CancellationToken>()).Returns(fundo);
 
         // Act
@@ -122,7 +122,7 @@ public class TransitionFundoStatusCommandHandlerTests
     {
         // Arrange
         var fundo = CreateFundoAtEmLiquidacao();
-        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.ENCERRADO);
+        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.ENCERRADO, "test-sub-123", "actor@teste.com");
         _repository.GetByIdAsync(fundo.Id, Arg.Any<CancellationToken>()).Returns(fundo);
 
         // Act
@@ -137,7 +137,7 @@ public class TransitionFundoStatusCommandHandlerTests
     {
         // Arrange — ATIVO→SUSPENSO and back SUSPENSO→ATIVO
         var fundo = CreateFundoWithStatus(FundoStatus.ATIVO);
-        var commandSuspend = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.SUSPENSO);
+        var commandSuspend = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.SUSPENSO, "test-sub-123", "actor@teste.com");
         _repository.GetByIdAsync(fundo.Id, Arg.Any<CancellationToken>()).Returns(fundo);
 
         // Act — suspend
@@ -145,7 +145,7 @@ public class TransitionFundoStatusCommandHandlerTests
         fundo.Status.ShouldBe(FundoStatus.SUSPENSO);
 
         // Act — reactivate
-        var commandReactivate = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.ATIVO);
+        var commandReactivate = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.ATIVO, "test-sub-123", "actor@teste.com");
         var result = await _sut.HandleAsync(commandReactivate);
         result.Status.ShouldBe(FundoStatus.ATIVO);
     }
@@ -158,7 +158,7 @@ public class TransitionFundoStatusCommandHandlerTests
         // Arrange — reach ENCERRADO state first
         var fundo = CreateFundoAtEmLiquidacao();
         fundo.TransitionTo(FundoStatus.ENCERRADO);
-        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.ATIVO);
+        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.ATIVO, "test-sub-123", "actor@teste.com");
         _repository.GetByIdAsync(fundo.Id, Arg.Any<CancellationToken>()).Returns(fundo);
 
         // Act & Assert
@@ -172,7 +172,7 @@ public class TransitionFundoStatusCommandHandlerTests
     {
         // Arrange
         var fundo = CreateFundoWithStatus(FundoStatus.RASCUNHO);
-        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.SUSPENSO);
+        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.SUSPENSO, "test-sub-123", "actor@teste.com");
         _repository.GetByIdAsync(fundo.Id, Arg.Any<CancellationToken>()).Returns(fundo);
 
         // Act & Assert
@@ -186,7 +186,7 @@ public class TransitionFundoStatusCommandHandlerTests
     {
         // Arrange
         var fundo = CreateFundoWithStatus(FundoStatus.SUSPENSO);
-        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.ENCERRADO);
+        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.ENCERRADO, "test-sub-123", "actor@teste.com");
         _repository.GetByIdAsync(fundo.Id, Arg.Any<CancellationToken>()).Returns(fundo);
 
         // Act & Assert
@@ -200,7 +200,7 @@ public class TransitionFundoStatusCommandHandlerTests
     {
         // Arrange
         var fundoId = Guid.NewGuid();
-        var command = new TransitionFundoStatusCommand(fundoId, FundoStatus.ATIVO);
+        var command = new TransitionFundoStatusCommand(fundoId, FundoStatus.ATIVO, "test-sub-123", "actor@teste.com");
         _repository.GetByIdAsync(fundoId, Arg.Any<CancellationToken>()).Returns((Fundo?)null);
 
         // Act & Assert
@@ -214,7 +214,7 @@ public class TransitionFundoStatusCommandHandlerTests
     {
         // Arrange
         var fundo = CreateFundoWithStatus(FundoStatus.RASCUNHO);
-        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.ATIVO);
+        var command = new TransitionFundoStatusCommand(fundo.Id, FundoStatus.ATIVO, "test-sub-123", "actor@teste.com");
         _repository.GetByIdAsync(fundo.Id, Arg.Any<CancellationToken>()).Returns(fundo);
 
         // Act

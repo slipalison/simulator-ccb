@@ -46,8 +46,8 @@ public sealed class TransitionFundoStatusCommandHandler
             fundo.Id, previousStatus, command.NewStatus);
 
         await _auditService.RecordAsync(
-            actorSub: "",
-            actorEmail: "",
+            actorSub: command.ActorSub,
+            actorEmail: command.ActorEmail,
             action: ActionType.FundoStatusChanged,
             targetUserId: fundo.Id,
             targetUserName: fundo.Nome,

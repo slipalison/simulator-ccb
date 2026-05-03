@@ -75,8 +75,8 @@ public sealed class RegisterFundoCommandHandler
 
         // 6. Audit (ADM-04)
         await _auditService.RecordAsync(
-            actorSub: "",
-            actorEmail: "",
+            actorSub: command.ActorSub,
+            actorEmail: command.ActorEmail,
             action: ActionType.FundoCreated,
             targetUserId: fundo.Id,
             targetUserName: command.Nome,

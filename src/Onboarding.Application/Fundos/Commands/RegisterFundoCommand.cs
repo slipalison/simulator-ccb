@@ -14,4 +14,6 @@ public sealed record RegisterFundoCommand(
     TipoFundo TipoFundo,
     string? ClasseAnbima,
     string? Segmento,
-    DateTimeOffset? DataConstituicao);
+    DateTimeOffset? DataConstituicao,
+    string ActorSub,
+    string ActorEmail);

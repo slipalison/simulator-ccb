@@ -9,4 +9,6 @@ public sealed record RegisterCedentePfCommand(
     string Nome,
     string? Email,
     string? Telefone,
-    string? Endereco);
+    string? Endereco,
+    string ActorSub,
+    string ActorEmail);

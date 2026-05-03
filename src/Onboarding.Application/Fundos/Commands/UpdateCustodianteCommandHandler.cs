@@ -43,8 +43,8 @@ public sealed class UpdateCustodianteCommandHandler
         _logger.LogInformation("Custodiante {Id} updated", command.Id);
 
         await _auditService.RecordAsync(
-            actorSub: "",
-            actorEmail: "",
+            actorSub: command.ActorSub,
+            actorEmail: command.ActorEmail,
             action: ActionType.CustodianteUpdated,
             targetUserId: custodiante.Id,
             targetUserName: command.RazaoSocial,

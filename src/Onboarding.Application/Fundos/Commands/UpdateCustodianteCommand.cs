@@ -11,4 +11,6 @@ public sealed record UpdateCustodianteCommand(
     string? CodigoInterno,
     string? Email,
     string? Telefone,
-    CustodianteStatus Status);
+    CustodianteStatus Status,
+    string ActorSub,
+    string ActorEmail);

@@ -44,8 +44,8 @@ public sealed class UpdateCedenteCommandHandler
         _logger.LogInformation("Cedente {Id} updated", command.Id);
 
         await _auditService.RecordAsync(
-            actorSub: "",
-            actorEmail: "",
+            actorSub: command.ActorSub,
+            actorEmail: command.ActorEmail,
             action: ActionType.CedenteUpdated,
             targetUserId: cedente.Id,
             targetUserName: command.Nome,

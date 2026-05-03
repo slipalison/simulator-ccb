@@ -39,7 +39,9 @@ public class RegisterCedentePjCommandHandlerTests
         RazaoSocial: "Empresa Teste LTDA",
         Email: "empresa@teste.com",
         Telefone: "11999999999",
-        Endereco: "Av. Teste, 1000"
+        Endereco: "Av. Teste, 1000",
+        ActorSub: "test-sub-123",
+        ActorEmail: "actor@teste.com"
     );
 
     [Fact]

@@ -8,4 +8,6 @@ namespace Onboarding.Application.Fundos.Commands;
 /// </summary>
 public sealed record TransitionFundoStatusCommand(
     Guid FundoId,
-    FundoStatus NewStatus);
+    FundoStatus NewStatus,
+    string ActorSub,
+    string ActorEmail);

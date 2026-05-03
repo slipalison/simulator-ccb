@@ -11,4 +11,6 @@ public sealed record UpdateConsultoriaFundoCommand(
     string? NomeFantasia,
     string? Email,
     string? Telefone,
-    ConsultoriaFundoStatus Status);
+    ConsultoriaFundoStatus Status,
+    string ActorSub,
+    string ActorEmail);

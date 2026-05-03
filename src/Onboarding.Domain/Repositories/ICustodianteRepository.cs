@@ -1,4 +1,4 @@
-using Onboarding.Domain.Aggregates.FundoAggregate;
+using Onboarding.Domain.Aggregates.CustodianteAggregate;
 
 namespace Onboarding.Domain.Repositories;
 

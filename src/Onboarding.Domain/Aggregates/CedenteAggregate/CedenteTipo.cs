@@ -1,4 +1,4 @@
-namespace Onboarding.Domain.Aggregates.FundoAggregate;
+namespace Onboarding.Domain.Aggregates.CedenteAggregate;
 
 /// <summary>
 /// Indicates whether a Cedente is a natural person (PF) or legal entity (PJ).

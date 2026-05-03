@@ -272,8 +272,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 46-01-PLAN.md — EF Core configurations (8 entities) with HasQueryFilter, unique constraints, decimal precision, CedenteDocumento DU
-- [ ] 46-02-PLAN.md — 5 repository implementations, DI registration, EF Core migration
+- [ ] 46-01-PLAN.md — EF Core configurations for 5 aggregates + 3 owned collections, HasQueryFilter, CedenteDocumento DU shadow properties, decimal precision, partial unique indexes
+- [ ] 46-02-PLAN.md — 5 repository implementations (EmployeeRepository pattern), DI registration, single migration AddFundosModule
 
 ### Phase 47: Application Layer
 **Goal**: CQRS handlers validate inputs, enforce business rules, persist via repositories, and log every mutation to audit trail

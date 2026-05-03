@@ -272,8 +272,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 46-01-PLAN.md — EF Core configurations for 5 aggregates + 3 owned collections, HasQueryFilter, CedenteDocumento DU shadow properties, decimal precision, partial unique indexes
-- [ ] 46-02-PLAN.md — 5 repository implementations (EmployeeRepository pattern), DI registration, single migration AddFundosModule
+- [x] 46-01-PLAN.md — EF Core configurations for 5 aggregates + 3 owned collections, HasQueryFilter, CedenteDocumento DU shadow properties, decimal precision, partial unique indexes
+- [x] 46-02-PLAN.md — 5 repository implementations (EmployeeRepository pattern), DI registration, single migration AddFundosModule
 
 ### Phase 47: Application Layer
 **Goal**: CQRS handlers validate inputs, enforce business rules, persist via repositories, and log every mutation to audit trail
@@ -286,7 +286,12 @@ Plans:
   4. Cedente polymorphic creation: PF path validates CPF, PJ path validates CNPJ — both paths apply company-scoped uniqueness checks
   5. TipoAtivo handler creates/updates with unique codigo validation (global scope, no company filter)
   6. Every fund management mutation (create, update, status transition) is logged to the existing audit trail with actor, action type, and details JSON
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 47-01-PLAN.md — Command handlers, validators, and DTOs for all 5 entities (ConsultoriaFundo, Custodiante, Fundo, Cedente, TipoAtivo) + Fundo status transition + DI registration
+- [ ] 47-02-PLAN.md — Query handlers for paginated listing of all 5 entities + DI registration
+- [ ] 47-03-PLAN.md — Unit tests for all handlers and validators (80%+ coverage)
 
 ### Phase 48: API + Permissions
 **Goal**: FundosController exposes CRUD endpoints for all 5 entity types with permission-gated access; AdminFundosController provides cross-company read-only views
@@ -364,7 +369,7 @@ Note: Phase 50 depends on Phase 49 (relationships). Phase 51 depends on Phase 48
 |-------|-----------|----------------|--------|-----------|
 | 45. Domain Layer | v8.0 | 0/? | Not started | - |
 | 46. Infrastructure Layer | v8.0 | 0/? | Not started | - |
-| 47. Application Layer | v8.0 | 0/? | Not started | - |
+| 47. Application Layer | v8.0 | 0/3 | Not started | - |
 | 48. API + Permissions | v8.0 | 0/? | Not started | - |
 | 49. FundoCedente & Relationships | v8.0 | 0/? | Not started | - |
 | 50. Frontend Client | v8.0 | 0/? | Not started | - |

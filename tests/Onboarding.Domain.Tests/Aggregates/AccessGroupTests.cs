@@ -51,13 +51,11 @@ public class AccessGroupTests
 
         var admin = groups[0];
         admin.Name.ShouldBe("admin-empresa");
-        admin.Permissions.Count.ShouldBe(6);
-        admin.Permissions.ShouldContain(Permissions.EmployeesRead);
-        admin.Permissions.ShouldContain(Permissions.EmployeesWrite);
-        admin.Permissions.ShouldContain(Permissions.EmployeesDelete);
-        admin.Permissions.ShouldContain(Permissions.AuditRead);
-        admin.Permissions.ShouldContain(Permissions.DashboardAccess);
-        admin.Permissions.ShouldContain(Permissions.AccessGroupsManage);
+        admin.Permissions.Count.ShouldBe(Permissions.All.Length);
+        foreach (var perm in Permissions.All)
+        {
+            admin.Permissions.ShouldContain(perm);
+        }
     }
 
     [Fact]

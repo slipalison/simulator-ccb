@@ -253,7 +253,11 @@ Every phase delivers a coherent, independently verifiable capability before the 
   3. Company-scoped entities (Fundo, FundoCedente, ConsultoriaFundo, Custodiante, Cedente) have ClienteId property; TipoAtivo has no ClienteId — matching D-01 and D-03
   4. LimiteExposicaoPercentual value object treats -1 as "unlimited" sentinel and validates non-negative range otherwise — matching D-04
   5. Permission constants (funds:read, funds:write, funds:delete, funds:manage) defined in Permissions.cs extending existing permission system
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 45-01-PLAN.md — Value objects, enums, domain exceptions, permissions extension, repository interfaces
+- [ ] 45-02-PLAN.md — 5 aggregate roots + 3 join entities with unit tests
 
 ### Phase 46: Infrastructure Layer
 **Goal**: EF Core persistence layer enforces multi-tenancy, unique constraints, and decimal precision — all 8 tables created correctly with a single migration

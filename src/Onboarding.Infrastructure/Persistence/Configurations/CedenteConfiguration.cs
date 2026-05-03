@@ -39,6 +39,9 @@ public sealed class CedenteConfiguration : IEntityTypeConfiguration<Cedente>
             .OnDelete(DeleteBehavior.Restrict);
 
         // D-09: Shadow properties for CedenteDocumento discriminated union persistence
+        // Documento is reconstructed from shadow properties via repository (CR-03)
+        builder.Ignore(e => e.Documento);
+
         // documento_tipo stores "PF" or "PJ" discriminator
         builder.Property<string>("DocumentoTipo")
             .HasColumnName("documento_tipo")
@@ -55,13 +58,9 @@ public sealed class CedenteConfiguration : IEntityTypeConfiguration<Cedente>
             .HasColumnName("cnpj_cedente")
             .HasMaxLength(14);
 
-        // Map Documento property — writes the document value string via Match (D-09).
-        // Read uses shadow properties (DocumentoTipo, CpfValue, CnpjCedenteValue) via repository pattern (D-12).
-        // ValueConverter avoids expression-tree limitation of lambda with throw.
-        builder.Property(e => e.Documento)
-            .HasConversion(new CedenteDocumentoValueConverter())
-            .HasColumnName("documento")
-            .HasMaxLength(14);
+        // CR-03: Documento property ignored above — no HasConversion, no documento column.
+        // Shadow properties (DocumentoTipo, CpfValue, CnpjCedenteValue) handle persistence.
+        // Repository reconstructs Documento from shadows after reads.
 
         builder.Property(e => e.Nome)
             .HasColumnName("nome")

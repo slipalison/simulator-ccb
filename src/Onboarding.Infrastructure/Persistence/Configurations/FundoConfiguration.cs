@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Onboarding.Application.Common;
 using Onboarding.Domain.Aggregates.CedenteAggregate;
+using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate;
 using Onboarding.Domain.Aggregates.CustodianteAggregate;
 using Onboarding.Domain.Aggregates.FundoAggregate;
@@ -33,6 +34,12 @@ public sealed class FundoConfiguration : IEntityTypeConfiguration<Fundo>
         builder.Property(e => e.ClienteId)
             .HasColumnName("cliente_id")
             .IsRequired();
+
+        // FK to Company with Restrict delete — referential integrity at DB level
+        builder.HasOne<Company>()
+            .WithMany()
+            .HasForeignKey(e => e.ClienteId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Value object mapping: Cnpj → string (max 14 chars)
         builder.Property(e => e.Cnpj)
@@ -96,11 +103,11 @@ public sealed class FundoConfiguration : IEntityTypeConfiguration<Fundo>
         // HasQueryFilter — company isolation (D-01, TEN-01)
         builder.HasQueryFilter(e => e.ClienteId == _currentCompanyService.CompanyId);
 
-        // Unique CNPJ per company per CAD-12 (scoped via HasQueryFilter)
-        builder.HasIndex(e => e.Cnpj)
+        // Composite unique index — CNPJ uniqueness scoped per company (CR-01)
+        // HasQueryFilter is runtime-only; DB constraint must be composite
+        builder.HasIndex(e => new { e.ClienteId, e.Cnpj })
             .IsUnique()
-            .HasFilter("cnpj IS NOT NULL")
-            .HasDatabaseName("IX_fundos_cnpj");
+            .HasDatabaseName("IX_fundos_cliente_id_cnpj");
 
         builder.HasIndex(e => e.ClienteId)
             .HasDatabaseName("IX_fundos_cliente_id");

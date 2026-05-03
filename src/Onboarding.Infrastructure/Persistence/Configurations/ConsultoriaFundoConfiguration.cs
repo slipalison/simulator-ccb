@@ -82,11 +82,11 @@ public sealed class ConsultoriaFundoConfiguration : IEntityTypeConfiguration<Con
         // HasQueryFilter — company isolation (D-01, TEN-02)
         builder.HasQueryFilter(e => e.ClienteId == _currentCompanyService.CompanyId);
 
-        // Unique CNPJ per company per CAD-04 (scoped via HasQueryFilter)
-        builder.HasIndex(e => e.Cnpj)
+        // Composite unique index — CNPJ uniqueness scoped per company (CR-01)
+        // HasQueryFilter is runtime-only; DB constraint must be composite
+        builder.HasIndex(e => new { e.ClienteId, e.Cnpj })
             .IsUnique()
-            .HasFilter("cnpj IS NOT NULL")
-            .HasDatabaseName("IX_consultoria_fundos_cnpj");
+            .HasDatabaseName("IX_consultoria_fundos_cliente_id_cnpj");
 
         builder.HasIndex(e => e.ClienteId)
             .HasDatabaseName("IX_consultoria_fundos_cliente_id");

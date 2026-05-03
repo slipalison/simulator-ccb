@@ -17,7 +17,6 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     cliente_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    documento = table.Column<string>(type: "character varying(14)", maxLength: 14, nullable: false),
                     nome = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     email = table.Column<string>(type: "character varying(320)", maxLength: 320, nullable: true),
                     telefone = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
@@ -126,6 +125,12 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_fundos", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_fundos_companies_cliente_id",
+                        column: x => x.cliente_id,
+                        principalTable: "companies",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_fundos_consultoria_fundos_consultoria_fundo_id",
                         column: x => x.consultoria_fundo_id,
@@ -256,11 +261,10 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                 column: "cliente_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_consultoria_fundos_cnpj",
+                name: "IX_consultoria_fundos_cliente_id_cnpj",
                 table: "consultoria_fundos",
-                column: "cnpj",
-                unique: true,
-                filter: "cnpj IS NOT NULL");
+                columns: new[] { "cliente_id", "cnpj" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_custodiantes_cliente_id",
@@ -268,11 +272,10 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                 column: "cliente_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_custodiantes_cnpj",
+                name: "IX_custodiantes_cliente_id_cnpj",
                 table: "custodiantes",
-                column: "cnpj",
-                unique: true,
-                filter: "cnpj IS NOT NULL");
+                columns: new[] { "cliente_id", "cnpj" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_fundo_cedentes_cedente_id",
@@ -303,11 +306,10 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                 column: "cliente_id");
 
             migrationBuilder.CreateIndex(
-                name: "IX_fundos_cnpj",
+                name: "IX_fundos_cliente_id_cnpj",
                 table: "fundos",
-                column: "cnpj",
-                unique: true,
-                filter: "cnpj IS NOT NULL");
+                columns: new[] { "cliente_id", "cnpj" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_fundos_consultoria_fundo_id",

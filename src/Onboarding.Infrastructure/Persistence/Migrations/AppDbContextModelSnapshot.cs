@@ -104,12 +104,6 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
-                    b.Property<string>("Documento")
-                        .IsRequired()
-                        .HasMaxLength(14)
-                        .HasColumnType("character varying(14)")
-                        .HasColumnName("documento");
-
                     b.Property<string>("DocumentoTipo")
                         .IsRequired()
                         .HasMaxLength(2)
@@ -259,10 +253,9 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                     b.HasIndex("ClienteId")
                         .HasDatabaseName("IX_consultoria_fundos_cliente_id");
 
-                    b.HasIndex("Cnpj")
+                    b.HasIndex("ClienteId", "Cnpj")
                         .IsUnique()
-                        .HasDatabaseName("IX_consultoria_fundos_cnpj")
-                        .HasFilter("cnpj IS NOT NULL");
+                        .HasDatabaseName("IX_consultoria_fundos_cliente_id_cnpj");
 
                     b.ToTable("consultoria_fundos", (string)null);
                 });
@@ -317,10 +310,9 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                     b.HasIndex("ClienteId")
                         .HasDatabaseName("IX_custodiantes_cliente_id");
 
-                    b.HasIndex("Cnpj")
+                    b.HasIndex("ClienteId", "Cnpj")
                         .IsUnique()
-                        .HasDatabaseName("IX_custodiantes_cnpj")
-                        .HasFilter("cnpj IS NOT NULL");
+                        .HasDatabaseName("IX_custodiantes_cliente_id_cnpj");
 
                     b.ToTable("custodiantes", (string)null);
                 });
@@ -490,16 +482,15 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                     b.HasIndex("ClienteId")
                         .HasDatabaseName("IX_fundos_cliente_id");
 
-                    b.HasIndex("Cnpj")
-                        .IsUnique()
-                        .HasDatabaseName("IX_fundos_cnpj")
-                        .HasFilter("cnpj IS NOT NULL");
-
                     b.HasIndex("ConsultoriaFundoId")
                         .HasDatabaseName("IX_fundos_consultoria_fundo_id");
 
                     b.HasIndex("CustodianteId")
                         .HasDatabaseName("IX_fundos_custodiante_id");
+
+                    b.HasIndex("ClienteId", "Cnpj")
+                        .IsUnique()
+                        .HasDatabaseName("IX_fundos_cliente_id_cnpj");
 
                     b.ToTable("fundos", (string)null);
                 });
@@ -714,6 +705,12 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Onboarding.Domain.Aggregates.FundoAggregate.Fundo", b =>
                 {
+                    b.HasOne("Onboarding.Domain.Aggregates.CompanyAggregate.Company", null)
+                        .WithMany()
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate.ConsultoriaFundo", null)
                         .WithMany()
                         .HasForeignKey("ConsultoriaFundoId")

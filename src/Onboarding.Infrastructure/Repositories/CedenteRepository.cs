@@ -37,10 +37,17 @@ public sealed class CedenteRepository : ICedenteRepository
     }
 
     public async Task<Cedente?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await _db.Cedentes
+    {
+        var cedente = await _db.Cedentes
             .IgnoreQueryFilters()
             .Include(c => c.TiposAtivo)
             .FirstOrDefaultAsync(c => c.Id == id, ct);
+
+        if (cedente is not null)
+            ReconstructDocumento(cedente);
+
+        return cedente;
+    }
 
     public async Task<bool> ExistsByDocumentoAsync(
         CedenteDocumento documento, Guid companyId, CancellationToken ct = default)
@@ -95,6 +102,10 @@ public sealed class CedenteRepository : ICedenteRepository
             .Take(pageSize)
             .ToListAsync(ct);
 
+        // CR-03: Reconstruct Documento from shadow properties after materialization
+        foreach (var cedente in items)
+            ReconstructDocumento(cedente);
+
         return (items.AsReadOnly(), totalCount);
     }
 
@@ -117,6 +128,30 @@ public sealed class CedenteRepository : ICedenteRepository
             entry.Property("DocumentoTipo").CurrentValue = "PJ";
             entry.Property<string?>("CpfValue").CurrentValue = null;
             entry.Property<string?>("CnpjCedenteValue").CurrentValue = pj.Cnpj.Value;
+        }
+    }
+
+    /// <summary>
+    /// Reconstructs Documento from shadow properties after EF Core materialization (CR-03).
+    /// Documento has private setter — reflection required since domain model doesn't expose a setter method.
+    /// </summary>
+    private void ReconstructDocumento(Cedente cedente)
+    {
+        var entry = _db.Entry(cedente);
+        var tipo = entry.Property<string>("DocumentoTipo").CurrentValue;
+        if (tipo == "PF")
+        {
+            var cpfValue = entry.Property<string?>("CpfValue").CurrentValue;
+            if (cpfValue is not null)
+                typeof(Cedente).GetProperty(nameof(Cedente.Documento))!
+                    .SetValue(cedente, CedenteDocumento.Pf(Cpf.Create(cpfValue)));
+        }
+        else if (tipo == "PJ")
+        {
+            var cnpjValue = entry.Property<string?>("CnpjCedenteValue").CurrentValue;
+            if (cnpjValue is not null)
+                typeof(Cedente).GetProperty(nameof(Cedente.Documento))!
+                    .SetValue(cedente, CedenteDocumento.Pj(Cnpj.Create(cnpjValue)));
         }
     }
 }

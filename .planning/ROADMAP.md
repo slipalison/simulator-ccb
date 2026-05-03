@@ -231,7 +231,7 @@ Every phase delivers a coherent, independently verifiable capability before the 
 ### Phases
 
 - [x] **Phase 45: Domain Layer** - Entities, value objects, enums, repository interfaces, FundoStatus state machine
-- [ ] **Phase 46: Infrastructure Layer** - EF Core configs, HasQueryFilter, repositories, migration
+- [x] **Phase 46: Infrastructure Layer** - EF Core configs, HasQueryFilter, repositories, migration
 - [ ] **Phase 47: Application Layer** - Commands, queries, handlers, validators, DTOs, audit integration
 - [ ] **Phase 48: API + Permissions** - FundosController (client CRUD), AdminFundosController, permission policies
 - [ ] **Phase 49: FundoCedente & Relationship CRUD** - N-N relationships with payload, TipoAtivo associations

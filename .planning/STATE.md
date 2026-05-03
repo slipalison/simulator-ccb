@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Gestão de Fundos
-status: planned
-last_updated: "2026-05-03T19:00:00Z"
+status: phase-complete
+last_updated: "2026-05-03T20:30:00Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 8
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 12
+  completed_phases: 2
+  total_plans: 4
+  completed_plans: 4
+  percent: 25
   gaps: []
 ---
 
@@ -21,16 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — isolamento entre empresas é requisito de primeira classe.
-**Current focus:** Phase 46 — Infrastructure Layer (v8.0 Gestão de Fundos)
-**Last activity:** 2026-05-03 — Phase 45 complete
+**Current focus:** Phase 47 — Application Layer (v8.0 Gestão de Fundos)
+**Last activity:** 2026-05-03 — Phase 46 complete
 
 ## Current Position
 
-Phase: 46 of 52 (Infrastructure Layer) — 📋 Planned
-Plan: 2 plans in 2 waves
-Status: Plans created incorporating D-09 through D-17 decisions. Key: shadow properties for CedenteDocumento DU (D-09), OwnsMany for owned collections (D-15), partial unique indexes (D-11), EmployeeRepository pattern (D-12).
+Phase: 46 COMPLETE → Phase 47 NEXT (Application Layer)
+Plan: 4/4 plans complete (Phase 45 + 46)
+Status: Phase 46 executed, validated (PASS), 3 CRITICAL fixes applied. All D-01 through D-17 decisions implemented.
 
-Progress: [█░░░░░░░░░] 12%
+Progress: [██░░░░░░░░░] 25%
 
 ## Milestone Breakdown
 
@@ -41,7 +41,7 @@ Progress: [█░░░░░░░░░] 12%
 **Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** ✅ COMPLETE (6/6 phases)
 **Milestone v6.0 — Gestão Completa de Administradores:** ✅ COMPLETE (2/2 phases)
 **Milestone v7.0 — PJ-Only Onboarding + Gestão de Funcionários:** ✅ COMPLETE (8/8 phases, 19/19 plans)
-**Milestone v8.0 — Gestão de Fundos:** 🔄 1/8 phases complete
+**Milestone v8.0 — Gestão de Fundos:** 🔄 2/8 phases complete
 
 ## Accumulated Context
 
@@ -56,7 +56,7 @@ Progress: [█░░░░░░░░░] 12%
 - D-07: FundoStatus = enum + CanTransitionTo (no State Pattern)
 - D-08: FundoCedente within Fundo aggregate
 
-- D-09: CedenteDocumento DU → shadow properties (documento_tipo + cpf/cnpj_cedente) com HasConversion
+- D-09: CedenteDocumento DU → shadow properties (documento_tipo + cpf/cnpj_cedente) com builder.Ignore(Documento) + ReconstructDocumento
 - D-10: CedenteDocumento uniqueness = composite filtered indexes per PF/PJ + company scope
 - D-11: FundoCedente unique = partial index (FundoId, CedenteId) WHERE status = ATIVO (enum value 1)
 - D-12: Repository pattern = EmployeeRepository pattern (IgnoreQueryFilters, explicit CompanyId)
@@ -69,6 +69,13 @@ Progress: [█░░░░░░░░░] 12%
 ### Security Fix (Phase 45 Review)
 
 - WR-03 fixed: Guid.Empty guards on all company-scoped aggregate factory methods (Fundo, ConsultoriaFundo, Custodiante, Cedente)
+
+### Phase 46 Completion Notes
+
+- CR-01 fix: CNPJ unique indexes changed from single-column to composite (ClienteId, Cnpj) — prevents cross-tenant collision at DB level
+- CR-02 fix: Fundo FK to Company with Restrict delete added — referential integrity at DB level
+- CR-03 fix: CedenteDocumento ValueConverter removed, replaced with builder.Ignore(Documento) + ReconstructDocumento via shadow properties in repository
+- Warnings (advisory, not blocking): LIKE wildcards unescaped in search; no default status filter on paged queries
 
 ### Research Findings (v8.0)
 
@@ -97,5 +104,5 @@ Progress: [█░░░░░░░░░] 12%
 ## Session Continuity
 
 Last session: 2026-05-03
-Stopped at: Phase 46 context gathered, ready for planning
+Stopped at: Phase 46 complete, ready for Phase 47 discuss/plan
 Resume file: .planning/phases/46-infrastructure-layer/46-CONTEXT.md

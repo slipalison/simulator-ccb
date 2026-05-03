@@ -96,6 +96,13 @@ public static class InfrastructureServiceExtensions
         // Password reset token repository
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
 
+        // Fundos module repositories (Phase 46)
+        services.AddScoped<IFundoRepository, FundoRepository>();
+        services.AddScoped<IConsultoriaFundoRepository, ConsultoriaFundoRepository>();
+        services.AddScoped<ICustodianteRepository, CustodianteRepository>();
+        services.AddScoped<ICedenteRepository, CedenteRepository>();
+        services.AddScoped<ITipoAtivoRepository, TipoAtivoRepository>();
+
         // Keycloak token endpoint — ROPC/refresh calls (D-11, D-12)
         // Named client without auth handler — ROPC calls do not carry outbound Bearer token
         services.AddHttpClient("keycloak-token", client =>

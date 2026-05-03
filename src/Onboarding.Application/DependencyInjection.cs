@@ -12,6 +12,8 @@ using Onboarding.Application.Common;
 using Onboarding.Application.Companies.Commands;
 using Onboarding.Application.Companies.DTOs;
 using Onboarding.Application.Companies.Queries;
+using Onboarding.Application.Fundos.Commands;
+using Onboarding.Application.Fundos.DTOs;
 
 namespace Onboarding.Application;
 
@@ -93,6 +95,41 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IValidator<UpdateAdministratorCommand>, UpdateAdministratorCommandValidator>();
         services.AddScoped<IValidator<ResetAdministratorPasswordCommand>, ResetAdministratorPasswordCommandValidator>();
         services.AddScoped<IValidator<ToggleAdministratorStatusCommand>, ToggleAdministratorStatusCommandValidator>();
+
+        // Fund CRUD commands (Phase 47 — CAD-01..21, ADM-04)
+        // ConsultoriaFundo (company-scoped per D-01)
+        services.AddScoped<ICommandHandler<RegisterConsultoriaFundoCommand, ConsultoriaFundoDto>, RegisterConsultoriaFundoCommandHandler>();
+        services.AddScoped<IValidator<RegisterConsultoriaFundoCommand>, RegisterConsultoriaFundoCommandValidator>();
+        services.AddScoped<ICommandHandler<UpdateConsultoriaFundoCommand, ConsultoriaFundoDto>, UpdateConsultoriaFundoCommandHandler>();
+        services.AddScoped<IValidator<UpdateConsultoriaFundoCommand>, UpdateConsultoriaFundoCommandValidator>();
+
+        // Custodiante (company-scoped per D-01)
+        services.AddScoped<ICommandHandler<RegisterCustodianteCommand, CustodianteDto>, RegisterCustodianteCommandHandler>();
+        services.AddScoped<IValidator<RegisterCustodianteCommand>, RegisterCustodianteCommandValidator>();
+        services.AddScoped<ICommandHandler<UpdateCustodianteCommand, CustodianteDto>, UpdateCustodianteCommandHandler>();
+        services.AddScoped<IValidator<UpdateCustodianteCommand>, UpdateCustodianteCommandValidator>();
+
+        // Fundo (company-scoped per D-01, state machine D-02)
+        services.AddScoped<ICommandHandler<RegisterFundoCommand, FundoDto>, RegisterFundoCommandHandler>();
+        services.AddScoped<IValidator<RegisterFundoCommand>, RegisterFundoCommandValidator>();
+        services.AddScoped<ICommandHandler<UpdateFundoCommand, FundoDto>, UpdateFundoCommandHandler>();
+        services.AddScoped<IValidator<UpdateFundoCommand>, UpdateFundoCommandValidator>();
+        services.AddScoped<ICommandHandler<TransitionFundoStatusCommand, FundoDto>, TransitionFundoStatusCommandHandler>();
+        services.AddScoped<IValidator<TransitionFundoStatusCommand>, TransitionFundoStatusCommandValidator>();
+
+        // Cedente (company-scoped per D-01, PF/PJ polymorphic via CedenteDocumento D-05/D-06)
+        services.AddScoped<ICommandHandler<RegisterCedentePfCommand, CedenteDto>, RegisterCedentePfCommandHandler>();
+        services.AddScoped<IValidator<RegisterCedentePfCommand>, RegisterCedentePfCommandValidator>();
+        services.AddScoped<ICommandHandler<RegisterCedentePjCommand, CedenteDto>, RegisterCedentePjCommandHandler>();
+        services.AddScoped<IValidator<RegisterCedentePjCommand>, RegisterCedentePjCommandValidator>();
+        services.AddScoped<ICommandHandler<UpdateCedenteCommand, CedenteDto>, UpdateCedenteCommandHandler>();
+        services.AddScoped<IValidator<UpdateCedenteCommand>, UpdateCedenteCommandValidator>();
+
+        // TipoAtivo (global per D-03/TEN-03 — no company scope)
+        services.AddScoped<ICommandHandler<CreateTipoAtivoCommand, TipoAtivoDto>, CreateTipoAtivoCommandHandler>();
+        services.AddScoped<IValidator<CreateTipoAtivoCommand>, CreateTipoAtivoCommandValidator>();
+        services.AddScoped<ICommandHandler<UpdateTipoAtivoCommand, TipoAtivoDto>, UpdateTipoAtivoCommandHandler>();
+        services.AddScoped<IValidator<UpdateTipoAtivoCommand>, UpdateTipoAtivoCommandValidator>();
 
         return services;
     }

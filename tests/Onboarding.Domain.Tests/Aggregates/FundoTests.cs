@@ -82,6 +82,13 @@ public class FundoTests
     }
 
     [Fact]
+    public void Register_EmptyClientId_ThrowsArgumentException()
+    {
+        Should.Throw<ArgumentException>(() =>
+            Fundo.Register("Fundo Teste", "11222333000181", Guid.Empty, Guid.NewGuid(), Guid.NewGuid(), TipoFundo.RendaFixa));
+    }
+
+    [Fact]
     public void Register_InvalidCnpj_ThrowsArgumentException()
     {
         Should.Throw<ArgumentException>(() =>

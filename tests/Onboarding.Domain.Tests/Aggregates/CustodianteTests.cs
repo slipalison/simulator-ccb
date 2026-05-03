@@ -43,6 +43,13 @@ public class CustodianteTests
     }
 
     [Fact]
+    public void Register_EmptyClientId_ThrowsArgumentException()
+    {
+        Should.Throw<ArgumentException>(() =>
+            Custodiante.Register("Custodiante Teste", "11222333000181", Guid.Empty));
+    }
+
+    [Fact]
     public void Register_InvalidCnpj_ThrowsArgumentException()
     {
         Should.Throw<ArgumentException>(() =>

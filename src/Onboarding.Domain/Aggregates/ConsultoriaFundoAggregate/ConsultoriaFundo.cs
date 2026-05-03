@@ -31,6 +31,8 @@ public sealed class ConsultoriaFundo : Entity<Guid>
         string? email = null,
         string? telefone = null)
     {
+        if (clientId == Guid.Empty)
+            throw new ArgumentException("ClientId is required.", nameof(clientId));
         if (string.IsNullOrWhiteSpace(razaoSocial))
             throw new ArgumentException("Razão Social is required.", nameof(razaoSocial));
 

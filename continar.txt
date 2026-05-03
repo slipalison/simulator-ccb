@@ -1,14 +1,1 @@
-
-  
-
-Phase 39: Keycloak Groups & Permissions — Keycloak group-based authorization for PJ/Employee access control
-/clear then:
-/gsd-discuss-phase 39 — discuss next phase before planning ← recommended
-/gsd-plan-phase 39 — plan next phase (skip discuss)
-/gsd-execute-phase 39 — execute next phase (skip planning)
-
- opencode -s ses_2381b858cffeKeSN4s6bIEOSsd
-
-
-opencode -s ses_22c5f569dffeXQuKiYuXQ3k4j2 
-
+opencode -s ses_216736e3dffeBeL95wWzs3VVNT

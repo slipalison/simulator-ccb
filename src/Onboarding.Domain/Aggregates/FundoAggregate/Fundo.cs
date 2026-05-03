@@ -40,6 +40,8 @@ public sealed class Fundo : Entity<Guid>
         string? segmento = null,
         DateTimeOffset? dataConstituicao = null)
     {
+        if (clientId == Guid.Empty)
+            throw new ArgumentException("ClientId is required.", nameof(clientId));
         if (string.IsNullOrWhiteSpace(nome))
             throw new ArgumentException("Nome is required.", nameof(nome));
 

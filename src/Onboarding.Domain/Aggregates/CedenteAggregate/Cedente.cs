@@ -34,6 +34,8 @@ public sealed class Cedente : Entity<Guid>
         string? telefone = null,
         string? endereco = null)
     {
+        if (clientId == Guid.Empty)
+            throw new ArgumentException("ClientId is required.", nameof(clientId));
         if (string.IsNullOrWhiteSpace(nome))
             throw new ArgumentException("Nome is required.", nameof(nome));
 
@@ -62,6 +64,8 @@ public sealed class Cedente : Entity<Guid>
         string? telefone = null,
         string? endereco = null)
     {
+        if (clientId == Guid.Empty)
+            throw new ArgumentException("ClientId is required.", nameof(clientId));
         if (string.IsNullOrWhiteSpace(razaoSocial))
             throw new ArgumentException("Razão Social is required.", nameof(razaoSocial));
 

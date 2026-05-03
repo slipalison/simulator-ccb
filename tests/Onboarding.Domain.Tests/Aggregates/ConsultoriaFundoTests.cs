@@ -47,6 +47,13 @@ public class ConsultoriaFundoTests
     }
 
     [Fact]
+    public void Register_EmptyClientId_ThrowsArgumentException()
+    {
+        Should.Throw<ArgumentException>(() =>
+            ConsultoriaFundo.Register("Consultoria Teste", "11222333000181", Guid.Empty));
+    }
+
+    [Fact]
     public void Register_InvalidCnpj_ThrowsArgumentException()
     {
         Should.Throw<ArgumentException>(() =>

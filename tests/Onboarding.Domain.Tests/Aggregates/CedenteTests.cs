@@ -49,6 +49,13 @@ public class CedenteTests
     }
 
     [Fact]
+    public void RegisterPf_EmptyClientId_ThrowsArgumentException()
+    {
+        Should.Throw<ArgumentException>(() =>
+            Cedente.RegisterPf("52998224725", "João Silva", Guid.Empty));
+    }
+
+    [Fact]
     public void RegisterPf_InvalidCpf_ThrowsArgumentException()
     {
         Should.Throw<ArgumentException>(() =>
@@ -93,6 +100,13 @@ public class CedenteTests
     {
         Should.Throw<ArgumentException>(() =>
             Cedente.RegisterPj("11222333000181", "", Guid.NewGuid()));
+    }
+
+    [Fact]
+    public void RegisterPj_EmptyClientId_ThrowsArgumentException()
+    {
+        Should.Throw<ArgumentException>(() =>
+            Cedente.RegisterPj("11222333000181", "Empresa LTDA", Guid.Empty));
     }
 
     [Fact]

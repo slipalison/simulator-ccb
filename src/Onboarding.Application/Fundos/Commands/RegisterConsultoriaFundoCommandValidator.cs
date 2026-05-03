@@ -24,8 +24,8 @@ public sealed class RegisterConsultoriaFundoCommandValidator
             .When(x => !string.IsNullOrWhiteSpace(x.Email));
 
         RuleFor(x => x.Telefone)
-            .NotEmpty().WithMessage("Telefone is required.")
-            .When(x => x.Telefone is not null);
+            .NotEmpty().WithMessage("Telefone must not be empty when provided.")
+            .When(x => !string.IsNullOrWhiteSpace(x.Telefone));
     }
 
     private static bool BeValidCnpj(string cnpj)

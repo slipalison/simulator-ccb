@@ -269,7 +269,11 @@ Plans:
   3. Unique constraints reject duplicate CNPJ within same company for ConsultoriaFundo, Custodiante, and Fundo — returning constraint violation that Application layer translates to 409
   4. Unique constraint on TipoAtivo codigo rejects duplicates globally (no company scope) — matching D-03
   5. HasPrecision on monetary and percentage fields (LimiteExposicaoPercentual, LimiteExposicaoValor) prevents decimal precision loss in PostgreSQL
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+- [ ] 46-01-PLAN.md — EF Core configurations (8 entities) with HasQueryFilter, unique constraints, decimal precision, CedenteDocumento DU
+- [ ] 46-02-PLAN.md — 5 repository implementations, DI registration, EF Core migration
 
 ### Phase 47: Application Layer
 **Goal**: CQRS handlers validate inputs, enforce business rules, persist via repositories, and log every mutation to audit trail

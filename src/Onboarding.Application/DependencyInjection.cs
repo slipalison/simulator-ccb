@@ -14,6 +14,7 @@ using Onboarding.Application.Companies.DTOs;
 using Onboarding.Application.Companies.Queries;
 using Onboarding.Application.Fundos.Commands;
 using Onboarding.Application.Fundos.DTOs;
+using Onboarding.Application.Fundos.Queries;
 
 namespace Onboarding.Application;
 
@@ -130,6 +131,13 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IValidator<CreateTipoAtivoCommand>, CreateTipoAtivoCommandValidator>();
         services.AddScoped<ICommandHandler<UpdateTipoAtivoCommand, TipoAtivoDto>, UpdateTipoAtivoCommandHandler>();
         services.AddScoped<IValidator<UpdateTipoAtivoCommand>, UpdateTipoAtivoCommandValidator>();
+
+        // Fund CRUD queries (Phase 47 — CAD-02, CAD-06, CAD-10, CAD-16, CAD-20)
+        services.AddScoped<IQueryHandler<ListConsultoriaFundoQuery, PaginatedResult<ConsultoriaFundoDto>>, ListConsultoriaFundoQueryHandler>();
+        services.AddScoped<IQueryHandler<ListCustodianteQuery, PaginatedResult<CustodianteDto>>, ListCustodianteQueryHandler>();
+        services.AddScoped<IQueryHandler<ListFundoQuery, PaginatedResult<FundoDto>>, ListFundoQueryHandler>();
+        services.AddScoped<IQueryHandler<ListCedenteQuery, PaginatedResult<CedenteDto>>, ListCedenteQueryHandler>();
+        services.AddScoped<IQueryHandler<ListTipoAtivoQuery, PaginatedResult<TipoAtivoDto>>, ListTipoAtivoQueryHandler>();
 
         return services;
     }

@@ -2,8 +2,8 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Gestão de Fundos
-status: phase_complete
-last_updated: "2026-05-03T12:00:00Z"
+status: context_gathered
+last_updated: "2026-05-03T18:00:00Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 8
@@ -26,9 +26,9 @@ See: .planning/PROJECT.md (updated 2026-05-02)
 
 ## Current Position
 
-Phase: 45 of 52 (Domain Layer) — ✅ COMPLETE
-Plan: 45-01, 45-02 (both complete)
-Status: Phase 45 verified and complete. 377 domain tests pass.
+Phase: 46 of 52 (Infrastructure Layer) — 🔄 Context gathered
+Plan: Context captured, ready for planning
+Status: CONTEXT.md created. Key decisions: D-09 shadow properties for CedenteDocumento, D-11 partial unique index for FundoCedente, D-12 EmployeeRepository pattern for repos
 
 Progress: [█░░░░░░░░░] 12%
 
@@ -55,6 +55,16 @@ Progress: [█░░░░░░░░░] 12%
 - D-06: CedenteDocumento = discriminated union (.Pf/.Pj)
 - D-07: FundoStatus = enum + CanTransitionTo (no State Pattern)
 - D-08: FundoCedente within Fundo aggregate
+
+- D-09: CedenteDocumento DU → shadow properties (documento_tipo + cpf/cnpj_cedente) com HasConversion
+- D-10: CedenteDocumento uniqueness = composite filtered indexes per PF/PJ + company scope
+- D-11: FundoCedente unique = partial index (FundoId, CedenteId) WHERE status = ATIVO (enum value 1)
+- D-12: Repository pattern = EmployeeRepository pattern (IgnoreQueryFilters, explicit CompanyId)
+- D-13: Admin methods deferidos para Phase 48 (AdminFundosController)
+- D-14: Todas configs usam IEntityTypeConfiguration com ICurrentCompanyService (exceto TipoAtivo, global)
+- D-15: FundoCedente/FundoTipoAtivo/CedenteTipoAtivo = owned collections via OwnsMany
+- D-16: LimiteExposicaoValor HasPrecision(18,4), LimiteExposicaoPercentual HasPrecision(5,2)
+- D-17: Migração única AddFundosModule para 8 tabelas
 
 ### Security Fix (Phase 45 Review)
 
@@ -87,5 +97,5 @@ Progress: [█░░░░░░░░░] 12%
 ## Session Continuity
 
 Last session: 2026-05-03
-Stopped at: Phase 45 complete, ready for Phase 46
-Resume file: None
+Stopped at: Phase 46 context gathered, ready for planning
+Resume file: .planning/phases/46-infrastructure-layer/46-CONTEXT.md

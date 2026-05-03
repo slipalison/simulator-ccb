@@ -230,7 +230,7 @@ Every phase delivers a coherent, independently verifiable capability before the 
 
 ### Phases
 
-- [ ] **Phase 45: Domain Layer** - Entities, value objects, enums, repository interfaces, FundoStatus state machine
+- [x] **Phase 45: Domain Layer** - Entities, value objects, enums, repository interfaces, FundoStatus state machine
 - [ ] **Phase 46: Infrastructure Layer** - EF Core configs, HasQueryFilter, repositories, migration
 - [ ] **Phase 47: Application Layer** - Commands, queries, handlers, validators, DTOs, audit integration
 - [ ] **Phase 48: API + Permissions** - FundosController (client CRUD), AdminFundosController, permission policies
@@ -256,8 +256,8 @@ Every phase delivers a coherent, independently verifiable capability before the 
 **Plans**: 2 plans
 
 Plans:
-- [ ] 45-01-PLAN.md — Value objects, enums, domain exceptions, permissions extension, repository interfaces
-- [ ] 45-02-PLAN.md — 5 aggregate roots + 3 join entities with unit tests
+- [x] 45-01-PLAN.md — Value objects, enums, domain exceptions, permissions extension, repository interfaces
+- [x] 45-02-PLAN.md — 5 aggregate roots + 3 join entities with unit tests
 
 ### Phase 46: Infrastructure Layer
 **Goal**: EF Core persistence layer enforces multi-tenancy, unique constraints, and decimal precision — all 8 tables created correctly with a single migration

@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v8.0
 milestone_name: Gestão de Fundos
-status: ready_to_execute
-last_updated: "2026-05-03T00:00:00Z"
+status: phase_complete
+last_updated: "2026-05-03T12:00:00Z"
 last_activity: 2026-05-03
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 0
-  percent: 0
+  completed_plans: 2
+  percent: 12
   gaps: []
 ---
 
@@ -21,17 +21,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-05-02)
 
 **Core value:** Cadastro seguro PJ com gestão de funcionários e permissões via Keycloak — isolamento entre empresas é requisito de primeira classe.
-**Current focus:** Phase 45 — Domain Layer (v8.0 Gestão de Fundos)
-**Last activity:** 2026-05-02 — Roadmap created for v8.0
+**Current focus:** Phase 46 — Infrastructure Layer (v8.0 Gestão de Fundos)
+**Last activity:** 2026-05-03 — Phase 45 complete
 
 ## Current Position
 
-Phase: 45 of 52 (Domain Layer)
-Plan: 45-01, 45-02
-Status: Ready to execute — 2 plans in 2 waves
-Last activity: 2026-05-03 — Phase 45 planned
+Phase: 45 of 52 (Domain Layer) — ✅ COMPLETE
+Plan: 45-01, 45-02 (both complete)
+Status: Phase 45 verified and complete. 377 domain tests pass.
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [█░░░░░░░░░] 12%
 
 ## Milestone Breakdown
 
@@ -42,7 +41,7 @@ Progress: [░░░░░░░░░░] 0%
 **Milestone v5.0 — Auth Code Flow + Admins + Auditoria:** ✅ COMPLETE (6/6 phases)
 **Milestone v6.0 — Gestão Completa de Administradores:** ✅ COMPLETE (2/2 phases)
 **Milestone v7.0 — PJ-Only Onboarding + Gestão de Funcionários:** ✅ COMPLETE (8/8 phases, 19/19 plans)
-**Milestone v8.0 — Gestão de Fundos:** 📋 Phase 45 planned, 0/8 phases complete
+**Milestone v8.0 — Gestão de Fundos:** 🔄 1/8 phases complete
 
 ## Accumulated Context
 
@@ -52,6 +51,14 @@ Progress: [░░░░░░░░░░] 0%
 - D-02: FundoStatus = state machine: RASCUNHO→ATIVO↔SUSPENSO→EM_LIQUIDACAO→ENCERRADO
 - D-03: TipoAtivo is global (no ClienteId) — CVM catalog shared across companies
 - D-04: LimiteExposicao unlimited = sentinel value (-1)
+- D-05: Cedente = aggregate único PF/PJ
+- D-06: CedenteDocumento = discriminated union (.Pf/.Pj)
+- D-07: FundoStatus = enum + CanTransitionTo (no State Pattern)
+- D-08: FundoCedente within Fundo aggregate
+
+### Security Fix (Phase 45 Review)
+
+- WR-03 fixed: Guid.Empty guards on all company-scoped aggregate factory methods (Fundo, ConsultoriaFundo, Custodiante, Cedente)
 
 ### Research Findings (v8.0)
 
@@ -80,5 +87,5 @@ Progress: [░░░░░░░░░░] 0%
 ## Session Continuity
 
 Last session: 2026-05-03
-Stopped at: Phase 45 planned (2 plans), ready to execute
+Stopped at: Phase 45 complete, ready for Phase 46
 Resume file: None

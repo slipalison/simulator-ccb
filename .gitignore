@@ -437,3 +437,4 @@ playwright-report/
 *.tfstate*
 frontend/client/playwright/.auth/viewer-creds.json
 .playwright-mcp
+.jdi/cache/

@@ -1,0 +1,15 @@
+{
+  "project_slug": "onboarding-keycloak",
+  "adopted": true,
+  "adopted_at": "2026-05-11",
+  "adopted_commit": "968eefb19dba216d729723e8ffa6a9e166d7698c",
+  "main_branch": "master",
+  "language": "csharp+typescript",
+  "code_design": "clean-architecture-ddd-cqrs",
+  "coverage_min": 80,
+  "coverage_scope": "new-files-only",
+  "conventional_commits": true,
+  "llm_provider": "anthropic",
+  "discussion_language": "pt-BR",
+  "code_language": "en"
+}

@@ -24,15 +24,15 @@ Full-stack web app (API + 2 SPAs)
 - **Conventional commits:** sim (~30/30 commits recentes seguem)
 
 ## Code Design
-**LOCKED:** Clean Architecture + DDD + CQRS manual
+**LOCKED:** DDD (Domain-Driven Design)
 
-Confirmado pela deteccao automatica:
-- `src/Onboarding.Domain/` (Aggregates, ValueObjects, Repositories interfaces, Exceptions, Common)
-- `src/Onboarding.Application/` (Commands, Queries, DTOs por slice: Companies, Fundos, Admin, Auth, Common)
-- `src/Onboarding.Infrastructure/` (Persistence, Repositories, Keycloak, Services)
-- `src/Onboarding.API/` (Controllers, Middleware, Security, Filters, Observability)
+Confirmado pelo usuario em /jdi-adopt. Estruturalmente as camadas existem (`Domain`, `Application`, `Infrastructure`, `API`) mas o pattern dominante e a decisao locked eh DDD puro:
+- Aggregates ricos com invariantes em `src/Onboarding.Domain/Aggregates/`
+- ValueObjects (Cnpj, Cpf, Email, etc) em `src/Onboarding.Domain/ValueObjects/`
+- Repository interfaces em `src/Onboarding.Domain/Repositories/`
+- Domain exceptions tipadas em `src/Onboarding.Domain/Exceptions/`
 
-CQRS via DI manual (sem MediatR — restricao OSS-only documentada em CLAUDE.md). FluentValidation para validators. Shouldly em vez de FluentAssertions.
+Implementacao practica: handlers via DI manual (`ICommandHandler<TCommand>` / `IQueryHandler<TQuery, TResult>`) — sem MediatR (restricao OSS-only, D-3). FluentValidation pra validators. Shouldly em vez de FluentAssertions.
 
 ## Slug
 onboarding-keycloak

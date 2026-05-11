@@ -2,37 +2,51 @@
 
 ## Status
 adopted: true
-current_phase: 1
-total_phases: 5
+current_phase: 48
+total_phases: 52
 
 ## Context
-Projeto adotado em 2026-05-11. Codigo pre-existente nao esta neste roadmap — apenas features NOVAS adicionadas via JDI.
+Projeto adotado em 2026-05-11. Vinha sendo desenvolvido com GSD (`.planning/`, milestones v1-v8). Phases 1-47 estao completas e documentadas em `.planning/phases/`. JDI continua daqui em diante, comecando em **Phase 48** que estava em flight (plans criados em commit `968eefb`, execucao nao iniciada).
 
-Existe sistema paralelo `.planning/` (legado, milestones v1-v8). Phases 1-3 deste roadmap derivam do trabalho em flight em `.planning/phases/48-50` da milestone v8.0 (Gestao de Fundos). Phases 4-5 sao gaps conhecidos. Phases futuras adicionadas via `/jdi-add-phase`.
+Numeracao preservada pra alinhar com `.planning/` historico. Phases pre-48 nao sao re-executadas — sao contexto.
 
-## Phases
+## Phases historicas (GSD `.planning/`, ja completas)
+- v1.0 Foundation (1-10): docker infra, Keycloak hardening, DDD domain, observability, registration/auth API, frontend foundation, registration/login/profile UI
+- v2.0 UX/UI + Production (11-15)
+- v3.0 Admin Backoffice + Frontend Separation (16-20)
+- v4.0 CI/CD + Cybersecurity (21-28)
+- v5.0 Auth Code Flow + Admins + Auditoria (29-34)
+- v6.0 Gestao Completa de Administradores (35-36)
+- v7.0 PJ-Only Onboarding + Funcionarios (37-44)
+- v8.0 Gestao de Fundos: Phase 45 Domain (done), Phase 46 Infrastructure (done), Phase 47 Application (done — 3 plans com SUMMARY, sem VERIFICATION formal — JDI fara verify retroativo se necessario)
 
-### Phase 1: API + Permissions for Fundos module
-- **Slug:** 01-api-permissions-fundos
+## Phases ativas JDI
+
+### Phase 48: API + Permissions for Fundos
+- **Slug:** 48-api-permissions
+- **Status:** pending (plans escritos em `.planning/phases/48-api-permissions/48-01-PLAN.md` + `48-02-PLAN.md`, execucao nao iniciada)
+- **Goal:** FundosController expoe CRUD pra ConsultoriaFundo/Custodiante/TipoAtivo/Fundo/Cedente + AdminFundosController read-only cross-company + policies funds:read/write/delete/manage + extensao access groups (admin-empresa=funds:manage, viewer=funds:read).
+- **Plans existentes (GSD):**
+  - 48-01: FundosController parte 1 (ConsultoriaFundo/Custodiante/TipoAtivo) + permission policies + GlobalExceptionHandler enhancement
+  - 48-02: FundosController parte 2 (Fundo/Cedente) + AdminFundosController + access group extension
+- **Acao JDI:** `/jdi-discuss 48` + `/jdi-plan 48` (pode reusar/importar plans GSD) + `/jdi-do 48`
+
+### Phase 49: FundoCedente & Relationship CRUD
+- **Slug:** 49-fundo-cedente-relationships
 - **Status:** pending
-- **Goal:** Expor endpoints REST para o modulo Fundos (Fundo, Cedente, Custodiante, ConsultoriaFundo, TipoAtivo) via FundosController + politicas de permissao (funds:read/write/admin), com isolamento multi-tenant aplicado.
+- **Goal:** Endpoints N-N Fundo↔Cedente (com payload — LimiteExposicaoPercentual/Valor + janela de datas), Cedente↔TipoAtivo, Fundo↔TipoAtivo. Enforcement REL-09 (uma unica associacao ATIVA por par Fundo-Cedente).
 
-### Phase 2: Frontend backoffice — Fundos UI
-- **Slug:** 02-backoffice-fundos-ui
+### Phase 50: Frontend Client — Fundos UI
+- **Slug:** 50-frontend-client-fundos
 - **Status:** pending
-- **Goal:** Telas administrativas no backoffice para CRUD de fundos e entidades relacionadas, com paginacao, filtros e respeito as permissoes funds:*.
+- **Goal:** SPA cliente PJ ganha secao Fundos (paginacao, search, badges de status, forms Zod espelhando regras backend). Dropdown de status filtra transicoes validas baseado no estado atual (RASCUNHO→ATIVO, ATIVO↔SUSPENSO, etc).
 
-### Phase 3: E2E Playwright — Fundos workflow
-- **Slug:** 03-e2e-fundos
+### Phase 51: Frontend Backoffice — Fundos UI (read-only)
+- **Slug:** 51-frontend-backoffice-fundos
 - **Status:** pending
-- **Goal:** Cenarios end-to-end Playwright cobrindo lifecycle de Fundo (RASCUNHO -> ATIVO -> SUSPENSO -> EM_LIQUIDACAO -> ENCERRADO) e gestao de Cedentes/Custodiantes via backoffice.
+- **Goal:** Backoffice admin lista/visualiza Fundo/ConsultoriaFundo/Custodiante/Cedente cross-company em read-only. Mostra nome da empresa alongside fund data. Sem create/update/delete (FRO-04).
 
-### Phase 4: Remove ROPC legado backoffice
-- **Slug:** 04-remove-ropc-legacy
+### Phase 52: Integration Tests — v8.0 Fundos end-to-end
+- **Slug:** 52-integration-tests-fundos
 - **Status:** pending
-- **Goal:** Remover fluxo ROPC residual do backoffice apos migracao completa pra ACF+PKCE (referencia D-feedback memoria). Limpar codigo morto, configs Keycloak, testes.
-
-### Phase 5: Audit log — Fundos events
-- **Slug:** 05-audit-log-fundos
-- **Status:** pending
-- **Goal:** Estender AdminAuditLog para registrar eventos de Fundos (create/update/status-transition/delete) com actor sub/email ja capturados nos commands (commit 93a7332).
+- **Goal:** Testcontainers PostgreSQL real cobrindo CRUD round-trip dos 5 entity types + 3 relationship types, isolamento multi-tenant, transicoes de state machine, REL-09, deteccao de duplicatas (409).

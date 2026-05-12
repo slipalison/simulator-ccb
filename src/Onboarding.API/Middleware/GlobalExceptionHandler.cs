@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Onboarding.Domain.Exceptions;
 
 namespace Onboarding.API.Middleware;
 
@@ -46,6 +47,8 @@ public static class GlobalExceptionHandler
                 // Map known exception types to user-friendly responses
                 context.Response.StatusCode = exception switch
                 {
+                    DuplicateEntityException => (int)HttpStatusCode.Conflict,
+                    InvalidStateTransitionException => (int)HttpStatusCode.BadRequest,
                     DbUpdateException => (int)HttpStatusCode.Conflict,
                     PostgresException pgEx when pgEx.SqlState == "23505" => (int)HttpStatusCode.Conflict, // unique violation
                     PostgresException pgEx when pgEx.SqlState == "23503" => (int)HttpStatusCode.BadRequest, // foreign key

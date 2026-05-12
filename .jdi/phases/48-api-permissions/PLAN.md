@@ -25,7 +25,7 @@ Expose REST endpoints for the Fundos module (ConsultoriaFundo, Custodiante, Tipo
   - Build passes: `dotnet build src/Onboarding.API`
 - **Dependencies:** none
 - **Test:** `tests/Onboarding.API.Tests/Security/PermissionPolicyConstantsTests.cs` (assert 4 new constants exist + values match)
-- **Status:** pending
+- **Status:** completed (commit `e8a680c`, 2026-05-12)
 
 #### T-48.2: Register 4 fund policies + map domain exceptions
 - **Specialist:** jdi-doer-onboarding-keycloak-backend-csharp (file glob `**/*.cs`)
@@ -38,7 +38,7 @@ Expose REST endpoints for the Fundos module (ConsultoriaFundo, Custodiante, Tipo
   - `dotnet test tests/Onboarding.API.Tests/Middleware/GlobalExceptionHandlerTests.cs` passes
 - **Dependencies:** none (independent of T-48.1 — policies reference constants but registration only needs string keys which can be added independently and validated together at runtime)
 - **Test:** extend `GlobalExceptionHandlerTests.cs` with 2 new tests (DuplicateEntity→409, InvalidStateTransition→400)
-- **Status:** pending
+- **Status:** completed (T-48.2, 2026-05-12)
 
 #### T-48.3: Extend default access groups with fund permissions
 - **Specialist:** jdi-doer-onboarding-keycloak-backend-csharp (`**/*.cs`)
@@ -50,7 +50,7 @@ Expose REST endpoints for the Fundos module (ConsultoriaFundo, Custodiante, Tipo
   - `dotnet test tests/Onboarding.Domain.Tests/Aggregates/AccessGroupTests.cs` passes
 - **Dependencies:** none
 - **Test:** update `tests/Onboarding.Domain.Tests/Aggregates/AccessGroupTests.cs` (already references this — see commit cf2af10 / c859267 historical)
-- **Status:** pending
+- **Status:** completed
 
 ### Wave 2 (depends on Wave 1)
 

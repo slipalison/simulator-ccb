@@ -15,8 +15,6 @@ using Onboarding.Application.Companies.Queries;
 using Onboarding.Application.Fundos.Commands;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries;
-using Onboarding.Application.Fundos.Queries.Admin;
-
 namespace Onboarding.Application;
 
 /// <summary>
@@ -139,19 +137,6 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IQueryHandler<ListFundoQuery, PaginatedResult<FundoDto>>, ListFundoQueryHandler>();
         services.AddScoped<IQueryHandler<ListCedenteQuery, PaginatedResult<CedenteDto>>, ListCedenteQueryHandler>();
         services.AddScoped<IQueryHandler<ListTipoAtivoQuery, PaginatedResult<TipoAtivoDto>>, ListTipoAtivoQueryHandler>();
-
-        // Admin Fundos cross-company queries (Phase 48 — T-48.6, D-8)
-        // Handlers live in Infrastructure (need AppDbContext) but registered here per convention.
-        // SECURITY: Only consumed by AdminFundosController (BearerBackoffice + CrossCompanyAccess).
-        // Registration uses the Infrastructure assembly type directly — no interface defined in Domain.
-        services.AddScoped<IQueryHandler<ListAdminFundoQuery, PaginatedResult<AdminFundoDto>>,
-            Onboarding.Infrastructure.Repositories.ListAdminFundoQueryHandler>();
-        services.AddScoped<IQueryHandler<ListAdminConsultoriaQuery, PaginatedResult<AdminConsultoriaFundoDto>>,
-            Onboarding.Infrastructure.Repositories.ListAdminConsultoriaQueryHandler>();
-        services.AddScoped<IQueryHandler<ListAdminCustodianteQuery, PaginatedResult<AdminCustodianteDto>>,
-            Onboarding.Infrastructure.Repositories.ListAdminCustodianteQueryHandler>();
-        services.AddScoped<IQueryHandler<ListAdminCedenteQuery, PaginatedResult<AdminCedenteDto>>,
-            Onboarding.Infrastructure.Repositories.ListAdminCedenteQueryHandler>();
 
         return services;
     }

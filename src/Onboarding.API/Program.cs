@@ -207,6 +207,16 @@ try
         options.AddPolicy(PermissionPolicies.AccessGroupsManage,
             policy => policy.Requirements.Add(new PermissionRequirement(Permissions.AccessGroupsManage)));
 
+        // Fund permission policies (PERM-02)
+        options.AddPolicy(PermissionPolicies.FundRead,
+            policy => policy.Requirements.Add(new PermissionRequirement(Permissions.FundsRead)));
+        options.AddPolicy(PermissionPolicies.FundWrite,
+            policy => policy.Requirements.Add(new PermissionRequirement(Permissions.FundsWrite)));
+        options.AddPolicy(PermissionPolicies.FundDelete,
+            policy => policy.Requirements.Add(new PermissionRequirement(Permissions.FundsDelete)));
+        options.AddPolicy(PermissionPolicies.FundManage,
+            policy => policy.Requirements.Add(new PermissionRequirement(Permissions.FundsManage)));
+
         // Cross-company policy (D-07) — admin role from backoffice realm
         options.AddPolicy(PermissionPolicies.CrossCompanyAccess,
             policy => policy.RequireRole("admin"));

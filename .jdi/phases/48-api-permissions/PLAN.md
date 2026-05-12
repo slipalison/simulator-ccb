@@ -115,7 +115,7 @@ Expose REST endpoints for the Fundos module (ConsultoriaFundo, Custodiante, Tipo
   - Fundo state machine: RASCUNHO → ATIVO via `POST /{id}/status` = 200; ENCERRADO → ATIVO via same endpoint = 400 (InvalidStateTransitionException)
 - **Dependencies:** T-48.5, T-48.6
 - **Test:** the file itself (xUnit + Testcontainers + Shouldly + NSubstitute)
-- **Status:** pending
+- **Status:** completed (commit `6b37fa9`, 2026-05-12)
 
 ## Execution
 - Total tasks: 7

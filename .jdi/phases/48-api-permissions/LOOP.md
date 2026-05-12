@@ -39,3 +39,9 @@ created_at: 2026-05-12T00:00:00Z
 - Tests: 244 passed, 0 failed, 4 skipped (Onboarding.API.Tests full suite; 14 new tests in AdminFundosControllerTests)
 - Notes: AdminFundosController created with 4 read-only cross-company endpoints (GET /api/admin/fundos, /consultorias, /custodiantes, /cedentes). Class-level BearerBackoffice+CrossCompanyAccess enforced. 4 Infrastructure query handlers using IgnoreQueryFilters()+Join(Companies). Cedente shadow property projection (D-09/CR-03). 4 DI registrations added. Cross-company test asserts rows from CompanyA+CompanyB in same response.
 
+### iter=1 — T-48.7 (2026-05-12)
+- Status: completed
+- Commit: 6b37fa9
+- Tests: 12 passed, 0 failed (Onboarding.Integration.Tests full suite: 10 new Fundos + 2 existing Registration)
+- Notes: Created FundosControllerIntegrationTests.cs with Testcontainers PostgreSQL + fake HMAC JWT (no Keycloak container). 10 scenarios: POST 201, GET own row, multi-tenant isolation PJ-B≠PJ-A, 403 no-perm, 401 no-auth, admin cross-company BearerBackoffice sees both companies, RASCUNHO→ATIVO 200, ENCERRADO→ATIVO 400. Also fixed DDD layering bug from T-48.6: moved 4 admin query handler DI registrations from Application to Infrastructure (Application must not reference Infrastructure types).
+

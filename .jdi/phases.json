@@ -1,0 +1,54 @@
+{
+  "schema_version": 2,
+  "migrated_at": "2026-05-12T11:48:26Z",
+  "phases": [
+    {
+      "position": 48,
+      "slug": "api-permissions",
+      "raw_slug": "48-api-permissions",
+      "folder": ".jdi/phases/48-api-permissions",
+      "status": "pending",
+      "legacy": true
+    },
+    {
+      "position": 49,
+      "slug": "fundo-cedente-relationships",
+      "raw_slug": "49-fundo-cedente-relationships",
+      "folder": ".jdi/phases/49-fundo-cedente-relationships",
+      "status": "pending",
+      "legacy": true
+    },
+    {
+      "position": 50,
+      "slug": "frontend-client-fundos",
+      "raw_slug": "50-frontend-client-fundos",
+      "folder": ".jdi/phases/50-frontend-client-fundos",
+      "status": "pending",
+      "legacy": true
+    },
+    {
+      "position": 51,
+      "slug": "frontend-backoffice-fundos",
+      "raw_slug": "51-frontend-backoffice-fundos",
+      "folder": ".jdi/phases/51-frontend-backoffice-fundos",
+      "status": "pending",
+      "legacy": true
+    },
+    {
+      "position": 52,
+      "slug": "integration-tests-fundos",
+      "raw_slug": "52-integration-tests-fundos",
+      "folder": ".jdi/phases/52-integration-tests-fundos",
+      "status": "pending",
+      "legacy": true
+    },
+    {
+      "position": 53,
+      "slug": "vinxi-to-vinext-migration",
+      "raw_slug": "53-vinxi-to-vinext-migration",
+      "folder": ".jdi/phases/53-vinxi-to-vinext-migration",
+      "status": "pending",
+      "legacy": true
+    }
+  ]
+}

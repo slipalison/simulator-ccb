@@ -36,16 +36,18 @@ public sealed class AccessGroup : Entity<Guid>
 
     /// <summary>
     /// Creates the 3 default access groups for a new Company (D-08).
-    /// 1. admin-empresa — all 6 permissions
-    /// 2. viewer — employees:read + audit:read
+    /// 1. admin-empresa — all permissions via Perm.All (funds:manage implies all funds:* operations by convention)
+    /// 2. viewer — employees:read + audit:read + funds:read (read-only access including fund listings)
     /// 3. dashboard — dashboard:access
     /// </summary>
     public static IReadOnlyList<AccessGroup> CreateDefaultGroups(Guid companyId)
     {
         return
         [
+            // admin-empresa receives Perm.All which includes funds:manage.
+            // By convention, funds:manage implies all funds:* operations (read/write/delete/manage).
             Create(companyId, "admin-empresa", Perm.All),
-            Create(companyId, "viewer", [Perm.EmployeesRead, Perm.AuditRead]),
+            Create(companyId, "viewer", [Perm.EmployeesRead, Perm.AuditRead, Perm.FundsRead]),
             Create(companyId, "dashboard", [Perm.DashboardAccess])
         ];
     }

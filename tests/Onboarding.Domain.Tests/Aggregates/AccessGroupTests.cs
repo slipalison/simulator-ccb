@@ -59,16 +59,28 @@ public class AccessGroupTests
     }
 
     [Fact]
-    public void CreateDefaultGroups_viewer_hasReadAndAuditPermissions()
+    public void CreateDefaultGroups_viewer_hasReadAuditAndFundsReadPermissions()
     {
         var companyId = Guid.NewGuid();
         var groups = AccessGroup.CreateDefaultGroups(companyId);
 
         var viewer = groups[1];
         viewer.Name.ShouldBe("viewer");
-        viewer.Permissions.Count.ShouldBe(2);
+        viewer.Permissions.Count.ShouldBe(3);
         viewer.Permissions.ShouldContain(Permissions.EmployeesRead);
         viewer.Permissions.ShouldContain(Permissions.AuditRead);
+        viewer.Permissions.ShouldContain(Permissions.FundsRead);
+    }
+
+    [Fact]
+    public void CreateDefaultGroups_adminEmpresa_containsFundsManage()
+    {
+        var companyId = Guid.NewGuid();
+        var groups = AccessGroup.CreateDefaultGroups(companyId);
+
+        var admin = groups[0];
+        // funds:manage is included via Perm.All — implies all funds:* operations by convention.
+        admin.Permissions.ShouldContain(Permissions.FundsManage);
     }
 
     [Fact]

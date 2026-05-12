@@ -14,8 +14,10 @@ using Onboarding.Application.Common;
 using Onboarding.Application.Fundos.Commands;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries;
+using Onboarding.Domain.Aggregates.CedenteAggregate;
 using Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate;
 using Onboarding.Domain.Aggregates.CustodianteAggregate;
+using Onboarding.Domain.Aggregates.FundoAggregate;
 using Onboarding.Domain.Aggregates.TipoAtivoAggregate;
 using Onboarding.Domain.Exceptions;
 using Onboarding.Domain.Repositories;
@@ -24,16 +26,17 @@ using Shouldly;
 namespace Onboarding.API.Tests.Controllers;
 
 /// <summary>
-/// Unit tests for FundosController — 12 endpoints covering ConsultoriaFundo, Custodiante, TipoAtivo.
+/// Unit tests for FundosController — 22 endpoints covering ConsultoriaFundo, Custodiante, TipoAtivo,
+/// Fundo (incl. status machine), and Cedente PF/PJ.
 /// Policy attribute presence is verified via reflection (no WebApplicationFactory needed for happy path).
 /// 4xx paths: null body → 400, validation failure → 422, DuplicateEntityException → 409,
-///             KeyNotFoundException → 404.
+///             KeyNotFoundException → 404, InvalidStateTransitionException → 400.
 /// Security invariant: each endpoint must carry [Authorize(Policy = FundRead|FundWrite)].
 /// </summary>
 public class FundosControllerTests
 {
     // -------------------------------------------------------------------------
-    // Mocks
+    // Mocks — ConsultoriaFundo
     // -------------------------------------------------------------------------
 
     private readonly ICommandHandler<RegisterConsultoriaFundoCommand, ConsultoriaFundoDto> _registerConsultoriaHandler =
@@ -49,6 +52,10 @@ public class FundosControllerTests
     private readonly IConsultoriaFundoRepository _consultoriaRepo =
         Substitute.For<IConsultoriaFundoRepository>();
 
+    // -------------------------------------------------------------------------
+    // Mocks — Custodiante
+    // -------------------------------------------------------------------------
+
     private readonly ICommandHandler<RegisterCustodianteCommand, CustodianteDto> _registerCustodianteHandler =
         Substitute.For<ICommandHandler<RegisterCustodianteCommand, CustodianteDto>>();
     private readonly IValidator<RegisterCustodianteCommand> _registerCustodianteValidator =
@@ -61,6 +68,10 @@ public class FundosControllerTests
         Substitute.For<IQueryHandler<ListCustodianteQuery, PaginatedResult<CustodianteDto>>>();
     private readonly ICustodianteRepository _custodianteRepo =
         Substitute.For<ICustodianteRepository>();
+
+    // -------------------------------------------------------------------------
+    // Mocks — TipoAtivo
+    // -------------------------------------------------------------------------
 
     private readonly ICommandHandler<CreateTipoAtivoCommand, TipoAtivoDto> _createTipoAtivoHandler =
         Substitute.For<ICommandHandler<CreateTipoAtivoCommand, TipoAtivoDto>>();
@@ -75,6 +86,48 @@ public class FundosControllerTests
     private readonly ITipoAtivoRepository _tipoAtivoRepo =
         Substitute.For<ITipoAtivoRepository>();
 
+    // -------------------------------------------------------------------------
+    // Mocks — Fundo
+    // -------------------------------------------------------------------------
+
+    private readonly ICommandHandler<RegisterFundoCommand, FundoDto> _registerFundoHandler =
+        Substitute.For<ICommandHandler<RegisterFundoCommand, FundoDto>>();
+    private readonly IValidator<RegisterFundoCommand> _registerFundoValidator =
+        Substitute.For<IValidator<RegisterFundoCommand>>();
+    private readonly ICommandHandler<UpdateFundoCommand, FundoDto> _updateFundoHandler =
+        Substitute.For<ICommandHandler<UpdateFundoCommand, FundoDto>>();
+    private readonly IValidator<UpdateFundoCommand> _updateFundoValidator =
+        Substitute.For<IValidator<UpdateFundoCommand>>();
+    private readonly ICommandHandler<TransitionFundoStatusCommand, FundoDto> _transitionFundoStatusHandler =
+        Substitute.For<ICommandHandler<TransitionFundoStatusCommand, FundoDto>>();
+    private readonly IValidator<TransitionFundoStatusCommand> _transitionFundoStatusValidator =
+        Substitute.For<IValidator<TransitionFundoStatusCommand>>();
+    private readonly IQueryHandler<ListFundoQuery, PaginatedResult<FundoDto>> _listFundoHandler =
+        Substitute.For<IQueryHandler<ListFundoQuery, PaginatedResult<FundoDto>>>();
+    private readonly IFundoRepository _fundoRepo =
+        Substitute.For<IFundoRepository>();
+
+    // -------------------------------------------------------------------------
+    // Mocks — Cedente
+    // -------------------------------------------------------------------------
+
+    private readonly ICommandHandler<RegisterCedentePfCommand, CedenteDto> _registerCedentePfHandler =
+        Substitute.For<ICommandHandler<RegisterCedentePfCommand, CedenteDto>>();
+    private readonly IValidator<RegisterCedentePfCommand> _registerCedentePfValidator =
+        Substitute.For<IValidator<RegisterCedentePfCommand>>();
+    private readonly ICommandHandler<RegisterCedentePjCommand, CedenteDto> _registerCedentePjHandler =
+        Substitute.For<ICommandHandler<RegisterCedentePjCommand, CedenteDto>>();
+    private readonly IValidator<RegisterCedentePjCommand> _registerCedentePjValidator =
+        Substitute.For<IValidator<RegisterCedentePjCommand>>();
+    private readonly ICommandHandler<UpdateCedenteCommand, CedenteDto> _updateCedenteHandler =
+        Substitute.For<ICommandHandler<UpdateCedenteCommand, CedenteDto>>();
+    private readonly IValidator<UpdateCedenteCommand> _updateCedenteValidator =
+        Substitute.For<IValidator<UpdateCedenteCommand>>();
+    private readonly IQueryHandler<ListCedenteQuery, PaginatedResult<CedenteDto>> _listCedenteHandler =
+        Substitute.For<IQueryHandler<ListCedenteQuery, PaginatedResult<CedenteDto>>>();
+    private readonly ICedenteRepository _cedenteRepo =
+        Substitute.For<ICedenteRepository>();
+
     private readonly ICurrentCompanyService _companyService = Substitute.For<ICurrentCompanyService>();
 
     private readonly FundosController _sut;
@@ -87,6 +140,8 @@ public class FundosControllerTests
     private static readonly Guid ConsultoriaId = Guid.NewGuid();
     private static readonly Guid CustodianteId = Guid.NewGuid();
     private static readonly Guid TipoAtivoId = Guid.NewGuid();
+    private static readonly Guid FundoId = Guid.NewGuid();
+    private static readonly Guid CedenteId = Guid.NewGuid();
 
     // Static fixtures — timestamp-stable so record equality works across multiple calls in the same test
     private static readonly DateTimeOffset FixedTimestamp = new(2026, 5, 12, 0, 0, 0, TimeSpan.Zero);
@@ -99,6 +154,16 @@ public class FundosControllerTests
 
     private static readonly TipoAtivoDto SampleTipoAtivo =
         new(TipoAtivoId, "LTN", "Letra do Tesouro Nacional", TipoAtivoCategoria.RendaFixa, null, TipoAtivoStatus.ATIVO, 1);
+
+    private static readonly FundoDto SampleFundo =
+        new(FundoId, "Fundo Alfa", "11222333000181", ConsultoriaId, CustodianteId,
+            TipoFundo.Multimercado, null, null, null, FundoStatus.RASCUNHO, FixedTimestamp);
+
+    private static readonly CedenteDto SampleCedentePf =
+        new(CedenteId, "12345678909", "João Silva", null, null, null, CedenteTipo.PF, CedenteStatus.ATIVO, FixedTimestamp);
+
+    private static readonly CedenteDto SampleCedentePj =
+        new(CedenteId, "11222333000181", "Empresa PJ Ltda", null, null, null, CedenteTipo.PJ, CedenteStatus.ATIVO, FixedTimestamp);
 
     private static ValidationResult ValidResult() => new();
 
@@ -128,6 +193,22 @@ public class FundosControllerTests
             _updateTipoAtivoValidator,
             _listTipoAtivoHandler,
             _tipoAtivoRepo,
+            _registerFundoHandler,
+            _registerFundoValidator,
+            _updateFundoHandler,
+            _updateFundoValidator,
+            _transitionFundoStatusHandler,
+            _transitionFundoStatusValidator,
+            _listFundoHandler,
+            _fundoRepo,
+            _registerCedentePfHandler,
+            _registerCedentePfValidator,
+            _registerCedentePjHandler,
+            _registerCedentePjValidator,
+            _updateCedenteHandler,
+            _updateCedenteValidator,
+            _listCedenteHandler,
+            _cedenteRepo,
             _companyService,
             Substitute.For<ILogger<FundosController>>()
         );
@@ -163,6 +244,18 @@ public class FundosControllerTests
     [InlineData(nameof(FundosController.ListTiposAtivo), PermissionPolicies.FundRead)]
     [InlineData(nameof(FundosController.GetTipoAtivoById), PermissionPolicies.FundRead)]
     [InlineData(nameof(FundosController.UpdateTipoAtivo), PermissionPolicies.FundWrite)]
+    // Fundo endpoints (T-48.5)
+    [InlineData(nameof(FundosController.RegisterFundo), PermissionPolicies.FundWrite)]
+    [InlineData(nameof(FundosController.ListFundos), PermissionPolicies.FundRead)]
+    [InlineData(nameof(FundosController.GetFundoById), PermissionPolicies.FundRead)]
+    [InlineData(nameof(FundosController.UpdateFundo), PermissionPolicies.FundWrite)]
+    [InlineData(nameof(FundosController.TransitionFundoStatus), PermissionPolicies.FundWrite)]
+    // Cedente endpoints (T-48.5)
+    [InlineData(nameof(FundosController.RegisterCedentePf), PermissionPolicies.FundWrite)]
+    [InlineData(nameof(FundosController.RegisterCedentePj), PermissionPolicies.FundWrite)]
+    [InlineData(nameof(FundosController.ListCedentes), PermissionPolicies.FundRead)]
+    [InlineData(nameof(FundosController.GetCedenteById), PermissionPolicies.FundRead)]
+    [InlineData(nameof(FundosController.UpdateCedente), PermissionPolicies.FundWrite)]
     public void Endpoint_HasExpectedAuthorizePolicy(string methodName, string expectedPolicy)
     {
         // Reflection-based security invariant: every endpoint MUST carry [Authorize(Policy = ...)]
@@ -733,6 +826,528 @@ public class FundosControllerTests
     }
 
     // =========================================================================
+    // Fundo — POST (RegisterFundo)
+    // =========================================================================
+
+    [Fact]
+    public async Task RegisterFundo_NullBody_Returns400()
+    {
+        var result = await _sut.RegisterFundo(null, CancellationToken.None);
+        result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterFundo_ValidationFails_Returns422()
+    {
+        _registerFundoValidator
+            .ValidateAsync(Arg.Any<RegisterFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(InvalidResult("Cnpj", "Invalid CNPJ."));
+
+        var request = new RegisterFundoRequest("Fundo Alfa", "bad-cnpj", ConsultoriaId, CustodianteId,
+            TipoFundo.Multimercado, null, null, null);
+        var result = await _sut.RegisterFundo(request, CancellationToken.None);
+
+        result.ShouldBeOfType<UnprocessableEntityObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterFundo_Duplicate_Returns409()
+    {
+        _registerFundoValidator
+            .ValidateAsync(Arg.Any<RegisterFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerFundoHandler
+            .HandleAsync(Arg.Any<RegisterFundoCommand>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new DuplicateEntityException("Fundo", "11.222.333/0001-81"));
+
+        var request = new RegisterFundoRequest("Fundo Alfa", "11.222.333/0001-81", ConsultoriaId, CustodianteId,
+            TipoFundo.Multimercado, null, null, null);
+        var result = await _sut.RegisterFundo(request, CancellationToken.None);
+
+        result.ShouldBeOfType<ConflictObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterFundo_HappyPath_Returns201WithLocation()
+    {
+        _registerFundoValidator
+            .ValidateAsync(Arg.Any<RegisterFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerFundoHandler
+            .HandleAsync(Arg.Any<RegisterFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleFundo);
+
+        var request = new RegisterFundoRequest("Fundo Alfa", "11.222.333/0001-81", ConsultoriaId, CustodianteId,
+            TipoFundo.Multimercado, null, null, null);
+        var result = await _sut.RegisterFundo(request, CancellationToken.None);
+
+        var created = result.ShouldBeOfType<CreatedAtActionResult>();
+        created.ActionName.ShouldBe(nameof(FundosController.GetFundoById));
+        created.Value.ShouldBe(SampleFundo);
+    }
+
+    [Fact]
+    public async Task RegisterFundo_CapturesActorAndCompanyFromContext()
+    {
+        _registerFundoValidator
+            .ValidateAsync(Arg.Any<RegisterFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerFundoHandler
+            .HandleAsync(Arg.Any<RegisterFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleFundo);
+
+        var request = new RegisterFundoRequest("Fundo Alfa", "11.222.333/0001-81", ConsultoriaId, CustodianteId,
+            TipoFundo.Multimercado, null, null, null);
+        await _sut.RegisterFundo(request, CancellationToken.None);
+
+        await _registerFundoHandler.Received(1).HandleAsync(
+            Arg.Is<RegisterFundoCommand>(c =>
+                c.ActorSub == "test-sub-123" && c.ActorEmail == "actor@test.com"),
+            Arg.Any<CancellationToken>());
+    }
+
+    // =========================================================================
+    // Fundo — GET list (ListFundos)
+    // =========================================================================
+
+    [Fact]
+    public async Task ListFundos_HappyPath_Returns200WithPaginatedResult()
+    {
+        var expected = new PaginatedResult<FundoDto>(new[] { SampleFundo }, 1, 1, 20);
+        _listFundoHandler
+            .HandleAsync(Arg.Any<ListFundoQuery>(), Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        var result = await _sut.ListFundos(ct: CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.Value.ShouldBe(expected);
+    }
+
+    // =========================================================================
+    // Fundo — GET by id (GetFundoById)
+    // =========================================================================
+
+    [Fact]
+    public async Task GetFundoById_NotFound_Returns404()
+    {
+        _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>())
+            .Returns((Fundo?)null);
+
+        var result = await _sut.GetFundoById(FundoId, CancellationToken.None);
+
+        result.ShouldBeOfType<NotFoundResult>();
+    }
+
+    [Fact]
+    public async Task GetFundoById_Found_Returns200WithDto()
+    {
+        var fundo = BuildFundo();
+        _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>())
+            .Returns(fundo);
+
+        var result = await _sut.GetFundoById(FundoId, CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        var dto = ok.Value.ShouldBeOfType<FundoDto>();
+        dto.Id.ShouldBe(FundoId);
+    }
+
+    // =========================================================================
+    // Fundo — PUT (UpdateFundo)
+    // =========================================================================
+
+    [Fact]
+    public async Task UpdateFundo_NullBody_Returns400()
+    {
+        var result = await _sut.UpdateFundo(FundoId, null, CancellationToken.None);
+        result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateFundo_ValidationFails_Returns422()
+    {
+        _updateFundoValidator
+            .ValidateAsync(Arg.Any<UpdateFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(InvalidResult("Nome", "Required."));
+
+        var request = new UpdateFundoRequest(null, null, null, null);
+        var result = await _sut.UpdateFundo(FundoId, request, CancellationToken.None);
+
+        result.ShouldBeOfType<UnprocessableEntityObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateFundo_NotFound_Returns404()
+    {
+        _updateFundoValidator
+            .ValidateAsync(Arg.Any<UpdateFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _updateFundoHandler
+            .HandleAsync(Arg.Any<UpdateFundoCommand>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new KeyNotFoundException("Fundo not found."));
+
+        var request = new UpdateFundoRequest("Fundo Alfa", null, null, null);
+        var result = await _sut.UpdateFundo(FundoId, request, CancellationToken.None);
+
+        result.ShouldBeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateFundo_HappyPath_Returns200WithDto()
+    {
+        _updateFundoValidator
+            .ValidateAsync(Arg.Any<UpdateFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _updateFundoHandler
+            .HandleAsync(Arg.Any<UpdateFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleFundo);
+
+        var request = new UpdateFundoRequest("Fundo Alfa", null, null, null);
+        var result = await _sut.UpdateFundo(FundoId, request, CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.Value.ShouldBe(SampleFundo);
+    }
+
+    // =========================================================================
+    // Fundo — POST /{id}/status (TransitionFundoStatus) — state machine tests
+    // =========================================================================
+
+    [Fact]
+    public async Task TransitionFundoStatus_NullBody_Returns400()
+    {
+        var result = await _sut.TransitionFundoStatus(FundoId, null, CancellationToken.None);
+        result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task TransitionFundoStatus_RascunhoToAtivo_ValidTransition_Returns200()
+    {
+        // RASCUNHO → ATIVO is a valid transition per state machine (D-02)
+        _transitionFundoStatusValidator
+            .ValidateAsync(Arg.Any<TransitionFundoStatusCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+
+        var activoFundo = SampleFundo with { Status = FundoStatus.ATIVO };
+        _transitionFundoStatusHandler
+            .HandleAsync(Arg.Any<TransitionFundoStatusCommand>(), Arg.Any<CancellationToken>())
+            .Returns(activoFundo);
+
+        var request = new TransitionFundoStatusRequest(FundoStatus.ATIVO);
+        var result = await _sut.TransitionFundoStatus(FundoId, request, CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        var dto = ok.Value.ShouldBeOfType<FundoDto>();
+        dto.Status.ShouldBe(FundoStatus.ATIVO);
+    }
+
+    [Fact]
+    public async Task TransitionFundoStatus_EncerradoToAtivo_InvalidTransition_Returns400WithFromToDetail()
+    {
+        // ENCERRADO → ATIVO is an invalid transition — domain throws InvalidStateTransitionException
+        _transitionFundoStatusValidator
+            .ValidateAsync(Arg.Any<TransitionFundoStatusCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _transitionFundoStatusHandler
+            .HandleAsync(Arg.Any<TransitionFundoStatusCommand>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidStateTransitionException("Fundo", FundoStatus.ENCERRADO, FundoStatus.ATIVO));
+
+        var request = new TransitionFundoStatusRequest(FundoStatus.ATIVO);
+        var result = await _sut.TransitionFundoStatus(FundoId, request, CancellationToken.None);
+
+        var badRequest = result.ShouldBeOfType<BadRequestObjectResult>();
+        var problem = badRequest.Value.ShouldBeOfType<ProblemDetails>();
+        problem.Status.ShouldBe(400);
+        // Detail must contain from/to info per acceptance criteria
+        problem.Detail.ShouldNotBeNull();
+        problem.Detail.ShouldContain("ENCERRADO");
+        problem.Detail.ShouldContain("ATIVO");
+    }
+
+    [Fact]
+    public async Task TransitionFundoStatus_FundoNotFound_Returns404()
+    {
+        _transitionFundoStatusValidator
+            .ValidateAsync(Arg.Any<TransitionFundoStatusCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _transitionFundoStatusHandler
+            .HandleAsync(Arg.Any<TransitionFundoStatusCommand>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new KeyNotFoundException("Fundo not found."));
+
+        var request = new TransitionFundoStatusRequest(FundoStatus.ATIVO);
+        var result = await _sut.TransitionFundoStatus(FundoId, request, CancellationToken.None);
+
+        result.ShouldBeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task TransitionFundoStatus_CapturesActorFromJwt()
+    {
+        _transitionFundoStatusValidator
+            .ValidateAsync(Arg.Any<TransitionFundoStatusCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _transitionFundoStatusHandler
+            .HandleAsync(Arg.Any<TransitionFundoStatusCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleFundo with { Status = FundoStatus.ATIVO });
+
+        var request = new TransitionFundoStatusRequest(FundoStatus.ATIVO);
+        await _sut.TransitionFundoStatus(FundoId, request, CancellationToken.None);
+
+        await _transitionFundoStatusHandler.Received(1).HandleAsync(
+            Arg.Is<TransitionFundoStatusCommand>(c =>
+                c.FundoId == FundoId &&
+                c.NewStatus == FundoStatus.ATIVO &&
+                c.ActorSub == "test-sub-123" &&
+                c.ActorEmail == "actor@test.com"),
+            Arg.Any<CancellationToken>());
+    }
+
+    // =========================================================================
+    // Cedente — POST /cedentes/pf (RegisterCedentePf)
+    // =========================================================================
+
+    [Fact]
+    public async Task RegisterCedentePf_NullBody_Returns400()
+    {
+        var result = await _sut.RegisterCedentePf(null, CancellationToken.None);
+        result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterCedentePf_ValidationFails_Returns422()
+    {
+        _registerCedentePfValidator
+            .ValidateAsync(Arg.Any<RegisterCedentePfCommand>(), Arg.Any<CancellationToken>())
+            .Returns(InvalidResult("Cpf", "Invalid CPF."));
+
+        var request = new RegisterCedentePfRequest("bad-cpf", "João", null, null, null);
+        var result = await _sut.RegisterCedentePf(request, CancellationToken.None);
+
+        result.ShouldBeOfType<UnprocessableEntityObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterCedentePf_Duplicate_Returns409()
+    {
+        // D-10: uniqueness is company-scoped — same CPF within same company → 409
+        _registerCedentePfValidator
+            .ValidateAsync(Arg.Any<RegisterCedentePfCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerCedentePfHandler
+            .HandleAsync(Arg.Any<RegisterCedentePfCommand>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new DuplicateEntityException("Cedente", "123.456.789-09"));
+
+        var request = new RegisterCedentePfRequest("12345678909", "João Silva", null, null, null);
+        var result = await _sut.RegisterCedentePf(request, CancellationToken.None);
+
+        result.ShouldBeOfType<ConflictObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterCedentePf_HappyPath_Returns201WithLocation()
+    {
+        _registerCedentePfValidator
+            .ValidateAsync(Arg.Any<RegisterCedentePfCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerCedentePfHandler
+            .HandleAsync(Arg.Any<RegisterCedentePfCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleCedentePf);
+
+        var request = new RegisterCedentePfRequest("12345678909", "João Silva", null, null, null);
+        var result = await _sut.RegisterCedentePf(request, CancellationToken.None);
+
+        var created = result.ShouldBeOfType<CreatedAtActionResult>();
+        created.ActionName.ShouldBe(nameof(FundosController.GetCedenteById));
+        var dto = created.Value.ShouldBeOfType<CedenteDto>();
+        dto.CedenteTipo.ShouldBe(CedenteTipo.PF);
+    }
+
+    [Fact]
+    public async Task RegisterCedentePf_CapturesActorFromJwt()
+    {
+        _registerCedentePfValidator
+            .ValidateAsync(Arg.Any<RegisterCedentePfCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerCedentePfHandler
+            .HandleAsync(Arg.Any<RegisterCedentePfCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleCedentePf);
+
+        var request = new RegisterCedentePfRequest("12345678909", "João Silva", null, null, null);
+        await _sut.RegisterCedentePf(request, CancellationToken.None);
+
+        await _registerCedentePfHandler.Received(1).HandleAsync(
+            Arg.Is<RegisterCedentePfCommand>(c =>
+                c.ActorSub == "test-sub-123" && c.ActorEmail == "actor@test.com"),
+            Arg.Any<CancellationToken>());
+    }
+
+    // =========================================================================
+    // Cedente — POST /cedentes/pj (RegisterCedentePj)
+    // =========================================================================
+
+    [Fact]
+    public async Task RegisterCedentePj_NullBody_Returns400()
+    {
+        var result = await _sut.RegisterCedentePj(null, CancellationToken.None);
+        result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterCedentePj_ValidationFails_Returns422()
+    {
+        _registerCedentePjValidator
+            .ValidateAsync(Arg.Any<RegisterCedentePjCommand>(), Arg.Any<CancellationToken>())
+            .Returns(InvalidResult("Cnpj", "Invalid CNPJ."));
+
+        var request = new RegisterCedentePjRequest("bad-cnpj", "Empresa PJ", null, null, null);
+        var result = await _sut.RegisterCedentePj(request, CancellationToken.None);
+
+        result.ShouldBeOfType<UnprocessableEntityObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterCedentePj_Duplicate_Returns409()
+    {
+        // D-10: uniqueness is company-scoped — same CNPJ within same company → 409
+        _registerCedentePjValidator
+            .ValidateAsync(Arg.Any<RegisterCedentePjCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerCedentePjHandler
+            .HandleAsync(Arg.Any<RegisterCedentePjCommand>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new DuplicateEntityException("Cedente", "11.222.333/0001-81"));
+
+        var request = new RegisterCedentePjRequest("11222333000181", "Empresa PJ Ltda", null, null, null);
+        var result = await _sut.RegisterCedentePj(request, CancellationToken.None);
+
+        result.ShouldBeOfType<ConflictObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterCedentePj_HappyPath_Returns201WithLocation()
+    {
+        _registerCedentePjValidator
+            .ValidateAsync(Arg.Any<RegisterCedentePjCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerCedentePjHandler
+            .HandleAsync(Arg.Any<RegisterCedentePjCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleCedentePj);
+
+        var request = new RegisterCedentePjRequest("11222333000181", "Empresa PJ Ltda", null, null, null);
+        var result = await _sut.RegisterCedentePj(request, CancellationToken.None);
+
+        var created = result.ShouldBeOfType<CreatedAtActionResult>();
+        created.ActionName.ShouldBe(nameof(FundosController.GetCedenteById));
+        var dto = created.Value.ShouldBeOfType<CedenteDto>();
+        dto.CedenteTipo.ShouldBe(CedenteTipo.PJ);
+    }
+
+    // =========================================================================
+    // Cedente — GET list (ListCedentes)
+    // =========================================================================
+
+    [Fact]
+    public async Task ListCedentes_HappyPath_Returns200WithPaginatedResult()
+    {
+        var expected = new PaginatedResult<CedenteDto>(new[] { SampleCedentePf }, 1, 1, 20);
+        _listCedenteHandler
+            .HandleAsync(Arg.Any<ListCedenteQuery>(), Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        var result = await _sut.ListCedentes(ct: CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.Value.ShouldBe(expected);
+    }
+
+    // =========================================================================
+    // Cedente — GET by id (GetCedenteById)
+    // =========================================================================
+
+    [Fact]
+    public async Task GetCedenteById_NotFound_Returns404()
+    {
+        _cedenteRepo.GetByIdAsync(CedenteId, Arg.Any<CancellationToken>())
+            .Returns((Cedente?)null);
+
+        var result = await _sut.GetCedenteById(CedenteId, CancellationToken.None);
+
+        result.ShouldBeOfType<NotFoundResult>();
+    }
+
+    [Fact]
+    public async Task GetCedenteById_Found_Returns200WithDto()
+    {
+        var cedente = BuildCedentePf();
+        _cedenteRepo.GetByIdAsync(CedenteId, Arg.Any<CancellationToken>())
+            .Returns(cedente);
+
+        var result = await _sut.GetCedenteById(CedenteId, CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        var dto = ok.Value.ShouldBeOfType<CedenteDto>();
+        dto.Id.ShouldBe(CedenteId);
+        dto.CedenteTipo.ShouldBe(CedenteTipo.PF);
+    }
+
+    // =========================================================================
+    // Cedente — PUT (UpdateCedente)
+    // =========================================================================
+
+    [Fact]
+    public async Task UpdateCedente_NullBody_Returns400()
+    {
+        var result = await _sut.UpdateCedente(CedenteId, null, CancellationToken.None);
+        result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateCedente_ValidationFails_Returns422()
+    {
+        _updateCedenteValidator
+            .ValidateAsync(Arg.Any<UpdateCedenteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(InvalidResult("Nome", "Required."));
+
+        var request = new UpdateCedenteRequest(null, null, null, null, CedenteStatus.ATIVO);
+        var result = await _sut.UpdateCedente(CedenteId, request, CancellationToken.None);
+
+        result.ShouldBeOfType<UnprocessableEntityObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateCedente_NotFound_Returns404()
+    {
+        _updateCedenteValidator
+            .ValidateAsync(Arg.Any<UpdateCedenteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _updateCedenteHandler
+            .HandleAsync(Arg.Any<UpdateCedenteCommand>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new KeyNotFoundException("Cedente not found."));
+
+        var request = new UpdateCedenteRequest("João Silva", null, null, null, CedenteStatus.ATIVO);
+        var result = await _sut.UpdateCedente(CedenteId, request, CancellationToken.None);
+
+        result.ShouldBeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateCedente_HappyPath_Returns200WithDto()
+    {
+        _updateCedenteValidator
+            .ValidateAsync(Arg.Any<UpdateCedenteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _updateCedenteHandler
+            .HandleAsync(Arg.Any<UpdateCedenteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleCedentePf);
+
+        var request = new UpdateCedenteRequest("João Silva", null, null, null, CedenteStatus.ATIVO);
+        var result = await _sut.UpdateCedente(CedenteId, request, CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.Value.ShouldBe(SampleCedentePf);
+    }
+
+    // =========================================================================
     // Domain aggregate builders (use reflection to avoid ctor dependency on domain internals)
     // =========================================================================
 
@@ -778,6 +1393,33 @@ public class FundosControllerTests
 
         SetId(t, TipoAtivoId);
         return t;
+    }
+
+    private static Fundo BuildFundo()
+    {
+        // 11.222.333/0001-81 is a valid test CNPJ
+        var f = Fundo.Register(
+            "Fundo Alfa",
+            "11.222.333/0001-81",
+            CompanyId,
+            ConsultoriaId,
+            CustodianteId,
+            TipoFundo.Multimercado);
+
+        SetId(f, FundoId);
+        return f;
+    }
+
+    private static Cedente BuildCedentePf()
+    {
+        // 123.456.789-09 is a valid test CPF
+        var c = Cedente.RegisterPf(
+            "123.456.789-09",
+            "João Silva",
+            CompanyId);
+
+        SetId(c, CedenteId);
+        return c;
     }
 
     /// <summary>

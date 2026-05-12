@@ -6,8 +6,10 @@ using Onboarding.Application.Fundos.Commands;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries;
 using Onboarding.API.Security;
+using Onboarding.Domain.Aggregates.CedenteAggregate;
 using Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate;
 using Onboarding.Domain.Aggregates.CustodianteAggregate;
+using Onboarding.Domain.Aggregates.FundoAggregate;
 using Onboarding.Domain.Aggregates.TipoAtivoAggregate;
 using Onboarding.Domain.Exceptions;
 using Onboarding.Domain.Repositories;
@@ -15,7 +17,7 @@ using Onboarding.Domain.Repositories;
 namespace Onboarding.API.Controllers;
 
 /// <summary>
-/// Fundos module endpoints — company-scoped (ConsultoriaFundo, Custodiante) and global (TipoAtivo).
+/// Fundos module endpoints — company-scoped (ConsultoriaFundo, Custodiante, Fundo, Cedente) and global (TipoAtivo).
 /// POST   /api/fundos/consultorias              CAD-01: register ConsultoriaFundo
 /// GET    /api/fundos/consultorias              CAD-02: list ConsultoriaFundo (paginated)
 /// GET    /api/fundos/consultorias/{id}         CAD-02b: get ConsultoriaFundo by id
@@ -28,6 +30,16 @@ namespace Onboarding.API.Controllers;
 /// GET    /api/fundos/tipos-ativo               CAD-20: list TipoAtivo (paginated, global)
 /// GET    /api/fundos/tipos-ativo/{id}          CAD-20b: get TipoAtivo by id (global)
 /// PUT    /api/fundos/tipos-ativo/{id}          CAD-21: update TipoAtivo (global)
+/// POST   /api/fundos                           CAD-09: register Fundo (RASCUNHO)
+/// GET    /api/fundos                           CAD-10: list Fundo (paginated)
+/// GET    /api/fundos/{id}                      CAD-10b: get Fundo by id
+/// PUT    /api/fundos/{id}                      CAD-11: update Fundo
+/// POST   /api/fundos/{id}/status               CAD-13: transition Fundo status (D-9)
+/// POST   /api/fundos/cedentes/pf               CAD-14: register Cedente PF
+/// POST   /api/fundos/cedentes/pj               CAD-15: register Cedente PJ
+/// GET    /api/fundos/cedentes                  CAD-16: list Cedente (paginated)
+/// GET    /api/fundos/cedentes/{id}             CAD-16b: get Cedente by id
+/// PUT    /api/fundos/cedentes/{id}             CAD-17: update Cedente
 /// </summary>
 [ApiController]
 [Route("api/fundos")]
@@ -58,6 +70,26 @@ public sealed class FundosController : ControllerBase
     private readonly IQueryHandler<ListTipoAtivoQuery, PaginatedResult<TipoAtivoDto>> _listTipoAtivoHandler;
     private readonly ITipoAtivoRepository _tipoAtivoRepository;
 
+    // Fundo — company-scoped (D-5, HasQueryFilter)
+    private readonly ICommandHandler<RegisterFundoCommand, FundoDto> _registerFundoHandler;
+    private readonly IValidator<RegisterFundoCommand> _registerFundoValidator;
+    private readonly ICommandHandler<UpdateFundoCommand, FundoDto> _updateFundoHandler;
+    private readonly IValidator<UpdateFundoCommand> _updateFundoValidator;
+    private readonly ICommandHandler<TransitionFundoStatusCommand, FundoDto> _transitionFundoStatusHandler;
+    private readonly IValidator<TransitionFundoStatusCommand> _transitionFundoStatusValidator;
+    private readonly IQueryHandler<ListFundoQuery, PaginatedResult<FundoDto>> _listFundoHandler;
+    private readonly IFundoRepository _fundoRepository;
+
+    // Cedente — company-scoped (D-5, D-10: composite unique index (ClientId, Cpf/Cnpj))
+    private readonly ICommandHandler<RegisterCedentePfCommand, CedenteDto> _registerCedentePfHandler;
+    private readonly IValidator<RegisterCedentePfCommand> _registerCedentePfValidator;
+    private readonly ICommandHandler<RegisterCedentePjCommand, CedenteDto> _registerCedentePjHandler;
+    private readonly IValidator<RegisterCedentePjCommand> _registerCedentePjValidator;
+    private readonly ICommandHandler<UpdateCedenteCommand, CedenteDto> _updateCedenteHandler;
+    private readonly IValidator<UpdateCedenteCommand> _updateCedenteValidator;
+    private readonly IQueryHandler<ListCedenteQuery, PaginatedResult<CedenteDto>> _listCedenteHandler;
+    private readonly ICedenteRepository _cedenteRepository;
+
     // Cross-cutting
     private readonly ICurrentCompanyService _currentCompanyService;
     private readonly ILogger<FundosController> _logger;
@@ -81,6 +113,22 @@ public sealed class FundosController : ControllerBase
         IValidator<UpdateTipoAtivoCommand> updateTipoAtivoValidator,
         IQueryHandler<ListTipoAtivoQuery, PaginatedResult<TipoAtivoDto>> listTipoAtivoHandler,
         ITipoAtivoRepository tipoAtivoRepository,
+        ICommandHandler<RegisterFundoCommand, FundoDto> registerFundoHandler,
+        IValidator<RegisterFundoCommand> registerFundoValidator,
+        ICommandHandler<UpdateFundoCommand, FundoDto> updateFundoHandler,
+        IValidator<UpdateFundoCommand> updateFundoValidator,
+        ICommandHandler<TransitionFundoStatusCommand, FundoDto> transitionFundoStatusHandler,
+        IValidator<TransitionFundoStatusCommand> transitionFundoStatusValidator,
+        IQueryHandler<ListFundoQuery, PaginatedResult<FundoDto>> listFundoHandler,
+        IFundoRepository fundoRepository,
+        ICommandHandler<RegisterCedentePfCommand, CedenteDto> registerCedentePfHandler,
+        IValidator<RegisterCedentePfCommand> registerCedentePfValidator,
+        ICommandHandler<RegisterCedentePjCommand, CedenteDto> registerCedentePjHandler,
+        IValidator<RegisterCedentePjCommand> registerCedentePjValidator,
+        ICommandHandler<UpdateCedenteCommand, CedenteDto> updateCedenteHandler,
+        IValidator<UpdateCedenteCommand> updateCedenteValidator,
+        IQueryHandler<ListCedenteQuery, PaginatedResult<CedenteDto>> listCedenteHandler,
+        ICedenteRepository cedenteRepository,
         ICurrentCompanyService currentCompanyService,
         ILogger<FundosController> logger)
     {
@@ -104,6 +152,24 @@ public sealed class FundosController : ControllerBase
         _updateTipoAtivoValidator = updateTipoAtivoValidator;
         _listTipoAtivoHandler = listTipoAtivoHandler;
         _tipoAtivoRepository = tipoAtivoRepository;
+
+        _registerFundoHandler = registerFundoHandler;
+        _registerFundoValidator = registerFundoValidator;
+        _updateFundoHandler = updateFundoHandler;
+        _updateFundoValidator = updateFundoValidator;
+        _transitionFundoStatusHandler = transitionFundoStatusHandler;
+        _transitionFundoStatusValidator = transitionFundoStatusValidator;
+        _listFundoHandler = listFundoHandler;
+        _fundoRepository = fundoRepository;
+
+        _registerCedentePfHandler = registerCedentePfHandler;
+        _registerCedentePfValidator = registerCedentePfValidator;
+        _registerCedentePjHandler = registerCedentePjHandler;
+        _registerCedentePjValidator = registerCedentePjValidator;
+        _updateCedenteHandler = updateCedenteHandler;
+        _updateCedenteValidator = updateCedenteValidator;
+        _listCedenteHandler = listCedenteHandler;
+        _cedenteRepository = cedenteRepository;
 
         _currentCompanyService = currentCompanyService;
         _logger = logger;
@@ -521,6 +587,371 @@ public sealed class FundosController : ControllerBase
     }
 
     // =========================================================================
+    // Fundo — company-scoped (D-5, HasQueryFilter)
+    // =========================================================================
+
+    /// <summary>POST /api/fundos — Register a new Fundo (CAD-09). Status starts as RASCUNHO.</summary>
+    [HttpPost]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundWrite)]
+    [ProducesResponseType(typeof(FundoDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> RegisterFundo(
+        [FromBody] RegisterFundoRequest? request, CancellationToken ct)
+    {
+        if (request is null)
+            return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+
+        var command = new RegisterFundoCommand(
+            Nome: request.Nome ?? string.Empty,
+            Cnpj: request.Cnpj ?? string.Empty,
+            ConsultoriaFundoId: request.ConsultoriaFundoId,
+            CustodianteId: request.CustodianteId,
+            TipoFundo: request.TipoFundo,
+            ClasseAnbima: request.ClasseAnbima,
+            Segmento: request.Segmento,
+            DataConstituicao: request.DataConstituicao,
+            ActorSub: actorSub,
+            ActorEmail: actorEmail);
+
+        var validation = await _registerFundoValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            var result = await _registerFundoHandler.HandleAsync(command, ct);
+            return CreatedAtAction(nameof(GetFundoById), new { id = result.Id }, result);
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new ProblemDetails { Title = "Conflict", Status = 409, Detail = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails { Title = "Not found", Status = 404, Detail = ex.Message });
+        }
+    }
+
+    /// <summary>GET /api/fundos — Paginated Fundo listing (CAD-10).</summary>
+    [HttpGet]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
+    [ProducesResponseType(typeof(PaginatedResult<FundoDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListFundos(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        var query = new ListFundoQuery(page, pageSize, search);
+        var result = await _listFundoHandler.HandleAsync(query, ct);
+        return Ok(result);
+    }
+
+    /// <summary>GET /api/fundos/{id} — Get Fundo by id (CAD-10b).</summary>
+    [HttpGet("{id:guid}")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
+    [ProducesResponseType(typeof(FundoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetFundoById(Guid id, CancellationToken ct)
+    {
+        var fundo = await _fundoRepository.GetByIdAsync(id, ct);
+        if (fundo is null)
+            return NotFound();
+
+        return Ok(new FundoDto(
+            fundo.Id,
+            fundo.Nome,
+            fundo.Cnpj.Value,
+            fundo.ConsultoriaFundoId,
+            fundo.CustodianteId,
+            fundo.TipoFundo,
+            fundo.ClasseAnbima,
+            fundo.Segmento,
+            fundo.DataConstituicao,
+            fundo.Status,
+            fundo.CreatedAt));
+    }
+
+    /// <summary>PUT /api/fundos/{id} — Update Fundo mutable data (CAD-11). Status transition is separate.</summary>
+    [HttpPut("{id:guid}")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundWrite)]
+    [ProducesResponseType(typeof(FundoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> UpdateFundo(
+        Guid id, [FromBody] UpdateFundoRequest? request, CancellationToken ct)
+    {
+        if (request is null)
+            return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+
+        var command = new UpdateFundoCommand(
+            Id: id,
+            Nome: request.Nome ?? string.Empty,
+            ClasseAnbima: request.ClasseAnbima,
+            Segmento: request.Segmento,
+            DataConstituicao: request.DataConstituicao,
+            ActorSub: actorSub,
+            ActorEmail: actorEmail);
+
+        var validation = await _updateFundoValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            var result = await _updateFundoHandler.HandleAsync(command, ct);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails { Title = "Not found", Status = 404, Detail = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// POST /api/fundos/{id}/status — Transition Fundo status (CAD-13, D-9).
+    /// Body: { NewStatus } only. Invalid transitions → 400 BadRequest with from/to detail.
+    /// </summary>
+    [HttpPost("{id:guid}/status")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundWrite)]
+    [ProducesResponseType(typeof(FundoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> TransitionFundoStatus(
+        Guid id, [FromBody] TransitionFundoStatusRequest? request, CancellationToken ct)
+    {
+        if (request is null)
+            return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+
+        var command = new TransitionFundoStatusCommand(
+            FundoId: id,
+            NewStatus: request.NewStatus,
+            ActorSub: actorSub,
+            ActorEmail: actorEmail);
+
+        var validation = await _transitionFundoStatusValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            var result = await _transitionFundoStatusHandler.HandleAsync(command, ct);
+            return Ok(result);
+        }
+        catch (InvalidStateTransitionException ex)
+        {
+            // Explicit 400 with from/to detail per acceptance criteria
+            return BadRequest(new ProblemDetails
+            {
+                Title = "Invalid status transition",
+                Status = 400,
+                Detail = $"Cannot transition Fundo from {ex.From} to {ex.To}. {ex.Message}"
+            });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails { Title = "Not found", Status = 404, Detail = ex.Message });
+        }
+    }
+
+    // =========================================================================
+    // Cedente — company-scoped (D-5, D-10: composite unique (ClientId, Cpf/Cnpj))
+    // =========================================================================
+
+    /// <summary>POST /api/fundos/cedentes/pf — Register a new Cedente PF with CPF (CAD-14).</summary>
+    [HttpPost("cedentes/pf")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundWrite)]
+    [ProducesResponseType(typeof(CedenteDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> RegisterCedentePf(
+        [FromBody] RegisterCedentePfRequest? request, CancellationToken ct)
+    {
+        if (request is null)
+            return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+
+        var command = new RegisterCedentePfCommand(
+            Cpf: request.Cpf ?? string.Empty,
+            Nome: request.Nome ?? string.Empty,
+            Email: request.Email,
+            Telefone: request.Telefone,
+            Endereco: request.Endereco,
+            ActorSub: actorSub,
+            ActorEmail: actorEmail);
+
+        var validation = await _registerCedentePfValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            var result = await _registerCedentePfHandler.HandleAsync(command, ct);
+            return CreatedAtAction(nameof(GetCedenteById), new { id = result.Id }, result);
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new ProblemDetails { Title = "Conflict", Status = 409, Detail = ex.Message });
+        }
+    }
+
+    /// <summary>POST /api/fundos/cedentes/pj — Register a new Cedente PJ with CNPJ (CAD-15).</summary>
+    [HttpPost("cedentes/pj")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundWrite)]
+    [ProducesResponseType(typeof(CedenteDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> RegisterCedentePj(
+        [FromBody] RegisterCedentePjRequest? request, CancellationToken ct)
+    {
+        if (request is null)
+            return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+
+        var command = new RegisterCedentePjCommand(
+            Cnpj: request.Cnpj ?? string.Empty,
+            RazaoSocial: request.RazaoSocial ?? string.Empty,
+            Email: request.Email,
+            Telefone: request.Telefone,
+            Endereco: request.Endereco,
+            ActorSub: actorSub,
+            ActorEmail: actorEmail);
+
+        var validation = await _registerCedentePjValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            var result = await _registerCedentePjHandler.HandleAsync(command, ct);
+            return CreatedAtAction(nameof(GetCedenteById), new { id = result.Id }, result);
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new ProblemDetails { Title = "Conflict", Status = 409, Detail = ex.Message });
+        }
+    }
+
+    /// <summary>GET /api/fundos/cedentes — Paginated Cedente listing (CAD-16).</summary>
+    [HttpGet("cedentes")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
+    [ProducesResponseType(typeof(PaginatedResult<CedenteDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListCedentes(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        var query = new ListCedenteQuery(page, pageSize, search);
+        var result = await _listCedenteHandler.HandleAsync(query, ct);
+        return Ok(result);
+    }
+
+    /// <summary>GET /api/fundos/cedentes/{id} — Get Cedente by id (CAD-16b).</summary>
+    [HttpGet("cedentes/{id:guid}")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
+    [ProducesResponseType(typeof(CedenteDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCedenteById(Guid id, CancellationToken ct)
+    {
+        var cedente = await _cedenteRepository.GetByIdAsync(id, ct);
+        if (cedente is null)
+            return NotFound();
+
+        return Ok(new CedenteDto(
+            cedente.Id,
+            cedente.Documento.Match(
+                pf => pf.Cpf.Value,
+                pj => pj.Cnpj.Value),
+            cedente.Nome,
+            cedente.Email?.Value,
+            cedente.Telefone?.Value,
+            cedente.Endereco,
+            cedente.Documento.IsPf ? CedenteTipo.PF : CedenteTipo.PJ,
+            cedente.Status,
+            cedente.CreatedAt));
+    }
+
+    /// <summary>PUT /api/fundos/cedentes/{id} — Update Cedente data (CAD-17).</summary>
+    [HttpPut("cedentes/{id:guid}")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundWrite)]
+    [ProducesResponseType(typeof(CedenteDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> UpdateCedente(
+        Guid id, [FromBody] UpdateCedenteRequest? request, CancellationToken ct)
+    {
+        if (request is null)
+            return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+
+        var command = new UpdateCedenteCommand(
+            Id: id,
+            Nome: request.Nome ?? string.Empty,
+            Email: request.Email,
+            Telefone: request.Telefone,
+            Endereco: request.Endereco,
+            Status: request.Status,
+            ActorSub: actorSub,
+            ActorEmail: actorEmail);
+
+        var validation = await _updateCedenteValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            var result = await _updateCedenteHandler.HandleAsync(command, ct);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails { Title = "Not found", Status = 404, Detail = ex.Message });
+        }
+    }
+
+    // =========================================================================
     // Helpers
     // =========================================================================
 
@@ -583,3 +1014,48 @@ public sealed record UpdateTipoAtivoRequest(
     string? Subcategoria,
     TipoAtivoStatus Status,
     int OrdemExibicao);
+
+/// <summary>Request DTO for POST /api/fundos.</summary>
+public sealed record RegisterFundoRequest(
+    string? Nome,
+    string? Cnpj,
+    Guid ConsultoriaFundoId,
+    Guid CustodianteId,
+    TipoFundo TipoFundo,
+    string? ClasseAnbima,
+    string? Segmento,
+    DateTimeOffset? DataConstituicao);
+
+/// <summary>Request DTO for PUT /api/fundos/{id}.</summary>
+public sealed record UpdateFundoRequest(
+    string? Nome,
+    string? ClasseAnbima,
+    string? Segmento,
+    DateTimeOffset? DataConstituicao);
+
+/// <summary>Request DTO for POST /api/fundos/{id}/status (D-9 — minimal body).</summary>
+public sealed record TransitionFundoStatusRequest(FundoStatus NewStatus);
+
+/// <summary>Request DTO for POST /api/fundos/cedentes/pf.</summary>
+public sealed record RegisterCedentePfRequest(
+    string? Cpf,
+    string? Nome,
+    string? Email,
+    string? Telefone,
+    string? Endereco);
+
+/// <summary>Request DTO for POST /api/fundos/cedentes/pj.</summary>
+public sealed record RegisterCedentePjRequest(
+    string? Cnpj,
+    string? RazaoSocial,
+    string? Email,
+    string? Telefone,
+    string? Endereco);
+
+/// <summary>Request DTO for PUT /api/fundos/cedentes/{id}.</summary>
+public sealed record UpdateCedenteRequest(
+    string? Nome,
+    string? Email,
+    string? Telefone,
+    string? Endereco,
+    CedenteStatus Status);

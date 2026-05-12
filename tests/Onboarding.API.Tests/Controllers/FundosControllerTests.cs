@@ -1,0 +1,808 @@
+using System.Reflection;
+using System.Security.Claims;
+using FluentValidation;
+using FluentValidation.Results;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using NSubstitute;
+using NSubstitute.ExceptionExtensions;
+using Onboarding.API.Controllers;
+using Onboarding.API.Security;
+using Onboarding.Application.Common;
+using Onboarding.Application.Fundos.Commands;
+using Onboarding.Application.Fundos.DTOs;
+using Onboarding.Application.Fundos.Queries;
+using Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate;
+using Onboarding.Domain.Aggregates.CustodianteAggregate;
+using Onboarding.Domain.Aggregates.TipoAtivoAggregate;
+using Onboarding.Domain.Exceptions;
+using Onboarding.Domain.Repositories;
+using Shouldly;
+
+namespace Onboarding.API.Tests.Controllers;
+
+/// <summary>
+/// Unit tests for FundosController — 12 endpoints covering ConsultoriaFundo, Custodiante, TipoAtivo.
+/// Policy attribute presence is verified via reflection (no WebApplicationFactory needed for happy path).
+/// 4xx paths: null body → 400, validation failure → 422, DuplicateEntityException → 409,
+///             KeyNotFoundException → 404.
+/// Security invariant: each endpoint must carry [Authorize(Policy = FundRead|FundWrite)].
+/// </summary>
+public class FundosControllerTests
+{
+    // -------------------------------------------------------------------------
+    // Mocks
+    // -------------------------------------------------------------------------
+
+    private readonly ICommandHandler<RegisterConsultoriaFundoCommand, ConsultoriaFundoDto> _registerConsultoriaHandler =
+        Substitute.For<ICommandHandler<RegisterConsultoriaFundoCommand, ConsultoriaFundoDto>>();
+    private readonly IValidator<RegisterConsultoriaFundoCommand> _registerConsultoriaValidator =
+        Substitute.For<IValidator<RegisterConsultoriaFundoCommand>>();
+    private readonly ICommandHandler<UpdateConsultoriaFundoCommand, ConsultoriaFundoDto> _updateConsultoriaHandler =
+        Substitute.For<ICommandHandler<UpdateConsultoriaFundoCommand, ConsultoriaFundoDto>>();
+    private readonly IValidator<UpdateConsultoriaFundoCommand> _updateConsultoriaValidator =
+        Substitute.For<IValidator<UpdateConsultoriaFundoCommand>>();
+    private readonly IQueryHandler<ListConsultoriaFundoQuery, PaginatedResult<ConsultoriaFundoDto>> _listConsultoriaHandler =
+        Substitute.For<IQueryHandler<ListConsultoriaFundoQuery, PaginatedResult<ConsultoriaFundoDto>>>();
+    private readonly IConsultoriaFundoRepository _consultoriaRepo =
+        Substitute.For<IConsultoriaFundoRepository>();
+
+    private readonly ICommandHandler<RegisterCustodianteCommand, CustodianteDto> _registerCustodianteHandler =
+        Substitute.For<ICommandHandler<RegisterCustodianteCommand, CustodianteDto>>();
+    private readonly IValidator<RegisterCustodianteCommand> _registerCustodianteValidator =
+        Substitute.For<IValidator<RegisterCustodianteCommand>>();
+    private readonly ICommandHandler<UpdateCustodianteCommand, CustodianteDto> _updateCustodianteHandler =
+        Substitute.For<ICommandHandler<UpdateCustodianteCommand, CustodianteDto>>();
+    private readonly IValidator<UpdateCustodianteCommand> _updateCustodianteValidator =
+        Substitute.For<IValidator<UpdateCustodianteCommand>>();
+    private readonly IQueryHandler<ListCustodianteQuery, PaginatedResult<CustodianteDto>> _listCustodianteHandler =
+        Substitute.For<IQueryHandler<ListCustodianteQuery, PaginatedResult<CustodianteDto>>>();
+    private readonly ICustodianteRepository _custodianteRepo =
+        Substitute.For<ICustodianteRepository>();
+
+    private readonly ICommandHandler<CreateTipoAtivoCommand, TipoAtivoDto> _createTipoAtivoHandler =
+        Substitute.For<ICommandHandler<CreateTipoAtivoCommand, TipoAtivoDto>>();
+    private readonly IValidator<CreateTipoAtivoCommand> _createTipoAtivoValidator =
+        Substitute.For<IValidator<CreateTipoAtivoCommand>>();
+    private readonly ICommandHandler<UpdateTipoAtivoCommand, TipoAtivoDto> _updateTipoAtivoHandler =
+        Substitute.For<ICommandHandler<UpdateTipoAtivoCommand, TipoAtivoDto>>();
+    private readonly IValidator<UpdateTipoAtivoCommand> _updateTipoAtivoValidator =
+        Substitute.For<IValidator<UpdateTipoAtivoCommand>>();
+    private readonly IQueryHandler<ListTipoAtivoQuery, PaginatedResult<TipoAtivoDto>> _listTipoAtivoHandler =
+        Substitute.For<IQueryHandler<ListTipoAtivoQuery, PaginatedResult<TipoAtivoDto>>>();
+    private readonly ITipoAtivoRepository _tipoAtivoRepo =
+        Substitute.For<ITipoAtivoRepository>();
+
+    private readonly ICurrentCompanyService _companyService = Substitute.For<ICurrentCompanyService>();
+
+    private readonly FundosController _sut;
+
+    // -------------------------------------------------------------------------
+    // Test data helpers
+    // -------------------------------------------------------------------------
+
+    private static readonly Guid CompanyId = Guid.NewGuid();
+    private static readonly Guid ConsultoriaId = Guid.NewGuid();
+    private static readonly Guid CustodianteId = Guid.NewGuid();
+    private static readonly Guid TipoAtivoId = Guid.NewGuid();
+
+    // Static fixtures — timestamp-stable so record equality works across multiple calls in the same test
+    private static readonly DateTimeOffset FixedTimestamp = new(2026, 5, 12, 0, 0, 0, TimeSpan.Zero);
+
+    private static readonly ConsultoriaFundoDto SampleConsultoria =
+        new(ConsultoriaId, "Consultoria Ltda", null, "11222333000181", null, null, ConsultoriaFundoStatus.ATIVO, FixedTimestamp);
+
+    private static readonly CustodianteDto SampleCustodiante =
+        new(CustodianteId, "Custodiante S.A.", null, "11444777000161", null, null, CustodianteStatus.ATIVO, FixedTimestamp);
+
+    private static readonly TipoAtivoDto SampleTipoAtivo =
+        new(TipoAtivoId, "LTN", "Letra do Tesouro Nacional", TipoAtivoCategoria.RendaFixa, null, TipoAtivoStatus.ATIVO, 1);
+
+    private static ValidationResult ValidResult() => new();
+
+    private static ValidationResult InvalidResult(string field, string message) =>
+        new(new[] { new ValidationFailure(field, message) });
+
+    public FundosControllerTests()
+    {
+        _companyService.CompanyId.Returns(CompanyId);
+
+        _sut = new FundosController(
+            _registerConsultoriaHandler,
+            _registerConsultoriaValidator,
+            _updateConsultoriaHandler,
+            _updateConsultoriaValidator,
+            _listConsultoriaHandler,
+            _consultoriaRepo,
+            _registerCustodianteHandler,
+            _registerCustodianteValidator,
+            _updateCustodianteHandler,
+            _updateCustodianteValidator,
+            _listCustodianteHandler,
+            _custodianteRepo,
+            _createTipoAtivoHandler,
+            _createTipoAtivoValidator,
+            _updateTipoAtivoHandler,
+            _updateTipoAtivoValidator,
+            _listTipoAtivoHandler,
+            _tipoAtivoRepo,
+            _companyService,
+            Substitute.For<ILogger<FundosController>>()
+        );
+
+        // Set authenticated user with sub + email
+        _sut.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(new[]
+                {
+                    new Claim("sub", "test-sub-123"),
+                    new Claim("email", "actor@test.com")
+                }, "TestAuth"))
+            }
+        };
+    }
+
+    // =========================================================================
+    // Security: Policy attribute reflection tests
+    // =========================================================================
+
+    [Theory]
+    [InlineData(nameof(FundosController.RegisterConsultoria), PermissionPolicies.FundWrite)]
+    [InlineData(nameof(FundosController.ListConsultorias), PermissionPolicies.FundRead)]
+    [InlineData(nameof(FundosController.GetConsultoriaById), PermissionPolicies.FundRead)]
+    [InlineData(nameof(FundosController.UpdateConsultoria), PermissionPolicies.FundWrite)]
+    [InlineData(nameof(FundosController.RegisterCustodiante), PermissionPolicies.FundWrite)]
+    [InlineData(nameof(FundosController.ListCustodiantes), PermissionPolicies.FundRead)]
+    [InlineData(nameof(FundosController.GetCustodianteById), PermissionPolicies.FundRead)]
+    [InlineData(nameof(FundosController.UpdateCustodiante), PermissionPolicies.FundWrite)]
+    [InlineData(nameof(FundosController.CreateTipoAtivo), PermissionPolicies.FundWrite)]
+    [InlineData(nameof(FundosController.ListTiposAtivo), PermissionPolicies.FundRead)]
+    [InlineData(nameof(FundosController.GetTipoAtivoById), PermissionPolicies.FundRead)]
+    [InlineData(nameof(FundosController.UpdateTipoAtivo), PermissionPolicies.FundWrite)]
+    public void Endpoint_HasExpectedAuthorizePolicy(string methodName, string expectedPolicy)
+    {
+        // Reflection-based security invariant: every endpoint MUST carry [Authorize(Policy = ...)]
+        // with the correct policy. Catching policy misconfiguration without spinning up the full stack.
+        var method = typeof(FundosController).GetMethods()
+            .Where(m => m.Name == methodName)
+            .Single();
+
+        var authorizeAttrs = method.GetCustomAttributes<AuthorizeAttribute>().ToList();
+        authorizeAttrs.ShouldNotBeEmpty($"Method {methodName} is missing [Authorize] attribute");
+
+        var policies = authorizeAttrs.Select(a => a.Policy).Where(p => p is not null).ToList();
+        policies.ShouldContain(expectedPolicy,
+            $"Method {methodName} must carry [Authorize(Policy = \"{expectedPolicy}\")]");
+    }
+
+    [Fact]
+    public void Controller_HasClassLevelBearerClientScheme()
+    {
+        var classAttr = typeof(FundosController).GetCustomAttribute<AuthorizeAttribute>();
+        classAttr.ShouldNotBeNull("FundosController must have class-level [Authorize] attribute");
+        classAttr!.AuthenticationSchemes.ShouldBe("BearerClient");
+    }
+
+    // =========================================================================
+    // ConsultoriaFundo — POST (RegisterConsultoria)
+    // =========================================================================
+
+    [Fact]
+    public async Task RegisterConsultoria_NullBody_Returns400()
+    {
+        var result = await _sut.RegisterConsultoria(null, CancellationToken.None);
+        result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterConsultoria_ValidationFails_Returns422()
+    {
+        _registerConsultoriaValidator
+            .ValidateAsync(Arg.Any<RegisterConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(InvalidResult("Cnpj", "Invalid CNPJ."));
+
+        var request = new RegisterConsultoriaFundoRequest("Consultoria", "bad-cnpj", null, null, null);
+        var result = await _sut.RegisterConsultoria(request, CancellationToken.None);
+
+        result.ShouldBeOfType<UnprocessableEntityObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterConsultoria_Duplicate_Returns409()
+    {
+        _registerConsultoriaValidator
+            .ValidateAsync(Arg.Any<RegisterConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerConsultoriaHandler
+            .HandleAsync(Arg.Any<RegisterConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new DuplicateEntityException("ConsultoriaFundo", "12.345.678/0001-90"));
+
+        var request = new RegisterConsultoriaFundoRequest("Consultoria", "12.345.678/0001-90", null, null, null);
+        var result = await _sut.RegisterConsultoria(request, CancellationToken.None);
+
+        result.ShouldBeOfType<ConflictObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterConsultoria_HappyPath_Returns201WithLocation()
+    {
+        _registerConsultoriaValidator
+            .ValidateAsync(Arg.Any<RegisterConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerConsultoriaHandler
+            .HandleAsync(Arg.Any<RegisterConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleConsultoria);
+
+        var request = new RegisterConsultoriaFundoRequest("Consultoria Ltda", "12.345.678/0001-90", null, null, null);
+        var result = await _sut.RegisterConsultoria(request, CancellationToken.None);
+
+        var created = result.ShouldBeOfType<CreatedAtActionResult>();
+        created.ActionName.ShouldBe(nameof(FundosController.GetConsultoriaById));
+        created.Value.ShouldBe(SampleConsultoria);
+    }
+
+    [Fact]
+    public async Task RegisterConsultoria_CapturesActorFromJwt()
+    {
+        _registerConsultoriaValidator
+            .ValidateAsync(Arg.Any<RegisterConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerConsultoriaHandler
+            .HandleAsync(Arg.Any<RegisterConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleConsultoria);
+
+        var request = new RegisterConsultoriaFundoRequest("Consultoria Ltda", "12.345.678/0001-90", null, null, null);
+        await _sut.RegisterConsultoria(request, CancellationToken.None);
+
+        await _registerConsultoriaHandler.Received(1).HandleAsync(
+            Arg.Is<RegisterConsultoriaFundoCommand>(c =>
+                c.ActorSub == "test-sub-123" && c.ActorEmail == "actor@test.com"),
+            Arg.Any<CancellationToken>());
+    }
+
+    // =========================================================================
+    // ConsultoriaFundo — GET list (ListConsultorias)
+    // =========================================================================
+
+    [Fact]
+    public async Task ListConsultorias_HappyPath_Returns200WithPaginatedResult()
+    {
+        var expected = new PaginatedResult<ConsultoriaFundoDto>(
+            new[] { SampleConsultoria }, 1, 1, 20);
+        _listConsultoriaHandler
+            .HandleAsync(Arg.Any<ListConsultoriaFundoQuery>(), Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        var result = await _sut.ListConsultorias(ct: CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.Value.ShouldBe(expected);
+    }
+
+    // =========================================================================
+    // ConsultoriaFundo — GET by id (GetConsultoriaById)
+    // =========================================================================
+
+    [Fact]
+    public async Task GetConsultoriaById_NotFound_Returns404()
+    {
+        _consultoriaRepo.GetByIdAsync(ConsultoriaId, Arg.Any<CancellationToken>())
+            .Returns((ConsultoriaFundo?)null);
+
+        var result = await _sut.GetConsultoriaById(ConsultoriaId, CancellationToken.None);
+
+        result.ShouldBeOfType<NotFoundResult>();
+    }
+
+    [Fact]
+    public async Task GetConsultoriaById_Found_Returns200WithDto()
+    {
+        var consultoria = BuildConsultoriaFundo();
+        _consultoriaRepo.GetByIdAsync(ConsultoriaId, Arg.Any<CancellationToken>())
+            .Returns(consultoria);
+
+        var result = await _sut.GetConsultoriaById(ConsultoriaId, CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        var dto = ok.Value.ShouldBeOfType<ConsultoriaFundoDto>();
+        dto.Id.ShouldBe(ConsultoriaId);
+    }
+
+    // =========================================================================
+    // ConsultoriaFundo — PUT (UpdateConsultoria)
+    // =========================================================================
+
+    [Fact]
+    public async Task UpdateConsultoria_NullBody_Returns400()
+    {
+        var result = await _sut.UpdateConsultoria(ConsultoriaId, null, CancellationToken.None);
+        result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateConsultoria_ValidationFails_Returns422()
+    {
+        _updateConsultoriaValidator
+            .ValidateAsync(Arg.Any<UpdateConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(InvalidResult("RazaoSocial", "Required."));
+
+        var request = new UpdateConsultoriaFundoRequest(null, null, null, null, ConsultoriaFundoStatus.ATIVO);
+        var result = await _sut.UpdateConsultoria(ConsultoriaId, request, CancellationToken.None);
+
+        result.ShouldBeOfType<UnprocessableEntityObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateConsultoria_NotFound_Returns404()
+    {
+        _updateConsultoriaValidator
+            .ValidateAsync(Arg.Any<UpdateConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _updateConsultoriaHandler
+            .HandleAsync(Arg.Any<UpdateConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new KeyNotFoundException("ConsultoriaFundo not found."));
+
+        var request = new UpdateConsultoriaFundoRequest("Consultoria", null, null, null, ConsultoriaFundoStatus.ATIVO);
+        var result = await _sut.UpdateConsultoria(ConsultoriaId, request, CancellationToken.None);
+
+        result.ShouldBeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateConsultoria_HappyPath_Returns200WithDto()
+    {
+        _updateConsultoriaValidator
+            .ValidateAsync(Arg.Any<UpdateConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _updateConsultoriaHandler
+            .HandleAsync(Arg.Any<UpdateConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleConsultoria);
+
+        var request = new UpdateConsultoriaFundoRequest("Consultoria Ltda", null, null, null, ConsultoriaFundoStatus.ATIVO);
+        var result = await _sut.UpdateConsultoria(ConsultoriaId, request, CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.Value.ShouldBe(SampleConsultoria);
+    }
+
+    // =========================================================================
+    // Custodiante — POST (RegisterCustodiante)
+    // =========================================================================
+
+    [Fact]
+    public async Task RegisterCustodiante_NullBody_Returns400()
+    {
+        var result = await _sut.RegisterCustodiante(null, CancellationToken.None);
+        result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterCustodiante_ValidationFails_Returns422()
+    {
+        _registerCustodianteValidator
+            .ValidateAsync(Arg.Any<RegisterCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(InvalidResult("Cnpj", "Invalid CNPJ."));
+
+        var request = new RegisterCustodianteRequest("Custodiante", "bad", null, null, null);
+        var result = await _sut.RegisterCustodiante(request, CancellationToken.None);
+
+        result.ShouldBeOfType<UnprocessableEntityObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterCustodiante_Duplicate_Returns409()
+    {
+        _registerCustodianteValidator
+            .ValidateAsync(Arg.Any<RegisterCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerCustodianteHandler
+            .HandleAsync(Arg.Any<RegisterCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new DuplicateEntityException("Custodiante", "98.765.432/0001-10"));
+
+        var request = new RegisterCustodianteRequest("Custodiante S.A.", "98.765.432/0001-10", null, null, null);
+        var result = await _sut.RegisterCustodiante(request, CancellationToken.None);
+
+        result.ShouldBeOfType<ConflictObjectResult>();
+    }
+
+    [Fact]
+    public async Task RegisterCustodiante_HappyPath_Returns201()
+    {
+        _registerCustodianteValidator
+            .ValidateAsync(Arg.Any<RegisterCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerCustodianteHandler
+            .HandleAsync(Arg.Any<RegisterCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleCustodiante);
+
+        var request = new RegisterCustodianteRequest("Custodiante S.A.", "98.765.432/0001-10", null, null, null);
+        var result = await _sut.RegisterCustodiante(request, CancellationToken.None);
+
+        var created = result.ShouldBeOfType<CreatedAtActionResult>();
+        created.ActionName.ShouldBe(nameof(FundosController.GetCustodianteById));
+        created.Value.ShouldBe(SampleCustodiante);
+    }
+
+    [Fact]
+    public async Task RegisterCustodiante_CapturesActorFromJwt()
+    {
+        _registerCustodianteValidator
+            .ValidateAsync(Arg.Any<RegisterCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerCustodianteHandler
+            .HandleAsync(Arg.Any<RegisterCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleCustodiante);
+
+        var request = new RegisterCustodianteRequest("Custodiante S.A.", "98.765.432/0001-10", null, null, null);
+        await _sut.RegisterCustodiante(request, CancellationToken.None);
+
+        await _registerCustodianteHandler.Received(1).HandleAsync(
+            Arg.Is<RegisterCustodianteCommand>(c =>
+                c.ActorSub == "test-sub-123" && c.ActorEmail == "actor@test.com"),
+            Arg.Any<CancellationToken>());
+    }
+
+    // =========================================================================
+    // Custodiante — GET list (ListCustodiantes)
+    // =========================================================================
+
+    [Fact]
+    public async Task ListCustodiantes_HappyPath_Returns200WithPaginatedResult()
+    {
+        var expected = new PaginatedResult<CustodianteDto>(
+            new[] { SampleCustodiante }, 1, 1, 20);
+        _listCustodianteHandler
+            .HandleAsync(Arg.Any<ListCustodianteQuery>(), Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        var result = await _sut.ListCustodiantes(ct: CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.Value.ShouldBe(expected);
+    }
+
+    // =========================================================================
+    // Custodiante — GET by id (GetCustodianteById)
+    // =========================================================================
+
+    [Fact]
+    public async Task GetCustodianteById_NotFound_Returns404()
+    {
+        _custodianteRepo.GetByIdAsync(CustodianteId, Arg.Any<CancellationToken>())
+            .Returns((Custodiante?)null);
+
+        var result = await _sut.GetCustodianteById(CustodianteId, CancellationToken.None);
+
+        result.ShouldBeOfType<NotFoundResult>();
+    }
+
+    [Fact]
+    public async Task GetCustodianteById_Found_Returns200WithDto()
+    {
+        var custodiante = BuildCustodiante();
+        _custodianteRepo.GetByIdAsync(CustodianteId, Arg.Any<CancellationToken>())
+            .Returns(custodiante);
+
+        var result = await _sut.GetCustodianteById(CustodianteId, CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        var dto = ok.Value.ShouldBeOfType<CustodianteDto>();
+        dto.Id.ShouldBe(CustodianteId);
+    }
+
+    // =========================================================================
+    // Custodiante — PUT (UpdateCustodiante)
+    // =========================================================================
+
+    [Fact]
+    public async Task UpdateCustodiante_NullBody_Returns400()
+    {
+        var result = await _sut.UpdateCustodiante(CustodianteId, null, CancellationToken.None);
+        result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateCustodiante_ValidationFails_Returns422()
+    {
+        _updateCustodianteValidator
+            .ValidateAsync(Arg.Any<UpdateCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(InvalidResult("RazaoSocial", "Required."));
+
+        var request = new UpdateCustodianteRequest(null, null, null, null, CustodianteStatus.ATIVO);
+        var result = await _sut.UpdateCustodiante(CustodianteId, request, CancellationToken.None);
+
+        result.ShouldBeOfType<UnprocessableEntityObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateCustodiante_NotFound_Returns404()
+    {
+        _updateCustodianteValidator
+            .ValidateAsync(Arg.Any<UpdateCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _updateCustodianteHandler
+            .HandleAsync(Arg.Any<UpdateCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new KeyNotFoundException("Custodiante not found."));
+
+        var request = new UpdateCustodianteRequest("Custodiante S.A.", null, null, null, CustodianteStatus.ATIVO);
+        var result = await _sut.UpdateCustodiante(CustodianteId, request, CancellationToken.None);
+
+        result.ShouldBeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateCustodiante_HappyPath_Returns200WithDto()
+    {
+        _updateCustodianteValidator
+            .ValidateAsync(Arg.Any<UpdateCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _updateCustodianteHandler
+            .HandleAsync(Arg.Any<UpdateCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleCustodiante);
+
+        var request = new UpdateCustodianteRequest("Custodiante S.A.", null, null, null, CustodianteStatus.ATIVO);
+        var result = await _sut.UpdateCustodiante(CustodianteId, request, CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.Value.ShouldBe(SampleCustodiante);
+    }
+
+    // =========================================================================
+    // TipoAtivo — POST (CreateTipoAtivo)
+    // =========================================================================
+
+    [Fact]
+    public async Task CreateTipoAtivo_NullBody_Returns400()
+    {
+        var result = await _sut.CreateTipoAtivo(null, CancellationToken.None);
+        result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task CreateTipoAtivo_ValidationFails_Returns422()
+    {
+        _createTipoAtivoValidator
+            .ValidateAsync(Arg.Any<CreateTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(InvalidResult("Codigo", "Required."));
+
+        var request = new CreateTipoAtivoRequest(null, "LTN desc", TipoAtivoCategoria.RendaFixa, null);
+        var result = await _sut.CreateTipoAtivo(request, CancellationToken.None);
+
+        result.ShouldBeOfType<UnprocessableEntityObjectResult>();
+    }
+
+    [Fact]
+    public async Task CreateTipoAtivo_Duplicate_Returns409()
+    {
+        _createTipoAtivoValidator
+            .ValidateAsync(Arg.Any<CreateTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _createTipoAtivoHandler
+            .HandleAsync(Arg.Any<CreateTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new DuplicateEntityException("TipoAtivo", "LTN"));
+
+        var request = new CreateTipoAtivoRequest("LTN", "Letra do Tesouro Nacional", TipoAtivoCategoria.RendaFixa, null);
+        var result = await _sut.CreateTipoAtivo(request, CancellationToken.None);
+
+        result.ShouldBeOfType<ConflictObjectResult>();
+    }
+
+    [Fact]
+    public async Task CreateTipoAtivo_HappyPath_Returns201()
+    {
+        _createTipoAtivoValidator
+            .ValidateAsync(Arg.Any<CreateTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _createTipoAtivoHandler
+            .HandleAsync(Arg.Any<CreateTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleTipoAtivo);
+
+        var request = new CreateTipoAtivoRequest("LTN", "Letra do Tesouro Nacional", TipoAtivoCategoria.RendaFixa, null);
+        var result = await _sut.CreateTipoAtivo(request, CancellationToken.None);
+
+        var created = result.ShouldBeOfType<CreatedAtActionResult>();
+        created.ActionName.ShouldBe(nameof(FundosController.GetTipoAtivoById));
+        created.Value.ShouldBe(SampleTipoAtivo);
+    }
+
+    [Fact]
+    public async Task CreateTipoAtivo_IsGlobalScope_DoesNotUseCompanyService()
+    {
+        // TipoAtivo is global (D-5/TEN-03) — ICurrentCompanyService MUST NOT be consulted
+        _createTipoAtivoValidator
+            .ValidateAsync(Arg.Any<CreateTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _createTipoAtivoHandler
+            .HandleAsync(Arg.Any<CreateTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleTipoAtivo);
+
+        var request = new CreateTipoAtivoRequest("LTN", "Letra do Tesouro Nacional", TipoAtivoCategoria.RendaFixa, null);
+        await _sut.CreateTipoAtivo(request, CancellationToken.None);
+
+        // CompanyId should never be accessed for TipoAtivo operations
+        _ = _companyService.DidNotReceive().CompanyId;
+    }
+
+    // =========================================================================
+    // TipoAtivo — GET list (ListTiposAtivo)
+    // =========================================================================
+
+    [Fact]
+    public async Task ListTiposAtivo_HappyPath_Returns200WithPaginatedResult()
+    {
+        var expected = new PaginatedResult<TipoAtivoDto>(
+            new[] { SampleTipoAtivo }, 1, 1, 20);
+        _listTipoAtivoHandler
+            .HandleAsync(Arg.Any<ListTipoAtivoQuery>(), Arg.Any<CancellationToken>())
+            .Returns(expected);
+
+        var result = await _sut.ListTiposAtivo(ct: CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.Value.ShouldBe(expected);
+    }
+
+    // =========================================================================
+    // TipoAtivo — GET by id (GetTipoAtivoById)
+    // =========================================================================
+
+    [Fact]
+    public async Task GetTipoAtivoById_NotFound_Returns404()
+    {
+        _tipoAtivoRepo.GetByIdAsync(TipoAtivoId, Arg.Any<CancellationToken>())
+            .Returns((TipoAtivo?)null);
+
+        var result = await _sut.GetTipoAtivoById(TipoAtivoId, CancellationToken.None);
+
+        result.ShouldBeOfType<NotFoundResult>();
+    }
+
+    [Fact]
+    public async Task GetTipoAtivoById_Found_Returns200WithDto()
+    {
+        var tipoAtivo = BuildTipoAtivo();
+        _tipoAtivoRepo.GetByIdAsync(TipoAtivoId, Arg.Any<CancellationToken>())
+            .Returns(tipoAtivo);
+
+        var result = await _sut.GetTipoAtivoById(TipoAtivoId, CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        var dto = ok.Value.ShouldBeOfType<TipoAtivoDto>();
+        dto.Id.ShouldBe(TipoAtivoId);
+    }
+
+    // =========================================================================
+    // TipoAtivo — PUT (UpdateTipoAtivo)
+    // =========================================================================
+
+    [Fact]
+    public async Task UpdateTipoAtivo_NullBody_Returns400()
+    {
+        var result = await _sut.UpdateTipoAtivo(TipoAtivoId, null, CancellationToken.None);
+        result.ShouldBeOfType<BadRequestObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateTipoAtivo_ValidationFails_Returns422()
+    {
+        _updateTipoAtivoValidator
+            .ValidateAsync(Arg.Any<UpdateTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(InvalidResult("Descricao", "Required."));
+
+        var request = new UpdateTipoAtivoRequest(null, null, TipoAtivoStatus.ATIVO, 1);
+        var result = await _sut.UpdateTipoAtivo(TipoAtivoId, request, CancellationToken.None);
+
+        result.ShouldBeOfType<UnprocessableEntityObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateTipoAtivo_NotFound_Returns404()
+    {
+        _updateTipoAtivoValidator
+            .ValidateAsync(Arg.Any<UpdateTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _updateTipoAtivoHandler
+            .HandleAsync(Arg.Any<UpdateTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new KeyNotFoundException("TipoAtivo not found."));
+
+        var request = new UpdateTipoAtivoRequest("LTN desc", null, TipoAtivoStatus.ATIVO, 1);
+        var result = await _sut.UpdateTipoAtivo(TipoAtivoId, request, CancellationToken.None);
+
+        result.ShouldBeOfType<NotFoundObjectResult>();
+    }
+
+    [Fact]
+    public async Task UpdateTipoAtivo_HappyPath_Returns200WithDto()
+    {
+        _updateTipoAtivoValidator
+            .ValidateAsync(Arg.Any<UpdateTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _updateTipoAtivoHandler
+            .HandleAsync(Arg.Any<UpdateTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleTipoAtivo);
+
+        var request = new UpdateTipoAtivoRequest("Letra do Tesouro Nacional", null, TipoAtivoStatus.ATIVO, 1);
+        var result = await _sut.UpdateTipoAtivo(TipoAtivoId, request, CancellationToken.None);
+
+        var ok = result.ShouldBeOfType<OkObjectResult>();
+        ok.Value.ShouldBe(SampleTipoAtivo);
+    }
+
+    // =========================================================================
+    // Domain aggregate builders (use reflection to avoid ctor dependency on domain internals)
+    // =========================================================================
+
+    private static ConsultoriaFundo BuildConsultoriaFundo()
+    {
+        // Use domain factory method to create a valid aggregate (11.222.333/0001-81 is a valid test CNPJ)
+        var c = ConsultoriaFundo.Register(
+            "Consultoria Ltda",
+            "11.222.333/0001-81",
+            CompanyId,
+            null,
+            null,
+            null);
+
+        // Overwrite Id via reflection so the test can assert against ConsultoriaId
+        SetId(c, ConsultoriaId);
+        return c;
+    }
+
+    private static Custodiante BuildCustodiante()
+    {
+        // 11.444.777/0001-61 is a valid test CNPJ
+        var c = Custodiante.Register(
+            "Custodiante S.A.",
+            "11.444.777/0001-61",
+            CompanyId,
+            null,
+            null,
+            null);
+
+        SetId(c, CustodianteId);
+        return c;
+    }
+
+    private static TipoAtivo BuildTipoAtivo()
+    {
+        var t = TipoAtivo.Register(
+            "LTN",
+            "Letra do Tesouro Nacional",
+            TipoAtivoCategoria.RendaFixa,
+            null,
+            1);
+
+        SetId(t, TipoAtivoId);
+        return t;
+    }
+
+    /// <summary>
+    /// Sets the Id on a domain entity via the protected setter on Entity&lt;TId&gt; base class.
+    /// The setter is protected (not private), so we reach it via the base type's property metadata.
+    /// Acceptable in tests; avoids adding test-only constructors to the domain.
+    /// </summary>
+    private static void SetId<T>(T entity, Guid id)
+    {
+        // Entity<Guid>.Id has a protected setter — find it on the base class with NonPublic flag
+        var type = typeof(T);
+        PropertyInfo? prop = null;
+        while (type is not null)
+        {
+            prop = type.GetProperty("Id",
+                BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+            if (prop is not null) break;
+            type = type.BaseType;
+        }
+
+        if (prop is not null)
+        {
+            prop.SetValue(entity, id);
+        }
+        // If reflection fails the test still runs — Id will be a random GUID and the assertion
+        // ShouldBeOfType<CustodianteDto> still passes. Only the id equality assertion would fail.
+    }
+}

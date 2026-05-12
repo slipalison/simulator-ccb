@@ -1,0 +1,585 @@
+using FluentValidation;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Onboarding.Application.Common;
+using Onboarding.Application.Fundos.Commands;
+using Onboarding.Application.Fundos.DTOs;
+using Onboarding.Application.Fundos.Queries;
+using Onboarding.API.Security;
+using Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate;
+using Onboarding.Domain.Aggregates.CustodianteAggregate;
+using Onboarding.Domain.Aggregates.TipoAtivoAggregate;
+using Onboarding.Domain.Exceptions;
+using Onboarding.Domain.Repositories;
+
+namespace Onboarding.API.Controllers;
+
+/// <summary>
+/// Fundos module endpoints — company-scoped (ConsultoriaFundo, Custodiante) and global (TipoAtivo).
+/// POST   /api/fundos/consultorias              CAD-01: register ConsultoriaFundo
+/// GET    /api/fundos/consultorias              CAD-02: list ConsultoriaFundo (paginated)
+/// GET    /api/fundos/consultorias/{id}         CAD-02b: get ConsultoriaFundo by id
+/// PUT    /api/fundos/consultorias/{id}         CAD-03: update ConsultoriaFundo
+/// POST   /api/fundos/custodiantes              CAD-05: register Custodiante
+/// GET    /api/fundos/custodiantes              CAD-06: list Custodiante (paginated)
+/// GET    /api/fundos/custodiantes/{id}         CAD-06b: get Custodiante by id
+/// PUT    /api/fundos/custodiantes/{id}         CAD-07: update Custodiante
+/// POST   /api/fundos/tipos-ativo               CAD-19: create TipoAtivo (global)
+/// GET    /api/fundos/tipos-ativo               CAD-20: list TipoAtivo (paginated, global)
+/// GET    /api/fundos/tipos-ativo/{id}          CAD-20b: get TipoAtivo by id (global)
+/// PUT    /api/fundos/tipos-ativo/{id}          CAD-21: update TipoAtivo (global)
+/// </summary>
+[ApiController]
+[Route("api/fundos")]
+[Authorize(AuthenticationSchemes = "BearerClient")]
+public sealed class FundosController : ControllerBase
+{
+    // ConsultoriaFundo
+    private readonly ICommandHandler<RegisterConsultoriaFundoCommand, ConsultoriaFundoDto> _registerConsultoriaHandler;
+    private readonly IValidator<RegisterConsultoriaFundoCommand> _registerConsultoriaValidator;
+    private readonly ICommandHandler<UpdateConsultoriaFundoCommand, ConsultoriaFundoDto> _updateConsultoriaHandler;
+    private readonly IValidator<UpdateConsultoriaFundoCommand> _updateConsultoriaValidator;
+    private readonly IQueryHandler<ListConsultoriaFundoQuery, PaginatedResult<ConsultoriaFundoDto>> _listConsultoriaHandler;
+    private readonly IConsultoriaFundoRepository _consultoriaRepository;
+
+    // Custodiante
+    private readonly ICommandHandler<RegisterCustodianteCommand, CustodianteDto> _registerCustodianteHandler;
+    private readonly IValidator<RegisterCustodianteCommand> _registerCustodianteValidator;
+    private readonly ICommandHandler<UpdateCustodianteCommand, CustodianteDto> _updateCustodianteHandler;
+    private readonly IValidator<UpdateCustodianteCommand> _updateCustodianteValidator;
+    private readonly IQueryHandler<ListCustodianteQuery, PaginatedResult<CustodianteDto>> _listCustodianteHandler;
+    private readonly ICustodianteRepository _custodianteRepository;
+
+    // TipoAtivo (global — no company scope per D-5/TEN-03)
+    private readonly ICommandHandler<CreateTipoAtivoCommand, TipoAtivoDto> _createTipoAtivoHandler;
+    private readonly IValidator<CreateTipoAtivoCommand> _createTipoAtivoValidator;
+    private readonly ICommandHandler<UpdateTipoAtivoCommand, TipoAtivoDto> _updateTipoAtivoHandler;
+    private readonly IValidator<UpdateTipoAtivoCommand> _updateTipoAtivoValidator;
+    private readonly IQueryHandler<ListTipoAtivoQuery, PaginatedResult<TipoAtivoDto>> _listTipoAtivoHandler;
+    private readonly ITipoAtivoRepository _tipoAtivoRepository;
+
+    // Cross-cutting
+    private readonly ICurrentCompanyService _currentCompanyService;
+    private readonly ILogger<FundosController> _logger;
+
+    public FundosController(
+        ICommandHandler<RegisterConsultoriaFundoCommand, ConsultoriaFundoDto> registerConsultoriaHandler,
+        IValidator<RegisterConsultoriaFundoCommand> registerConsultoriaValidator,
+        ICommandHandler<UpdateConsultoriaFundoCommand, ConsultoriaFundoDto> updateConsultoriaHandler,
+        IValidator<UpdateConsultoriaFundoCommand> updateConsultoriaValidator,
+        IQueryHandler<ListConsultoriaFundoQuery, PaginatedResult<ConsultoriaFundoDto>> listConsultoriaHandler,
+        IConsultoriaFundoRepository consultoriaRepository,
+        ICommandHandler<RegisterCustodianteCommand, CustodianteDto> registerCustodianteHandler,
+        IValidator<RegisterCustodianteCommand> registerCustodianteValidator,
+        ICommandHandler<UpdateCustodianteCommand, CustodianteDto> updateCustodianteHandler,
+        IValidator<UpdateCustodianteCommand> updateCustodianteValidator,
+        IQueryHandler<ListCustodianteQuery, PaginatedResult<CustodianteDto>> listCustodianteHandler,
+        ICustodianteRepository custodianteRepository,
+        ICommandHandler<CreateTipoAtivoCommand, TipoAtivoDto> createTipoAtivoHandler,
+        IValidator<CreateTipoAtivoCommand> createTipoAtivoValidator,
+        ICommandHandler<UpdateTipoAtivoCommand, TipoAtivoDto> updateTipoAtivoHandler,
+        IValidator<UpdateTipoAtivoCommand> updateTipoAtivoValidator,
+        IQueryHandler<ListTipoAtivoQuery, PaginatedResult<TipoAtivoDto>> listTipoAtivoHandler,
+        ITipoAtivoRepository tipoAtivoRepository,
+        ICurrentCompanyService currentCompanyService,
+        ILogger<FundosController> logger)
+    {
+        _registerConsultoriaHandler = registerConsultoriaHandler;
+        _registerConsultoriaValidator = registerConsultoriaValidator;
+        _updateConsultoriaHandler = updateConsultoriaHandler;
+        _updateConsultoriaValidator = updateConsultoriaValidator;
+        _listConsultoriaHandler = listConsultoriaHandler;
+        _consultoriaRepository = consultoriaRepository;
+
+        _registerCustodianteHandler = registerCustodianteHandler;
+        _registerCustodianteValidator = registerCustodianteValidator;
+        _updateCustodianteHandler = updateCustodianteHandler;
+        _updateCustodianteValidator = updateCustodianteValidator;
+        _listCustodianteHandler = listCustodianteHandler;
+        _custodianteRepository = custodianteRepository;
+
+        _createTipoAtivoHandler = createTipoAtivoHandler;
+        _createTipoAtivoValidator = createTipoAtivoValidator;
+        _updateTipoAtivoHandler = updateTipoAtivoHandler;
+        _updateTipoAtivoValidator = updateTipoAtivoValidator;
+        _listTipoAtivoHandler = listTipoAtivoHandler;
+        _tipoAtivoRepository = tipoAtivoRepository;
+
+        _currentCompanyService = currentCompanyService;
+        _logger = logger;
+    }
+
+    // =========================================================================
+    // ConsultoriaFundo — company-scoped (D-5, HasQueryFilter)
+    // =========================================================================
+
+    /// <summary>POST /api/fundos/consultorias — Register a new ConsultoriaFundo (CAD-01).</summary>
+    [HttpPost("consultorias")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundWrite)]
+    [ProducesResponseType(typeof(ConsultoriaFundoDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> RegisterConsultoria(
+        [FromBody] RegisterConsultoriaFundoRequest? request, CancellationToken ct)
+    {
+        if (request is null)
+            return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+
+        var command = new RegisterConsultoriaFundoCommand(
+            RazaoSocial: request.RazaoSocial ?? string.Empty,
+            Cnpj: request.Cnpj ?? string.Empty,
+            NomeFantasia: request.NomeFantasia,
+            Email: request.Email,
+            Telefone: request.Telefone,
+            ActorSub: actorSub,
+            ActorEmail: actorEmail);
+
+        var validation = await _registerConsultoriaValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            var result = await _registerConsultoriaHandler.HandleAsync(command, ct);
+            return CreatedAtAction(nameof(GetConsultoriaById), new { id = result.Id }, result);
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new ProblemDetails { Title = "Conflict", Status = 409, Detail = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails { Title = "Not found", Status = 404, Detail = ex.Message });
+        }
+    }
+
+    /// <summary>GET /api/fundos/consultorias — Paginated ConsultoriaFundo listing (CAD-02).</summary>
+    [HttpGet("consultorias")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
+    [ProducesResponseType(typeof(PaginatedResult<ConsultoriaFundoDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListConsultorias(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        var query = new ListConsultoriaFundoQuery(page, pageSize, search);
+        var result = await _listConsultoriaHandler.HandleAsync(query, ct);
+        return Ok(result);
+    }
+
+    /// <summary>GET /api/fundos/consultorias/{id} — Get ConsultoriaFundo by id (CAD-02b).</summary>
+    [HttpGet("consultorias/{id:guid}")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
+    [ProducesResponseType(typeof(ConsultoriaFundoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetConsultoriaById(Guid id, CancellationToken ct)
+    {
+        var consultoria = await _consultoriaRepository.GetByIdAsync(id, ct);
+        if (consultoria is null)
+            return NotFound();
+
+        return Ok(new ConsultoriaFundoDto(
+            consultoria.Id,
+            consultoria.RazaoSocial,
+            consultoria.NomeFantasia,
+            consultoria.Cnpj.Value,
+            consultoria.Email?.Value,
+            consultoria.Telefone?.Value,
+            consultoria.Status,
+            consultoria.CreatedAt));
+    }
+
+    /// <summary>PUT /api/fundos/consultorias/{id} — Update ConsultoriaFundo (CAD-03).</summary>
+    [HttpPut("consultorias/{id:guid}")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundWrite)]
+    [ProducesResponseType(typeof(ConsultoriaFundoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> UpdateConsultoria(
+        Guid id, [FromBody] UpdateConsultoriaFundoRequest? request, CancellationToken ct)
+    {
+        if (request is null)
+            return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+
+        var command = new UpdateConsultoriaFundoCommand(
+            Id: id,
+            RazaoSocial: request.RazaoSocial ?? string.Empty,
+            NomeFantasia: request.NomeFantasia,
+            Email: request.Email,
+            Telefone: request.Telefone,
+            Status: request.Status,
+            ActorSub: actorSub,
+            ActorEmail: actorEmail);
+
+        var validation = await _updateConsultoriaValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            var result = await _updateConsultoriaHandler.HandleAsync(command, ct);
+            return Ok(result);
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new ProblemDetails { Title = "Conflict", Status = 409, Detail = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails { Title = "Not found", Status = 404, Detail = ex.Message });
+        }
+    }
+
+    // =========================================================================
+    // Custodiante — company-scoped (D-5, HasQueryFilter)
+    // =========================================================================
+
+    /// <summary>POST /api/fundos/custodiantes — Register a new Custodiante (CAD-05).</summary>
+    [HttpPost("custodiantes")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundWrite)]
+    [ProducesResponseType(typeof(CustodianteDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> RegisterCustodiante(
+        [FromBody] RegisterCustodianteRequest? request, CancellationToken ct)
+    {
+        if (request is null)
+            return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+
+        var command = new RegisterCustodianteCommand(
+            RazaoSocial: request.RazaoSocial ?? string.Empty,
+            Cnpj: request.Cnpj ?? string.Empty,
+            CodigoInterno: request.CodigoInterno,
+            Email: request.Email,
+            Telefone: request.Telefone,
+            ActorSub: actorSub,
+            ActorEmail: actorEmail);
+
+        var validation = await _registerCustodianteValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            var result = await _registerCustodianteHandler.HandleAsync(command, ct);
+            return CreatedAtAction(nameof(GetCustodianteById), new { id = result.Id }, result);
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new ProblemDetails { Title = "Conflict", Status = 409, Detail = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails { Title = "Not found", Status = 404, Detail = ex.Message });
+        }
+    }
+
+    /// <summary>GET /api/fundos/custodiantes — Paginated Custodiante listing (CAD-06).</summary>
+    [HttpGet("custodiantes")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
+    [ProducesResponseType(typeof(PaginatedResult<CustodianteDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListCustodiantes(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        var query = new ListCustodianteQuery(page, pageSize, search);
+        var result = await _listCustodianteHandler.HandleAsync(query, ct);
+        return Ok(result);
+    }
+
+    /// <summary>GET /api/fundos/custodiantes/{id} — Get Custodiante by id (CAD-06b).</summary>
+    [HttpGet("custodiantes/{id:guid}")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
+    [ProducesResponseType(typeof(CustodianteDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCustodianteById(Guid id, CancellationToken ct)
+    {
+        var custodiante = await _custodianteRepository.GetByIdAsync(id, ct);
+        if (custodiante is null)
+            return NotFound();
+
+        return Ok(new CustodianteDto(
+            custodiante.Id,
+            custodiante.RazaoSocial,
+            custodiante.CodigoInterno,
+            custodiante.Cnpj.Value,
+            custodiante.Email?.Value,
+            custodiante.Telefone?.Value,
+            custodiante.Status,
+            custodiante.CreatedAt));
+    }
+
+    /// <summary>PUT /api/fundos/custodiantes/{id} — Update Custodiante (CAD-07).</summary>
+    [HttpPut("custodiantes/{id:guid}")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundWrite)]
+    [ProducesResponseType(typeof(CustodianteDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> UpdateCustodiante(
+        Guid id, [FromBody] UpdateCustodianteRequest? request, CancellationToken ct)
+    {
+        if (request is null)
+            return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+
+        var command = new UpdateCustodianteCommand(
+            Id: id,
+            RazaoSocial: request.RazaoSocial ?? string.Empty,
+            CodigoInterno: request.CodigoInterno,
+            Email: request.Email,
+            Telefone: request.Telefone,
+            Status: request.Status,
+            ActorSub: actorSub,
+            ActorEmail: actorEmail);
+
+        var validation = await _updateCustodianteValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            var result = await _updateCustodianteHandler.HandleAsync(command, ct);
+            return Ok(result);
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new ProblemDetails { Title = "Conflict", Status = 409, Detail = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails { Title = "Not found", Status = 404, Detail = ex.Message });
+        }
+    }
+
+    // =========================================================================
+    // TipoAtivo — global scope (D-5/TEN-03: no HasQueryFilter, no CompanyId)
+    // =========================================================================
+
+    /// <summary>POST /api/fundos/tipos-ativo — Create TipoAtivo in global catalog (CAD-19).</summary>
+    [HttpPost("tipos-ativo")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundWrite)]
+    [ProducesResponseType(typeof(TipoAtivoDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> CreateTipoAtivo(
+        [FromBody] CreateTipoAtivoRequest? request, CancellationToken ct)
+    {
+        if (request is null)
+            return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
+
+        // TipoAtivo is global — actor captured from JWT only (no ICurrentCompanyService for company scope)
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+
+        var command = new CreateTipoAtivoCommand(
+            Codigo: request.Codigo ?? string.Empty,
+            Descricao: request.Descricao ?? string.Empty,
+            Categoria: request.Categoria,
+            Subcategoria: request.Subcategoria,
+            OrdemExibicao: request.OrdemExibicao,
+            ActorSub: actorSub,
+            ActorEmail: actorEmail);
+
+        var validation = await _createTipoAtivoValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            var result = await _createTipoAtivoHandler.HandleAsync(command, ct);
+            return CreatedAtAction(nameof(GetTipoAtivoById), new { id = result.Id }, result);
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new ProblemDetails { Title = "Conflict", Status = 409, Detail = ex.Message });
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails { Title = "Not found", Status = 404, Detail = ex.Message });
+        }
+    }
+
+    /// <summary>GET /api/fundos/tipos-ativo — Paginated TipoAtivo listing (global, CAD-20).</summary>
+    [HttpGet("tipos-ativo")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
+    [ProducesResponseType(typeof(PaginatedResult<TipoAtivoDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListTiposAtivo(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null,
+        CancellationToken ct = default)
+    {
+        var query = new ListTipoAtivoQuery(page, pageSize, search);
+        var result = await _listTipoAtivoHandler.HandleAsync(query, ct);
+        return Ok(result);
+    }
+
+    /// <summary>GET /api/fundos/tipos-ativo/{id} — Get TipoAtivo by id (global, CAD-20b).</summary>
+    [HttpGet("tipos-ativo/{id:guid}")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
+    [ProducesResponseType(typeof(TipoAtivoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetTipoAtivoById(Guid id, CancellationToken ct)
+    {
+        var tipoAtivo = await _tipoAtivoRepository.GetByIdAsync(id, ct);
+        if (tipoAtivo is null)
+            return NotFound();
+
+        return Ok(new TipoAtivoDto(
+            tipoAtivo.Id,
+            tipoAtivo.Codigo,
+            tipoAtivo.Descricao,
+            tipoAtivo.Categoria,
+            tipoAtivo.Subcategoria,
+            tipoAtivo.Status,
+            tipoAtivo.OrdemExibicao));
+    }
+
+    /// <summary>PUT /api/fundos/tipos-ativo/{id} — Update TipoAtivo (global, CAD-21).</summary>
+    [HttpPut("tipos-ativo/{id:guid}")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundWrite)]
+    [ProducesResponseType(typeof(TipoAtivoDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<IActionResult> UpdateTipoAtivo(
+        Guid id, [FromBody] UpdateTipoAtivoRequest? request, CancellationToken ct)
+    {
+        if (request is null)
+            return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
+
+        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
+        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+
+        var command = new UpdateTipoAtivoCommand(
+            Id: id,
+            Descricao: request.Descricao ?? string.Empty,
+            Subcategoria: request.Subcategoria,
+            Status: request.Status,
+            OrdemExibicao: request.OrdemExibicao,
+            ActorSub: actorSub,
+            ActorEmail: actorEmail);
+
+        var validation = await _updateTipoAtivoValidator.ValidateAsync(command, ct);
+        if (!validation.IsValid)
+            return UnprocessableEntity(ToValidationProblem(validation));
+
+        try
+        {
+            var result = await _updateTipoAtivoHandler.HandleAsync(command, ct);
+            return Ok(result);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ProblemDetails { Title = "Not found", Status = 404, Detail = ex.Message });
+        }
+    }
+
+    // =========================================================================
+    // Helpers
+    // =========================================================================
+
+    /// <summary>
+    /// Converts FluentValidation results to 422 ValidationProblemDetails — matches pattern used across all controllers.
+    /// </summary>
+    private static ValidationProblemDetails ToValidationProblem(FluentValidation.Results.ValidationResult result)
+        => new(result.Errors
+            .GroupBy(e => e.PropertyName)
+            .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()));
+}
+
+// =========================================================================
+// Request DTOs — defined here to keep the controller file self-contained
+// =========================================================================
+
+/// <summary>Request DTO for POST /api/fundos/consultorias.</summary>
+public sealed record RegisterConsultoriaFundoRequest(
+    string? RazaoSocial,
+    string? Cnpj,
+    string? NomeFantasia,
+    string? Email,
+    string? Telefone);
+
+/// <summary>Request DTO for PUT /api/fundos/consultorias/{id}.</summary>
+public sealed record UpdateConsultoriaFundoRequest(
+    string? RazaoSocial,
+    string? NomeFantasia,
+    string? Email,
+    string? Telefone,
+    ConsultoriaFundoStatus Status);
+
+/// <summary>Request DTO for POST /api/fundos/custodiantes.</summary>
+public sealed record RegisterCustodianteRequest(
+    string? RazaoSocial,
+    string? Cnpj,
+    string? CodigoInterno,
+    string? Email,
+    string? Telefone);
+
+/// <summary>Request DTO for PUT /api/fundos/custodiantes/{id}.</summary>
+public sealed record UpdateCustodianteRequest(
+    string? RazaoSocial,
+    string? CodigoInterno,
+    string? Email,
+    string? Telefone,
+    CustodianteStatus Status);
+
+/// <summary>Request DTO for POST /api/fundos/tipos-ativo.</summary>
+public sealed record CreateTipoAtivoRequest(
+    string? Codigo,
+    string? Descricao,
+    TipoAtivoCategoria Categoria,
+    string? Subcategoria,
+    int OrdemExibicao = 0);
+
+/// <summary>Request DTO for PUT /api/fundos/tipos-ativo/{id}.</summary>
+public sealed record UpdateTipoAtivoRequest(
+    string? Descricao,
+    string? Subcategoria,
+    TipoAtivoStatus Status,
+    int OrdemExibicao);

@@ -67,7 +67,7 @@ Expose REST endpoints for the Fundos module (ConsultoriaFundo, Custodiante, Tipo
   - `[ProducesResponseType]` attributes per endpoint for OpenAPI/Swagger
 - **Dependencies:** T-48.1 (policies constants), T-48.2 (policies registered + exception handler)
 - **Test:** `tests/Onboarding.API.Tests/Controllers/FundosControllerTests.cs` (covers 12 endpoints — happy path + 4xx error paths per endpoint; verify policy attribute via reflection or via integration test 403 path)
-- **Status:** pending
+- **Status:** completed (commit `TBD`, 2026-05-12)
 
 ### Wave 3 (depends on T-48.4, runs parallel internally)
 

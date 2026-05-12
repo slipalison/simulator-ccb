@@ -81,7 +81,7 @@ Expose REST endpoints for the Fundos module (ConsultoriaFundo, Custodiante, Tipo
   - All endpoints company-scoped via `ICurrentCompanyService` + actor in commands
 - **Dependencies:** T-48.4 (same file — sequential)
 - **Test:** extend `FundosControllerTests.cs` (Fundo status machine transitions: RASCUNHO→ATIVO valid, ENCERRADO→ATIVO invalid → 400; Cedente PF/PJ register paths)
-- **Status:** pending
+- **Status:** completed (commit `335881a`, 2026-05-12)
 
 #### T-48.6: AdminFundosController + admin query handlers (4 endpoints cross-company List only)
 - **Specialist:** jdi-doer-onboarding-keycloak-backend-csharp
@@ -98,7 +98,7 @@ Expose REST endpoints for the Fundos module (ConsultoriaFundo, Custodiante, Tipo
   - No detail-by-id endpoint, no admin override, no mutation (per D-8)
 - **Dependencies:** T-48.1, T-48.2 (policy `CrossCompanyAccess` already exists per Program.cs)
 - **Test:** `tests/Onboarding.API.Tests/Controllers/AdminFundosControllerTests.cs` (verify cross-company returns rows from 2 different ClientIds in same response)
-- **Status:** pending
+- **Status:** completed (commit `24ad7c8`, 2026-05-12)
 
 ### Wave 4 (depends on T-48.5 + T-48.6)
 

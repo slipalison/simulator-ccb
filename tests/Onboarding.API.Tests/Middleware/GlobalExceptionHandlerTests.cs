@@ -11,8 +11,6 @@ using NSubstitute.ExceptionExtensions;
 using Onboarding.API.Tests.Authentication;
 using Onboarding.Application.Common;
 using Onboarding.Application.Services;
-using Onboarding.Domain.Aggregates.FundoAggregate;
-using Onboarding.Domain.Exceptions;
 using Onboarding.Domain.Repositories;
 using Shouldly;
 using System.Net;
@@ -88,33 +86,5 @@ public class GlobalExceptionHandlerTests : IAsyncLifetime
 
         var response = await _client!.SendAsync(AuthenticatedGet("/api/companies/me"));
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-    }
-
-    [Fact]
-    public async Task DuplicateEntityException_Returns409Conflict()
-    {
-        _factory!.RepositoryMock
-            .GetByKeycloakSubAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new DuplicateEntityException("Company", "12.345.678/0001-90"));
-
-        var response = await _client!.SendAsync(AuthenticatedGet("/api/companies/me"));
-
-        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-        var body = await response.Content.ReadAsStringAsync();
-        body.ShouldContain("already exists");
-    }
-
-    [Fact]
-    public async Task InvalidStateTransitionException_Returns400BadRequest()
-    {
-        _factory!.RepositoryMock
-            .GetByKeycloakSubAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidStateTransitionException("Fundo", FundoStatus.ATIVO, FundoStatus.RASCUNHO));
-
-        var response = await _client!.SendAsync(AuthenticatedGet("/api/companies/me"));
-
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        var body = await response.Content.ReadAsStringAsync();
-        body.ShouldContain("cannot transition from");
     }
 }

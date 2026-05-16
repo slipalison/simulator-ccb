@@ -362,3 +362,87 @@ auth-flow Scenarios 1,2,5,6,8: FAIL (5/5 active) — navigated to http://localho
 New .cs files in iter 2: zero. Confirmed by git diff --name-only --diff-filter=A on both T-8 (bd8f742) and T-9 (a5edf06) commits. G11 coverage gate trivially passes.
 
 <!-- ITER2_FRONTEND_HERE -->
+
+## Frontend (iter 2)
+- Verdict: BLOCKED
+- Typecheck (both SPAs): ok -- client: 0 errors (pnpm tsc --noEmit); backoffice: 0 errors
+- Lint: ok -- client: 0 warnings (eslint --max-warnings 0); backoffice: 0 warnings
+- Tests vitest:
+  - scripts (guard): 9 passed / 0 failed (check-dev-env.test.mjs, root vitest.config.mjs, Node env)
+  - client: 110 passed / 15 failed (125 total). 12 failed test files: 6 pre-existing e2e/ dual-version collision (unchanged iter 1), 4 pre-existing src/tests/ failures (unchanged), +2 NEW structural from T-9: playwright/specs/auth-flow.spec.ts and playwright/specs/api-proxy.spec.ts picked up by vitest (W-FE-1 unfixed). Test pass count unchanged from iter 1.
+  - backoffice: 171 passed / 0 failed (test count). 2 new failed files from T-9: admin-auth-flow.spec.ts and api-proxy.spec.ts picked up by vitest (W-FE-1 now affects backoffice -- previously 0 file failures). Tests themselves: 171 passed.
+- Coverage on new files: n/a -- all new files post-968eefb in iter 2 are tests/infra. No new production source files. D-2 coverage gate does not apply. Root guard script covered by 9/9 vitest cases.
+- A11y: n/a -- T-8/T-9 add zero UI components. No new axe violations.
+- Playwright (mandatory):
+  - api-proxy -- client SPA (pw-no-setup.config.ts, port 5173):
+    - Scenario 1 (single listener guard): PASS -- 1 listener on 127.0.0.1:5173 (PID 24376 Docker mapper). No stale host vinxi. D-16 effective.
+    - Scenario 2 (POST /api/companies/registration -> 422 JSON): PASS -- Bug 3 confirmed fixed. 422 application/problem+json with title field. IPv4 routing to Docker container working.
+    - Scenario 3 (GET /api/healthz/live -> 200 Healthy): FAIL -- returns 404. Vinxi proxy (server.ts) builds targetUrl = BACKEND_URL + /api + path, so /api/healthz/live -> http://api:8080/api/healthz/live (404). Backend healthz is at /healthz/live (no /api prefix, Program.cs:298). Spec JSDoc factually wrong. Spec defect in T-9.
+  - api-proxy -- backoffice SPA (port 5174): identical -- Scenario 1 PASS, Scenario 2 PASS, Scenario 3 FAIL.
+  - auth-flow -- client SPA (pw-no-setup.config.ts, project auth-flow):
+    - Scenario 1 (login happy path): FAIL -- TimeoutError waitForURL http://127.0.0.1:5173/profile. Actual nav: http://localhost:5173/auth/error?error=Invalid+state. Root cause: T-9 pinned Playwright baseURL to 127.0.0.1 but auth-server.ts FRONTEND_URL=http://localhost:5173 (compose.yaml:118) builds redirect_uri with localhost. Keycloak redirects to localhost; pkce_state cookie on 127.0.0.1 not sent on localhost callback; state validation fails. Regression from T-9 incomplete D-17 application.
+    - Scenario 2 (logout): FAIL -- same root cause (doLogin dependency).
+    - Scenario 5 (post-login race): FAIL -- same.
+    - Scenario 6 (refresh resilience): FAIL -- same.
+    - Scenario 7 (expired token): SKIPPED -- intentional (httpOnly cookie; documented inline in spec).
+    - Scenario 8 (cookie-blocked): FAIL -- same root cause.
+  - auth-flow -- backoffice SPA (via temp no-setup config):
+    - global-setup path bug: playwright/global-setup.ts:87 path.resolve(__dirname, ../../../..) resolves to D:\REPO\ (4 levels, not repo root). docker compose ps fails. Main playwright.config.ts blocked.
+    - Scenarios 3/4/5/6: all FAIL -- same D-17/realm mismatch as client SPA.
+  - Logout observation (MCP browser): GET /auth/logout -> Keycloak: Missing parameters: id_token_hint. W-FE-3 confirmed active. KC SSO session not terminated.
+- D-12 storage check: PASS -- grep zero token writes in src/**. MCP browser on /profile: localStorage.length=0, sessionStorage.length=1 (tsr-scroll-restoration-v1_3 -- TanStack Router scroll, not a token). D-12 intact.
+- D-4 separation check: PASS -- no cross-imports between client/src and backoffice/src.
+- D-16 guard sanity (3 invocations): PASS
+  - node scripts/check-dev-env.mjs frontend-client (running) -> exit 1 + actionable message. PASS.
+  - ALLOW_HOST_DEV=1 node scripts/check-dev-env.mjs frontend-client -> exit 0 + bypass notice. PASS.
+  - node scripts/check-dev-env.mjs nonexistent-service -> exit 0. PASS.
+  - pnpm run predev from frontend/client while compose up -> exit 1, pnpm dev blocked. PASS.
+- D-17 IPv4 pinning grep: PASS (config+spec surface) -- zero http://localhost:5173 or http://localhost:5174 in all three playwright config files and four new spec files. Server-side FRONTEND_URL (compose.yaml) still uses localhost -- documented as B-FE-2.
+
+### Blockers
+
+- **B-FE-1 (G8/G9 BLOCKING)** -- api-proxy.spec.ts Scenario 3 in both SPAs: GET /api/healthz/live returns 404, not 200. Vinxi proxy prepends /api to every path: /api/healthz/live -> http://api:8080/api/healthz/live (404). Backend healthz is at /healthz/live without /api prefix (Program.cs:298). Spec JSDoc comment "Proxies to http://api:8080/healthz/live" is factually wrong. Fix: replace Scenario 3 with an endpoint actually routed through the /api proxy, or bypass proxy and hit port 8080 directly. Same finding as B-BE-1.
+
+- **B-FE-2 (G8/G9 BLOCKING)** -- auth-flow.spec.ts and admin-auth-flow.spec.ts: all active scenarios fail with auth/error?error=Invalid+state. T-9 applied D-17 to Playwright baseURL but did NOT update compose.yaml FRONTEND_URL or Keycloak realm redirectUris to add 127.0.0.1 variants. pkce_state cookie set on 127.0.0.1 origin; Keycloak redirects to localhost; browser does not send 127.0.0.1 cookie on localhost callback; state validation fails. Fix: (A) add 127.0.0.1 variants to redirectUris/webOrigins in both realm JSONs and update FRONTEND_URL in compose.yaml; OR (B) keep auth-flow specs using localhost for cookie-bearing flows, use 127.0.0.1 only for direct API proxy calls. Same finding as B-BE-2.
+
+- **B-FE-3 (G2 pre-existing, carried)** -- OTel JS telemetry absent in both SPAs (src/lib/telemetry directories missing). Phase 49 iter 2 does not worsen this gap. Phase-scope judgment: BLOCKED per gate, APPROVED_WITH_WARNINGS consistent with phase 48 and iter 1.
+
+### Warnings
+
+- **W-FE-1 (carry-over, worsened)** -- Both vitest.config.ts files missing exclude for playwright/** and e2e/**. T-9 added api-proxy.spec.ts to backoffice/playwright/specs/ -- vitest now has 2 new failing files in backoffice (previously 0) and 1 more in client. Fix: add exclude: [\playwright/**\, \e2e/**\] to both vitest.config.ts test sections.
+
+- **W-FE-2 (carry-over)** -- AuthGuard loading shell lacks role=status or aria-live=polite. Advisory (G10 moderate). Pre-existing iter 1.
+
+- **W-FE-3 (carry-over, confirmed active, elevated)** -- frontend/client/auth-server.ts:171 logout URL missing client_id param. Confirmed broken: KC26 returns "Missing parameters: id_token_hint". KC SSO session NOT terminated. User can re-authenticate without credentials via SSO during KC session lifetime. Security concern. Backoffice at line 270 includes client_id correctly. Fix: append &client_id=CLIENT_ID_VALUE to fullUrl in client logout handler.
+
+- **W-FE-4 (new)** -- frontend/backoffice/playwright/global-setup.ts:87 uses path.resolve(__dirname, "../../../..") -- 4 levels from playwright/ -> D:\REPO\ (parent of repo root, not repo root). docker compose ps fails. Fix: change to 3 levels to match client global-setup.ts:84. Documented by backend reviewer as W-BE-5.
+
+- **W-FE-5 (carry-over)** -- scripts/seed-test-users.sh requires jq (absent on Windows host). Both global-setup.ts files invoke this. Test users exist from prior run. Fresh docker compose down -v cycle breaks all auth-flow scenarios. Pre-existing from iter 1.
+
+### Findings detail
+
+**D-17 partial application (root cause B-FE-2):** T-9 correctly applied D-17 to Playwright config baseURL and spec BASE_URL constants (grep confirms zero http://localhost:5173/5174 in new files). However, compose.yaml:118 FRONTEND_URL=http://localhost:5173 causes auth-server.ts to build redirect_uri with localhost domain. Cookie domain mismatch (127.0.0.1 vs localhost) triggers Invalid state on every login. D-17 was applied to the test client surface but not to the server-side origin.
+
+**Scenario 2 (POST proxy) confirms Bug 3 fixed:** POST http://127.0.0.1:5173/api/companies/registration returns 422 application/problem+json. 503 HTML eliminated. IPv4 routing via D-17 working for proxy path. Core Wave 4 goal achieved.
+
+**D-16 guard working end-to-end:** Single listener on 127.0.0.1:5173 and 127.0.0.1:5174 (PID 24376 Docker mapper only). No stale host vinxi. check-dev-env.mjs exits 1 when compose is up. predev hook blocks pnpm dev. T-8 goal achieved.
+
+**Bug 1 (wrong realm) confirmed fixed via MCP browser:** GET http://127.0.0.1:5173/auth/login -> Keycloak with realm=client, code_challenge_method=S256, client_id=onboarding-client-acf. T-2 fix verified working.
+
+**W-FE-3 elevated:** Logout confirmed non-functional for client SPA -- KC SSO session remains alive after logout. User can SSO-reuse during KC session timeout without re-entering credentials. Recommend fixing before next ship.
+
+**Vinext migration debt:** None. T-8 and T-9 files contain zero Vinxi-internal API usage.
+
+### Coverage gaps (new files)
+
+All new files post-968eefb in iter 2 (frontend scope) are tests/infra. No new production source files. Coverage gate trivially passes. New files: AuthGuard.test.tsx, auth-flow.spec.ts, api-proxy.spec.ts x2, global-setup.ts x2, admin-auth-flow.spec.ts, pw-no-setup.config.ts, backoffice/playwright.config.ts.
+
+### Regression captures
+
+- Client api-proxy Scenario 2: PASS (422 JSON, Bug 3 fixed)
+- Client api-proxy Scenario 3: FAIL (404 spec defect -- B-FE-1)
+- Client auth-flow: 5 FAIL (D-17/realm mismatch -- B-FE-2), 1 SKIP (Scenario 7 intentional)
+- Backoffice api-proxy Scenario 2: PASS
+- Backoffice api-proxy Scenario 3: FAIL (404 spec defect -- B-FE-1)
+- Backoffice auth-flow: 4 FAIL (global-setup path bug W-FE-4 + D-17/realm mismatch B-FE-2)
+- Screenshot: .jdi/cache/phase-49-fe-auth-error.png

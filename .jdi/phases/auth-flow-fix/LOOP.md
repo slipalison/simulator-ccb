@@ -1,7 +1,7 @@
 ---
 phase_slug: auth-flow-fix
 phase_position: 49
-iter: 2
+iter: 3
 total_resets: 0
 status: running
 max_iter_per_round: 5
@@ -44,9 +44,27 @@ prior_verdict: APPROVED_WITH_WARNINGS
 
 --- REOPENED 2026-05-16 — added T-8 and T-9 to PLAN.md, status=running, iter advances to 2 ---
 
-### iter=2 — Wave 4 dispatch (pending)
+### iter=2 — Wave 4 (executed)
 - T-8 (frontend: dev-workflow guard `scripts/check-dev-env.mjs` + predev + docs)
 - T-9 (frontend: Playwright IPv4 hardening + api-proxy regression specs)
 - New decisions appended: D-16 (compose-only dev workflow), D-17 (Playwright 127.0.0.1 pinning) — see `.jdi/DECISIONS.md`.
-- Precondition (manual by user, NOT a JDI task): kill host vinxi PIDs documented in `INVESTIGATION-api-proxy.md` (PIDs 50572, 17212, 30044, 50972 at the time of capture; user must re-query with `Get-NetTCPConnection` because PIDs may have changed). The doer for T-9 will hard-fail at Playwright run if host listener remains.
-- Reviewer aggregate scheduled after Wave 4 commits.
+- Precondition (manual by user, completed 2026-05-16): host PIDs 50572 + 30044 killed via `Stop-Process`. Only `com.docker.backend` (PID 24376) remains as listener on `127.0.0.1:5173/:5174`.
+- Doer commits:
+  - T-8 `bd8f742` — guard `scripts/check-dev-env.mjs` + 9 vitest tests + predev hook + `docs/dev-setup.md` + README + CONTRIBUTING.
+  - T-9 `a5edf06` — Playwright IPv4 swap + new `api-proxy.spec.ts` (3 scenarios × 2 SPAs = 6 new).
+- Smoke test before reviewers: `curl http://localhost:5173/api/companies/registration -X POST -d '{}'` → 422 JSON (Bug 3 root cause resolved).
+- Reviewer aggregate (worst-case rule):
+  - Backend `49417a8` — BLOCKED (2 blockers + 3 warnings; build 0/0, all .cs suites green; Playwright client 2/3 api-proxy + 0/5 auth-flow; backoffice 2/3 api-proxy + 0/4 auth-flow)
+  - Frontend `d339988` — BLOCKED (3 blockers, one pre-existing carry-over; D-16 guard PASS; D-17 PARTIAL — server-side `FRONTEND_URL` still localhost)
+  - Security `abf0b5b` — APPROVED (D-15 unchanged; iter-2 specific risks clean; D-16 + D-17 properly scoped)
+- Aggregate verdict: **BLOCKED** — iter 3 required.
+
+### iter=3 — fix iter-2 blockers (pending)
+- T-10 (frontend): Fix B-FE-1/B-BE-1 — `api-proxy.spec.ts` Scenario 3 path is wrong. Proxy ADDS `/api` prefix (per `server.ts:18`), so `GET /api/healthz/live` arrives at `/api/api/healthz/live`. Real backend healthz lives at `/healthz/live` (no `/api`). Replace Scenario 3 in both SPAs with an endpoint that genuinely round-trips through the proxy (or a healthz path that exists under `/api`).
+- T-11 (frontend): Fix B-FE-2/B-BE-2 — D-17 mismatch. Two options:
+  (a) Revert auth-flow specs and admin-auth-flow specs to `baseURL: localhost` (Keycloak realm `redirectUris` already pin localhost; cookie host must match). Keep `127.0.0.1` ONLY in `api-proxy.spec.ts` because that flow does not traverse Keycloak.
+  (b) Add `127.0.0.1` variants to both realm JSONs `redirectUris` + `webOrigins` + `post.logout.redirect.uris` AND change `compose.yaml FRONTEND_URL` to `127.0.0.1`. More invasive; impacts security re-review.
+  Recommended (a) — narrower blast radius, preserves Keycloak hardening, and `127.0.0.1` is only useful for IPv4 disambiguation in proxy probes which is exactly what api-proxy.spec.ts needs.
+- T-12 (frontend): Fix W-FE-3 / W1 (now exploitable per iter-2 reviewer) — `frontend/client/auth-server.ts:171` add `&client_id=${encodeURIComponent(CLIENT_ID)}` to the Keycloak logout URL so end_session_endpoint scopes `post_logout_redirect_uri` validation. Mirror the backoffice pattern at line 270.
+- T-13 (frontend): Fix W-BE-5 — `frontend/backoffice/playwright/global-setup.ts:87` resolve repo root with correct depth (3 levels up, not 4).
+- B-FE-3 (telemetry): NOT in iter 3 scope per phase 48 precedent (pre-existing architectural debt, separate phase).

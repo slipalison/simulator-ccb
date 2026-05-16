@@ -3,13 +3,15 @@ phase_slug: auth-flow-fix
 phase_position: 49
 iter: 3
 total_resets: 0
-status: running
+status: converged
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-16T00:00:00Z
 reopened_at: 2026-05-16T00:00:00Z
 prior_converged_at: 2026-05-16T00:00:00Z
 prior_verdict: APPROVED_WITH_WARNINGS
+converged_at: 2026-05-16T00:00:00Z
+verdict: APPROVED_WITH_WARNINGS
 ---
 
 ## History
@@ -68,3 +70,27 @@ prior_verdict: APPROVED_WITH_WARNINGS
 - T-12 (frontend): Fix W-FE-3 / W1 (now exploitable per iter-2 reviewer) — `frontend/client/auth-server.ts:171` add `&client_id=${encodeURIComponent(CLIENT_ID)}` to the Keycloak logout URL so end_session_endpoint scopes `post_logout_redirect_uri` validation. Mirror the backoffice pattern at line 270.
 - T-13 (frontend): Fix W-BE-5 — `frontend/backoffice/playwright/global-setup.ts:87` resolve repo root with correct depth (3 levels up, not 4).
 - B-FE-3 (telemetry): NOT in iter 3 scope per phase 48 precedent (pre-existing architectural debt, separate phase).
+
+### iter=3 — doer commits (executed)
+- T-10 `149247c` — `api-proxy.spec.ts` Scenario 3 → POST `/api/companies/registration` expecting 405 + Allow:POST.
+- T-11 `baf5417` — D-17 narrowed; auth-flow specs revert to localhost; per-project baseURL overrides; D-17 addendum in DECISIONS.md.
+- T-12 `419c40a` — `frontend/client/auth-server.ts` logout URL adds `&client_id=${encodeURIComponent(CLIENT_ID)}` + 3 vitest assertions.
+- T-13 `2b24c20` — `frontend/backoffice/playwright/global-setup.ts` path depth 4→3 + ESM shims + compose.yaml existence guard; new `pw-no-setup.config.ts` for backoffice api-proxy.
+- SUMMARY `6369454` — iter-3 entries.
+
+### iter=3 — reviewer aggregate (worst-case rule)
+- Backend `62cc713` — APPROVED_WITH_WARNINGS — 0 blockers, 4 warnings. Domain 378/378, Application 89/89, API 244/244+4-skip, Integration 20/20. Playwright (live compose): client api-proxy 3/3, client auth-flow 3/5+1skip, backoffice api-proxy 3/3, backoffice auth-flow 1/4. B-BE-1 + B-BE-2 RESOLVED.
+- Frontend `3a52962` — APPROVED_WITH_WARNINGS — 0 blockers, 8 warnings (4 new + 4 carry-over). Vitest client 113/128 (+3 from T-12), backoffice 171/171. D-12, D-4, D-16, D-17 all pass. B-FE-1 + B-FE-2 RESOLVED. NF-1/NF-2 classified as WARNING (test-only spec defects).
+- Security `89f7969` — APPROVED_WITH_WARNINGS — 0 blockers, 2 new warnings. T-12 deep-dive PASS (client_id env-sourced, encoded, no token leakage, backoffice-pattern match, 3 tests). D-15 unchanged on iter-3 diff. W-FE-3 / W1 RESOLVED.
+- Aggregate verdict: **APPROVED_WITH_WARNINGS** (worst-case wins, all 3 reviewers approved).
+
+### iter=3 — converged
+- Bug 1 (login/logout loop), Bug 2 (post-login flash), Bug 3 (api-proxy 503): all three fixed and verified end-to-end.
+- Ship-time outstanding (none block, all carry-over or low-priority):
+  - NF-1, NF-2: spec-only defects — iter 4 1-line spec fixes or separate small follow-up phase.
+  - W-FE-1: `frontend/client/vitest.config.ts` exclude for `playwright/specs/` (iter-1 carry).
+  - W2: `tests/keycloak-hardening/verify-hardening.sh` realm name update (iter-1 carry, pre-existing).
+  - W3: `keycloak/client-realm.json` clientProfiles parity with backoffice (iter-1 carry).
+  - W5: legacy ROPC `onboarding-app` cleanup (acknowledged D-11, separate phase).
+  - W-FE-5 / W-BE-6: `jq` dependency in `seed-test-users.sh` — install or rewrite in pure POSIX; out of scope for iter 4 unless prioritised.
+- Next: `/jdi-ship auth-flow-fix`

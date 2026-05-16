@@ -80,7 +80,8 @@
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
         "client.session.max.lifespan": "28800",
-        "login_theme": "onboarding-client"
+        "login_theme": "onboarding-client",
+        "post.logout.redirect.uris": "http://localhost:5173/auth/login"
       }
     },
     {

@@ -88,7 +88,8 @@
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
         "client.session.max.lifespan": "28800",
-        "login_theme": "onboarding-backoffice"
+        "login_theme": "onboarding-backoffice",
+        "post.logout.redirect.uris": "http://localhost:5174/auth/login"
       }
     }
   ],

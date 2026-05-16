@@ -92,7 +92,7 @@ Deliver end-to-end fix + Playwright regression suite running against the `docker
 
 ### Wave 3
 
-#### T-7: Playwright regression suite — both SPAs, 8 scenarios
+#### T-7: Playwright regression suite — both SPAs, 8 scenarios (DONE — iter 1)
 - **Specialist:** jdi-doer-onboarding-keycloak-frontend-vinext
 - **Files modified:** `frontend/client/playwright/specs/auth-flow.spec.ts`, `frontend/backoffice/playwright.config.ts` (new), `frontend/backoffice/playwright/specs/admin-auth-flow.spec.ts` (new), `frontend/backoffice/package.json`
 - **Acceptance:**
@@ -112,10 +112,41 @@ Deliver end-to-end fix + Playwright regression suite running against the `docker
 - **Test:** This IS the test. Pass = 8/8 green. Reviewer re-runs at `/jdi-verify`.
 - **Status:** pending
 
+### Wave 4 (added iter 2, 2026-05-16 — api-proxy 503 bug surfaced post-convergence)
+
+Root cause documented in `INVESTIGATION-api-proxy.md`: vinxi-host stale processes (Node 24, started by `pnpm dev` on Windows host) intercept `localhost:5173`/`:5174` via IPv6, cannot reach Docker bridge → 503 `TypeError: fetch failed`. Fix is workflow-level guards + IPv4-pinning of Playwright configs. NO production code changes.
+
+#### T-8: Dev-workflow guard — `scripts/check-dev-env.mjs` + `predev` hook + docs
+- **Specialist:** jdi-doer-onboarding-keycloak-frontend-vinext
+- **Files modified:** `scripts/check-dev-env.mjs` (new), `frontend/client/package.json`, `frontend/backoffice/package.json`, `docs/dev-setup.md` (new), `README.md`, `CONTRIBUTING.md`, `scripts/check-dev-env.test.mjs` (new)
+- **Acceptance:**
+  - `scripts/check-dev-env.mjs` runs `docker compose ps --status running --services`, exits 1 with actionable message if `frontend-client` or `frontend-backoffice` are running, exits 0 otherwise. Bypass via `ALLOW_HOST_DEV=1`. Cross-platform (Node-only, no shell-specific syntax).
+  - `frontend/client/package.json` and `frontend/backoffice/package.json` have `"predev": "node ../../scripts/check-dev-env.mjs <service>"` ahead of the existing `"dev"` script.
+  - `docs/dev-setup.md` documents official workflow (`docker compose up`), how to detect vinxi-host stale via `Get-NetTCPConnection -LocalPort 5173,5174 -State Listen` / `ss -tlpn`, how to kill (`Stop-Process` on Windows, `pkill node` on *nix), and the `ALLOW_HOST_DEV=1` escape hatch.
+  - `README.md` gains a "Local development" section linking to `docs/dev-setup.md` and a one-line warning. `CONTRIBUTING.md` mirrors the warning at first-time setup.
+  - Vitest in `scripts/check-dev-env.test.mjs` covers (a) clean exit 0 when no containers, (b) exit 1 when target container running, (c) bypass via `ALLOW_HOST_DEV=1`.
+- **Dependencies:** none
+- **Test:** `pnpm vitest run scripts/check-dev-env` (or wherever the runner picks it up); manual sanity: run `node scripts/check-dev-env.mjs frontend-client` with and without compose up.
+- **Status:** pending
+
+#### T-9: Playwright IPv4 hardening + api-proxy regression specs
+- **Specialist:** jdi-doer-onboarding-keycloak-frontend-vinext
+- **Files modified:** `frontend/client/playwright.config.ts`, `frontend/client/pw-no-setup.config.ts`, `frontend/backoffice/playwright.config.ts`, `frontend/client/playwright/specs/api-proxy.spec.ts` (new), `frontend/backoffice/playwright/specs/api-proxy.spec.ts` (new)
+- **Acceptance:**
+  - All three Playwright config files use `baseURL: 'http://127.0.0.1:PORT'` (no `localhost`). PORT stays 5173 / 5174.
+  - `frontend/{client,backoffice}/playwright/specs/api-proxy.spec.ts` covers three scenarios each:
+    1. Single listener guard: `globalSetup` (or first test) shells out to `netstat`/`Get-NetTCPConnection` and asserts exactly ONE process listens on the SPA port. Skip the scenario gracefully on platforms where the command is unavailable (CI Linux runners use `ss -tlpn`).
+    2. Proxy reaches backend on POST: `POST /api/companies/registration` with empty body returns **422 JSON** (`application/problem+json`), never 503 HTML. Asserts on `content-type` header and body shape.
+    3. Proxy reaches healthz on GET: `GET /api/healthz/live` returns 200 with body `Healthy`.
+  - No production code (`server.ts`, `auth-server.ts`, `app.config.ts`, backend) is touched.
+- **Dependencies:** T-8 (compose must be up + no host vinxi for the Playwright run to succeed; T-8's guard makes this enforceable; can be developed in parallel but verified together).
+- **Test:** `pnpm --filter ./frontend/client exec playwright test api-proxy` and `pnpm --filter ./frontend/backoffice exec playwright test api-proxy` against a fresh `docker compose up -d`.
+- **Status:** pending
+
 ## Execution
-- Total tasks: 7
-- Waves: 3 (Wave 1: T-1, T-2, T-3, T-4 — 4 parallel; Wave 2: T-5, T-6 — 2 parallel; Wave 3: T-7)
-- Estimated parallel speedup: ~7/3 ≈ 2.3x
+- Total tasks: 9 (T-1..T-7 done iter 1; T-8, T-9 added iter 2)
+- Waves: 4 (W1 4-parallel, W2 2-parallel, W3 1, W4 1 [T-8 then T-9])
+- Estimated parallel speedup: ~9/4 ≈ 2.25x
 
 ## Files modified (all tasks)
 - `keycloak/client-realm.json`

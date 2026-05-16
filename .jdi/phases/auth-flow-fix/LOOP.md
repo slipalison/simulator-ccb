@@ -1,14 +1,15 @@
 ---
 phase_slug: auth-flow-fix
 phase_position: 49
-iter: 1
+iter: 2
 total_resets: 0
-status: converged
+status: running
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-16T00:00:00Z
-converged_at: 2026-05-16T00:00:00Z
-verdict: APPROVED_WITH_WARNINGS
+reopened_at: 2026-05-16T00:00:00Z
+prior_converged_at: 2026-05-16T00:00:00Z
+prior_verdict: APPROVED_WITH_WARNINGS
 ---
 
 ## History
@@ -35,10 +36,17 @@ verdict: APPROVED_WITH_WARNINGS
 - Hash: 3approved-warnings-iter1 (n/a — first iter, no prior hash to compare)
 - Aggregate verdict (worst-case rule per reviewers.md): APPROVED_WITH_WARNINGS
 
-### iter=1 — converged
-- All three reviewers returned APPROVED_WITH_WARNINGS → ship gate open.
-- Outstanding ship-time validation:
-  - `docker compose down -v && docker compose up -d` to refresh Keycloak with T-1 realm JSON before running Playwright suite end-to-end (env drift, not code defect — D-13).
-  - W-FE-1: `frontend/client/vitest.config.ts` exclude for `playwright/specs/` (one-line fix; can land in ship PR or follow-up).
-  - W1 (Security): `frontend/client/auth-server.ts:171` — add `&client_id=...` to logout URL (one-liner, defense in depth).
-- Next: `/jdi-ship auth-flow-fix`
+### iter=1 — converged (then REOPENED)
+- All three reviewers returned APPROVED_WITH_WARNINGS at iter 1 close.
+- Ship gate held by user — Bug 3 (api-proxy 503) surfaced when user tested company registration.
+- See `INVESTIGATION-api-proxy.md` for full root-cause: vinxi-host stale process intercepts `localhost:5173`/`:5174` via IPv6 because `pnpm dev` was run on Windows host in parallel with `docker compose up`.
+- Decision: do NOT ship until bug fixed. Phase 49 was incorrect at convergence.
+
+--- REOPENED 2026-05-16 — added T-8 and T-9 to PLAN.md, status=running, iter advances to 2 ---
+
+### iter=2 — Wave 4 dispatch (pending)
+- T-8 (frontend: dev-workflow guard `scripts/check-dev-env.mjs` + predev + docs)
+- T-9 (frontend: Playwright IPv4 hardening + api-proxy regression specs)
+- New decisions appended: D-16 (compose-only dev workflow), D-17 (Playwright 127.0.0.1 pinning) — see `.jdi/DECISIONS.md`.
+- Precondition (manual by user, NOT a JDI task): kill host vinxi PIDs documented in `INVESTIGATION-api-proxy.md` (PIDs 50572, 17212, 30044, 50972 at the time of capture; user must re-query with `Get-NetTCPConnection` because PIDs may have changed). The doer for T-9 will hard-fail at Playwright run if host listener remains.
+- Reviewer aggregate scheduled after Wave 4 commits.

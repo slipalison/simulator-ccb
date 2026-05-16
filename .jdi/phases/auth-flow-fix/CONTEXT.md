@@ -65,6 +65,31 @@ http://localhost:8180/realms/onboarding/protocol/openid-connect/auth?client_id=o
 - `frontend/backoffice/auth-server.ts:163-177` (cookie config)
 - `frontend/client/auth-server.ts:109-123` (cookie config)
 
+### Bug 3 (descoberto pós-convergência iter 1): api-proxy `503 TypeError: fetch failed`
+
+**Symptom (verbatim do usuário):**
+```
+POST http://localhost:5173/api/companies/registration 503 (Server Unavailable)
+TypeError: fetch failed
+```
+Página HTML default do h3 com `<pre>TypeError: fetch failed</pre>`. Curl direto na porta do container (`curl -4 http://127.0.0.1:5173/...`) retorna 422 — funciona.
+
+**Root cause (confirmado em `INVESTIGATION-api-proxy.md`):** Há instâncias de `vinxi dev` rodando **diretamente no Windows host** (PIDs 50572, 17212 para `:5173`; 30044, 50972 para `:5174`) em paralelo com o container `frontend-client`. O processo host atende `[::]:5173` (IPv6) e `0.0.0.0:5173`. Browser/curl resolvem `localhost` → `::1` (preferência IPv6 default no Windows) → caem no vinxi-host stale, que não tem rota para a bridge Docker `onboarding-net`. `fetch("http://api:8080/...")` falha com `ENOTFOUND`/`Connect Timeout` no host porque o nome `api` só existe no DNS interno do Docker.
+
+**Evidência:**
+- `netstat -ano | findstr ":5173 "` mostra DOIS listeners — PID 50572 em `[::]:5173` (host vinxi Node 24) e PID 24376 em `127.0.0.1:5173` (`com.docker.backend` port map).
+- Diag temporário em `server.ts` (já revertido) retornou `node_version: "v24.14.0"` quando acessado via `http://localhost:5173/__diag` (host) vs `v22.22.3` via `http://127.0.0.1:5173/__diag` (container).
+- Containers do compose stack: todos `Up (healthy)`, incluindo `api` ouvindo `127.0.0.1:8080->8080/tcp`.
+
+**Files relevantes (modificar):**
+- `scripts/check-dev-env.mjs` (NOVO) — guard que aborta `pnpm dev` no host se compose já está rodando.
+- `frontend/client/package.json:6`, `frontend/backoffice/package.json:6` — hook `predev`.
+- `docs/dev-setup.md` (NOVO), `README.md`, `CONTRIBUTING.md` — workflow oficial.
+- `frontend/client/playwright.config.ts:22`, `frontend/client/pw-no-setup.config.ts:12`, `frontend/backoffice/playwright.config.ts:27` — `localhost` → `127.0.0.1`.
+- `frontend/client/playwright/specs/api-proxy.spec.ts` (NOVO), `frontend/backoffice/playwright/specs/api-proxy.spec.ts` (NOVO) — cenários de regressão.
+
+**NÃO modificar** (código de proxy/auth está correto): `frontend/{client,backoffice}/server.ts`, `auth-server.ts`, `app.config.ts`, `src/Onboarding.API/**`.
+
 ## Scope (in)
 
 - **Keycloak realm configs:** revisar/expandir `redirectUris`, `webOrigins`, `postLogoutRedirectUris` (ou `validPostLogoutRedirectUris` no formato Keycloak 26) em `keycloak/backoffice-realm.json` + `keycloak/client-realm.json`. Garantir match exato com URLs construidas por `auth-server.ts`.
@@ -99,6 +124,8 @@ Decisoes incorporadas ao `.jdi/DECISIONS.md` como `D-11..D-15` (2026-05-16):
 - **D-13 (DA-3):** `docker compose down -v` autorizado para reproducao local. Toda mudanca de realm precisa estar persistida em `keycloak/{client,backoffice,master}-realm.json` antes do commit — proibido alterar realm via Admin UI sem refletir no JSON (CI quebra reprodutibilidade).
 - **D-14 (DA-4):** Usuarios de teste para diagnostico criados via fixture: ou bloco `users` adicionado nos realm JSONs ja existentes, ou script `scripts/seed-test-users.sh` idempotente que usa o token de service account do `onboarding-api-admin`. Proibido criar usuarios manualmente em Keycloak rodando.
 - **D-15 (DA-5):** Gates de seguranca nao-negociaveis: PKCE S256 mantido, cookies HttpOnly + Secure-em-prod, CORS allowlist exato (sem `*`), CSRF protection equivalente a SameSite + state validation, sem desabilitar `bruteForceProtected`. Reviewer recusa qualquer fix que afrouxe esses guard rails para "fazer funcionar".
+- **D-16 (DA-6, 2026-05-16 — pós convergência iter 1):** Workflow de dev é exclusivamente `docker compose up`. Rodar `pnpm dev` direto no host Windows está PROIBIDO porque cria um vinxi-host stale que intercepta `localhost:5173`/`:5174` via IPv6 (`[::]:`) e não consegue alcançar a bridge Docker. Guard automático via `scripts/check-dev-env.mjs` + hook `predev` nos dois SPAs aborta a tentativa. Bypass autorizado: `ALLOW_HOST_DEV=1` para debugging avançado, documentado em `docs/dev-setup.md`.
+- **D-17 (DA-7, 2026-05-16):** Playwright configs e quaisquer testes que façam fetch contra o stack local DEVEM usar `http://127.0.0.1:PORT` em vez de `http://localhost:PORT`. Isso elimina a ambiguidade IPv6/IPv4 e garante que requests sempre roteiem para o port mapping do Docker, evitando falsos negativos caso um processo host stale renasça.
 
 ## Open questions para /jdi-plan
 

@@ -18,7 +18,7 @@ import { test, expect } from '@playwright/test';
 
 const CLIENT_EMAIL = 'e2e-client@example.com';
 const CLIENT_PASSWORD = 'E2EClient@123!';
-const BASE_URL = 'http://localhost:5173';
+const BASE_URL = 'http://127.0.0.1:5173';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -99,7 +99,7 @@ test('Scenario 2 — client logout: clears session, /auth/me returns 401', async
   await page.goto(`${BASE_URL}/auth/logout`, { waitUntil: 'commit' });
 
   // After logout Keycloak's end_session_endpoint fires a 302 to the post_logout_redirect_uri
-  // which is http://localhost:5173/auth/login (auth-server.ts:170)
+  // which is http://127.0.0.1:5173/auth/login (auth-server.ts:170)
   await page.waitForURL(`${BASE_URL}/auth/login`, { timeout: 30000 });
   await expect(page).toHaveURL(/\/auth\/login/);
 

@@ -19,7 +19,7 @@ export default defineConfig({
   globalSetup: './playwright/global-setup.ts',
 
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://127.0.0.1:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -33,6 +33,16 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
       },
       testMatch: /auth-flow\.spec\.ts/,
+    },
+
+    // api-proxy regression suite (T-9 Phase 49 iter 2) — IPv4 + proxy smoke tests
+    {
+      name: 'api-proxy',
+      testDir: './playwright/specs',
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+      testMatch: /api-proxy\.spec\.ts/,
     },
 
 

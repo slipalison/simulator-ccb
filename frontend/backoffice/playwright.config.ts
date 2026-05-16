@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test';
  * Playwright E2E configuration for backoffice frontend.
  *
  * Mirrors frontend/client/playwright.config.ts with these differences:
- * - baseURL: http://localhost:5174  (backoffice port)
+ * - baseURL: http://127.0.0.1:5174  (backoffice port, D-17)
  * - testDir: ./playwright/specs    (backoffice spec location)
  * - Output dirs: playwright/results/ and playwright-report/
  * - No webServer block — Docker Compose must be running before E2E tests.
@@ -24,7 +24,7 @@ export default defineConfig({
   globalSetup: './playwright/global-setup.ts',
 
   use: {
-    baseURL: 'http://localhost:5174',
+    baseURL: 'http://127.0.0.1:5174',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -37,6 +37,15 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
       },
       testMatch: /.*admin-auth-flow\.spec\.ts/,
+    },
+
+    // api-proxy regression suite (T-9 Phase 49 iter 2) — IPv4 + proxy smoke tests
+    {
+      name: 'api-proxy',
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+      testMatch: /api-proxy\.spec\.ts/,
     },
   ],
 

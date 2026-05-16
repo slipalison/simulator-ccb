@@ -25,9 +25,14 @@
  *   (application/problem+json or application/json). Never 503 HTML.
  *   If the response is HTML, the test fails with a message pointing at Bug 3.
  *
- * Scenario 3 — Proxy reaches healthz on GET:
- *   GET /api/healthz/live → expects 200 with body "Healthy".
- *   Proxies to http://api:8080/healthz/live (AllowAnonymous in Program.cs).
+ * Scenario 3 — Proxy round-trip on GET (method-not-allowed probe):
+ *   GET /api/companies/registration → expects 405 Method Not Allowed.
+ *   The Vinxi proxy (server.ts) prepends /api to every path, so this request is
+ *   forwarded to http://api:8080/api/companies/registration which only allows POST.
+ *   Asserting 405 (not 503) proves the proxy successfully reached the backend.
+ *   Note: the healthz endpoint (/healthz/live) lives outside the /api prefix and
+ *   cannot be accessed through the proxy — this is the correct replacement per
+ *   B-FE-1/B-BE-1 fix (iter 3, 2026-05-16).
  */
 
 import { test, expect } from '@playwright/test';
@@ -191,15 +196,23 @@ test.describe('api-proxy — client SPA (port 5173)', () => {
     expect(parsed).toMatchObject({ title: expect.any(String) });
   });
 
-  // ── Scenario 3: Proxy reaches healthz on GET ────────────────────────────────
+  // ── Scenario 3: Proxy round-trip on GET (method-not-allowed probe) ─────────
+  //
+  // B-FE-1 / B-BE-1 fix (iter 3): the original Scenario 3 targeted
+  // GET /api/healthz/live expecting 200, but the Vinxi proxy (server.ts:18) prepends
+  // /api to every path so the request was forwarded as http://api:8080/api/healthz/live
+  // (404) instead of http://api:8080/healthz/live (200). The healthz endpoint lives
+  // outside the /api prefix and is unreachable through the proxy.
+  //
+  // Replacement: GET /api/companies/registration. The proxy forwards to
+  // http://api:8080/api/companies/registration which only allows POST and returns
+  // 405 Method Not Allowed (with Allow: POST header). Asserting 405 proves the
+  // proxy successfully reached the backend without requiring auth.
 
-  test('Scenario 3 — proxy reaches healthz on GET: /api/healthz/live returns 200 Healthy', async ({
+  test('Scenario 3 — proxy round-trip on GET: /api/companies/registration returns 405 (not 503)', async ({
     request,
   }) => {
-    // GET /api/healthz/live → proxied to http://api:8080/healthz/live
-    // The endpoint is AllowAnonymous in Program.cs and returns "Healthy" as plain text.
-    // If this returns 503 HTML it means Bug 3 is active.
-    const response = await request.get(`${BASE_URL}/api/healthz/live`, {
+    const response = await request.get(`${BASE_URL}/api/companies/registration`, {
       failOnStatusCode: false,
     });
 
@@ -208,7 +221,7 @@ test.describe('api-proxy — client SPA (port 5173)', () => {
 
     if (status === 503 || bodyText.includes('<!DOCTYPE html>') || bodyText.includes('TypeError: fetch failed')) {
       throw new Error(
-        `[Bug 3 regression] GET /api/healthz/live returned a 503 HTML error page.\n` +
+        `[Bug 3 regression] GET /api/companies/registration returned a 503 HTML error page.\n` +
           `Status: ${status}\n` +
           `Body (first 512 chars): ${bodyText.slice(0, 512)}\n\n` +
           `Root cause: a stale vinxi-host process is likely intercepting requests on localhost:${SPA_PORT} ` +
@@ -217,7 +230,12 @@ test.describe('api-proxy — client SPA (port 5173)', () => {
       );
     }
 
-    expect(status).toBe(200);
-    expect(bodyText.trim()).toBe('Healthy');
+    // 405 = proxy reached backend and got a valid HTTP response (method not allowed for GET)
+    // This is deterministic: the backend only allows POST on this endpoint.
+    expect(status).toBe(405);
+
+    // The Allow header must contain POST — confirms we are talking to the real backend
+    const allowHeader = response.headers()['allow'] ?? '';
+    expect(allowHeader).toContain('POST');
   });
 });

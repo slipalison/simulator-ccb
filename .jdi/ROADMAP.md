@@ -3,7 +3,7 @@
 ## Status
 adopted: true
 current_phase: 49
-total_phases: 53
+total_phases: 54
 
 ## Context
 Projeto adotado em 2026-05-11. Vinha sendo desenvolvido com GSD (`.planning/`, milestones v1-v8). Phases 1-47 estao completas e documentadas em `.planning/phases/`. JDI continua daqui em diante, comecando em **Phase 48** que estava em flight (plans criados em commit `968eefb`, execucao nao iniciada).
@@ -31,27 +31,38 @@ Numeracao preservada pra alinhar com `.planning/` historico. Phases pre-48 nao s
   - 48-02: FundosController parte 2 (Fundo/Cedente) + AdminFundosController + access group extension
 - **Deferred warnings (futuras phases):** W2 FundosController split (1061 LoC god class); W4 OTel JS telemetry stack ambos SPAs
 
-### Phase 49: FundoCedente & Relationship CRUD
-- **Slug:** 49-fundo-cedente-relationships
+### Phase 49: Auth Flow Fix (login/logout + post-login error screen)
+- **Slug:** auth-flow-fix
 - **Status:** ready
+- **Goal:** Diagnosticar e corrigir 2 bugs do fluxo ACF+PKCE (client SPA 5173 + backoffice SPA 5174):
+  1. Login/logout caindo de volta na pagina Keycloak `/realms/onboarding/protocol/openid-connect/auth` (autenticacao nao completa)
+  2. Tela de erro pos-login que desaparece no reload (race condition cookie/session/hidration)
+- **Scope:** Keycloak realm configs (`keycloak/*.json`, redirect URIs, web origins, valid post-logout URIs), backend auth middleware (`Onboarding.API` — token exchange, cookie set, CORS, logout endpoint), frontend (`frontend/{client,backoffice}` — auth callback handler, refresh logic, error boundary, race condition no callback)
+- **Allowed:** `docker compose down -v` (wipe stack), criar usuarios de teste via Keycloak admin, Playwright pra evidencia + regressao
+- **Security:** Mandatory — sem fallback inseguro, sem token em localStorage, ACF+PKCE intacto, CSRF protection
+- **Deliverables:** Bugs fixed + Playwright regression suite cobrindo login+logout+refresh em ambos SPAs + REVIEW.md APPROVED
+
+### Phase 50: FundoCedente & Relationship CRUD
+- **Slug:** 49-fundo-cedente-relationships
+- **Status:** pending
 - **Goal:** Endpoints N-N Fundo↔Cedente (com payload — LimiteExposicaoPercentual/Valor + janela de datas), Cedente↔TipoAtivo, Fundo↔TipoAtivo. Enforcement REL-09 (uma unica associacao ATIVA por par Fundo-Cedente).
 
-### Phase 50: Frontend Client — Fundos UI
+### Phase 51: Frontend Client — Fundos UI
 - **Slug:** 50-frontend-client-fundos
 - **Status:** pending
 - **Goal:** SPA cliente PJ ganha secao Fundos (paginacao, search, badges de status, forms Zod espelhando regras backend). Dropdown de status filtra transicoes validas baseado no estado atual (RASCUNHO→ATIVO, ATIVO↔SUSPENSO, etc).
 
-### Phase 51: Frontend Backoffice — Fundos UI (read-only)
+### Phase 52: Frontend Backoffice — Fundos UI (read-only)
 - **Slug:** 51-frontend-backoffice-fundos
 - **Status:** pending
 - **Goal:** Backoffice admin lista/visualiza Fundo/ConsultoriaFundo/Custodiante/Cedente cross-company em read-only. Mostra nome da empresa alongside fund data. Sem create/update/delete (FRO-04).
 
-### Phase 52: Integration Tests — v8.0 Fundos end-to-end
+### Phase 53: Integration Tests — v8.0 Fundos end-to-end
 - **Slug:** 52-integration-tests-fundos
 - **Status:** pending
 - **Goal:** Testcontainers PostgreSQL real cobrindo CRUD round-trip dos 5 entity types + 3 relationship types, isolamento multi-tenant, transicoes de state machine, REL-09, deteccao de duplicatas (409).
 
-### Phase 53: Migracao Vinxi -> Vinext (Cloudflare fork)
+### Phase 54: Migracao Vinxi -> Vinext (Cloudflare fork)
 - **Slug:** 53-vinxi-to-vinext-migration
 - **Status:** pending (decisao user em /jdi-bootstrap)
 - **Goal:** Migrar `frontend/client` e `frontend/backoffice` de Vinxi 0.5.11 para Vinext (https://github.com/cloudflare/vinext). Aproveita "Vinext migration debt" acumulada nos SUMMARY.md de phases 50/51 pra mapear changes. Validar build, dev server, Playwright e2e em ambos SPAs apos cutover. Sem regressoes funcionais nem perda de SSR/hydration.

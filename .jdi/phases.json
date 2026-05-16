@@ -12,14 +12,22 @@
     },
     {
       "position": 49,
-      "slug": "fundo-cedente-relationships",
-      "raw_slug": "49-fundo-cedente-relationships",
-      "folder": ".jdi/phases/49-fundo-cedente-relationships",
+      "slug": "auth-flow-fix",
+      "raw_slug": "auth-flow-fix",
+      "folder": ".jdi/phases/auth-flow-fix",
       "status": "ready",
-      "legacy": true
+      "legacy": false
     },
     {
       "position": 50,
+      "slug": "fundo-cedente-relationships",
+      "raw_slug": "49-fundo-cedente-relationships",
+      "folder": ".jdi/phases/49-fundo-cedente-relationships",
+      "status": "pending",
+      "legacy": true
+    },
+    {
+      "position": 51,
       "slug": "frontend-client-fundos",
       "raw_slug": "50-frontend-client-fundos",
       "folder": ".jdi/phases/50-frontend-client-fundos",
@@ -27,7 +35,7 @@
       "legacy": true
     },
     {
-      "position": 51,
+      "position": 52,
       "slug": "frontend-backoffice-fundos",
       "raw_slug": "51-frontend-backoffice-fundos",
       "folder": ".jdi/phases/51-frontend-backoffice-fundos",
@@ -35,7 +43,7 @@
       "legacy": true
     },
     {
-      "position": 52,
+      "position": 53,
       "slug": "integration-tests-fundos",
       "raw_slug": "52-integration-tests-fundos",
       "folder": ".jdi/phases/52-integration-tests-fundos",
@@ -43,7 +51,7 @@
       "legacy": true
     },
     {
-      "position": 53,
+      "position": 54,
       "slug": "vinxi-to-vinext-migration",
       "raw_slug": "53-vinxi-to-vinext-migration",
       "folder": ".jdi/phases/53-vinxi-to-vinext-migration",

@@ -1,3 +1,54 @@
+# Phase 49 — auth-flow-fix — REVIEW (iter 1)
+
+## Backend C# (iter 1)
+- Verdict: APPROVED_WITH_WARNINGS
+- Build: ok, 0 errors, 0 warnings
+- Tests:
+  - Onboarding.Domain.Tests: 378 passed / 0 failed / 0 skipped (261 ms)
+  - Onboarding.Application.Tests: 89 passed / 0 failed / 0 skipped (153 ms)
+  - Onboarding.API.Tests: 244 passed / 0 failed / 4 skipped (pre-existing: TracePropagationTests x2 + AdminCompanyDetailsTests x2) (2m 15s)
+  - Onboarding.Integration.Tests: 20 passed / 0 failed / 0 skipped (3m 11s)
+- Coverage: n/a — zero new .cs files added in phase 49 (confirmed: git diff --name-only --diff-filter=A b48189e..HEAD -- src/*.cs returns empty)
+- Lint: WARN — pre-existing whitespace drift in 5 test files (see Warnings); phase 49 introduced zero .cs changes so cannot have introduced new drift
+- DDD enforcement: pass — phase 49 added zero .cs files; Domain layer has no Infrastructure references; no public setters introduced; cross-aggregate references unchanged
+- Playwright regression: partially ran — compose stack running (api, keycloak, frontend-client, frontend-backoffice all healthy); 401/403 scenarios confirmed via curl against live API; full login E2E blocked by Keycloak environment state drift (see Findings detail); Integration.Tests (Testcontainers) served as backend regression substitute for auth/tenant scenarios
+
+### Blockers
+
+None.
+
+### Warnings
+
+- **W-BE-1** — dotnet format reports whitespace violations in 5 pre-existing test files: `tests/Onboarding.Domain.Tests/Application/Commands/CreateAdminCommandHandlerTests.cs:69`, `tests/Onboarding.Domain.Tests/Application/Commands/GetAuditLogQueryHandlerTests.cs:98`, `tests/Onboarding.Domain.Tests/Application/Commands/KeycloakUserServiceFirstLoginTests.cs` (lines 25, 27, 32, 50, 60, 77, 101, 121), `tests/Onboarding.Domain.Tests/Infrastructure/AuditServiceTests.cs` (lines 31-35, 51), `tests/Onboarding.Domain.Tests/Infrastructure/KeycloakUserServiceTests.cs` (lines 40, 41, 68, 78, 163). All from commit `8455567`, predating D-2 boundary. Phase 49 modified none of these files. Fix: run `dotnet format` on these 5 files in a dedicated cleanup commit.
+
+- **W-BE-2** — `src/Onboarding.API/appsettings.json:18` — `AdminClientSecret: "onboarding-api-admin-secret"` is a dev placeholder committed to source. Pre-existing since commit `a940fb7` (Phase 06), predates D-2 boundary. Actual secret is injected via compose env var `${KC_ADMIN_CLIENT_SECRET}` at runtime. Recommend replacing hardcoded placeholder with empty string or user-secrets pattern.
+
+- **W-BE-3** — G4 Telemetry pre-existing gaps in Program.cs: `TenantBaggageMiddleware` not wired, `TelemetryCommandHandlerDecorator` not registered, `PiiScrubber`/`PiiScrubbing` pattern absent. Note: `SensitiveDataDestructuringPolicy` is registered on both Serilog pipelines (lines 38, 52) providing PII masking at the Serilog layer. These gaps predate D-2 boundary and phase 49 did not touch Program.cs (phase 48 diff only added fund permission policies). Flagged for future resolution.
+
+- **W-BE-4** — G12 Playwright full E2E blocked by Keycloak environment state drift. Keycloak container was last started at 11:49 UTC-3 importing pre-T-1 realm state; T-1 updated realm JSONs at 14:12 without restarting Keycloak. Live Keycloak does not reflect T-1 changes. Keycloak logs confirm `CODE_TO_TOKEN_ERROR: invalid_client_credentials` for `onboarding-backoffice` starting at 17:33, before this reviewer session. PKCE S256 was confirmed at the authorize URL level via browser. Resolution: `docker compose down -v && docker compose up -d` per D-13.
+
+### Findings detail
+
+**G1 Multi-tenant isolation (IgnoreQueryFilters analysis):**
+`git diff 968eefb..HEAD -- src/**/*.cs` shows 14 occurrences of `IgnoreQueryFilters` in the diff. All are from phase 48 Fundos files. Each usage is compliant: (a) `AdminFundosController` / `ListAdmin*QueryHandler` — `Admin*`-prefixed handlers behind `CrossCompanyAccess` policy requiring `admin` realm role; (b) `FundosController` GetById methods — controller explicitly re-applies tenant check (`if (entity.ClienteId != _currentCompanyService.CompanyId) return NotFound()`) immediately after unfiltered fetch, with security comment. Both patterns comply with G1 rules. Phase 49 added zero EF configuration or aggregate changes.
+
+**G4 Telemetry pre-existing gaps:**
+`SensitiveDataDestructuringPolicy` in `src/Onboarding.API/Observability/` is registered on both Serilog pipelines, masking sensitive fields at the Serilog destructuring layer. This satisfies the PII scrubbing intent for log output. The OTel ActivityProcessor-based `PiiScrubber` pattern for W3C trace attributes is not present. `TenantBaggageMiddleware` and `TelemetryCommandHandlerDecorator` are also absent. All gaps predate D-2 boundary — Program.cs was last substantively modified before the boundary. Flagged as W-BE-3.
+
+**G12 Playwright regression — backend API scenarios executed:**
+The following scenarios were validated against the live API (port 8080):
+- 401 with no token: `GET /api/companies/me` — HTTP 401 (PASS)
+- 401 with malformed token (`Bearer eyJ.fake.token`) — HTTP 401 (PASS)
+- 403 service account lacking admin role: `GET /api/admin/companies` — HTTP 403 (PASS)
+- No-auth on admin route: `GET /api/admin/companies` — HTTP 401 (PASS)
+- PKCE S256 at authorize URL: backoffice Entrar click → URL contained `code_challenge_method=S256`, realm=`backoffice` (not `onboarding`) — PASS (Bug 1 fix confirmed at URL level)
+Integration.Tests (20/20 pass) covers tenant isolation, 403 on missing permission, 401 with no auth, cross-tenant 404 — all G12 backend scenarios.
+Screenshot: `.jdi/cache/phase-49-auth-error.png`
+
+---
+
+<!-- FRONTEND_SECTION_HERE -->
+
 ## Security (iter 1)
 - Verdict: APPROVED_WITH_WARNINGS
 

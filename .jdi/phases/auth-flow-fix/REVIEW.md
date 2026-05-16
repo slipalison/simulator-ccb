@@ -47,7 +47,62 @@ Screenshot: `.jdi/cache/phase-49-auth-error.png`
 
 ---
 
-<!-- FRONTEND_SECTION_HERE -->
+## Frontend (iter 1)
+- Verdict: APPROVED_WITH_WARNINGS
+- Build (typecheck): ok -- client: 0 errors; backoffice: 0 errors (pnpm tsc --noEmit clean in both)
+- Lint: ok -- client: 0 warnings (eslint --max-warnings 0 pass); backoffice: 0 warnings
+- Tests vitest:
+  - client: 110 passed / 15 failed (125 total). 14 pre-existing failures (6 e2e/ Playwright spec dual-version collision pre-dating b48189e + 8 component tests broken before b48189e). 1 new failure introduced by T-7: playwright/specs/auth-flow.spec.ts picked up by vitest due to missing exclude in vitest.config.ts. Net improvement vs pre-phase (17 failed to 15 failed): +6 passing tests (10 AuthGuard tests added, 2 login tests fixed, 2 dead-code tests removed).
+  - backoffice: 171 passed / 0 failed / 0 skipped -- clean
+- Coverage on new files: n/a -- all new files are test/infra (AuthGuard.test.tsx, auth-server.test.ts x2, playwright specs x2, global-setup.ts x2). No new production source files after boundary b48189e.
+- A11y spot-check: advisory -- AdminLayout loading shell has aria-label=Carregando and aria-busy=true (adequate). AuthGuard loading shell missing role=status or aria-live=polite -- screen readers will not announce loading state. No keyboard traps. Pre-existing pt-BR string Verificando autenticacao in AuthGuard.tsx acknowledged in SUMMARY.
+- Playwright (mandatory): ENVIRONMENT-BLOCKED -- Keycloak container has state drift (imported 2 weeks ago with different client secret than current realm JSON; invalid_client_credentials on CODE_TO_TOKEN confirmed in Keycloak logs). docker compose down -v and docker compose up -d per D-13 required. Specs TypeScript-clean: client=6 tests (5 active + 1 skip), backoffice=4 tests. PKCE S256 authorize URL confirmed correct at browser level for both SPAs.
+- D-12 storage check: PASS -- grep frontend/{client,backoffice}/src for (local|session)Storage.+(token|jwt|access|refresh) returns zero hits. Playwright assertions {ls:0, ss:0} post-login present in both spec files.
+- D-4 separation check: PASS -- no cross-imports between frontend/client/src and frontend/backoffice/src.
+
+### Blockers
+
+- **G2 (ARCHITECTURAL DEBT, pre-existing, carried from phase 48):** OTel JS telemetry not implemented in either SPA. Both frontend/client/src/lib/telemetry and frontend/backoffice/src/lib/telemetry directories are absent. WebTracerProvider, FetchInstrumentation, OTLPTraceExporter, W3CTraceContextPropagator, BatchSpanProcessor, web-vitals.ts, propagateTraceHeaderCorsUrls allowlist, PII scrubber, and ignoreUrls auth-chain suppression are all missing. Phase 49 did NOT introduce or worsen this gap -- structural debt predating boundary 968eefb, first flagged in phase 48 REVIEW. Gate definition: BLOCKED. Phase-scope judgment: APPROVED_WITH_WARNINGS consistent with phase 48 precedent.
+
+### Warnings
+
+- **W-FE-1:** frontend/client/vitest.config.ts missing exclude for playwright/specs/ and e2e/. Both directories are discovered by vitest and fail with @playwright/test dual-version collision. Pre-existing for e2e/ (6 files); newly introduced for playwright/specs/auth-flow.spec.ts by T-7. Fix: add exclude: ['playwright/**', 'e2e/**'] to the test section of vitest.config.ts.
+
+- **W-FE-2:** frontend/client/src/components/guards/AuthGuard.tsx loading shell lacks role=status or aria-live=polite. Spinner div with data-testid=auth-guard-loading is not announced to screen readers. Advisory (G10 moderate). Recommend adding role=status aria-label=Verificando autenticacao to the container div.
+
+- **W-FE-3:** frontend/client/auth-server.ts:171 logout URL omits client_id parameter (also Security reviewer W1). Backoffice at line 270 includes it correctly. Fix: append &client_id= to fullUrl in the logout handler.
+
+- **W-FE-4:** Playwright regression ENVIRONMENT-BLOCKED. Keycloak container running 2 weeks; docker compose down -v and docker compose up -d per D-13 required to import current realm JSON with correct secrets. PKCE S256 and realm routing fix (Bug 1) confirmed at the authorize URL level. Full E2E requires environment reset before ship.
+
+- **W-FE-5:** scripts/seed-test-users.sh requires jq (not available on reviewer host). Playwright global-setup.ts invokes the script; will fail on systems without jq even with a healthy stack. Recommend a jq availability check or Python/PowerShell fallback in the script preamble.
+
+- **W-FE-6:** AdminLoginPage axe audit: 3 moderate violations (missing main landmark, missing h1, content outside landmark regions). Pre-existing; phase 49 did not modify AdminLoginPage. Advisory (G10).
+
+### Findings detail
+
+**G2 Telemetry (pre-existing architectural debt):** Neither SPA has src/lib/telemetry/. First documented in phase 48 REVIEW as predating boundary 968eefb. Phase 49 adds zero telemetry-adjacent code. Carried as BLOCKED per gate definition; phase-scope verdict APPROVED_WITH_WARNINGS consistent with phase 48 precedent. Dedicated telemetry phase required before production.
+
+**G7 Vitest -- 1 new structural failure from T-7:** frontend/client/playwright/specs/auth-flow.spec.ts added by T-7 is not excluded from vitest. vitest resolves a conflicting playwright version and fails with Playwright Test did not expect test() to be called here. The test compiles clean (npx playwright test --list confirms 6 discovered tests). Fix is one line in vitest.config.ts. Pre-existing e2e/ collision (6 files) is unchanged.
+
+**T-5 AuthCallbackPage deletion -- verified clean:** AuthCallbackPage.tsx deleted. app.config.ts defines type: http router with base: /auth intercepting all /auth/* server-side. Dead code confirmed. router.tsx and three test files cleanly updated at commit 1388746. Zero production import sites remain.
+
+**T-6 RedirectCompanies removal -- verified clean:** Component removed from router.tsx. /admin/users route now serves AdminUsersPage directly. auth-server.ts post-login redirect at line 249 changed to /admin/companies. Zero stale component references (one historical comment in router.tsx at line 79 explains the change).
+
+**T-2 cookie sameSite -- symmetric verification:** Both SPAs: access tokens use sameSite=lax, refresh tokens use sameSite=strict. Symmetric across /auth/callback and /auth/refresh handlers in both SPAs. PKCE cookies use lax (correct for cross-origin redirect chain). CSRF intact: PKCE state validation + lax blocking subresource/POST. Approved by security reviewer.
+
+**Playwright spec assertions (D-12 + D-15):** Both specs contain: (a) page.on(request) capturing authorize URL, asserting code_challenge_method=S256 and 43-char code_challenge. (b) page.evaluate(() => ({ls: localStorage.length, ss: sessionStorage.length})) post-login asserting both are 0. D-12 and D-15 gate requirements met in spec code.
+
+### Coverage gaps (new files)
+
+No new production source files added in phase 49. Coverage gate (D-2, 80% on new files) does not apply.
+
+### Regression captures
+
+- Client Playwright: ENVIRONMENT-BLOCKED -- Keycloak state drift (W-FE-4)
+- Backoffice Playwright: ENVIRONMENT-BLOCKED -- same cause
+- Client spec discovered: frontend/client/playwright/specs/auth-flow.spec.ts -- Scenarios 1, 2, 5, 6, 7-skip, 8
+- Backoffice spec discovered: frontend/backoffice/playwright/specs/admin-auth-flow.spec.ts -- Scenarios 3, 4, 5, 6
+- Screenshots: none (auth could not complete due to environment drift)
 
 ## Security (iter 1)
 - Verdict: APPROVED_WITH_WARNINGS

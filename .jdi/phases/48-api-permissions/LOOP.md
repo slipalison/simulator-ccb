@@ -1,8 +1,8 @@
 ---
 phase: 48
-iter: 3
+iter: 4
 total_resets: 0
-status: converged
+status: running
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-12T00:00:00Z
@@ -72,4 +72,30 @@ created_at: 2026-05-12T00:00:00Z
 - Aggregate verdict: APPROVED_WITH_WARNINGS
 - Loop converged at iter 3 (0 resets). Total iter: 3.
 - Next: /jdi-ship 48-api-permissions
+
+--- RESUMED from converged at 2026-05-16 — user refused ship, wants warnings addressed ---
+
+### iter=4 — scope (2026-05-16)
+- W1 backend: Program.cs:212-219 fund policies switch string literals -> PermissionPolicies.FundX constants
+- W3 frontend: frontend/client/src/lib/api.ts:505-521 add funds:read|write|delete|manage to PERMISSION_LABELS + PERMISSION_OPTIONS
+- W5 backend/security: Update{Consultoria,Custodiante,Fundo,Cedente}CommandHandler cross-tenant write gap — add ClienteId ownership check post-fetch (return KeyNotFoundException or similar to surface as 404)
+- DEFERRED: W2 (FundosController god class refactor — large, future phase), W4 (OTel JS telemetry — dedicated phase)
+
+### iter=4 — W1+W5 backend (2026-05-16)
+- Status: completed
+- Commits:
+  - c77e9eb refactor(48-api-permissions): use PermissionPolicies constants for fund policies (W1)
+  - 359c9f3 fix(48-api-permissions): cross-tenant write gap on Fundos Update handlers (W5)
+- Tests:
+  - dotnet build src/Onboarding.API: 0 errors, 0 warnings
+  - dotnet test Onboarding.Application.Tests: 89 passed (was 85; +4 HandleAsync_WhenClienteIdMismatch tests)
+  - dotnet test Onboarding.API.Tests: 244 passed, 4 skipped (unchanged)
+  - dotnet test Onboarding.Integration.Tests: 20 passed (was 16; +4 cross-tenant PUT scenarios)
+  - dotnet format: no new violations introduced; pre-existing violations in Onboarding.Domain.Tests + Program.cs:254 pre-date boundary 968eefb (confirmed via git stash)
+- Notes:
+  - W1: replaced 4 string literals with PermissionPolicies.FundX constants in Program.cs; no runtime behaviour change (constant values == previous literals).
+  - W5: inject ICurrentCompanyService into UpdateCustodianteCommandHandler, UpdateFundoCommandHandler, UpdateCedenteCommandHandler (already present in UpdateConsultoriaFundoCommandHandler). Post-fetch guard: entity is null || entity.ClienteId != companyId → KeyNotFoundException → GlobalExceptionHandler → 404. Consistent with GET-by-id tenant guard pattern from iter 2. Returns 404 not 403 to avoid leaking entity existence across tenant boundaries.
+  - Unit test fix: existing happy-path tests in all four handler test classes updated to create entities with _companyId so CompanyId stub matches; avoids false-positive KeyNotFoundException from new ownership check.
+  - W3 frontend: handled by separate doer (jdi-doer-onboarding-keycloak-frontend-vinext).
+
 

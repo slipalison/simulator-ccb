@@ -252,7 +252,9 @@ public sealed class FundosController : ControllerBase
     public async Task<IActionResult> GetConsultoriaById(Guid id, CancellationToken ct)
     {
         var consultoria = await _consultoriaRepository.GetByIdAsync(id, ct);
-        if (consultoria is null)
+        // Security: IgnoreQueryFilters in repo returns cross-tenant rows; enforce tenant boundary
+        // here. Return NotFound (not Forbid) — do not leak entity existence to other tenants.
+        if (consultoria is null || consultoria.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
         return Ok(new ConsultoriaFundoDto(
@@ -391,7 +393,9 @@ public sealed class FundosController : ControllerBase
     public async Task<IActionResult> GetCustodianteById(Guid id, CancellationToken ct)
     {
         var custodiante = await _custodianteRepository.GetByIdAsync(id, ct);
-        if (custodiante is null)
+        // Security: IgnoreQueryFilters in repo returns cross-tenant rows; enforce tenant boundary
+        // here. Return NotFound (not Forbid) — do not leak entity existence to other tenants.
+        if (custodiante is null || custodiante.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
         return Ok(new CustodianteDto(
@@ -666,7 +670,9 @@ public sealed class FundosController : ControllerBase
     public async Task<IActionResult> GetFundoById(Guid id, CancellationToken ct)
     {
         var fundo = await _fundoRepository.GetByIdAsync(id, ct);
-        if (fundo is null)
+        // Security: IgnoreQueryFilters in repo returns cross-tenant rows; enforce tenant boundary
+        // here. Return NotFound (not Forbid) — do not leak entity existence to other tenants.
+        if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
         return Ok(new FundoDto(
@@ -891,7 +897,9 @@ public sealed class FundosController : ControllerBase
     public async Task<IActionResult> GetCedenteById(Guid id, CancellationToken ct)
     {
         var cedente = await _cedenteRepository.GetByIdAsync(id, ct);
-        if (cedente is null)
+        // Security: IgnoreQueryFilters in repo returns cross-tenant rows; enforce tenant boundary
+        // here. Return NotFound (not Forbid) — do not leak entity existence to other tenants.
+        if (cedente is null || cedente.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
         return Ok(new CedenteDto(

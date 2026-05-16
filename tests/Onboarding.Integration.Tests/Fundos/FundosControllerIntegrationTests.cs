@@ -426,6 +426,107 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
     }
 
     // =========================================================================
+    // SCENARIO 9–12: Cross-tenant GET-by-id returns 404 (not 403) — security blocker fix
+    //
+    // Root cause: GetByIdAsync uses IgnoreQueryFilters(); company-A entity was readable
+    // by company-B user. Fix: controller-side tenant check after fetch.
+    // =========================================================================
+
+    [Fact]
+    public async Task GetConsultoriaById_CrossTenant_Returns404()
+    {
+        // Arrange — PJ-A creates a consultoria
+        using var clientA = ClientPjA();
+        var payload = new { razaoSocial = "Consultoria Cross Tenant A", cnpj = ValidCnpj };
+        var createResp = await clientA.PostAsJsonAsync("/api/fundos/consultorias", payload);
+        createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var consultoriaId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+
+        // Act — PJ-B attempts GET /api/fundos/consultorias/{companyA-entity-id}
+        using var clientB = ClientPjB();
+        var response = await clientB.GetAsync($"/api/fundos/consultorias/{consultoriaId}");
+
+        // Assert — must be 404; entity existence must not be revealed across tenants
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound,
+            "Cross-tenant GET-by-id must return 404, not 200 or 403, to avoid leaking entity existence.");
+    }
+
+    [Fact]
+    public async Task GetCustodianteById_CrossTenant_Returns404()
+    {
+        // Arrange — PJ-A creates a custodiante
+        using var clientA = ClientPjA();
+        var payload = new { razaoSocial = "Custodiante Cross Tenant A", cnpj = ValidCnpj };
+        var createResp = await clientA.PostAsJsonAsync("/api/fundos/custodiantes", payload);
+        createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var custodianteId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+
+        // Act — PJ-B attempts GET /api/fundos/custodiantes/{companyA-entity-id}
+        using var clientB = ClientPjB();
+        var response = await clientB.GetAsync($"/api/fundos/custodiantes/{custodianteId}");
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound,
+            "Cross-tenant GET-by-id must return 404, not 200 or 403, to avoid leaking entity existence.");
+    }
+
+    [Fact]
+    public async Task GetFundoById_CrossTenant_Returns404()
+    {
+        // Arrange — PJ-A creates a full Fundo (requires consultoria + custodiante as FK)
+        using var clientA = ClientPjA();
+
+        var consultoriaResp = await clientA.PostAsJsonAsync("/api/fundos/consultorias",
+            new { razaoSocial = "Consultoria FK For Fundo CrossTenant", cnpj = ValidCnpj });
+        consultoriaResp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var consultoriaId = (await consultoriaResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+
+        var custodianteResp = await clientA.PostAsJsonAsync("/api/fundos/custodiantes",
+            new { razaoSocial = "Custodiante FK For Fundo CrossTenant", cnpj = ValidCnpj });
+        custodianteResp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var custodianteId = (await custodianteResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+
+        var fundoResp = await clientA.PostAsJsonAsync("/api/fundos",
+            new { nome = "Fundo Cross Tenant A", cnpj = ValidCnpj, consultoriaFundoId = consultoriaId,
+                  custodianteId, tipoFundo = 1 });
+        fundoResp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var fundoId = (await fundoResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+
+        // Act — PJ-B attempts GET /api/fundos/{companyA-fundo-id}
+        using var clientB = ClientPjB();
+        var response = await clientB.GetAsync($"/api/fundos/{fundoId}");
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound,
+            "Cross-tenant GET-by-id must return 404, not 200 or 403, to avoid leaking entity existence.");
+    }
+
+    [Fact]
+    public async Task GetCedenteById_CrossTenant_Returns404()
+    {
+        // Arrange — PJ-A creates a cedente PF
+        using var clientA = ClientPjA();
+        var payload = new { cpf = "52998224725", nome = "Cedente Cross Tenant A" };
+        var createResp = await clientA.PostAsJsonAsync("/api/fundos/cedentes/pf", payload);
+        createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var cedenteId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+
+        // Act — PJ-B attempts GET /api/fundos/cedentes/{companyA-entity-id}
+        using var clientB = ClientPjB();
+        var response = await clientB.GetAsync($"/api/fundos/cedentes/{cedenteId}");
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound,
+            "Cross-tenant GET-by-id must return 404, not 200 or 403, to avoid leaking entity existence.");
+    }
+
+    // =========================================================================
     // SCENARIO 7: Fundo state machine — RASCUNHO → ATIVO = 200
     // =========================================================================
 

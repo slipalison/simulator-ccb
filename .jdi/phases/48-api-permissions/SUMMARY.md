@@ -46,5 +46,17 @@ Executed via /jdi-loop iter 1 — all 7 tasks completed.
 - D-10: Cedente uniqueness already at infrastructure level — no DB work
 - DDD fix discovered in T-48.7: admin handler registrations belong in Infrastructure.DependencyInjection (Application must not reference Infrastructure types)
 
+## iter=2 — Security fix: cross-tenant leak on GET-by-id endpoints (2026-05-16)
+
+Security review iter 1 identified a BLOCKER: all 4 GET-by-id controller actions in `FundosController` called repository methods using `IgnoreQueryFilters()`, which bypassed EF Core's HasQueryFilter tenant isolation. A company-B user could supply a company-A entity GUID and receive a 200 response with the entity's data.
+
+Fix strategy: controller-side tenant check after fetch, chosen because admin paths do not share these repository methods (verified by grep — `FundosAdminQueryHandlers` uses its own paginated cross-company queries). Adding `if (entity is null || entity.ClienteId != _currentCompanyService.CompanyId) return NotFound()` to the 4 public GET-by-id actions restores isolation without altering the repository contract or breaking admin paths. `NotFound` is returned rather than `Forbid` to avoid leaking entity existence across tenant boundaries.
+
+Four new integration test scenarios (9–12) were added to `FundosControllerIntegrationTests.cs` to assert each endpoint returns 404 when company-B authenticates and requests a company-A entity GUID. All 16 integration tests pass (12 existing + 4 new). All 244 API unit tests remain green.
+
+Files changed:
+- `src/Onboarding.API/Controllers/FundosController.cs` — tenant check on GetConsultoriaById, GetCustodianteById, GetFundoById, GetCedenteById
+- `tests/Onboarding.Integration.Tests/Fundos/FundosControllerIntegrationTests.cs` — 4 new cross-tenant GET-by-id scenarios
+
 ## Next
 /jdi-verify 48 (ralph loop step B — reviewer dispatch)

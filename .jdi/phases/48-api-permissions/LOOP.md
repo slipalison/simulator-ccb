@@ -1,6 +1,6 @@
 ---
 phase: 48
-iter: 1
+iter: 2
 total_resets: 0
 status: running
 max_iter_per_round: 5
@@ -44,4 +44,10 @@ created_at: 2026-05-12T00:00:00Z
 - Commit: 6b37fa9
 - Tests: 12 passed, 0 failed (Onboarding.Integration.Tests full suite: 10 new Fundos + 2 existing Registration)
 - Notes: Created FundosControllerIntegrationTests.cs with Testcontainers PostgreSQL + fake HMAC JWT (no Keycloak container). 10 scenarios: POST 201, GET own row, multi-tenant isolation PJ-B≠PJ-A, 403 no-perm, 401 no-auth, admin cross-company BearerBackoffice sees both companies, RASCUNHO→ATIVO 200, ENCERRADO→ATIVO 400. Also fixed DDD layering bug from T-48.6: moved 4 admin query handler DI registrations from Application to Infrastructure (Application must not reference Infrastructure types).
+
+### iter=2 — fix cross-tenant blockers (2026-05-16)
+- Status: completed
+- Commit: (pending)
+- Tests: API.Tests 244 passed, 0 failed; Integration.Tests 16 passed, 0 failed (+4 new cross-tenant GET-by-id scenarios)
+- Notes: Fixed 5 BLOCKER security findings from reviewer iter 1. Root cause: GetByIdAsync uses IgnoreQueryFilters() in all 4 Fundos repositories; company-A entities were readable by company-B users via the 4 GET-by-id controller actions. Strategy chosen: controller-side tenant check (lowest blast radius — admin paths do not call these repository methods). Added `if (entity is null || entity.ClienteId != _currentCompanyService.CompanyId) return NotFound()` to GetConsultoriaById, GetCustodianteById, GetFundoById, GetCedenteById. Return NotFound (not Forbid) to not leak entity existence across tenants. Added 4 integration test scenarios (scenarios 9–12) confirming cross-tenant GET-by-id returns 404 for ConsultoriaFundo, Custodiante, Fundo, and Cedente.
 

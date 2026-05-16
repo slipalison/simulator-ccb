@@ -491,8 +491,14 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
             .GetProperty("id").GetGuid();
 
         var fundoResp = await clientA.PostAsJsonAsync("/api/fundos",
-            new { nome = "Fundo Cross Tenant A", cnpj = ValidCnpj, consultoriaFundoId = consultoriaId,
-                  custodianteId, tipoFundo = 1 });
+            new
+            {
+                nome = "Fundo Cross Tenant A",
+                cnpj = ValidCnpj,
+                consultoriaFundoId = consultoriaId,
+                custodianteId,
+                tipoFundo = 1
+            });
         fundoResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var fundoId = (await fundoResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();

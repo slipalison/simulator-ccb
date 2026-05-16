@@ -168,7 +168,12 @@ router.get(
 
     const logoutUrl = `${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/logout`;
     const postLogoutRedirectUri = `${FRONTEND_URL}/auth/login`;
-    const fullUrl = `${logoutUrl}?post_logout_redirect_uri=${encodeURIComponent(postLogoutRedirectUri)}`;
+    // W-FE-3 / W1 fix (iter 3): include client_id so Keycloak validates
+    // post_logout_redirect_uri against this client's specific validPostLogoutRedirectUris
+    // list (set in T-1 client-realm.json). Without client_id Keycloak falls back to a
+    // global check and the SSO session is NOT terminated on KC 26 when id_token_hint is
+    // absent. Backoffice (auth-server.ts:270) already includes client_id correctly.
+    const fullUrl = `${logoutUrl}?post_logout_redirect_uri=${encodeURIComponent(postLogoutRedirectUri)}&client_id=${encodeURIComponent(CLIENT_ID)}`;
 
     return sendRedirect(event, fullUrl, 302);
   })

@@ -191,3 +191,42 @@ describe("auth-server/client — cookie sameSite attributes (T-2b)", () => {
     expect(src).not.toMatch(/KEYCLOAK_REALM\s*=\s*["'`]onboarding["'`]/);
   });
 });
+
+// ── T-12: logout URL includes client_id ──────────────────────────────────────
+//
+// W-FE-3 / W1 fix: the client SPA logout URL must include client_id so Keycloak
+// validates post_logout_redirect_uri against this client's specific allow-list.
+// Without it, Keycloak falls back to global validation and does NOT terminate the
+// SSO session on KC 26 when id_token_hint is absent.
+//
+// Strategy: read the source file and assert the logout URL template contains
+// client_id= adjacent to the CLIENT_ID variable. This is a static source
+// assertion — it catches regressions if client_id is accidentally removed.
+
+describe("auth-server/client — logout URL client_id (T-12)", () => {
+  const src = (() => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs") as typeof import("fs");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("path") as typeof import("path");
+    return fs.readFileSync(path.resolve(__dirname, "./auth-server.ts"), "utf8");
+  })();
+
+  it("logout URL template contains client_id= parameter", () => {
+    // The logout URL must include &client_id= so Keycloak scopes post_logout_redirect_uri
+    // validation to this client's allow-list. Matches the backoffice pattern (line 270).
+    expect(src).toMatch(/client_id=.*CLIENT_ID|CLIENT_ID.*client_id=/s);
+  });
+
+  it("logout URL client_id uses encodeURIComponent", () => {
+    // client_id value must be URI-encoded to handle special characters safely.
+    expect(src).toMatch(/encodeURIComponent\(CLIENT_ID\)/);
+  });
+
+  it("logout URL contains both post_logout_redirect_uri and client_id", () => {
+    // Both params must be present in the same fullUrl template.
+    const logoutBlock = src.match(/const fullUrl\s*=[\s\S]*?return sendRedirect/)?.[0] ?? '';
+    expect(logoutBlock).toContain('post_logout_redirect_uri');
+    expect(logoutBlock).toContain('client_id');
+  });
+});

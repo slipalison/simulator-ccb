@@ -2,7 +2,7 @@
 phase: 48
 iter: 4
 total_resets: 0
-status: running
+status: converged
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-12T00:00:00Z
@@ -98,4 +98,28 @@ created_at: 2026-05-12T00:00:00Z
   - Unit test fix: existing happy-path tests in all four handler test classes updated to create entities with _companyId so CompanyId stub matches; avoids false-positive KeyNotFoundException from new ownership check.
   - W3 frontend: handled by separate doer (jdi-doer-onboarding-keycloak-frontend-vinext).
 
+### iter=4 — W3 frontend (2026-05-16)
+- Status: completed
+- Commit: 90f038d
+- Tests:
+  - pnpm typecheck: exit 0
+  - pnpm lint: exit 0
+  - pnpm build: exit 0 (chunk size warning pre-existing, not introduced by this change)
+  - pnpm test: pre-existing failures in profile-page-redesign, registration-form, registration-form-redesign, and e2e playwright specs unrelated to this change (confirmed single changed file: frontend/client/src/lib/api.ts only)
+  - No new test file created — 4 string literals do not warrant a dedicated suite per task instructions; no existing api.ts permission test file found to extend
+- Notes:
+  - Added funds:read ("Ver fundos"), funds:write ("Criar/editar fundos"), funds:delete ("Excluir fundos"), funds:manage ("Gestão total de fundos") to both PERMISSION_LABELS and PERMISSION_OPTIONS in frontend/client/src/lib/api.ts (lines 505-531).
+  - Label tone matches existing entries ("Ver" for read, "Criar/editar" for write, "Excluir" for delete, "Gestão total de" for manage).
+  - AccessGroupsPage.tsx requires no changes — PERMISSION_LABELS[perm] ?? perm fallback lookup (line 179) and PERMISSION_OPTIONS.map() (line 223) already cover the new keys dynamically.
+  - Playwright regression on /admin/access-groups skipped — route requires auth; no live Keycloak available in CI. DOM rendering correctness confirmed via static code analysis: badge renders PERMISSION_LABELS[perm] which now resolves to Portuguese labels for all funds:* keys.
+  - D-4 respected: backoffice untouched.
+  - W4 (OTel telemetry) remains deferred per iter=4 scope decision.
 
+
+### iter=4 — review aggregate (2026-05-16) — CONVERGED
+- backend-csharp: APPROVED (W1+W5 RESOLVED; clean, no warnings introduced)
+- frontend-vinext: APPROVED_WITH_WARNINGS (W3 RESOLVED; carried OTel pre-boundary debt, bundle size advisory, pt-BR hardcoded strings — all pre-existing)
+- security: APPROVED_WITH_WARNINGS (W1+W5 RESOLVED; carried Keycloak ROPC, passwordPolicy length(8), AdminClientSecret dev placeholder, Trivy not installed — all pre-existing/external scope)
+- Aggregate verdict: APPROVED_WITH_WARNINGS
+- Loop converged at iter 4 (0 resets). Total iter: 4. Deferred: W2 god-class refactor, W4 OTel JS phase.
+- Next: /jdi-ship 48-api-permissions

@@ -1,4 +1,4 @@
--NoNewline
+﻿-NoNewline
 
 ## Reviewer: jdi-reviewer-onboarding-keycloak-security (iter 2)
 
@@ -463,3 +463,611 @@ Carried from iter 2 (no new warnings introduced by iter 3):
 - Trivy FS: .jdi/cache/phase-48-security-iter3-trivy-fs.json (advisory -- not installed)
 - Semgrep: .jdi/cache/phase-48-security-iter3-semgrep.json (0 findings, exit 0)
 - Gitleaks: .jdi/cache/phase-48-security-iter3-gitleaks.json (manual scan -- not installed)
+
+---
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-backend-csharp (iter 4)
+
+Run: 2026-05-16
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Iter 4 commits: c77e9eb (W1 -- PermissionPolicies constants), 359c9f3 (W5 -- cross-tenant write guard)
+Changed files (iter 4):
+- src/Onboarding.API/Program.cs:210-219 (4 string literals -> PermissionPolicies.FundX constants)
+- src/Onboarding.Application/Fundos/Commands/UpdateConsultoriaFundoCommandHandler.cs (ICurrentCompanyService + ownership guard)
+- src/Onboarding.Application/Fundos/Commands/UpdateCustodianteCommandHandler.cs (ICurrentCompanyService + ownership guard)
+- src/Onboarding.Application/Fundos/Commands/UpdateFundoCommandHandler.cs (ICurrentCompanyService + ownership guard)
+- src/Onboarding.Application/Fundos/Commands/UpdateCedenteCommandHandler.cs (ICurrentCompanyService + ownership guard)
+- tests/Onboarding.Application.Tests/Fundos/Commands/Update{Consultoria,Custodiante,Fundo,Cedente}CommandHandlerTests.cs (4 ClienteIdMismatch tests each)
+- tests/Onboarding.Integration.Tests/Fundos/FundosControllerIntegrationTests.cs (4 cross-tenant PUT scenarios)
+
+**Verdict:** APPROVED
+
+---
+
+### Gates
+
+- [G1 Multi-tenant isolation] PASS
+
+  W5 fix verified in all 4 handlers. After GetByIdAsync (IgnoreQueryFilters), each handler applies:
+  entity is null || entity.ClienteId != _currentCompanyService.CompanyId -- throw KeyNotFoundException.
+  GlobalExceptionHandler maps this to HTTP 404. Does not reveal entity existence via 403.
+
+  Null-safety: null check left-hand side, ClienteId access right-hand side. No NullReferenceException.
+  Pattern identical to controller-layer guards from iter 1/2 (B1-B5), now at application layer.
+
+  HasQueryFilter: unchanged on all 5 company-scoped aggregate configs (ConsultoriaFundo:83,
+  Custodiante:83, Fundo:104, Cedente:100, AccessGroup:55, Employee:90). No new IgnoreQueryFilters.
+  Pre-existing IgnoreQueryFilters usages remain scoped to Admin handlers or FundosController guards.
+
+  ICurrentCompanyService DI wiring: AddScoped registered in Infrastructure.DependencyInjection.cs:39.
+  All 4 handlers inject via constructor -- confirmed resolvable. No missing registration.
+
+- [G2 Endpoint AuthZ + audit] PASS
+
+  No new HTTP action methods in iter 4. All 4 Update handlers retain ActorSub + ActorEmail:
+  UpdateConsultoriaFundoCommandHandler:50-51, UpdateCustodianteCommandHandler:50-51,
+  UpdateFundoCommandHandler:50-51, UpdateCedenteCommandHandler:51-52.
+
+  W1 fix: Program.cs lines 211-218 use PermissionPolicies.FundRead/Write/Delete/Manage constants
+  from PermissionPolicyConstants.cs:22-25. String values equal prior literals -- behavior unchanged.
+  FundosController already used these constants. Consistency restored.
+
+- [G3 Secret + raw SQL hygiene] PASS
+
+  Iter 4 diff: no appsettings changes, no Keycloak exports, no FromSqlRaw, no interpolated SQL.
+  Handler changes introduce constructor injection, ownership guard, audit calls -- zero secret surface.
+
+- [G4 Telemetry (OTel+Serilog+W3C)] PASS (unchanged from iter 3)
+
+  G4.1 -- No Console.Write in iter 4 files (grep on Fundos/Commands/: 0 hits).
+  G4.2 -- No interpolated logger messages. All use structured LogInformation with typed arguments.
+  G4.3/G4.4 -- No new ActivitySource/Meter outside central Telemetry class.
+  G4.5 -- No propagator override.
+  G4.6 -- Program.cs: AddOpenTelemetry (67), UseSerilog (47), AddAspNetCoreInstrumentation (73),
+          AddHttpClientInstrumentation (78), AddEntityFrameworkCoreInstrumentation (79), AddOtlpExporter (80).
+  G4.7 -- SetDbStatementForText = true: absent. No PII leak via span attributes.
+  G4.8 -- PII scrubber: SensitiveDataDestructuringPolicy at Program.cs:52.
+          Tenant middleware: UseClientClaims() at Program.cs:293.
+          Pre-existing advisory (project-internal names differ from gate pattern strings).
+  G4.9/G4.10 -- No inline StartActivity in iter 4 handlers.
+
+- [G5 Performance hygiene] PASS (unchanged from iter 3)
+
+  No new list endpoints without pagination. All 4 modified handlers are single-entity UPDATE operations.
+  AsNoTracking not applicable to write operations (tracking required for EF SaveAsync).
+
+- [G6 Index coverage on tenant tables] PASS (no new migrations in iter 4)
+
+  git diff 968eefb..HEAD -- Migrations/: empty. Gate does not apply.
+
+- [G7 Build] PASS
+
+  dotnet build Onboarding.slnx: Build succeeded, 0 Error(s), 0 Warning(s). All 7 projects compiled.
+
+- [G8 Lint/format] PASS (iter 4 changed files)
+
+  dotnet format --verify-no-changes returns violations only in pre-existing files not touched by iter 4:
+  - src/Onboarding.API/Program.cs:254 -- CORS origins missing space between string literals.
+    Pre-dates boundary; line number shifted by iter 1 Fund policy insertion (lines 210-219). Not authored by iter 4.
+  - src/Onboarding.Application/Admin/Commands/CreateAdminCommand.cs, ResetAdministratorPasswordCommand.cs
+    -- pre-existing, not in git diff since boundary (confirmed via git diff --diff-filter=AM).
+  - tests/Onboarding.Domain.Tests (KeycloakUserServiceFirstLoginTests.cs, AuditServiceTests.cs,
+    KeycloakUserServiceTests.cs) -- pre-existing, not in git diff since boundary.
+  The 4 iter 4 handler files pass format. Pre-existing lint debt carried as warning.
+
+- [G9 DDD/Design] PASS
+
+  Ownership guard at application layer is the correct DDD placement. Aggregates do not carry
+  cross-tenant validation; application services do. No public setters added. No cross-aggregate
+  entity references added. No Infrastructure namespace imported into Domain. No MediatR/FluentAssertions.
+  ICurrentCompanyService is an application-layer interface (Onboarding.Application.Common).
+
+- [G10 Tests] PASS
+
+  Application.Tests: 89/89 passed (+4 from iter 3 -- 4 ClienteIdMismatch unit tests).
+  API.Tests: 244/244 passed (4 skipped -- Testcontainers-dependent, pre-existing).
+  Integration.Tests: 20/20 passed (+4 from iter 3 -- 4 cross-tenant PUT scenarios).
+
+  Unit test correctness: all 4 ClienteIdMismatch tests create entity with differentCompanyId;
+  _currentCompanyService.CompanyId configured as _companyId (different value, set in ctor);
+  handler invoked; Should.ThrowAsync<KeyNotFoundException> asserts. CORRECT.
+
+  Integration test correctness: Scenarios 13-16 -- PJ-A creates entity, PJ-B PUTs captured GUID
+  with funds:write claim -> HttpStatusCode.NotFound. Testcontainers + WebApplicationFactory. CORRECT.
+
+- [G11 Coverage on new files] PASS (unchanged from iter 3)
+
+  G11 scope: diff-filter=A only. The 4 Update handlers are MODIFIED (diff-filter=M) -- outside scope.
+  New-file list unchanged from iter 3 (11 files). Positional-record coverage artifacts carry forward.
+
+- [G12 Playwright regression] PASS
+
+  Frontend regression via Playwright MCP (ports 5173/5174 confirmed running):
+  - Client SPA: / and /register load. /auth/login triggers ACF+PKCE redirect to Keycloak 8180
+    with code_challenge_method=S256, client_id=onboarding-client-acf. PKCE chain intact.
+  - Backoffice SPA: / redirects to /admin/login. Entrar button triggers ACF+PKCE redirect
+    with client_id=onboarding-backoffice, code_challenge_method=S256. PKCE chain intact.
+  - Console: only expected 401 on /auth/me and /auth/refresh. No application errors.
+  - Network: no 5xx, no CORS errors.
+
+  API regression via Integration.Tests (20/20 Testcontainers):
+  - API requires DB connection string; regression covered by 20 Testcontainers tests using
+    real WebApplicationFactory (full middleware: AuthZ, HasQueryFilter, ClientClaimsMiddleware,
+    GlobalExceptionHandler).
+  - Verified: multi-tenant GET isolation (scenarios 9-12, 404), cross-tenant PUT rejection
+    (scenarios 13-16, 404), permission enforcement (scenario 4, 403), 401 no-token (scenario 5),
+    admin cross-company read (scenarios 17-20, 200).
+  - No regressions from iter 4 changes.
+
+- [G13 Static scans] ADVISORY (unchanged from iter 3)
+
+  Semgrep: 0 findings, 5 rules, 534 targets, exit 0.
+  Artifact: .jdi/cache/phase-48-backend-iter4-semgrep.json
+  Trivy: not installed. No new NuGet packages in iter 4.
+  Gitleaks: not installed. Manual scan of iter 4 diff: 0 credential patterns.
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+1. src/Onboarding.API/Program.cs:254 (pre-existing) -- CORS origins missing space between string literals.
+   Format violation pre-dates boundary; not introduced or worsened by iter 4.
+   Recommend dotnet format cleanup in a future phase.
+
+2. AdminFundoDto.cs, AdminCedenteDto.cs, AdminConsultoriaFundoDto.cs, AdminCustodianteDto.cs,
+   ListAdminCedenteQuery.cs, ListAdminCustodianteQuery.cs (carried from iter 3) -- Coverlet
+   line-rate 29-60% on positional record compiler-generated members. No authored logic uncovered.
+   Recommend [ExcludeFromCodeCoverage] in a future cleanup phase.
+
+3. keycloak/client-realm.json (pre-existing) -- directAccessGrantsEnabled=true (ROPC). Legacy removal candidate.
+
+4. keycloak/*.json (pre-existing) -- passwordPolicy length(8). G6 threshold length(12). Not modified in Phase 48.
+
+5. G5/G13 -- Trivy not installed. No automated CVE scan on NuGet packages or container image.
+
+---
+
+### W1 fix validation summary
+
+Program.cs lines 211-218 use PermissionPolicies.FundRead/Write/Delete/Manage constants from
+PermissionPolicyConstants.cs:22-25. String values equal prior literals -- behavior unchanged.
+FundosController already used these constants on all HTTP action attributes. Consistency restored.
+
+### W5 fix validation summary
+
+Guard: entity is null || entity.ClienteId != _currentCompanyService.CompanyId -> KeyNotFoundException
+-> HTTP 404 (GlobalExceptionHandler). Null-safe. Does not leak entity existence. ICurrentCompanyService
+injected via constructor, registered at Infrastructure.DependencyInjection.cs:39.
+4 unit tests + 4 integration tests cover the cross-tenant rejection branch.
+All 20 integration tests pass (was 16 in iter 3, +4 cross-tenant PUT scenarios).
+
+---
+
+### Coverage gaps (new files -- G11 scope: diff-filter=A only)
+
+| File | Coverage | Required | Delta |
+|---|---|---|---|
+| AdminFundoDto.cs | 29% | 80% | -51% (Coverlet positional-record artifact) |
+| AdminCedenteDto.cs | 42% | 80% | -38% (Coverlet positional-record artifact) |
+| AdminConsultoriaFundoDto.cs | 36% | 80% | -44% (Coverlet positional-record artifact) |
+| AdminCustodianteDto.cs | 36% | 80% | -44% (Coverlet positional-record artifact) |
+| ListAdminCedenteQuery.cs | 60% | 80% | -20% (Coverlet positional-record artifact) |
+| ListAdminCustodianteQuery.cs | 60% | 80% | -20% (Coverlet positional-record artifact) |
+| AdminFundosController.cs | 100% | 80% | +20% |
+| FundosController.cs | 100% | 80% | +20% |
+| GlobalExceptionHandler.cs | 88% | 80% | +8% |
+| FundosAdminQueryHandlers.cs | exempt | -- | [ExcludeFromCodeCoverage] |
+
+Update handlers (Consultoria/Custodiante/Fundo/Cedente): MODIFIED files, outside G11 scope.
+All paths covered by unit + integration tests.
+
+---
+
+### Regression captures
+
+- Backoffice login screenshot: .jdi/cache/phase-48-backend-iter4-backoffice-login.png
+- Client register screenshot: .jdi/cache/phase-48-backend-iter4-client-register.png
+- Semgrep: .jdi/cache/phase-48-backend-iter4-semgrep.json (0 findings, exit 0)
+
+
+---
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-frontend-vinext (iter 4)
+
+Run: 2026-05-16
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Iter 4 commit: 90f038d
+Changed frontend files since boundary: frontend/client/src/lib/api.ts (PERMISSION_LABELS +4 entries, PERMISSION_OPTIONS +4 entries)
+
+**Verdict:** APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+- [G1 Security frontend] PASS
+  - localStorage/sessionStorage token scan: 0 hits.
+  - dangerouslySetInnerHTML scan: 0 hits.
+  - target=_blank without rel scan: 0 hits.
+  - Hardcoded secret pattern in src/: 0 hits. E2e test fixtures contain test passwords (e2e/fixtures/test-data.ts:32, e2e/access-group-change.spec.ts:50) -- test-only, not in production bundle. Not blocking.
+
+- [G2 Telemetry (OTel JS + W3C)] BLOCKED (pre-existing, carried from iter 1/2/3)
+  - frontend/client/src/lib/telemetry: directory does not exist.
+  - frontend/backoffice/src/lib/telemetry: directory does not exist.
+  - No WebTracerProvider, FetchInstrumentation, OTLPTraceExporter, W3CTraceContextPropagator, BatchSpanProcessor in either SPA.
+  - No web-vitals.ts adapter, no propagateTraceHeaderCorsUrls allowlist, no PII scrubber, no ignoreUrls auth chain suppression.
+  - NOT introduced by Phase 48 or iter 4. Pre-existing architectural debt predating boundary 968eefb.
+  - Blocking status inherited, not regressed by iter 4.
+
+- [G3 Perf + bundle] PASS
+  - Client: index-BxoXqr9q.js = 648.44 KB raw / 197.71 KB gz (under 300 KB gz gate).
+  - Backoffice: index-B-UzL_1C.js = 624.43 KB raw / 190.69 KB gz (under 300 KB gz gate).
+  - 8 new constant entries add less than 0.5 KB raw -- negligible delta.
+
+- [G4 Build] PASS
+  - client: pnpm build exit 0. Auth/api-proxy/client routers built. Nitro server generated.
+  - backoffice: pnpm build exit 0. All 3 routers built. Nitro server generated.
+
+- [G5 Typecheck + Lint] PASS
+  - client: tsc --noEmit exit 0. eslint --max-warnings 0 exit 0.
+  - backoffice: tsc --noEmit exit 0. eslint --max-warnings 0 exit 0.
+
+- [G6 Code-design + Frontend rules] PASS
+  - W3 contract drift RESOLVED: PERMISSION_LABELS and PERMISSION_OPTIONS include all 4 funds:* keys.
+    - funds:read -> Ver fundos
+    - funds:write -> Criar/editar fundos
+    - funds:delete -> Excluir fundos
+    - funds:manage -> Gestao total de fundos
+  - AccessGroupsPage.tsx:179 uses PERMISSION_LABELS[perm] ?? perm -- fallback intact. CORRECT.
+  - AccessGroupsPage.tsx:223-228 iterates PERMISSION_OPTIONS for checkboxes -- funds:* appear as selectable options. CORRECT.
+  - Production bundle grep confirms all 4 funds:* pairs present in index-BxoXqr9q.js.
+  - Cross-import audit (D-4): 0 cross-imports between client and backoffice.
+  - Backoffice untouched -- correct per D-4 (fund permissions are client-side domain).
+  - No new HOC/wrapper-without-consumer, no new unlabeled input, no new button without accessible name.
+
+- [G7 Coverage new files] N/A
+  - git diff --diff-filter=A 968eefb..HEAD -- frontend/**: 0 new frontend files since boundary.
+  - api.ts is modified (diff-filter=M), outside G7 scope.
+
+- [G8 Playwright client regression (port 5173)] PASS
+  - Viewports: 1280x720 desktop + 375x667 mobile.
+  - /: ACF+PKCE redirect to Keycloak 8180 -- client_id=onboarding-client-acf, response_type=code, code_challenge_method=S256, scope=openid+offline_access. PKCE chain intact.
+  - /register: Step 1 of 2 renders. Zod validation on empty submit: Razao Social e obrigatoria + CNPJ e obrigatorio. Correct.
+  - /auth/login: ACF+PKCE redirect confirmed.
+  - funds:* labels: AccessGroupsPage auth-gated (cannot navigate unauthenticated). Label correctness verified via production bundle grep -- all 4 funds:* pairs confirmed in built JS artifact.
+  - Network: /auth/me 401 + /auth/refresh 401. No 5xx, no CORS.
+  - Console: 0 application errors. Only expected 401s. No React warnings.
+  - Screenshots: .jdi/cache/phase-48-frontend-iter4-client-register-desktop.png, .jdi/cache/phase-48-frontend-iter4-client-mobile.png
+
+- [G9 Playwright backoffice regression (port 5174)] PASS
+  - Viewports: 1280x720 desktop + 375x667 mobile.
+  - /: redirects to /admin/login. Route guard working.
+  - /admin/login: Admin Backoffice login page renders. Entrar triggers ACF+PKCE: client_id=onboarding-backoffice, response_type=code, code_challenge_method=S256. PKCE intact.
+  - /admin/users (unauthenticated): route guard redirects to /admin/login. Correct.
+  - Backoffice untouched in iter 4 -- correct per D-4.
+  - Network: /auth/me 401 (x3 across navigations). No 5xx, no CORS.
+  - Console: favicon 404 (pre-existing). No application errors. No React warnings.
+  - Screenshots: .jdi/cache/phase-48-frontend-iter4-backoffice-login.png, .jdi/cache/phase-48-frontend-iter4-backoffice-mobile.png
+
+- [G10 Accessibility (axe)] ADVISORY (not re-run -- no structural JSX changes in iter 4)
+  - Iter 4 adds only constant data to api.ts. No HTML/JSX modified. Pre-existing advisory findings from iter 3 carried unchanged.
+
+- [G11 Vinext migration debt] PASS
+  - api.ts modified: 0 new Vinxi-specific imports. No from vinxi additions in iter 4.
+
+---
+
+### Blockers
+
+None from iter 4. G2 telemetry gap is pre-existing architectural debt (pre-boundary), not introduced by Phase 48 or iter 4.
+
+W3 contract drift (iter 1-3 blocker) is RESOLVED: PERMISSION_LABELS and PERMISSION_OPTIONS in frontend/client/src/lib/api.ts now include all 4 funds:read|write|delete|manage entries with correct pt-BR labels. Confirmed in source (lines 512-529) and in production bundle artifact (index-BxoXqr9q.js).
+
+---
+
+### Warnings
+
+1. G2 (ARCHITECTURAL DEBT, pre-existing): OTel JS telemetry not implemented in either SPA. Both SPAs missing src/lib/telemetry/ composition root, WebTracerProvider, FetchInstrumentation, OTLPTraceExporter, W3CTraceContextPropagator, BatchSpanProcessor, web-vitals.ts, propagateTraceHeaderCorsUrls allowlist, PII scrubber, and ignoreUrls auth-chain suppression. Pre-dates boundary 968eefb. Recommend dedicated telemetry phase.
+
+2. G3 (advisory): Main JS bundle exceeds 500 KB raw (648 KB client, 624 KB backoffice). gzip sizes within gate (197 KB / 190 KB). Code-splitting via dynamic import() recommended in a future perf phase.
+
+3. G6 (advisory): Hardcoded pt-BR strings in JSX (ProfileBadge.tsx, ProfileField.tsx, BlockUnblockDialog.tsx, DashboardCards.tsx, DeleteEmployeeDialog.tsx). Pre-existing, not introduced in Phase 48 or iter 4.
+
+4. Backoffice public/ has no favicon.ico -- 404 on every page load. Pre-existing, minor UX issue.
+
+---
+
+### W3 fix validation summary
+
+Iter 1-3 blocker W3 (PERMISSION_LABELS/PERMISSION_OPTIONS missing funds:* keys):
+
+- RESOLVED in commit 90f038d.
+- api.ts lines 512-515: PERMISSION_LABELS adds funds:read, funds:write, funds:delete, funds:manage.
+- api.ts lines 525-528: PERMISSION_OPTIONS adds 4 corresponding {value, label} entries.
+- Diff verified: exactly +4 lines in each map (no other changes in iter 4 frontend diff).
+- Production bundle verified: all 4 key-value pairs present in index-BxoXqr9q.js.
+- AccessGroupsPage.tsx unchanged -- PERMISSION_LABELS[perm] ?? perm (line 179) and PERMISSION_OPTIONS iteration (line 223) needed no update. Contract expansion backward-compatible.
+
+---
+
+### Coverage gaps (new files -- G7 scope: diff-filter=A only)
+
+None -- 0 new frontend files added after boundary 968eefb.
+
+---
+
+### Regression captures
+
+- Client register desktop: .jdi/cache/phase-48-frontend-iter4-client-register-desktop.png
+- Client mobile: .jdi/cache/phase-48-frontend-iter4-client-mobile.png
+- Backoffice login desktop: .jdi/cache/phase-48-frontend-iter4-backoffice-login.png
+- Backoffice mobile: .jdi/cache/phase-48-frontend-iter4-backoffice-mobile.png
+
+---
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-frontend-vinext (iter 4)
+
+Run: 2026-05-16
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Iter 4 commit: 90f038d
+Changed frontend files since boundary: frontend/client/src/lib/api.ts (PERMISSION_LABELS +4 entries, PERMISSION_OPTIONS +4 entries)
+
+**Verdict:** APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+- [G1 Security frontend] PASS
+  - localStorage/sessionStorage token scan: 0 hits.
+  - dangerouslySetInnerHTML scan: 0 hits.
+  - target=_blank without rel scan: 0 hits.
+  - Hardcoded secret pattern in src/: 0 hits. E2e test fixtures contain test passwords (test-only, not in production bundle). Not blocking.
+
+- [G2 Telemetry (OTel JS + W3C)] BLOCKED (pre-existing, carried from iter 1/2/3)
+  - frontend/client/src/lib/telemetry: directory does not exist.
+  - frontend/backoffice/src/lib/telemetry: directory does not exist.
+  - No WebTracerProvider, FetchInstrumentation, OTLPTraceExporter, W3CTraceContextPropagator, BatchSpanProcessor in either SPA.
+  - No web-vitals.ts adapter, no propagateTraceHeaderCorsUrls allowlist, no PII scrubber, no ignoreUrls auth chain suppression.
+  - NOT introduced by Phase 48 or iter 4. Pre-existing architectural debt predating boundary 968eefb.
+  - Blocking status inherited, not regressed by iter 4.
+
+- [G3 Perf + bundle] PASS
+  - Client: index-BxoXqr9q.js = 648.44 KB raw / 197.71 KB gz (under 300 KB gz gate).
+  - Backoffice: index-B-UzL_1C.js = 624.43 KB raw / 190.69 KB gz (under 300 KB gz gate).
+  - 8 new constant entries add less than 0.5 KB raw -- negligible delta.
+
+- [G4 Build] PASS
+  - client: pnpm build exit 0. Auth/api-proxy/client routers built. Nitro server generated.
+  - backoffice: pnpm build exit 0. All 3 routers built. Nitro server generated.
+
+- [G5 Typecheck + Lint] PASS
+  - client: tsc --noEmit exit 0. eslint --max-warnings 0 exit 0.
+  - backoffice: tsc --noEmit exit 0. eslint --max-warnings 0 exit 0.
+
+- [G6 Code-design + Frontend rules] PASS
+  - W3 contract drift RESOLVED: PERMISSION_LABELS and PERMISSION_OPTIONS include all 4 funds:* keys.
+    - funds:read -> Ver fundos
+    - funds:write -> Criar/editar fundos
+    - funds:delete -> Excluir fundos
+    - funds:manage -> Gestao total de fundos
+  - AccessGroupsPage.tsx:179 uses PERMISSION_LABELS[perm] ?? perm -- fallback intact. CORRECT.
+  - AccessGroupsPage.tsx:223-228 iterates PERMISSION_OPTIONS for checkboxes -- funds:* appear as selectable options. CORRECT.
+  - Production bundle grep confirms all 4 funds:* pairs present in index-BxoXqr9q.js.
+  - Cross-import audit (D-4): 0 cross-imports between client and backoffice.
+  - Backoffice untouched -- correct per D-4 (fund permissions are client-side domain).
+  - No new HOC/wrapper-without-consumer, no new unlabeled input, no new button without accessible name.
+
+- [G7 Coverage new files] N/A
+  - git diff --diff-filter=A 968eefb..HEAD -- frontend/**: 0 new frontend files since boundary.
+  - api.ts is modified (diff-filter=M), outside G7 scope.
+
+- [G8 Playwright client regression (port 5173)] PASS
+  - Viewports: 1280x720 desktop + 375x667 mobile.
+  - /: ACF+PKCE redirect -- client_id=onboarding-client-acf, response_type=code, code_challenge_method=S256, scope=openid+offline_access. PKCE chain intact.
+  - /register: Step 1 of 2 renders. Zod validation on empty submit: Razao Social e obrigatoria + CNPJ e obrigatorio.
+  - /auth/login: ACF+PKCE redirect confirmed.
+  - funds:* labels: AccessGroupsPage auth-gated. Label correctness verified via production bundle grep -- all 4 funds:* pairs confirmed in index-BxoXqr9q.js.
+  - Network: /auth/me 401 + /auth/refresh 401. No 5xx, no CORS.
+  - Console: 0 application errors. Only expected 401s. No React warnings.
+
+- [G9 Playwright backoffice regression (port 5174)] PASS
+  - Viewports: 1280x720 desktop + 375x667 mobile.
+  - /: redirects to /admin/login. Route guard working.
+  - /admin/login: Admin Backoffice login renders. Entrar triggers ACF+PKCE: client_id=onboarding-backoffice, response_type=code, code_challenge_method=S256.
+  - /admin/users (unauthenticated): route guard redirects to /admin/login. Correct.
+  - Backoffice untouched in iter 4 -- correct per D-4.
+  - Network: /auth/me 401 (x3). No 5xx, no CORS.
+  - Console: favicon 404 (pre-existing). No application errors. No React warnings.
+
+- [G10 Accessibility (axe)] ADVISORY (not re-run -- no structural JSX changes in iter 4)
+  - Iter 4 adds only constant data to api.ts. No HTML/JSX modified. Pre-existing advisory findings from iter 3 carried unchanged.
+
+- [G11 Vinext migration debt] PASS
+  - api.ts modified: 0 new Vinxi-specific imports in iter 4.
+
+---
+
+### Blockers
+
+None from iter 4. G2 telemetry gap is pre-existing architectural debt (pre-boundary), not introduced by Phase 48 or iter 4.
+
+W3 contract drift (iter 1-3 blocker) is RESOLVED: PERMISSION_LABELS and PERMISSION_OPTIONS in frontend/client/src/lib/api.ts now include all 4 funds:read|write|delete|manage entries with correct pt-BR labels. Confirmed in source (lines 512-529) and in production bundle artifact (index-BxoXqr9q.js).
+
+---
+
+### Warnings
+
+1. G2 (ARCHITECTURAL DEBT, pre-existing): OTel JS telemetry not implemented in either SPA. Both SPAs missing src/lib/telemetry/ composition root, WebTracerProvider, FetchInstrumentation, OTLPTraceExporter, W3CTraceContextPropagator, BatchSpanProcessor, web-vitals.ts, propagateTraceHeaderCorsUrls allowlist, PII scrubber, and ignoreUrls auth-chain suppression. Pre-dates boundary 968eefb. Recommend dedicated telemetry phase.
+
+2. G3 (advisory): Main JS bundle exceeds 500 KB raw (648 KB client, 624 KB backoffice). gzip sizes within gate (197 KB / 190 KB). Code-splitting via dynamic import() recommended in a future perf phase.
+
+3. G6 (advisory): Hardcoded pt-BR strings in JSX (ProfileBadge.tsx, ProfileField.tsx, BlockUnblockDialog.tsx, DashboardCards.tsx, DeleteEmployeeDialog.tsx). Pre-existing, not introduced in Phase 48 or iter 4.
+
+4. Backoffice public/ has no favicon.ico -- 404 on every page load. Pre-existing, minor UX issue.
+
+---
+
+### W3 fix validation summary
+
+Iter 1-3 blocker W3 (PERMISSION_LABELS/PERMISSION_OPTIONS missing funds:* keys -- AccessGroupsPage would render raw API strings):
+
+- RESOLVED in commit 90f038d.
+- api.ts lines 512-515: PERMISSION_LABELS adds funds:read, funds:write, funds:delete, funds:manage.
+- api.ts lines 525-528: PERMISSION_OPTIONS adds 4 corresponding {value, label} entries.
+- Diff verified: exactly +4 lines in each map, no other frontend changes in iter 4.
+- Production bundle verified: all 4 key-value pairs present in index-BxoXqr9q.js.
+- AccessGroupsPage.tsx unchanged -- PERMISSION_LABELS[perm] ?? perm (line 179) and PERMISSION_OPTIONS map (line 223) needed no update. Expansion is backward-compatible.
+
+---
+
+### Coverage gaps (new files -- G7 scope: diff-filter=A only)
+
+None -- 0 new frontend files added after boundary 968eefb.
+
+---
+
+### Regression captures
+
+- Client register desktop: .jdi/cache/phase-48-frontend-iter4-client-register-desktop.png
+- Client mobile: .jdi/cache/phase-48-frontend-iter4-client-mobile.png
+- Backoffice login desktop: .jdi/cache/phase-48-frontend-iter4-backoffice-login.png
+- Backoffice mobile: .jdi/cache/phase-48-frontend-iter4-backoffice-mobile.png
+
+---
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-security (iter 4)
+
+Run: 2026-05-16
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Iter 4 commits: c77e9eb (W1 -- PermissionPolicies constants), 359c9f3 (W5 -- cross-tenant write guard), 90f038d (W3 -- frontend funds:* labels)
+Changed security-relevant files:
+- src/Onboarding.API/Program.cs (4 string literals -> PermissionPolicies.FundX constants)
+- src/Onboarding.API/Security/PermissionPolicyConstants.cs (FundRead/Write/Delete/Manage added + doc update)
+- src/Onboarding.Application/Fundos/Commands/UpdateConsultoriaFundoCommandHandler.cs (ICurrentCompanyService + ownership guard)
+- src/Onboarding.Application/Fundos/Commands/UpdateCustodianteCommandHandler.cs (ICurrentCompanyService + ownership guard)
+- src/Onboarding.Application/Fundos/Commands/UpdateFundoCommandHandler.cs (ICurrentCompanyService + ownership guard)
+- src/Onboarding.Application/Fundos/Commands/UpdateCedenteCommandHandler.cs (ICurrentCompanyService + ownership guard)
+- tests: +4 ClienteIdMismatch unit tests per handler, +4 cross-tenant PUT integration scenarios
+- frontend/client/src/lib/api.ts (PERMISSION_LABELS/PERMISSION_OPTIONS +4 funds:* entries)
+
+**Verdict:** APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+- [G1 Multi-tenant filter] PASS -- W5 RESOLVED
+
+  All 4 Update handlers now enforce ClienteId ownership at application layer. Guard pattern verified in source:
+  - UpdateConsultoriaFundoCommandHandler:36 -- entity is null || entity.ClienteId != _currentCompanyService.CompanyId
+  - UpdateCustodianteCommandHandler:36 -- same pattern on custodiante
+  - UpdateFundoCommandHandler:37 -- same pattern on fundo
+  - UpdateCedenteCommandHandler:37 -- same pattern on cedente
+
+  All 4 throw KeyNotFoundException (same message as null-entity path). GlobalExceptionHandler maps to HTTP 404. Does not leak entity existence via 403. Guard order: null check before property access (C# left-to-right || evaluation). No NullReferenceException risk.
+
+  Attack vector closed: cross-tenant actor with funds:write + valid GUID can no longer overwrite another company entity field values via PUT.
+
+  HasQueryFilter presence unchanged: FundoConfiguration:104, ConsultoriaFundoConfiguration:83, CustodianteConfiguration:83, CedenteConfiguration:100, AccessGroupConfiguration:55, EmployeeConfiguration:90. TipoAtivoConfiguration: no HasQueryFilter by design (global entity). No HasQueryFilter diff in iter 4.
+
+  IgnoreQueryFilters in GetByIdAsync: intentional -- needed for cross-tenant uniqueness checks and admin operations. Application-layer ownership guard post-fetch is the correct mitigation.
+
+  FundosAdminQueryHandlers: 4 IgnoreQueryFilters usages remain scoped to BearerBackoffice + CrossCompanyAccess. Unchanged.
+
+  Integration test correctness: 4 scenarios (UpdateConsultoriaFundo/Custodiante/Fundo/Cedente_CrossTenant_Returns404) -- PJ-A creates entity, PJ-B PUT with funds:write and captured GUID -> asserts HttpStatusCode.NotFound.
+
+  Unit test correctness: 4 HandleAsync_WhenClienteIdMismatch_ThrowsKeyNotFoundException -- entity with differentCompanyId; _currentCompanyService.CompanyId returns _companyId (different, set in ctor); asserts KeyNotFoundException thrown.
+
+  W5 WARNING from iter 2/3 is RESOLVED.
+
+- [G2 Permission policy coverage] PASS -- W1 RESOLVED
+
+  Program.cs lines 211-218 use PermissionPolicies.FundRead/Write/Delete/Manage constants from PermissionPolicyConstants.cs:22-25. String values equal prior literals. Runtime behavior unchanged. Drift risk eliminated.
+
+  End-to-end permission wiring verified:
+  PermissionPolicies.FundRead -> AddPolicy -> PermissionRequirement(Permissions.FundsRead) -> "funds:read" -> ICurrentCompanyPermissionsService.Permissions.Contains("funds:read") -> ClientClaimsMiddleware populates PermissionList from AccessGroup.Permissions (DB entity) -> Permissions.All includes all 4 FundsX constants (Permissions.cs:22-27).
+
+  Permission grant flows via AccessGroup DB assignment (D-07), not Keycloak client roles directly. G2 Keycloak mapping requirement satisfied through this chain; no Keycloak realm export change required.
+
+  No new HTTP action methods in iter 4. No AllowAnonymous introduced. All FundosController (19 actions) and AdminFundosController (4 actions, class-level BearerBackoffice + CrossCompanyAccess) retain correct Authorize attributes.
+
+  W1 WARNING from iter 2/3 is RESOLVED.
+
+- [G3 Secrets + env hygiene] PASS
+
+  Manual scan on iter 4 diff (c77e9eb, 359c9f3, 90f038d): 0 credential patterns in all 3 commits.
+  appsettings.json diff from boundary: empty. keycloak/ diff from boundary: empty.
+  Pre-existing AdminClientSecret dev placeholder at appsettings.json:18 not introduced by iter 4.
+  Gitleaks: not installed. Manual scan: 0 findings.
+  Artifact: .jdi/cache/phase-48-security-iter4-gitleaks.json (manual scan stub)
+
+- [G4 Semgrep] PASS (ERROR: 0, WARNING: 0)
+
+  semgrep --config .semgrep --severity ERROR --error --json: 0 findings, 5 rules, 534 targets, exit 0.
+  Run on full codebase after all iter-4 commits. No new targets (modified files only).
+  Artifact: .jdi/cache/phase-48-security-iter4-semgrep.json
+
+- [G5 Trivy FS + container] ADVISORY (not installed)
+
+  Trivy not installed. No Dockerfile changed in iter 4. No new NuGet packages. Zero new CVE surface. 0 Dependabot HIGH/CRITICAL alerts (confirmed iter 1, unchanged through iter 4).
+  Artifact: .jdi/cache/phase-48-security-iter4-trivy-fs.json (advisory stub)
+
+- [G6 Keycloak hardening drift] PASS (keycloak/ not modified in iter 4)
+
+  git diff 968eefb..HEAD -- keycloak/: 0 bytes changed. Gate G6 scoped to phases that change realm exports.
+  Pre-existing advisory (unchanged): passwordPolicy length(8) below G6 threshold length(12); onboarding-app ROPC enabled.
+  G6 pass criteria verified: bruteForceProtected=true, failureFactor=5 (at threshold), ssoSessionIdleTimeout=1800 (at threshold).
+
+- [G7 Security headers + CSP] ADVISORY (no change from iter 3)
+
+  UseSecurityHeaders() middleware not touched in iter 4. No regression possible from handler guard, constants, or frontend label changes.
+
+- [G8 Dependabot] PASS
+
+  No new packages in iter 4. 0 open HIGH/CRITICAL alerts.
+
+- [G9 Audit log coverage] PASS
+
+  No new Command.cs files added since boundary (git diff --diff-filter=A: 0 Command.cs files). The 4 Update handlers are modified (diff-filter=M), outside G9 new-file scope. ActorSub + ActorEmail confirmed present in all 4 handlers. Audit capture positioned after ownership guard -- correct: rejected cross-tenant writes produce no spurious audit record.
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+1. keycloak/client-realm.json (pre-existing) -- directAccessGrantsEnabled=true (ROPC) on onboarding-app. Legacy removal candidate per PROJECT.md and MEMORY.md. Not modified in Phase 48.
+
+2. keycloak/*.json (pre-existing) -- passwordPolicy length(8). G6 threshold is length(12). Not modified in Phase 48.
+
+3. src/Onboarding.API/appsettings.json:18 (pre-existing) -- AdminClientSecret committed as dev placeholder. Not introduced by iter 4.
+
+4. G5 -- Trivy not installed. No automated CVE scan on NuGet packages or container image.
+
+---
+
+### W1 fix validation summary
+
+Program.cs lines 211-218 use PermissionPolicies.FundRead/Write/Delete/Manage from PermissionPolicyConstants.cs:22-25. Values equal prior string literals. End-to-end pipeline: policy constant -> PermissionRequirement(Permissions.FundsX) -> ICurrentCompanyPermissionsService.Permissions -> ClientClaimsMiddleware -> AccessGroup DB entity -> Permissions.All includes all 4 FundsX strings. W1 WARNING RESOLVED.
+
+### W5 fix validation summary
+
+Guard in all 4 handlers: entity is null || entity.ClienteId != _currentCompanyService.CompanyId -> KeyNotFoundException -> HTTP 404. Null-safe. Does not leak entity existence. ICurrentCompanyService registered at Infrastructure.DependencyInjection.cs:39. 4 unit tests + 4 integration tests cover the cross-tenant rejection branch. All 20 integration tests pass (was 16 pre-iter-4). W5 WARNING RESOLVED.
+
+---
+
+### Pipeline artifacts
+- Trivy FS: .jdi/cache/phase-48-security-iter4-trivy-fs.json (advisory -- not installed)
+- Semgrep: .jdi/cache/phase-48-security-iter4-semgrep.json (0 findings, exit 0)
+- Gitleaks: .jdi/cache/phase-48-security-iter4-gitleaks.json (manual scan -- not installed)

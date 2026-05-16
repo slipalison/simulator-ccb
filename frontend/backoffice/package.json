@@ -4,6 +4,7 @@
   "description": "Backoffice admin frontend for user management",
   "main": "index.js",
   "scripts": {
+    "predev": "node ../../scripts/check-dev-env.mjs frontend-backoffice",
     "dev": "vinxi dev --port 5174 --host",
     "build": "vinxi build",
     "start": "vinxi start",

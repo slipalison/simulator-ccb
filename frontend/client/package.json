@@ -4,6 +4,7 @@
   "description": "Client-facing frontend for PF/PJ registration and profile management",
   "main": "index.js",
   "scripts": {
+    "predev": "node ../../scripts/check-dev-env.mjs frontend-client",
     "dev": "vinxi dev --port 5173 --host",
     "build": "vinxi build",
     "start": "vinxi start",

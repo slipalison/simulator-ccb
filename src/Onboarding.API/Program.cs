@@ -207,15 +207,14 @@ try
         options.AddPolicy(PermissionPolicies.AccessGroupsManage,
             policy => policy.Requirements.Add(new PermissionRequirement(Permissions.AccessGroupsManage)));
 
-        // Fund permission policies (T-48.1 adds PermissionPolicies.FundX constants; use string keys
-        // for now so T-48.2 and T-48.1 can land independently and validate together at runtime)
-        options.AddPolicy("FundRead",
+        // Fund permission policies — symmetric with other policy registrations above.
+        options.AddPolicy(PermissionPolicies.FundRead,
             policy => policy.Requirements.Add(new PermissionRequirement(Permissions.FundsRead)));
-        options.AddPolicy("FundWrite",
+        options.AddPolicy(PermissionPolicies.FundWrite,
             policy => policy.Requirements.Add(new PermissionRequirement(Permissions.FundsWrite)));
-        options.AddPolicy("FundDelete",
+        options.AddPolicy(PermissionPolicies.FundDelete,
             policy => policy.Requirements.Add(new PermissionRequirement(Permissions.FundsDelete)));
-        options.AddPolicy("FundManage",
+        options.AddPolicy(PermissionPolicies.FundManage,
             policy => policy.Requirements.Add(new PermissionRequirement(Permissions.FundsManage)));
 
         // Cross-company policy (D-07) — admin role from backoffice realm

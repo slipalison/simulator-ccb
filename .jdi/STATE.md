@@ -9,6 +9,6 @@ specialists:
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
 current_phase: 48-api-permissions
 current_phase_slug: api-permissions
-phase_status: blocked
-phase_verdict: BLOCKED
-next_step: fix 5 cross-tenant blockers (FundosController GET-by-id + integration test) -> /jdi-do 48-api-permissions -> /jdi-verify 48
+phase_status: verified
+phase_verdict: APPROVED_WITH_WARNINGS
+next_step: /jdi-ship 48-api-permissions

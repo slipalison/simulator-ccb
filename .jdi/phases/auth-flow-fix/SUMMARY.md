@@ -4,7 +4,7 @@
 
 **Status:** DONE
 
-**Commit sha:** (see below)
+**Commit sha:** 381a334
 
 **Files modified:**
 - `frontend/backoffice/src/components/templates/AdminLayout.tsx` — T-6a: replaced `null` return during `isLoading` with a centered `<Loader2>` loading shell (`data-testid="admin-loading-shell"`, `aria-busy="true"`). The redirect `useEffect` was already correctly gated on `!isLoading && !isAuthenticated` — no change needed there. Added `sidebar-users-link` to `AdminSidebar` (Usuarios → `/admin/users`) to fix the pre-existing failing test and match the restored route.

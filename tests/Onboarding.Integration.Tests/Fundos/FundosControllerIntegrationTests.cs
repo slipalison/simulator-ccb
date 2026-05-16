@@ -533,6 +533,147 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
     }
 
     // =========================================================================
+    // SCENARIO 13–16: Cross-tenant PUT returns 404 (W5 fix — application-layer ownership check)
+    //
+    // Root cause: UpdateX*CommandHandler called GetByIdAsync (IgnoreQueryFilters) without a
+    // ClienteId ownership check in the application layer. A cross-tenant actor with funds:write
+    // and a valid GUID could overwrite another company's entity field values.
+    //
+    // Fix: application-layer guard in each handler: entity.ClienteId != currentCompany → 404.
+    // =========================================================================
+
+    [Fact]
+    public async Task UpdateConsultoriaFundo_CrossTenant_Returns404()
+    {
+        // Arrange — PJ-A creates a consultoria
+        using var clientA = ClientPjA();
+        var createResp = await clientA.PostAsJsonAsync("/api/fundos/consultorias",
+            new { razaoSocial = "Consultoria PUT Cross Tenant A", cnpj = ValidCnpj });
+        createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var consultoriaId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+
+        // Act — PJ-B attempts PUT /api/fundos/consultorias/{companyA-entity-id}
+        using var clientB = ClientPjB();
+        var updatePayload = new
+        {
+            razaoSocial = "Hijacked Name",
+            nomeFantasia = (string?)null,
+            email = (string?)null,
+            telefone = (string?)null,
+            status = 1 // ATIVO
+        };
+        var response = await clientB.PutAsJsonAsync($"/api/fundos/consultorias/{consultoriaId}", updatePayload);
+
+        // Assert — ownership check in handler must return 404 (not 200, not 403)
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound,
+            "Cross-tenant PUT must return 404 to avoid leaking entity existence.");
+    }
+
+    [Fact]
+    public async Task UpdateCustodiante_CrossTenant_Returns404()
+    {
+        // Arrange — PJ-A creates a custodiante
+        using var clientA = ClientPjA();
+        var createResp = await clientA.PostAsJsonAsync("/api/fundos/custodiantes",
+            new { razaoSocial = "Custodiante PUT Cross Tenant A", cnpj = ValidCnpj });
+        createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var custodianteId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+
+        // Act — PJ-B attempts PUT /api/fundos/custodiantes/{companyA-entity-id}
+        using var clientB = ClientPjB();
+        var updatePayload = new
+        {
+            razaoSocial = "Hijacked Name",
+            codigoInterno = (string?)null,
+            email = (string?)null,
+            telefone = (string?)null,
+            status = 1 // ATIVO
+        };
+        var response = await clientB.PutAsJsonAsync($"/api/fundos/custodiantes/{custodianteId}", updatePayload);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound,
+            "Cross-tenant PUT must return 404 to avoid leaking entity existence.");
+    }
+
+    [Fact]
+    public async Task UpdateFundo_CrossTenant_Returns404()
+    {
+        // Arrange — PJ-A creates a full Fundo (requires consultoria + custodiante as FK)
+        using var clientA = ClientPjA();
+
+        var consultoriaResp = await clientA.PostAsJsonAsync("/api/fundos/consultorias",
+            new { razaoSocial = "Consultoria FK For PUT CrossTenant", cnpj = ValidCnpj });
+        consultoriaResp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var consultoriaId = (await consultoriaResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+
+        var custodianteResp = await clientA.PostAsJsonAsync("/api/fundos/custodiantes",
+            new { razaoSocial = "Custodiante FK For PUT CrossTenant", cnpj = ValidCnpj });
+        custodianteResp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var custodianteId = (await custodianteResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+
+        var fundoResp = await clientA.PostAsJsonAsync("/api/fundos",
+            new
+            {
+                nome = "Fundo PUT Cross Tenant A",
+                cnpj = ValidCnpj,
+                consultoriaFundoId = consultoriaId,
+                custodianteId,
+                tipoFundo = 1
+            });
+        fundoResp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var fundoId = (await fundoResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+
+        // Act — PJ-B attempts PUT /api/fundos/{companyA-fundo-id}
+        using var clientB = ClientPjB();
+        var updatePayload = new
+        {
+            nome = "Hijacked Fundo Name",
+            classeAnbima = (string?)null,
+            segmento = (string?)null,
+            dataConstituicao = (DateTimeOffset?)null
+        };
+        var response = await clientB.PutAsJsonAsync($"/api/fundos/{fundoId}", updatePayload);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound,
+            "Cross-tenant PUT must return 404 to avoid leaking entity existence.");
+    }
+
+    [Fact]
+    public async Task UpdateCedente_CrossTenant_Returns404()
+    {
+        // Arrange — PJ-A creates a cedente PF
+        using var clientA = ClientPjA();
+        var createResp = await clientA.PostAsJsonAsync("/api/fundos/cedentes/pf",
+            new { cpf = "52998224725", nome = "Cedente PUT Cross Tenant A" });
+        createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var cedenteId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("id").GetGuid();
+
+        // Act — PJ-B attempts PUT /api/fundos/cedentes/{companyA-entity-id}
+        using var clientB = ClientPjB();
+        var updatePayload = new
+        {
+            nome = "Hijacked Cedente Name",
+            email = (string?)null,
+            telefone = (string?)null,
+            endereco = (string?)null,
+            status = 1 // ATIVO
+        };
+        var response = await clientB.PutAsJsonAsync($"/api/fundos/cedentes/{cedenteId}", updatePayload);
+
+        // Assert
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound,
+            "Cross-tenant PUT must return 404 to avoid leaking entity existence.");
+    }
+
+    // =========================================================================
     // SCENARIO 7: Fundo state machine — RASCUNHO → ATIVO = 200
     // =========================================================================
 

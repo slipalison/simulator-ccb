@@ -32,8 +32,9 @@ public sealed class UpdateConsultoriaFundoCommandHandler
     public async Task<ConsultoriaFundoDto> HandleAsync(
         UpdateConsultoriaFundoCommand command, CancellationToken ct = default)
     {
-        var consultoria = await _repository.GetByIdAsync(command.Id, ct)
-            ?? throw new KeyNotFoundException($"ConsultoriaFundo with ID '{command.Id}' not found.");
+        var consultoria = await _repository.GetByIdAsync(command.Id, ct);
+        if (consultoria is null || consultoria.ClienteId != _currentCompanyService.CompanyId)
+            throw new KeyNotFoundException($"ConsultoriaFundo with ID '{command.Id}' not found.");
 
         consultoria.Update(
             command.RazaoSocial,

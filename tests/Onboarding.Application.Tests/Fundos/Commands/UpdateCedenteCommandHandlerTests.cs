@@ -13,17 +13,24 @@ namespace Onboarding.Application.Tests.Fundos.Commands;
 public class UpdateCedenteCommandHandlerTests
 {
     private readonly ICedenteRepository _repository;
+    private readonly ICurrentCompanyService _currentCompanyService;
     private readonly IAuditService _auditService;
     private readonly ILogger<UpdateCedenteCommandHandler> _logger;
     private readonly UpdateCedenteCommandHandler _sut;
 
+    // Stable company ID used across tests for the "happy path" owner scenario
+    private readonly Guid _companyId = Guid.NewGuid();
+
     public UpdateCedenteCommandHandlerTests()
     {
         _repository = Substitute.For<ICedenteRepository>();
+        _currentCompanyService = Substitute.For<ICurrentCompanyService>();
         _auditService = Substitute.For<IAuditService>();
         _logger = Substitute.For<ILogger<UpdateCedenteCommandHandler>>();
 
-        _sut = new UpdateCedenteCommandHandler(_repository, _auditService, _logger);
+        _currentCompanyService.CompanyId.Returns(_companyId);
+
+        _sut = new UpdateCedenteCommandHandler(_repository, _currentCompanyService, _auditService, _logger);
     }
 
     private static UpdateCedenteCommand ValidCommand(Guid? id = null) => new(
@@ -41,7 +48,7 @@ public class UpdateCedenteCommandHandlerTests
     public async Task HandleAsync_WithValidData_UpdatesCedenteFields()
     {
         // Arrange
-        var cedente = Cedente.RegisterPf("52998224725", "Nome Original", Guid.NewGuid(), "old@teste.com");
+        var cedente = Cedente.RegisterPf("52998224725", "Nome Original", _companyId, "old@teste.com");
         var command = ValidCommand(cedente.Id);
         _repository.GetByIdAsync(cedente.Id, Arg.Any<CancellationToken>()).Returns(cedente);
 
@@ -67,10 +74,25 @@ public class UpdateCedenteCommandHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_WhenClienteIdMismatch_ThrowsKeyNotFoundException()
+    {
+        // Arrange — entity belongs to a different company than the current actor
+        var differentCompanyId = Guid.NewGuid();
+        var cedente = Cedente.RegisterPf("52998224725", "Nome Original", differentCompanyId, "old@teste.com");
+        var command = ValidCommand(cedente.Id);
+
+        _repository.GetByIdAsync(cedente.Id, Arg.Any<CancellationToken>()).Returns(cedente);
+        // _companyId is already configured as the current company in ctor (differs from differentCompanyId)
+
+        // Act & Assert — cross-tenant write must be rejected with 404-producing exception
+        await Should.ThrowAsync<KeyNotFoundException>(() => _sut.HandleAsync(command));
+    }
+
+    [Fact]
     public async Task HandleAsync_RecordsAuditLog()
     {
         // Arrange
-        var cedente = Cedente.RegisterPf("52998224725", "Nome Original", Guid.NewGuid());
+        var cedente = Cedente.RegisterPf("52998224725", "Nome Original", _companyId);
         var command = ValidCommand(cedente.Id);
         _repository.GetByIdAsync(cedente.Id, Arg.Any<CancellationToken>()).Returns(cedente);
 

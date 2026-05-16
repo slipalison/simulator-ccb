@@ -14,15 +14,18 @@ public sealed class UpdateFundoCommandHandler
     : ICommandHandler<UpdateFundoCommand, FundoDto>
 {
     private readonly IFundoRepository _repository;
+    private readonly ICurrentCompanyService _currentCompanyService;
     private readonly IAuditService _auditService;
     private readonly ILogger<UpdateFundoCommandHandler> _logger;
 
     public UpdateFundoCommandHandler(
         IFundoRepository repository,
+        ICurrentCompanyService currentCompanyService,
         IAuditService auditService,
         ILogger<UpdateFundoCommandHandler> logger)
     {
         _repository = repository;
+        _currentCompanyService = currentCompanyService;
         _auditService = auditService;
         _logger = logger;
     }
@@ -30,8 +33,9 @@ public sealed class UpdateFundoCommandHandler
     public async Task<FundoDto> HandleAsync(
         UpdateFundoCommand command, CancellationToken ct = default)
     {
-        var fundo = await _repository.GetByIdAsync(command.Id, ct)
-            ?? throw new KeyNotFoundException($"Fundo with ID '{command.Id}' not found.");
+        var fundo = await _repository.GetByIdAsync(command.Id, ct);
+        if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
+            throw new KeyNotFoundException($"Fundo with ID '{command.Id}' not found.");
 
         fundo.Update(
             command.Nome,

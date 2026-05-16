@@ -18,12 +18,17 @@ public class UpdateConsultoriaFundoCommandHandlerTests
     private readonly ILogger<UpdateConsultoriaFundoCommandHandler> _logger;
     private readonly UpdateConsultoriaFundoCommandHandler _sut;
 
+    // Stable company ID used across tests for the "happy path" owner scenario
+    private readonly Guid _companyId = Guid.NewGuid();
+
     public UpdateConsultoriaFundoCommandHandlerTests()
     {
         _repository = Substitute.For<IConsultoriaFundoRepository>();
         _currentCompanyService = Substitute.For<ICurrentCompanyService>();
         _auditService = Substitute.For<IAuditService>();
         _logger = Substitute.For<ILogger<UpdateConsultoriaFundoCommandHandler>>();
+
+        _currentCompanyService.CompanyId.Returns(_companyId);
 
         _sut = new UpdateConsultoriaFundoCommandHandler(_repository, _currentCompanyService, _auditService, _logger);
     }
@@ -43,7 +48,7 @@ public class UpdateConsultoriaFundoCommandHandlerTests
     public async Task HandleAsync_WithValidData_UpdatesFieldsAndSaves()
     {
         // Arrange
-        var consultoria = ConsultoriaFundo.Register("Nome Original", "11444777000161", Guid.NewGuid());
+        var consultoria = ConsultoriaFundo.Register("Nome Original", "11444777000161", _companyId);
         var command = ValidCommand(consultoria.Id);
         _repository.GetByIdAsync(consultoria.Id, Arg.Any<CancellationToken>()).Returns(consultoria);
 
@@ -69,10 +74,26 @@ public class UpdateConsultoriaFundoCommandHandlerTests
     }
 
     [Fact]
+    public async Task HandleAsync_WhenClienteIdMismatch_ThrowsKeyNotFoundException()
+    {
+        // Arrange — entity belongs to a different company than the current actor
+        var differentCompanyId = Guid.NewGuid();
+        var consultoria = ConsultoriaFundo.Register("Nome Original", "11444777000161", differentCompanyId);
+        var command = ValidCommand(consultoria.Id);
+
+        _repository.GetByIdAsync(consultoria.Id, Arg.Any<CancellationToken>()).Returns(consultoria);
+        // Current company is different from the entity's owner
+        _currentCompanyService.CompanyId.Returns(Guid.NewGuid());
+
+        // Act & Assert — cross-tenant write must be rejected with 404-producing exception
+        await Should.ThrowAsync<KeyNotFoundException>(() => _sut.HandleAsync(command));
+    }
+
+    [Fact]
     public async Task HandleAsync_RecordsAuditLog()
     {
         // Arrange
-        var consultoria = ConsultoriaFundo.Register("Nome Original", "11444777000161", Guid.NewGuid());
+        var consultoria = ConsultoriaFundo.Register("Nome Original", "11444777000161", _companyId);
         var command = ValidCommand(consultoria.Id);
         _repository.GetByIdAsync(consultoria.Id, Arg.Any<CancellationToken>()).Returns(consultoria);
 

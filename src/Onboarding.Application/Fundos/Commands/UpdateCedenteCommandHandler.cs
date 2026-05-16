@@ -14,15 +14,18 @@ public sealed class UpdateCedenteCommandHandler
     : ICommandHandler<UpdateCedenteCommand, CedenteDto>
 {
     private readonly ICedenteRepository _repository;
+    private readonly ICurrentCompanyService _currentCompanyService;
     private readonly IAuditService _auditService;
     private readonly ILogger<UpdateCedenteCommandHandler> _logger;
 
     public UpdateCedenteCommandHandler(
         ICedenteRepository repository,
+        ICurrentCompanyService currentCompanyService,
         IAuditService auditService,
         ILogger<UpdateCedenteCommandHandler> logger)
     {
         _repository = repository;
+        _currentCompanyService = currentCompanyService;
         _auditService = auditService;
         _logger = logger;
     }
@@ -30,8 +33,9 @@ public sealed class UpdateCedenteCommandHandler
     public async Task<CedenteDto> HandleAsync(
         UpdateCedenteCommand command, CancellationToken ct = default)
     {
-        var cedente = await _repository.GetByIdAsync(command.Id, ct)
-            ?? throw new KeyNotFoundException($"Cedente with ID '{command.Id}' not found.");
+        var cedente = await _repository.GetByIdAsync(command.Id, ct);
+        if (cedente is null || cedente.ClienteId != _currentCompanyService.CompanyId)
+            throw new KeyNotFoundException($"Cedente with ID '{command.Id}' not found.");
 
         cedente.Update(
             command.Nome,

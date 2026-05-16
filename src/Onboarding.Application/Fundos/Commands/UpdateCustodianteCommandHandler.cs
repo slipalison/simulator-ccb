@@ -13,15 +13,18 @@ public sealed class UpdateCustodianteCommandHandler
     : ICommandHandler<UpdateCustodianteCommand, CustodianteDto>
 {
     private readonly ICustodianteRepository _repository;
+    private readonly ICurrentCompanyService _currentCompanyService;
     private readonly IAuditService _auditService;
     private readonly ILogger<UpdateCustodianteCommandHandler> _logger;
 
     public UpdateCustodianteCommandHandler(
         ICustodianteRepository repository,
+        ICurrentCompanyService currentCompanyService,
         IAuditService auditService,
         ILogger<UpdateCustodianteCommandHandler> logger)
     {
         _repository = repository;
+        _currentCompanyService = currentCompanyService;
         _auditService = auditService;
         _logger = logger;
     }
@@ -29,8 +32,9 @@ public sealed class UpdateCustodianteCommandHandler
     public async Task<CustodianteDto> HandleAsync(
         UpdateCustodianteCommand command, CancellationToken ct = default)
     {
-        var custodiante = await _repository.GetByIdAsync(command.Id, ct)
-            ?? throw new KeyNotFoundException($"Custodiante with ID '{command.Id}' not found.");
+        var custodiante = await _repository.GetByIdAsync(command.Id, ct);
+        if (custodiante is null || custodiante.ClienteId != _currentCompanyService.CompanyId)
+            throw new KeyNotFoundException($"Custodiante with ID '{command.Id}' not found.");
 
         custodiante.Update(
             command.RazaoSocial,

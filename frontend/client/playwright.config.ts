@@ -16,6 +16,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: 'html',
   timeout: 60000,
+  globalSetup: './playwright/global-setup.ts',
 
   use: {
     baseURL: 'http://localhost:5173',
@@ -24,6 +25,17 @@ export default defineConfig({
   },
 
   projects: [
+    // Auth-flow regression suite (T-7 Phase 49) — fresh browser, no storageState
+    {
+      name: 'auth-flow',
+      testDir: './playwright/specs',
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+      testMatch: /auth-flow\.spec\.ts/,
+    },
+
+
     // Setup: authenticate and save storageState for each role
     {
       name: 'setup',

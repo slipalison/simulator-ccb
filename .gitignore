@@ -428,6 +428,12 @@ frontend/client/playwright/.auth/
 frontend/backoffice/playwright/.auth/
 test-results/
 playwright-report/
+# Backoffice playwright output dirs (non-standard location per playwright.config.ts)
+frontend/backoffice/playwright/results/
+frontend/backoffice/playwright-report/
+# Client playwright output dirs
+frontend/client/playwright/results/
+frontend/client/playwright-report/
 
 #################################################
 # Terraform / IaC (se usar)

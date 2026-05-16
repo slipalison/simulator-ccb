@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
-import { logoutAdmin, getAdminMe } from "@/lib/admin-api";
+import { logoutAdmin, getAdminMe, AdminApiError } from "@/lib/admin-api";
 
 // ---------------------------------------------------------------------------
 // Context definition
@@ -39,8 +39,23 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         setAdminEmail(me.adminEmail);
         setAdminId(me.adminId);
         setIsAuthenticated(true);
-      } catch {
-        // Session invalid — admin needs to login
+      } catch (err) {
+        const is401 = err instanceof AdminApiError && err.status === 401;
+        if (is401) {
+          // D-12 + post-redirect cookie-commit race: if the first /auth/me races the cookie
+          // write after the Keycloak callback redirect, retry exactly once after 200 ms.
+          await new Promise<void>((r) => setTimeout(r, 200));
+          try {
+            const me = await getAdminMe();
+            setAdminName(me.adminName);
+            setAdminEmail(me.adminEmail);
+            setAdminId(me.adminId);
+            setIsAuthenticated(true);
+          } catch {
+            // Second 401 — cookie genuinely absent. Finalize as not authenticated.
+          }
+        }
+        // 5xx or network error: fail fast, do not retry — surface as not authenticated.
       } finally {
         setIsLoading(false);
       }

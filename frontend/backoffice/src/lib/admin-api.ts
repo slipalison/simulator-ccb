@@ -69,12 +69,13 @@ export async function getAdminMe(): Promise<AdminSessionResponse> {
       sub: string;
     };
     if (!data.isAuthenticated) {
-      throw new AdminApiError("Session invalid");
+      throw new AdminApiError("Session invalid", 401);
     }
     return { adminName: data.adminName, adminEmail: data.email, adminId: data.sub };
   }
 
-  throw new AdminApiError("Session invalid");
+  // Expose HTTP status so callers can distinguish 401 (unauthenticated) from 5xx (server error).
+  throw new AdminApiError("Session invalid", response.status);
 }
 
 // ---------------------------------------------------------------------------

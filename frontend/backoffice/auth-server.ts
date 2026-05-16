@@ -246,7 +246,7 @@ router.get(
         return sendRedirect(event, "/admin/login", 302);
       }
 
-      return sendRedirect(event, "/admin/users", 302);
+      return sendRedirect(event, "/admin/companies", 302);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Token exchange failed";
       return sendRedirect(

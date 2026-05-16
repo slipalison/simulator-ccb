@@ -17,9 +17,11 @@ vi.mock("@/lib/admin-api", () => ({
     }
   },
   AdminApiError: class AdminApiError extends Error {
-    constructor(message: string) {
+    public status?: number;
+    constructor(message: string, status?: number) {
       super(message);
       this.name = "AdminApiError";
+      this.status = status;
     }
   },
 }));
@@ -124,5 +126,64 @@ describe("Admin Layout", () => {
     const usersLink = screen.getByTestId("sidebar-users-link");
     expect(usersLink).toBeInTheDocument();
     expect(usersLink.getAttribute("href")).toBe("/admin/users");
+  });
+
+  // T-6a: isLoading=true → loading shell rendered, redirect NOT fired
+  it("renders loading shell while isLoading=true and does not redirect", () => {
+    // getAdminMe never resolves during this test — keeps isLoading=true
+    vi.mocked(adminApi.getAdminMe).mockReturnValue(new Promise(() => {}));
+
+    render(
+      wrapper({
+        children: <AdminLayout><p data-testid="protected-content">Protected</p></AdminLayout>,
+      })
+    );
+
+    expect(screen.getByTestId("admin-loading-shell")).toBeInTheDocument();
+    expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("admin-layout")).not.toBeInTheDocument();
+    // No redirect should have fired while still loading
+    expect(window.location.href).toBe("");
+  });
+
+  // T-6a: isLoading=false, isAuthenticated=true → children rendered
+  it("renders children when authenticated after loading completes", async () => {
+    vi.mocked(adminApi.getAdminMe).mockResolvedValue({
+      adminName: "Test Admin",
+      adminEmail: "test@onboarding.local",
+      adminId: "test-admin-id",
+    });
+
+    render(
+      wrapper({
+        children: <AdminLayout><p data-testid="protected-content">Protected</p></AdminLayout>,
+      })
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("admin-layout")).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId("protected-content")).toBeInTheDocument();
+    expect(screen.queryByTestId("admin-loading-shell")).not.toBeInTheDocument();
+  });
+
+  // T-6a: isLoading=false, isAuthenticated=false → redirect fired, no content shown
+  it("redirects to /admin/login when not authenticated after loading completes", async () => {
+    const { AdminApiError } = await import("@/lib/admin-api");
+    vi.mocked(adminApi.getAdminMe).mockRejectedValue(new AdminApiError("No session", 401));
+
+    render(
+      wrapper({
+        children: <AdminLayout><p data-testid="protected-content">Protected</p></AdminLayout>,
+      })
+    );
+
+    await waitFor(() => {
+      expect(window.location.href).toBe("/admin/login");
+    });
+
+    expect(screen.queryByTestId("protected-content")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("admin-layout")).not.toBeInTheDocument();
   });
 });

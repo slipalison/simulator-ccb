@@ -2,7 +2,7 @@ import { type ReactNode, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAdminAuth } from "@/lib/admin-auth-context";
 import { toast } from "sonner";
-import { LogOut, Shield } from "lucide-react";
+import { LogOut, Shield, Loader2 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // AdminHeader
@@ -54,6 +54,13 @@ function AdminSidebar() {
           Empresas
         </a>
         <a
+          href="/admin/users"
+          className="block py-2 px-3 text-sm rounded-md hover:bg-accent transition-colors"
+          data-testid="sidebar-users-link"
+        >
+          Usuários
+        </a>
+        <a
           href="/admin/employees"
           className="block py-2 px-3 text-sm rounded-md hover:bg-accent transition-colors"
           data-testid="sidebar-employees-link"
@@ -86,6 +93,9 @@ function AdminSidebar() {
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { admin, logout } = useAdminAuth();
 
+  // Redirect only after loading completes and auth is confirmed absent.
+  // Guard is gated on !isLoading to prevent firing during the initial tryRestore
+  // window (which includes the single 401 retry — see admin-auth-context.tsx + D-12).
   useEffect(() => {
     if (!admin.isLoading && !admin.isAuthenticated) {
       window.location.href = "/admin/login";
@@ -98,8 +108,26 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     window.location.href = "/admin/login";
   }
 
-  if (admin.isLoading || !admin.isAuthenticated) {
-    return null; // Prevents flashing unauthenticated content
+  // Render a loading shell while session restoration is in progress.
+  // Returning null here caused a one-frame flash before the redirect effect fired —
+  // the shell prevents visible content shift and the redirect effect is unchanged.
+  if (admin.isLoading) {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center bg-background"
+        data-testid="admin-loading-shell"
+        aria-label="Carregando"
+        aria-busy="true"
+      >
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
+      </div>
+    );
+  }
+
+  if (!admin.isAuthenticated) {
+    // Redirect will fire via the effect above; render nothing while the navigation
+    // is in flight so unauthenticated content is never shown.
+    return null;
   }
 
   return (

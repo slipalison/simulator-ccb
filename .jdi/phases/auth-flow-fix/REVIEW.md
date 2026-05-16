@@ -1,4 +1,4 @@
-# Phase 49 — auth-flow-fix — REVIEW (iter 1)
+﻿# Phase 49 — auth-flow-fix — REVIEW (iter 1)
 
 ## Backend C# (iter 1)
 - Verdict: APPROVED_WITH_WARNINGS
@@ -446,3 +446,126 @@ All new files post-968eefb in iter 2 (frontend scope) are tests/infra. No new pr
 - Backoffice api-proxy Scenario 3: FAIL (404 spec defect -- B-FE-1)
 - Backoffice auth-flow: 4 FAIL (global-setup path bug W-FE-4 + D-17/realm mismatch B-FE-2)
 - Screenshot: .jdi/cache/phase-49-fe-auth-error.png
+
+<!-- ITER3_FRONTEND_HERE -->
+
+## Security (iter 3)
+- Verdict: APPROVED_WITH_WARNINGS
+
+### T-12 deep dive
+
+**Diff analysis: pass**
+
+Single surgical change: one line removed, one line added (plus a 5-line explanatory comment block) in the /auth/logout handler at frontend/client/auth-server.ts:176. No other handler, route, or cookie construction was touched. Verified via git diff 419c40a^..419c40a.
+
+**client_id source: validated (env var, not user-controlled)**
+
+CLIENT_ID is resolved at line 40 from process.env.KEYCLOAK_CLIENT_ACF_CLIENT_ID with fallback literal onboarding-client-acf. The env var is injected by compose.yaml:116 from the shell environment. It is a server-side module-level constant resolved at process startup. No browser request can influence its value.
+
+**Encoding: pass**
+
+encodeURIComponent(CLIENT_ID) is applied, consistent with encodeURIComponent(postLogoutRedirectUri) on the same line and with the backoffice pattern at line 270. For the known value onboarding-client-acf this is a no-op but the encoding is structurally correct and guards against any future client ID containing special characters.
+
+**No id_token_hint leakage: pass**
+
+The logout URL template contains exactly two query parameters: post_logout_redirect_uri (a static path) and client_id (a server-side constant). No id_token_hint, no token value of any kind appears in the URL. The access and refresh token cookies are deleteCookie-d before the redirect is issued (lines 166-167); they are not forwarded in the URL.
+
+**Backoffice pattern match: pass**
+
+frontend/backoffice/auth-server.ts:270 is structurally identical to the fixed client line, parameter order identical. The fix is a faithful port with no deviations.
+
+**Tests cover: pass**
+
+Three new Vitest static-source-assertion tests in auth-server.test.ts (T-12 describe block):
+1. logout URL template contains client_id= parameter - regex catches removal of the client_id construct.
+2. logout URL client_id uses encodeURIComponent - asserts encoding is present; catches accidental stripping.
+3. logout URL contains both post_logout_redirect_uri and client_id - extracts the fullUrl assignment block and asserts both parameters appear together.
+
+A dedicated negative test for CLIENT_ID env unset is not required: CLIENT_ID has a safe non-empty fallback (onboarding-client-acf) so no failure path exists for a missing env var. Coverage is adequate for the regression being guarded.
+
+**Live behavior validation: not directly executed by this reviewer**
+
+Docker was authorized but no container session was started in this reviewer run. The doer SUMMARY reports live verification via curl http://localhost:5173/auth/logout confirming the Location header contains client_id=onboarding-client-acf. Static analysis (diff plus test coverage plus backoffice parity) is sufficient to confirm the fix is structurally correct.
+
+---
+
+### D-15 re-check (iter 3 diff)
+
+pass - only frontend/client/auth-server.ts was modified in the production auth surface. The change strengthens D-15 gate 6 (Logout invalidates session in Keycloak via end_session_endpoint with client_id). All other D-15 invariants are untouched:
+- git diff 149247c^..2b24c20 -- keycloak/ returns empty (realm JSONs not touched).
+- git diff 149247c^..2b24c20 -- src/ returns empty (Program.cs, appsettings.json not touched).
+- No Permission* constants, no realm JSON appear in the iter-3 diff.
+- T-11 modified .jdi/DECISIONS.md to append the D-17 refinement note only. The refinement narrows scope of D-17 but does not weaken any security invariant. Auth-flow specs using localhost is the correct required alignment with Keycloak realm redirectUris.
+
+---
+
+### iter-2 / iter-1 blockers/warnings still applicable?
+
+- W-FE-3 / W1 (logout client_id missing): RESOLVED by T-12 - client_id=encodeURIComponent(CLIENT_ID) added to client SPA logout URL. SSO session termination gap is closed.
+- W-FE-1 (vitest picks up playwright spec): UNCHANGED - not addressed in iter 3. Both vitest.config.ts files still missing exclude for playwright/** and e2e/**. Carry forward.
+- W-BE-5 / W-FE-4 (path resolution): RESOLVED by T-13 - global-setup.ts changed from 4-level to 3-level path.resolve, ESM shims added, existsSync(compose.yaml) guard added.
+- W-BE-6 / W-FE-5 (jq dependency): UNCHANGED - pre-existing, out of scope for iter 3.
+- B-FE-1 / B-BE-1 (api-proxy Scenario 3 404): RESOLVED by T-10 - Scenario 3 replaced with GET /api/companies/registration -> 405. Both SPAs pass 3/3 api-proxy scenarios.
+- B-FE-2 / B-BE-2 (D-17 realm mismatch): RESOLVED by T-11 - auth-flow specs reverted to localhost baseURL; per-project baseURL overrides added to Playwright configs; D-17 narrowed to api-proxy probes only.
+- W2 (verify-hardening.sh realm), W3 (client-realm missing clientPolicies), W4 (seed script stdout password), W5 (legacy ROPC client): all unchanged, out of iter-3 scope.
+
+---
+
+### NF-1 / NF-2 security implications
+
+**NF-1 (Scenario 2 - logout spec defect): pass - test-only, no auth surface impact**
+
+The defect is that page.waitForURL on localhost:5173/auth/login fails because /auth/login is a server-side h3 handler that 302-redirects to Keycloak before Playwright can observe a landed state on the SPA login route. Product behavior is correct: cookies are deleted before the Keycloak redirect (auth-server.ts:166-167), and Keycloak now receives client_id (T-12 fix). The SSO session IS terminated. The spec failure is a measurement artifact, not a product failure. No auth-surface vulnerability is concealed by this defect.
+
+**NF-2 (Scenario 8 - cookie-blocked spec defect): pass - test-only, no auth surface impact**
+
+After clearing cookies with a live Keycloak SSO session still active, navigating to /profile causes Keycloak to silently re-authenticate and redirect to /auth/callback. The pkce_state cookie (cleared) is absent, so auth-server.ts correctly rejects with Invalid state. The auth guard is working as intended. The test fails because it encounters an unexpected SSO re-auth mid-redirect-chain. The fix is test isolation (fresh browser context or prior logout), not a product change. The cookie-blocked graceful error path Scenario 8 targets is correctly defended at the product level.
+
+---
+
+### Pipeline (iter 3 delta)
+
+- Semgrep: 0 ERROR, 0 WARNING - ran against 6 iter-3 modified files (frontend/client/auth-server.ts, frontend/client/auth-server.test.ts, frontend/backoffice/playwright/global-setup.ts, frontend/backoffice/pw-no-setup.config.ts, frontend/client/playwright/specs/api-proxy.spec.ts, frontend/backoffice/playwright/specs/api-proxy.spec.ts). 2 rules, 0 findings. Exit code 0.
+- Gitleaks: not installed - manual regex scan on git diff 149247c^..2b24c20. Zero findings. The only credential-adjacent additions are comment text referencing id_token_hint (a parameter name, not a value) and client_id=onboarding-client-acf (a public client identifier, not a secret).
+- Dependabot: 0 HIGH/CRITICAL - gh api returned empty array. No new npm or NuGet dependencies added in iter 3.
+- Trivy FS: not installed - no new packages, no Dockerfile changes in iter 3. Not applicable.
+- Trivy image: skipped - no Dockerfile modified in T-10 through T-13.
+- CodeQL: CI-only - no CI runs on branch agents/add-new-agents.
+- Multi-tenant (D-5): trivially intact - git diff 149247c^..2b24c20 -- src/ returns empty. Zero backend files touched in iter 3.
+- Hardening regression: pass - realm JSONs untouched in iter 3. Static re-check: both realms retain bruteForceProtected=true, failureFactor=5, ssoSessionIdleTimeout=1800, sslRequired=external.
+
+---
+
+### Blockers (iter 3 only)
+
+None.
+
+---
+
+### Warnings (iter 3 only)
+
+- W-IT3-1 - frontend/client/playwright/specs/auth-flow.spec.ts:109 (Scenario 2, NF-1): page.waitForURL on the SPA /auth/login route times out because that route 302-redirects to Keycloak before Playwright can observe a landed state. Fix: assert waitForURL on the Keycloak authorize URL pattern or assert the Keycloak #username locator is visible. Spec defect only; product logout is correctly implemented post T-12.
+
+- W-IT3-2 - frontend/client/playwright/specs/auth-flow.spec.ts:199 (Scenario 8, NF-2): Scenario 8 does not isolate the Keycloak SSO session before clearing cookies. A live SSO session from a prior test causes silent re-authentication after context.clearCookies(), hitting the absent pkce_state cookie and aborting the page load. Fix: use browser.newContext() with a fresh profile that never authenticated, or call /auth/logout before clearing cookies. Spec isolation defect only; the Invalid state rejection on missing pkce_state is correct product behavior.
+
+---
+
+### Findings detail
+
+**T-12 parameter injection risk: none**
+
+CLIENT_ID is a module-level constant resolved at server startup from process.env.KEYCLOAK_CLIENT_ACF_CLIENT_ID. It cannot be influenced by any HTTP request parameter, cookie, header, or query string. encodeURIComponent is applied. Worst-case misconfigured env var (e.g. containing ampersand-prefixed params) would be percent-encoded -- no query string injection is possible.
+
+**D-17 refinement (T-11) security assessment: pass**
+
+Keeping auth-flow specs on localhost and api-proxy specs on 127.0.0.1 is architecturally sound. The dual-listener ambiguity (D-16 root cause) applies to Vinxi ports 5173/5174 where a stale host process can intercept IPv6 traffic. Keycloak port 8180 has no equivalent dual-listener risk in this environment. Per-project baseURL override in Playwright configs is correctly scoped. The narrowing of D-17 is not a security regression.
+
+**T-13 global-setup changes: no new injection surface**
+
+execSync is called with the hardcoded literal docker compose ps --format json. The resolvedRoot path is used only as cwd working directory, not interpolated into the shell command. existsSync receives a path.join-constructed path -- no user input reaches it. Zero new shell injection surface.
+
+---
+
+### Pipeline artifacts
+- Semgrep (iter 3): .jdi/cache/phase-49-iter3-semgrep.json (0 findings, 2 rules, 6 files)
+- Gitleaks (iter 3): not installed; manual scan clean -- 0 new findings

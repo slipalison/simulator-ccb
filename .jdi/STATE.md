@@ -9,5 +9,5 @@ specialists:
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
 current_phase: auth-flow-fix
 current_phase_slug: auth-flow-fix
-phase_status: ready
-next_step: /jdi-discuss auth-flow-fix
+phase_status: discussed
+next_step: /jdi-plan auth-flow-fix

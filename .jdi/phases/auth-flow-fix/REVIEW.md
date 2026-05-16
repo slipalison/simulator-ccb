@@ -314,3 +314,51 @@ None introduced by iter 2. Iter-1 warnings W1-W5 carry forward unchanged (see Se
 ### Pipeline artifacts
 - Semgrep (iter 2): .jdi/cache/phase-49-iter2-semgrep.json (0 findings, 7 rules, 10 files)
 - Gitleaks (iter 2): not installed; manual scan clean -- 0 new findings
+
+## Backend C# (iter 2)
+- Verdict: BLOCKED
+- Build: ok — 0 errors, 0 warnings (dotnet build clean, all 7 projects compile)
+- Tests:
+  - Onboarding.Domain.Tests: 378 passed / 0 failed / 0 skipped (248 ms)
+  - Onboarding.Application.Tests: 89 passed / 0 failed / 0 skipped (158 ms)
+  - Onboarding.API.Tests: 244 passed / 0 failed / 4 skipped (pre-existing: TracePropagationTests x2 + AdminCompanyDetailsTests x2) (1m 53s)
+  - Onboarding.Integration.Tests: 20 passed / 0 failed / 0 skipped (3m 23s)
+- Coverage: n/a — iter 2 (T-8/T-9) added zero new .cs files. git diff --name-only --diff-filter=A on bd8f742 and a5edf06 returns only .mjs/.ts/.md files. G11 trivially passes.
+- Lint: WARN (unchanged from iter 1 W-BE-1) — dotnet format --verify-no-changes reports whitespace violations in the same 5 pre-existing test files. No new violations introduced by iter 2.
+- DDD enforcement: pass — iter 2 added zero .cs files; Domain layer unchanged; no new public setters, no cross-aggregate entity references, no Infrastructure dependency in Domain.
+- Playwright regression: BLOCKED — ran against live compose stack (all core services healthy: api, keycloak, frontend-client, frontend-backoffice); single listener per port confirmed (127.0.0.1:5173 PID 24376, 127.0.0.1:5174 PID 24376 — Docker mapper only, no stale host vinxi). Test users seeded via Python KC Admin API (jq absent). Results:
+
+  api-proxy suite (T-9) — 4 pass / 2 fail / 0 skip total across both SPAs:
+  - Client api-proxy (pw-no-setup.config.ts, port 5173): Scenario 1 PASS (single listener: 1 process), Scenario 2 PASS (POST /api/companies/registration returns 422 JSON, not 503 HTML — Bug 3 fixed), Scenario 3 FAIL (GET /api/healthz/live returns 404, not 200 — spec defect)
+  - Backoffice api-proxy (port 5174): Scenario 1 PASS, Scenario 2 PASS, Scenario 3 FAIL (same spec defect)
+
+  auth-flow suite (T-7) — 0 pass / 5 fail / 1 skip:
+  - All 5 active client scenarios fail with navigated to http://localhost:5173/auth/error?error=Invalid+state
+  - Root cause: D-17 pins Playwright baseURL to http://127.0.0.1:5173 but keycloak/client-realm.json onboarding-client-acf.redirectUris contains only http://localhost:5173/auth/callback. Keycloak redirects to the registered redirect_uri (localhost), not to 127.0.0.1. The PKCE pkce_state cookie stored on the 127.0.0.1 origin is not sent on the localhost callback; auth-server.ts rejects with Invalid state. Backoffice auth-flow not run (same defect applies).
+
+### Blockers
+
+- B-BE-1 (G12 BLOCKING) — frontend/client/playwright/specs/api-proxy.spec.ts:196 and frontend/backoffice/playwright/specs/api-proxy.spec.ts:198: Scenario 3 targets GET /api/healthz/live expecting 200 Healthy. The Vinxi proxy (server.ts) prepends /api to every path, routing /api/healthz/live to http://api:8080/api/healthz/live which returns 404. The backend healthz is at /healthz/live (no /api prefix — Program.cs:298). The spec comment Proxies to http://api:8080/healthz/live is factually wrong — the proxy does NOT strip the /api prefix. Fix: replace Scenario 3 in both SPAs with an endpoint that is actually routed through the /api proxy (e.g. GET /api/companies/registration → 405 Method Not Allowed, or reuse the 422 endpoint pattern), or test healthz directly against port 8080 without going through the proxy.
+
+- B-BE-2 (G12 BLOCKING) — keycloak/client-realm.json and keycloak/backoffice-realm.json: redirectUris lists only localhost variants. T-9 (D-17) changed Playwright baseURL to 127.0.0.1:PORT but did NOT add http://127.0.0.1:5173/auth/callback or http://127.0.0.1:5174/auth/callback to the Keycloak allowlists. Keycloak redirects to the registered localhost redirect_uri; PKCE state cookie is on the 127.0.0.1 origin and is not sent on the localhost callback; all auth-flow scenarios fail with Invalid state. Fix: add 127.0.0.1 variants to redirectUris and webOrigins in both realm JSONs; add http://127.0.0.1:PORT/auth/login to post.logout.redirect.uris attributes. T-9 is incomplete without realm JSON updates.
+
+### Warnings
+
+- W-BE-1 — pre-existing whitespace violations in 5 test files (unchanged from iter 1; same 5 files: CreateAdminCommandHandlerTests.cs:69, GetAuditLogQueryHandlerTests.cs:98, KeycloakUserServiceFirstLoginTests.cs multiple lines, AuditServiceTests.cs multiple lines, KeycloakUserServiceTests.cs multiple lines). Phase 49 iter 2 introduced zero .cs files.
+- W-BE-5 — frontend/backoffice/playwright/global-setup.ts:87: path.resolve(__dirname, '../../../..') (4 levels up from playwright/) resolves to the parent of the repo root instead of the repo root. Correct depth is 3 levels (../../..). This causes docker compose ps to fail in globalSetup, blocking the full backoffice E2E suite from running via the main playwright.config.ts.
+- W-BE-6 — scripts/seed-test-users.sh requires jq which is absent on this host (pre-existing W-FE-5 from iter 1). Test users were seeded manually via Python KC Admin API. The global-setup dependency on bash scripts/seed-test-users.sh will fail on any system without jq + Git Bash.
+
+### Findings detail
+
+G12 Playwright regression — run summary:
+Stack state: api healthy, keycloak healthy, frontend-client running (:5173), frontend-backoffice running (:5174). Single listener per port on 127.0.0.1 (PID 24376 Docker mapper only). Bug 3 environment precondition CONFIRMED CLEAN — no stale host vinxi.
+
+api-proxy Scenario 1 (listener guard): PASS both SPAs — exactly 1 listener per port. No stale processes. D-16 guard effective.
+api-proxy Scenario 2 (POST /api/companies/registration -> 422): PASS both SPAs — proxy correctly forwarded to backend, received 422 application/problem+json with title field. Bug 3 is confirmed fixed for the POST path. D-17 IPv4 routing to Docker container working.
+api-proxy Scenario 3 (GET /api/healthz/live -> 200): FAIL both SPAs (404). Direct confirmation: curl http://127.0.0.1:8080/healthz/live returns 200 Healthy; curl http://127.0.0.1:5173/api/healthz/live returns 404. The backend healthz is not under the /api Vinxi router base. Spec defect in T-9 — wrong URL assumption.
+
+auth-flow Scenarios 1,2,5,6,8: FAIL (5/5 active) — navigated to http://localhost:5173/auth/error?error=Invalid+state on every login attempt. Confirmed via Playwright error logs and error URL pattern. Root cause is D-17/realm mismatch as described in B-BE-2. This is a regression introduced by T-9 completing D-17 without corresponding realm JSON updates.
+
+New .cs files in iter 2: zero. Confirmed by git diff --name-only --diff-filter=A on both T-8 (bd8f742) and T-9 (a5edf06) commits. G11 coverage gate trivially passes.
+
+<!-- ITER2_FRONTEND_HERE -->

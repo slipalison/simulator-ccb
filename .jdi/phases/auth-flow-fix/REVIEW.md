@@ -204,3 +204,113 @@ The script predates Phase 34 realm split and was never updated. Phase 49 modifie
 - Trivy FS: `.jdi/cache/phase-49-trivy-fs.json` (not-installed placeholder)
 - Semgrep: `.jdi/cache/phase-49-semgrep.json` (0 findings, 5 rules, 541 files)
 - Gitleaks: `.jdi/cache/phase-49-gitleaks.json` (not-installed placeholder; manual scan clean)
+
+
+---
+
+## Security (iter 2)
+- Verdict: APPROVED
+
+### D-15 gate re-check (iter 2 diff did NOT touch auth surface)
+
+Grep evidence: git diff --name-only bd8f742^..a5edf06 returned empty output for all guarded paths:
+- frontend/client/auth-server.ts not touched
+- frontend/backoffice/auth-server.ts not touched
+- keycloak/client-realm.json not touched
+- keycloak/backoffice-realm.json not touched
+- src/Onboarding.API/Program.cs not touched
+- src/Onboarding.API/appsettings.json not touched
+- No Permission* or Auth* non-test file appears in iter-2 diff
+
+Files with auth in their name that appear in the diff (auth-flow.spec.ts, admin-auth-flow.spec.ts) were modified solely to swap BASE_URL constants from http://localhost:PORT to http://127.0.0.1:PORT (D-17 compliance). No auth logic was altered in either file.
+
+All D-15 gates are **unchanged from iter 1 -- pass**:
+- PKCE S256: pass (unchanged)
+- HttpOnly cookies: pass (unchanged)
+- Secure-in-prod: pass (unchanged)
+- SameSite lax/strict split: pass (unchanged)
+- CORS allowlist: pass (unchanged)
+- bruteForceProtected: pass (re-verified below)
+- end_session_endpoint logout: pass with warning W1 (unchanged)
+- State validation: pass (unchanged)
+- Storage gate D-12: pass (unchanged)
+
+Keycloak hardening static re-check (realm files not touched in iter 2):
+- keycloak/client-realm.json: bruteForceProtected=true, failureFactor=5, ssoSessionIdleTimeout=1800 -- all pass
+- keycloak/backoffice-realm.json: bruteForceProtected=true, failureFactor=5, ssoSessionIdleTimeout=1800 -- all pass
+
+### iter 2 specific
+
+**check-dev-env.mjs: shell injection risk? pass**
+
+execSync is called exactly once at line 41 with a fully hardcoded literal: docker compose ps --status running --services. No variable interpolation occurs. The serviceNames argv argument is consumed only via running.has(name) -- a Set membership lookup on parsed stdout -- and is never injected into the shell command string. No shell metacharacter injection vector exists.
+
+isMain detection uses process.argv[1].endsWith string comparison only, no exec. ALLOW_HOST_DEV bypass reads the env var, lowercases it, and compares against a hardcoded Set of 1/true/yes. No interpolation. Conclusion: zero shell injection surface.
+
+**check-dev-env.test.mjs: real execSync runs in tests? pass**
+
+All 9 test cases use injectable execSyncImpl stubs (vi.fn().mockReturnValue or vi.fn().mockImplementation throw). The run() export accepts execSyncImpl as its second argument; actual node:child_process.execSync is never invoked during test execution. No container teardown can occur from CI.
+
+**package.json predev hooks: pass**
+
+Service names in both hooks are hardcoded JSON string literals (frontend-client, frontend-backoffice). Passed as process.argv[2] to check-dev-env.mjs and consumed via Set membership -- never shell-interpolated. No new npm dependencies were added; only the predev script line was added to each package.json.
+
+**docs (dev-setup.md / README.md / CONTRIBUTING.md): secrets leaked? pass**
+
+Semgrep no-hardcoded-credentials rule plus manual regex scan on all three files: 0 findings. All example values reference env-var instructions (cp .env.example .env) and public endpoints (/api/healthz/live). No tokens, passwords, or secrets appear in any of the three files.
+
+**D-16: properly worded + bypass documented? pass**
+
+docs/dev-setup.md covers: (1) official docker compose up workflow, (2) technical explanation of the IPv6 dual-listener mechanism, (3) how to detect stale processes on Windows and Linux, (4) how to clean them, (5) ALLOW_HOST_DEV=1|true|yes escape hatch marked explicitly as advanced debugging only. D-16 is cited in the script header comment and in docs. Bypass is visible but not promoted as default.
+
+**D-17: 127.0.0.1 pinning applied everywhere it should be? pass**
+
+All three Playwright config files verified:
+- frontend/client/playwright.config.ts:22 baseURL http://127.0.0.1:5173 -- pass
+- frontend/client/pw-no-setup.config.ts:12 baseURL http://127.0.0.1:5173 -- pass
+- frontend/backoffice/playwright.config.ts:27 baseURL http://127.0.0.1:5174 -- pass
+
+Both modified auth-flow specs had BASE_URL constants and inline URL comments updated to 127.0.0.1. Both new api-proxy specs use BASE_URL = http://127.0.0.1:PORT constants.
+
+Grep confirming zero live http://localhost references across all Playwright configs and specs: 0 hits.
+Two occurrences of localhost:5173/5174 in api-proxy JSDoc comment strings (explaining Bug 3) are documentation prose, not live network targets.
+
+Remaining localhost:8180 references in global-setup.ts files are for Keycloak -- correctly outside D-17 scope per SUMMARY.md. D-17 targets SPA port dual-listener ambiguity (5173/5174); port 8180 has no such ambiguity.
+
+**Playwright api-proxy.spec.ts: D-12/D-15 assertions intact? pass**
+
+The api-proxy specs are proxy smoke tests, not auth-flow tests. They do not perform login, write to browser storage, disable any security guard, or inspect auth cookies. Scenario 2 exercises POST /api/companies/registration (legitimately unauthenticated public endpoint). Scenario 3 exercises GET /api/healthz/live (AllowAnonymous). Neither bypasses authentication.
+
+probeListeners uses execSync with a port: number typed parameter. SPA_PORT is a numeric literal constant (5173 / 5174). Template literal interpolation of a JavaScript number produces only decimal digits -- no shell metacharacter injection is possible from a numeric argument.
+
+D-12 and D-15 assertions from the T-7 auth-flow specs are preserved intact; iter-2 only swapped BASE_URL constants in those files.
+
+### Security pipeline (iter 2 delta)
+
+- **Semgrep: 0 ERROR, 0 WARNING** -- ran against all 10 iter-2 files (8 new/modified in T-8 and T-9 plus the 2 modified auth-flow specs). Zero findings. Config .semgrep, 7 rules. Exit code 0.
+- **Gitleaks: not installed** -- manual regex scan on git diff bd8f742^..a5edf06. Only credential-pattern matches: E2EClient@123! and E2EAdmin@123! in auth-flow specs. Pre-existing D-14 dev fixtures introduced in iter-1 commit f7a2b46 (T-7); iter-2 only swapped BASE_URL constants. 0 new findings.
+- **Dependabot: 0 HIGH/CRITICAL** -- gh api returned empty array. Unchanged from iter 1. No new npm dependencies added in iter-2 changes.
+- **Trivy FS: not installed** -- no new NuGet packages, no new npm packages, no Dockerfile changes in iter 2. Not applicable.
+- **Trivy image: skipped** -- no Dockerfile changed in T-8 or T-9.
+- **CodeQL: CI-only** -- no CI runs on branch agents/add-new-agents.
+- **Multi-tenant (D-5): trivially intact** -- zero backend files touched in iter 2.
+
+### Blockers
+
+None.
+
+### Warnings
+
+None introduced by iter 2. Iter-1 warnings W1-W5 carry forward unchanged (see Security iter 1 section).
+
+### Findings detail
+
+**Shell injection analysis (check-dev-env.mjs):** The command string passed to execSync is docker compose ps --status running --services -- fully hardcoded. Service names from argv are consumed post-execution via Set.has(), never interpolated. No finding.
+
+**probeListeners port interpolation (api-proxy specs):** port: number typed; always receives literal constant 5173 or 5174. Number-to-string coercion in template literals produces only decimal digits. No metacharacter injection path. Advisory observation; not promoted to Warning.
+
+**D-17 Keycloak URL carve-out:** global-setup.ts files retain localhost:8180 for Keycloak. D-17 targets SPA ports (5173/5174) where a stale host Vinxi creates dual-listener ambiguity. Port 8180 has no such ambiguity. The carve-out is architecturally correct.
+
+### Pipeline artifacts
+- Semgrep (iter 2): .jdi/cache/phase-49-iter2-semgrep.json (0 findings, 7 rules, 10 files)
+- Gitleaks (iter 2): not installed; manual scan clean -- 0 new findings

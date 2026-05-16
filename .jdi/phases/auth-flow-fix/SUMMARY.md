@@ -1,5 +1,53 @@
 # Phase 49 --- auth-flow-fix --- SUMMARY
 
+### T-7 (2026-05-16T15:00:00Z)
+
+**Status:** DONE — deferred actual run to reviewer (docker compose unavailable in agent sandbox)
+
+**Commit sha:** f7a2b46
+
+**Files modified / created:**
+- `.gitignore` — added explicit backoffice and client playwright output dirs
+- `frontend/backoffice/package.json` — added `@playwright/test ^1.59.1`, scripts `test:e2e`, `test:e2e:ui`, `test:e2e:report`
+- `frontend/backoffice/playwright.config.ts` (new) — baseURL :5174, testDir `./playwright/specs`, `globalSetup`, sequential workers, `playwright-report` output
+- `frontend/backoffice/playwright/global-setup.ts` (new) — verifies `docker compose ps` health for `keycloak`, `api`, `frontend-backoffice`; invokes `scripts/seed-test-users.sh` idempotently
+- `frontend/backoffice/playwright/specs/admin-auth-flow.spec.ts` (new) — 4 backoffice scenarios (3, 4, 5-backoffice, 6-backoffice)
+- `frontend/backoffice/pnpm-lock.yaml` (new) — lockfile after adding `@playwright/test`
+- `frontend/client/playwright.config.ts` — added `globalSetup` + new `auth-flow` project (testDir `./playwright/specs`)
+- `frontend/client/playwright/global-setup.ts` (new) — verifies `docker compose ps` health for `keycloak`, `api`, `frontend-client`; invokes seed script
+- `frontend/client/playwright/specs/auth-flow.spec.ts` (new) — 6 client scenarios (1, 2, 5, 6, 7-skip, 8)
+- `frontend/client/pnpm-lock.yaml` (new)
+
+**Scenarios implemented (8 total across both SPAs):**
+
+Client SPA (`auth-flow.spec.ts` — project `auth-flow`, port 5173):
+1. Client login happy path → `/profile`, `code_challenge_method=S256` intercepted, `localStorage.length===0 && sessionStorage.length===0` (D-12)
+2. Client logout → clears session, `/auth/me` returns 401
+5. Client post-login race → no transient `/auth/login` URL between `/auth/callback` and `/profile`
+6. Client refresh resilience → reload stays on `/profile`
+7. `test.skip` — expired-token refresh: httpOnly cookies not inspectable from browser; `/auth/refresh` path covered by auth-context unit tests; documented rationale inline
+8. Cookie-blocked graceful error → `context.clearCookies()` + visit `/profile` → redirect to `/auth/login`, no loop, login button visible
+
+Backoffice SPA (`admin-auth-flow.spec.ts` — project `backoffice-auth`, port 5174):
+3. Backoffice login happy path → `/admin/companies`, PKCE S256, no storage (D-12)
+4. Backoffice logout → `/auth/login`, `/auth/me` returns 401
+5. (backoffice) Post-login race → no transient `/admin/login` URL between callback and `/admin/companies`
+6. (backoffice) Refresh resilience → reload stays on `/admin/companies`, loading shell not visible after restore
+
+**Test command + result:**
+- `cd frontend/client && npx playwright test --list --project=auth-flow` → 6 tests in 1 file (compile verified)
+- `cd frontend/backoffice && pnpm test:e2e --list` → 4 tests in 1 file (compile verified)
+- `pnpm typecheck && pnpm lint` → 0 errors in both SPAs
+- `pnpm vitest run` → client 11 failed / 20 passed (pre-existing, same count as before T-7); backoffice 1 failed / 19 passed (pre-existing, same count as before T-7). T-7 introduces zero new vitest failures.
+- **Actual E2E run: deferred to reviewer.** Agent sandbox does not have `docker compose up -d`. Reviewer executes `/jdi-verify` with compose stack healthy and `KC_ADMIN_CLIENT_SECRET=dev-admin-secret` (or from `.env`). Expected: 10 tests run (5 client active + 4 backoffice + 1 skip), 9/9 pass.
+
+**Note on `npx playwright` vs `pnpm exec playwright` for backoffice:**
+The root `node_modules/playwright` (older version) shadows `npx playwright` resolution when run from `frontend/backoffice/`. The `package.json` scripts use `pnpm exec playwright` to correctly resolve the locally-installed `@playwright/test 1.60.0`. This is documented in `playwright.config.ts` comments.
+
+**Vinext migration debt:** None. All changes are test-only files with no Vinxi-internal APIs.
+
+---
+
 ### T-6 (2026-05-16T14:30:00Z)
 
 **Status:** DONE

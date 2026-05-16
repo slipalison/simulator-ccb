@@ -1,5 +1,12 @@
 import { execSync } from 'child_process';
 import path from 'path';
+import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
+
+// ESM shim: __dirname is not available in ES modules; derive it from import.meta.url.
+// Mirrors the pattern used in frontend/client/playwright/global-setup.ts.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Global setup for backoffice Playwright E2E suite.
@@ -22,10 +29,23 @@ export default async function globalSetup(): Promise<void> {
   // ── Step 1: verify docker compose stack health ───────────────────────────
   const requiredServices = ['keycloak', 'api', 'frontend-backoffice'];
 
+  // Resolve repo root: __dirname = .../frontend/backoffice/playwright → 3 levels up.
+  // Guard: assert the resolved path contains 'compose.yaml' so any future depth
+  // regression is caught immediately rather than failing silently in docker compose.
+  const resolvedRoot = path.resolve(__dirname, '../../..');
+  const composeYaml = path.join(resolvedRoot, 'compose.yaml');
+  if (!existsSync(composeYaml)) {
+    throw new Error(
+      `[E2E globalSetup] Repo root guard failed: expected compose.yaml at ${composeYaml}. ` +
+        `Resolved path (${resolvedRoot}) does not appear to be the repository root. ` +
+        `Check path.resolve(__dirname, '../../..') depth from ${__dirname}.`
+    );
+  }
+
   let composeOutput = '';
   try {
     composeOutput = execSync('docker compose ps --format json', {
-      cwd: path.resolve(__dirname, '../../../..'),
+      cwd: resolvedRoot,
       encoding: 'utf-8',
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -84,7 +104,8 @@ export default async function globalSetup(): Promise<void> {
   //   e2e-admin@example.com / E2EAdmin@123! → backoffice realm, role=admin
   // On Windows (developer machine): Git Bash provides bash on PATH.
   // On Linux CI: bash is available natively.
-  const repoRoot = path.resolve(__dirname, '../../../..');
+  // resolvedRoot already validated above (compose.yaml guard)
+  const repoRoot = resolvedRoot;
   const seedScript = path.join(repoRoot, 'scripts', 'seed-test-users.sh');
 
   try {

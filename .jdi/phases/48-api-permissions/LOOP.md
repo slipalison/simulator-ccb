@@ -61,7 +61,7 @@ created_at: 2026-05-12T00:00:00Z
 
 ### iter=3 — fix lint G8 (2026-05-16)
 - Status: completed
-- Commit: (pending)
+- Commit: 07dcb2b
 - Tests: dotnet format --verify-no-changes exit 0; Integration.Tests skipped (Docker unavailable in CI — pre-existing infra constraint, not a regression); API build 0 errors, 0 warnings
 - Notes: Split anonymous object in GetFundoById_CrossTenant_Returns404 at lines 493-495 to one-property-per-line. `dotnet format tests/Onboarding.Integration.Tests` auto-applied; `--verify-no-changes` confirmed exit 0. Pre-boundary whitespace violations in KeycloakUserServiceFirstLoginTests.cs, AuditServiceTests.cs, KeycloakUserServiceTests.cs intentionally left untouched per D-2.
 

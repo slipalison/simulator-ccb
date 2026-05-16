@@ -47,7 +47,15 @@ created_at: 2026-05-12T00:00:00Z
 
 ### iter=2 — fix cross-tenant blockers (2026-05-16)
 - Status: completed
-- Commit: (pending)
+- Commit: eb5bc24
 - Tests: API.Tests 244 passed, 0 failed; Integration.Tests 16 passed, 0 failed (+4 new cross-tenant GET-by-id scenarios)
 - Notes: Fixed 5 BLOCKER security findings from reviewer iter 1. Root cause: GetByIdAsync uses IgnoreQueryFilters() in all 4 Fundos repositories; company-A entities were readable by company-B users via the 4 GET-by-id controller actions. Strategy chosen: controller-side tenant check (lowest blast radius — admin paths do not call these repository methods). Added `if (entity is null || entity.ClienteId != _currentCompanyService.CompanyId) return NotFound()` to GetConsultoriaById, GetCustodianteById, GetFundoById, GetCedenteById. Return NotFound (not Forbid) to not leak entity existence across tenants. Added 4 integration test scenarios (scenarios 9–12) confirming cross-tenant GET-by-id returns 404 for ConsultoriaFundo, Custodiante, Fundo, and Cedente.
+
+### iter=2 — review aggregate (2026-05-16)
+- backend-csharp: BLOCKED (G8 whitespace lint on tests/Onboarding.Integration.Tests/Fundos/FundosControllerIntegrationTests.cs:494-495 anonymous object — introduced by iter 2)
+- frontend-vinext: APPROVED_WITH_WARNINGS (no frontend touched; carried PERMISSION_LABELS contract drift)
+- security: APPROVED_WITH_WARNINGS (all 5 iter-1 blockers RESOLVED; warnings pre-existing)
+- Aggregate verdict: BLOCKED (worst-case wins)
+- Hash: lint-G8-1file (different from iter1 hash → no oscillation)
+- Next: iter 3 fix whitespace lint
 

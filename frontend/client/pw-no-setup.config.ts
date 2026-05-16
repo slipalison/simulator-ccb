@@ -14,10 +14,13 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   projects: [
+    // auth-flow: baseURL override to localhost — Keycloak realm redirectUris only
+    // contain localhost variants; using 127.0.0.1 breaks pkce_state cookie delivery.
+    // D-17 narrowed to api-proxy probes only (iter 3, 2026-05-16).
     {
       name: 'auth-flow',
       testDir: './playwright/specs',
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], baseURL: 'http://localhost:5173' },
       testMatch: /auth-flow\.spec\.ts/,
     },
     {

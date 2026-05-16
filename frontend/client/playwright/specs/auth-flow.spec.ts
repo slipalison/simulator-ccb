@@ -18,7 +18,13 @@ import { test, expect } from '@playwright/test';
 
 const CLIENT_EMAIL = 'e2e-client@example.com';
 const CLIENT_PASSWORD = 'E2EClient@123!';
-const BASE_URL = 'http://127.0.0.1:5173';
+// B-FE-2 fix (iter 3): auth-flow specs use localhost to match Keycloak realm
+// redirectUris (only localhost variants registered). The pkce_state cookie is
+// set on the origin that initiates login; Keycloak redirects to the registered
+// redirect_uri (localhost). Using 127.0.0.1 here caused the cookie to be sent
+// from a different origin, breaking state validation → Invalid state.
+// D-17 is narrowed to api-proxy probes only. See .jdi/DECISIONS.md D-17.
+const BASE_URL = 'http://localhost:5173';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

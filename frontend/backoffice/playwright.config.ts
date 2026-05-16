@@ -30,11 +30,16 @@ export default defineConfig({
   },
 
   projects: [
-    // Fresh browser — no storageState (ACF login flow)
+    // Fresh browser — no storageState (ACF login flow).
+    // baseURL override to localhost: Keycloak realm redirectUris only contain
+    // http://localhost:5174/auth/callback. Using 127.0.0.1 breaks pkce_state cookie
+    // delivery on the callback. D-17 narrowed to api-proxy probes only (iter 3).
+    // See .jdi/DECISIONS.md D-17.
     {
       name: 'backoffice-auth',
       use: {
         ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:5174',
       },
       testMatch: /.*admin-auth-flow\.spec\.ts/,
     },

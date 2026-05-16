@@ -509,6 +509,10 @@ export const PERMISSION_LABELS: Record<string, string> = {
   "audit:read": "Ver auditoria",
   "dashboard:access": "Acesso ao dashboard",
   "access-groups:manage": "Gerenciar grupos",
+  "funds:read": "Ver fundos",
+  "funds:write": "Criar/editar fundos",
+  "funds:delete": "Excluir fundos",
+  "funds:manage": "Gestão total de fundos",
 };
 
 export const PERMISSION_OPTIONS = [
@@ -518,6 +522,10 @@ export const PERMISSION_OPTIONS = [
   { value: "audit:read", label: "Ver auditoria" },
   { value: "dashboard:access", label: "Acesso ao dashboard" },
   { value: "access-groups:manage", label: "Gerenciar grupos" },
+  { value: "funds:read", label: "Ver fundos" },
+  { value: "funds:write", label: "Criar/editar fundos" },
+  { value: "funds:delete", label: "Excluir fundos" },
+  { value: "funds:manage", label: "Gestão total de fundos" },
 ];
 
 // ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@
 
 ## Status
 adopted: true
-current_phase: 48
+current_phase: 49
 total_phases: 53
 
 ## Context
@@ -24,16 +24,16 @@ Numeracao preservada pra alinhar com `.planning/` historico. Phases pre-48 nao s
 
 ### Phase 48: API + Permissions for Fundos
 - **Slug:** 48-api-permissions
-- **Status:** pending (plans escritos em `.planning/phases/48-api-permissions/48-01-PLAN.md` + `48-02-PLAN.md`, execucao nao iniciada)
+- **Status:** done (shipped 2026-05-16, verdict APPROVED_WITH_WARNINGS, 4 iter)
 - **Goal:** FundosController expoe CRUD pra ConsultoriaFundo/Custodiante/TipoAtivo/Fundo/Cedente + AdminFundosController read-only cross-company + policies funds:read/write/delete/manage + extensao access groups (admin-empresa=funds:manage, viewer=funds:read).
 - **Plans existentes (GSD):**
   - 48-01: FundosController parte 1 (ConsultoriaFundo/Custodiante/TipoAtivo) + permission policies + GlobalExceptionHandler enhancement
   - 48-02: FundosController parte 2 (Fundo/Cedente) + AdminFundosController + access group extension
-- **Acao JDI:** `/jdi-discuss 48` + `/jdi-plan 48` (pode reusar/importar plans GSD) + `/jdi-do 48`
+- **Deferred warnings (futuras phases):** W2 FundosController split (1061 LoC god class); W4 OTel JS telemetry stack ambos SPAs
 
 ### Phase 49: FundoCedente & Relationship CRUD
 - **Slug:** 49-fundo-cedente-relationships
-- **Status:** pending
+- **Status:** ready
 - **Goal:** Endpoints N-N Fundo↔Cedente (com payload — LimiteExposicaoPercentual/Valor + janela de datas), Cedente↔TipoAtivo, Fundo↔TipoAtivo. Enforcement REL-09 (uma unica associacao ATIVA por par Fundo-Cedente).
 
 ### Phase 50: Frontend Client — Fundos UI

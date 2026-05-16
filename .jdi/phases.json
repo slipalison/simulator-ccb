@@ -7,7 +7,7 @@
       "slug": "api-permissions",
       "raw_slug": "48-api-permissions",
       "folder": ".jdi/phases/48-api-permissions",
-      "status": "pending",
+      "status": "done",
       "legacy": true
     },
     {
@@ -15,7 +15,7 @@
       "slug": "fundo-cedente-relationships",
       "raw_slug": "49-fundo-cedente-relationships",
       "folder": ".jdi/phases/49-fundo-cedente-relationships",
-      "status": "pending",
+      "status": "ready",
       "legacy": true
     },
     {

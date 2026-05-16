@@ -7,8 +7,7 @@ specialists:
   - jdi-doer-onboarding-keycloak-backend-csharp + jdi-reviewer-onboarding-keycloak-backend-csharp
   - jdi-doer-onboarding-keycloak-frontend-vinext + jdi-reviewer-onboarding-keycloak-frontend-vinext
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
-current_phase: 48-api-permissions
-current_phase_slug: api-permissions
-phase_status: verified
-phase_verdict: APPROVED_WITH_WARNINGS
-next_step: /jdi-ship 48-api-permissions
+current_phase: 49-fundo-cedente-relationships
+current_phase_slug: fundo-cedente-relationships
+phase_status: ready
+next_step: /jdi-discuss 49-fundo-cedente-relationships

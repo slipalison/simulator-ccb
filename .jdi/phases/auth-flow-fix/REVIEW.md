@@ -569,3 +569,54 @@ execSync is called with the hardcoded literal docker compose ps --format json. T
 ### Pipeline artifacts
 - Semgrep (iter 3): .jdi/cache/phase-49-iter3-semgrep.json (0 findings, 2 rules, 6 files)
 - Gitleaks (iter 3): not installed; manual scan clean -- 0 new findings
+
+## Backend C# (iter 3)
+- Verdict: APPROVED_WITH_WARNINGS
+- Build: ok -- 0 errors, 0 warnings (dotnet build clean, 8.4s)
+- Tests:
+  - Onboarding.Domain.Tests: 378 passed / 0 failed / 0 skipped (270 ms)
+  - Onboarding.Application.Tests: 89 passed / 0 failed / 0 skipped (159 ms)
+  - Onboarding.API.Tests: 244 passed / 0 failed / 4 skipped (pre-existing) (2m 29s)
+  - Onboarding.Integration.Tests: 20 passed / 0 failed / 0 skipped (3m 18s)
+- Coverage: n/a -- iter 3 added zero new .cs files. G11 trivially passes.
+- Lint: WARN (unchanged W-BE-1) -- same 5 pre-existing test files with whitespace violations. Zero new violations.
+- DDD: pass -- iter 3 touched zero .cs files.
+- Playwright (mandatory):
+  - client api-proxy: 3/3 PASS
+  - client auth-flow: 3/5 PASS, 2 FAIL (S2 NF-1, S8 NF-2), 1 SKIP (S7 intentional)
+  - backoffice api-proxy: 3/3 PASS
+  - backoffice auth-flow: 1/4 PASS, 3 FAIL (S3 NEW-W-1, S4 NF-1, S5 NF-2)
+- iter-2 blocker resolution:
+  - B-BE-1: RESOLVED
+  - B-BE-2: RESOLVED
+
+### Blockers (iter 3 only)
+
+None.
+
+### Warnings (iter 3 only)
+
+- W-BE-7 (new) -- backoffice admin-auth-flow.spec.ts:105: Scenario 3 sessionStorage.length===1 (tsr-scroll-restoration-v1_3, TanStack Router). D-12 NOT violated. Spec assertion overly strict.
+- W-BE-8 (new, NF-1) -- auth-flow.spec.ts:109 + admin-auth-flow.spec.ts:119: waitForURL on /auth/login times out (server-side 302 to Keycloak). Spec defect from T-7.
+- W-BE-9 (new, NF-2) -- Scenarios 2/4/5/8: no KC SSO isolation between tests causes Invalid state. Spec defect.
+- W-BE-1 (carry-over) -- pre-existing whitespace violations in 5 test files.
+
+### Findings detail
+
+See SUMMARY.md T-10..T-13 for fix details. B-BE-1 resolved by T-10 (api-proxy S3 now asserts GET /api/companies/registration -> 405). B-BE-2 resolved by T-11 (auth-flow specs back to localhost, per-project baseURL overrides in all three playwright configs). T-12 client_id fix confirmed working (W-FE-3/W1 resolved). T-13 global-setup path depth fixed (3 levels). NF-1 and NF-2 are spec defects confirmed not product regressions. T-6 (AdminLayout race) verified intact at commit 381a334 unchanged. D-12 re-checked via MCP browser: sessionStorage contains only tsr-scroll-restoration-v1_3, not tokens.
+
+### Coverage gaps (new files, iter 3)
+
+| File | Coverage | Required | Delta |
+|---|---|---|---|
+| (none -- zero new .cs files in iter 3) | n/a | n/a | n/a |
+
+### Regression captures
+- Client api-proxy: 3/3 PASS (pw-no-setup.config.ts, 127.0.0.1:5173)
+- Client auth-flow: 3/5 PASS + 2 FAIL (NF-1/NF-2) + 1 SKIP (pw-no-setup.config.ts, localhost:5173)
+- Backoffice api-proxy: 3/3 PASS (pw-no-setup.config.ts, 127.0.0.1:5174)
+- Backoffice auth-flow: 1/4 PASS + 3 FAIL (NEW-W-1/NF-1/NF-2) (localhost:5174; users seeded)
+- Backend API (curl 127.0.0.1:8080): 5 scenarios PASS
+- Screenshots: .jdi/cache/phase-49-iter3-test-failed-1.png, .jdi/cache/phase-49-iter3-bo-test-failed-1.png
+
+<!-- ITER3_FRONTEND_HERE -->

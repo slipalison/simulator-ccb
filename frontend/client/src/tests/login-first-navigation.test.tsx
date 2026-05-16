@@ -71,13 +71,16 @@ describe("Login-first navigation — ACF", () => {
     });
   });
 
-  it("shows AuthCallbackPage spinner at /auth/callback", async () => {
+  it("/auth/callback has no SPA route — Vinxi http router owns it server-side (T-5b)", async () => {
+    // /auth/callback is intercepted by the Vinxi auth router (base: "/auth", handler: auth-server.ts)
+    // before the SPA loads. With AuthCallbackPage removed, navigating to this path in the SPA
+    // falls through to the notFoundComponent (404 page).
     mockFetch.mockResolvedValue({ ok: false, status: 401 });
 
     await renderWithRouter("/auth/callback");
 
     await waitFor(() => {
-      expect(screen.getByText(/concluindo/i)).toBeInTheDocument();
+      expect(screen.getByText("404")).toBeInTheDocument();
     });
   });
 

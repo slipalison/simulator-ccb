@@ -52,27 +52,6 @@ describe("ACF Login flow — redirect-based", () => {
     });
   });
 
-  it("AuthCallbackPage shows loading spinner while polling /auth/me", async () => {
-    // /auth/me returns 401 on all calls (not yet authenticated)
-    mockFetch.mockResolvedValue({ ok: false, status: 401 });
-
-    const memoryHistory = createMemoryHistory({ initialEntries: ["/auth/callback"] });
-    const testRouter = createRouter({
-      routeTree: router.options.routeTree,
-      history: memoryHistory,
-    });
-    render(
-      <AuthProvider>
-        <RouterProvider router={testRouter} />
-      </AuthProvider>
-    );
-    await testRouter.load();
-
-    await waitFor(() => {
-      expect(screen.getByText(/concluindo/i)).toBeInTheDocument();
-    });
-  });
-
   it("AuthErrorPage displays error message from URL param", async () => {
     mockFetch.mockResolvedValue({ ok: false, status: 401 });
 
@@ -122,9 +101,11 @@ describe("ACF auth routes — router configuration", () => {
     expect(allPaths.some((p) => p.includes("auth") || p.includes("login"))).toBe(true);
   });
 
-  it("router has /auth/callback route", () => {
+  it("router does NOT have /auth/callback route (handled server-side by Vinxi auth router)", () => {
+    // /auth/callback is intercepted by the Vinxi http router (base: "/auth", handler: auth-server.ts)
+    // before the SPA is loaded. AuthCallbackPage was dead code and has been removed (T-5b).
     const allPaths = getAllPaths(router.options.routeTree);
-    expect(allPaths.some((p) => p.includes("callback") || p.includes("auth"))).toBe(true);
+    expect(allPaths.some((p) => p === "/auth/callback" || p === "callback")).toBe(false);
   });
 
   it("router has /auth/error route", () => {

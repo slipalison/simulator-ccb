@@ -8,7 +8,6 @@ import {
 import { NotFoundPage } from "@/components/pages/NotFoundPage";
 import { RegisterPage } from "@/components/pages/RegisterPage";
 import { AuthLoginPage } from "@/components/pages/AuthLoginPage";
-import { AuthCallbackPage } from "@/components/pages/AuthCallbackPage";
 import { AuthErrorPage } from "@/components/pages/AuthErrorPage";
 import { ProfilePage } from "@/components/pages/ProfilePage";
 import { DashboardPage } from "@/components/pages/DashboardPage";
@@ -75,13 +74,6 @@ const authLoginRoute = createRoute({
   component: AuthLoginPage,
 });
 
-// Auth callback: /auth/callback
-const authCallbackRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/auth/callback",
-  component: AuthCallbackPage,
-});
-
 // Auth error: /auth/error
 const authErrorRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -116,7 +108,6 @@ const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([dashboardRoute, employeesRoute, accessGroupsRoute, profileRoute]),
   registerRoute,
   authLoginRoute,
-  authCallbackRoute,
   authErrorRoute,
   forgotPasswordRoute,
   resetPasswordRoute,

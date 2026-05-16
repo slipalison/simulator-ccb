@@ -620,3 +620,91 @@ See SUMMARY.md T-10..T-13 for fix details. B-BE-1 resolved by T-10 (api-proxy S3
 - Screenshots: .jdi/cache/phase-49-iter3-test-failed-1.png, .jdi/cache/phase-49-iter3-bo-test-failed-1.png
 
 <!-- ITER3_FRONTEND_HERE -->
+
+## Frontend (iter 3)
+- Verdict: APPROVED_WITH_WARNINGS
+- Typecheck (both SPAs): pass -- client 0 errors; backoffice 0 errors.
+- Lint: pass -- 0 warnings in both SPAs (eslint --max-warnings 0).
+- Tests vitest:
+  - client: 113/128 passed (+3 from T-12; same 15 pre-existing failures unchanged).
+  - backoffice: 171/171 passed.
+  - scripts (guard): 9/9 passed.
+  - auth-server.test.ts (T-12): 17/17 passed.
+- Coverage on new files: N/A -- all new files post-968eefb are test/infra/config.
+- A11y: N/A -- iter 3 adds zero UI components.
+- Playwright (mandatory):
+  - client api-proxy (pw-no-setup.config.ts, 127.0.0.1:5173): 3/3 PASS.
+    - Scenario 1: PASS -- single listener PID 24376 Docker mapper. No stale vinxi.
+    - Scenario 2: PASS -- POST /api/companies/registration returns 422 JSON. Bug 3 fixed. B-FE-1 resolved.
+    - Scenario 3: PASS -- GET /api/companies/registration returns 405 + Allow:POST. T-10 correct.
+  - client auth-flow (localhost:5173, project=auth-flow): 3 PASS / 2 FAIL-NF / 1 SKIP.
+    - Scenario 1 (login -> /profile, PKCE S256, no storage): PASS.
+    - Scenario 2 (logout): FAIL-NF1 -- waitForURL timeout. /auth/login 302s to Keycloak immediately. Spec defect.
+    - Scenario 5 (post-login race): PASS.
+    - Scenario 6 (refresh resilience): PASS.
+    - Scenario 7 (expired-token): SKIP (intentional).
+    - Scenario 8 (cookie-blocked): FAIL-NF2 -- clearCookies leaves KC SSO active; pkce_state cleared -> Invalid state. Spec defect.
+  - backoffice api-proxy (pw-no-setup.config.ts, 127.0.0.1:5174): 3/3 PASS.
+  - backoffice auth-flow (no global-setup; users pre-seeded via Python KC Admin API): 1/4 PASS, 3 FAIL.
+    - Scenario 3: FAIL -- login succeeds. storage.ss===1 (tsr-scroll-restoration-v1_3, not a token). D-12 intact. Spec defect.
+    - Scenario 4: FAIL-NF1-variant -- /auth/login 302s to Keycloak. Spec defect.
+    - Scenario 5: FAIL -- spec defect. callbackIndex===-1 causes slice from index 0. Login lands /admin/companies. Not a product bug.
+    - Scenario 6: PASS.
+- D-12 storage: pass -- zero token writes in src/**; tsr-scroll-restoration-v1_3 is not a token.
+- D-4 separation: pass -- no cross-imports between client/src and backoffice/src.
+- D-16 guard 3-way: pass -- exit 1 compose running; exit 0 ALLOW_HOST_DEV=1; exit 0 nonexistent service.
+- D-17 (refined): pass -- api-proxy=127.0.0.1, auth-flow=localhost, per-project overrides confirmed, DECISIONS.md addendum confirmed.
+- iter-2 blocker resolution:
+  - B-FE-1: RESOLVED -- Scenario 3 targets GET /api/companies/registration -> 405. 3/3 PASS. T-10 commit 149247c.
+  - B-FE-2: RESOLVED -- auth-flow specs reverted to localhost; per-project baseURL overrides added. Scenarios 1/5/6 PASS. T-11 commit baf5417.
+  - B-FE-3 (telemetry): carry-over advisory (pre-existing; separate phase required).
+- NF-1: WARNING -- spec defect (Scenario 2 client + Scenario 4 backoffice). /auth/login 302s to Keycloak; waitForURL untestable. Not a product bug. Target iter 4.
+- NF-2: WARNING -- spec defect (Scenario 8 client). clearCookies without logout leaves KC SSO; Invalid state aborts. Not a product bug. Target iter 4.
+
+### Blockers (iter 3 only)
+
+None.
+
+### Warnings (iter 3 only)
+
+- **W-FE-NF1** (iter 3): Scenarios 2+4 -- waitForURL on /auth/login untestable (immediate 302 to Keycloak). Fix: assert Keycloak form visible. Target iter 4.
+- **W-FE-NF2** (iter 3): Scenario 8 -- clearCookies without logout leaves KC SSO active; Invalid state. Fix: logout before clear or isolated context. Target iter 4.
+- **W-FE-NF3** (iter 3): Scenario 3 backoffice -- storage.ss===1 (tsr-scroll-restoration-v1_3, not a token). Fix: filter known UI keys. Target iter 4.
+- **W-FE-NF4** (iter 3): Scenario 5 backoffice -- callbackIndex===-1 guard missing. Target iter 4.
+- **W-FE-1** (carry-over): vitest.config.ts missing exclude for playwright/** and e2e/**. 12 failed FILES client; 2 failed FILES backoffice.
+- **W-FE-2** (carry-over): AuthGuard loading shell lacks role=status or aria-live=polite.
+- **W-FE-5** (carry-over): seed-test-users.sh requires jq (absent). Python fallback used.
+- **B-FE-3** (carry-over, advisory): OTel JS telemetry absent in both SPAs. Pre-existing debt predating 968eefb.
+
+### Findings detail
+
+**T-12 logout client_id fix (W-FE-3 / W1 resolution):**
+frontend/client/auth-server.ts:176 -- fullUrl contains &client_id=encodeURIComponent(CLIENT_ID). 3 vitest static assertions pass. SSO termination gap from iter 2 addressed.
+
+**T-13 global-setup path depth (W-FE-4 / W-BE-5 resolution):**
+frontend/backoffice/playwright/global-setup.ts:35 -- 3-level path.resolve. ESM shims added. existsSync(compose.yaml) guard added. pw-no-setup.config.ts added for backoffice.
+
+**T-11 D-17 narrowing:**
+auth-flow specs BASE_URL=localhost. api-proxy specs BASE_URL=127.0.0.1. Per-project overrides in playwright.config.ts confirmed. DECISIONS.md D-17 addendum confirmed.
+
+**Backoffice Scenario 5 (not a product bug):**
+Login succeeds and Playwright lands on /admin/companies. /admin/login in failure report is from pre-login navigation (callbackIndex===-1 guard missing). Bug 2 (AdminLayout race) confirmed fixed via Scenario 6 PASS.
+
+**D-12 sessionStorage item:**
+tsr-scroll-restoration-v1_3={} confirmed via MCP browser evaluate on localhost:5174/admin/login. TanStack Router scroll -- UI-only. D-12 intact.
+
+**D-16 environment:**
+Single listener 127.0.0.1:5173 (PID 24376) and 127.0.0.1:5174 (PID 24376) -- Docker mapper only. No stale vinxi.
+
+**G11 Vinext migration debt (iter 3):** Zero from-vinxi imports in any iter-3 file.
+
+### Coverage gaps (new files)
+
+No new production source files in iter 3. D-2 coverage gate trivially passes.
+
+### Regression captures
+- Client api-proxy 3/3: PASS (B-FE-1 resolved, Bug 3 fixed)
+- Client auth-flow: Scenario 1 PASS, Scenario 2 FAIL-NF1, Scenario 5 PASS, Scenario 6 PASS, Scenario 7 SKIP, Scenario 8 FAIL-NF2
+- Backoffice api-proxy 3/3: PASS
+- Backoffice auth-flow: Scenario 3 FAIL-NF, Scenario 4 FAIL-NF1-variant, Scenario 5 FAIL-NF, Scenario 6 PASS
+- Screenshots: .jdi/cache/phase-49-fe-scenario8-fail.png

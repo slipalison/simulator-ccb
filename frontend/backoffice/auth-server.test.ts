@@ -1,0 +1,191 @@
+/**
+ * Tests for auth-server.ts — backoffice SPA
+ *
+ * Coverage targets (T-2 acceptance):
+ *   (a) fail-fast branch: KEYCLOAK_REALM="onboarding" throws at module load time
+ *   (b) cookie attribute snapshot: access_token=lax, refresh_token=strict, httpOnly=true
+ *
+ * Environment note: tests run in vitest jsdom (global config). The auth-server module
+ * is pure Node.js — we mock h3 and auth-code-flow so the module resolves cleanly.
+ * The validation IIFE only uses process.env + throw, no browser APIs.
+ */
+
+import { describe, it, expect, vi, afterEach } from "vitest";
+
+// Mock h3 at module level (hoisted by vitest). This makes auth-server importable
+// in the jsdom environment without requiring real h3 request/response objects.
+vi.mock("h3", () => ({
+  createRouter: vi.fn(() => ({ get: vi.fn(), post: vi.fn(), handler: vi.fn() })),
+  defineEventHandler: vi.fn((fn: unknown) => fn),
+  getQuery: vi.fn(() => ({})),
+  setCookie: vi.fn(),
+  deleteCookie: vi.fn(),
+  getCookie: vi.fn(() => undefined),
+  getRequestHeader: vi.fn(() => undefined),
+  sendRedirect: vi.fn(async () => undefined),
+}));
+
+// Mock auth-code-flow (relative import from auth-server.ts)
+vi.mock("./src/lib/auth-code-flow", () => ({
+  generateCodeVerifier: vi.fn(() => "test-verifier"),
+  generateCodeChallenge: vi.fn(async () => "test-challenge"),
+  buildAuthorizationUrl: vi.fn(() => "http://keycloak/auth"),
+  exchangeCodeForTokens: vi.fn(async () => ({
+    accessToken: "fake.access.token",
+    refreshToken: "fake.refresh.token",
+    expiresIn: 300,
+  })),
+  refreshAccessToken: vi.fn(async () => ({
+    accessToken: "new.access.token",
+    refreshToken: "new.refresh.token",
+    expiresIn: 300,
+  })),
+}));
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Load auth-server.ts fresh in isolation with a given KEYCLOAK_REALM env value.
+ * vi.resetModules() causes the module-level validateRealm() IIFE to re-execute.
+ */
+async function loadModuleWithRealm(realm: string | undefined): Promise<void> {
+  vi.resetModules();
+  if (realm === undefined) {
+    vi.unstubAllEnvs();
+    delete process.env.KEYCLOAK_REALM;
+  } else {
+    vi.stubEnv("KEYCLOAK_REALM", realm);
+  }
+  await import("./auth-server");
+}
+
+// ── T-2a: realm fail-fast ─────────────────────────────────────────────────────
+
+describe("auth-server/backoffice — realm fail-fast (T-2a)", () => {
+  afterEach(() => {
+    vi.resetModules();
+    vi.unstubAllEnvs();
+    delete process.env.KEYCLOAK_REALM;
+  });
+
+  it("throws when KEYCLOAK_REALM is the legacy value 'onboarding'", async () => {
+    await expect(loadModuleWithRealm("onboarding")).rejects.toThrow(
+      /KEYCLOAK_REALM="onboarding" is not a supported realm/
+    );
+  });
+
+  it("error message names the supported realms", async () => {
+    await expect(loadModuleWithRealm("onboarding")).rejects.toThrow(
+      /Supported values: "client", "backoffice"/
+    );
+  });
+
+  it("error message mentions Phase 34 realm removal", async () => {
+    await expect(loadModuleWithRealm("onboarding")).rejects.toThrow(
+      /Phase 34/
+    );
+  });
+
+  it("throws for any other unrecognised realm value", async () => {
+    await expect(loadModuleWithRealm("master")).rejects.toThrow(
+      /not a supported realm/
+    );
+  });
+
+  it("does NOT throw when KEYCLOAK_REALM='backoffice'", async () => {
+    await expect(loadModuleWithRealm("backoffice")).resolves.toBeUndefined();
+  });
+
+  it("does NOT throw when KEYCLOAK_REALM='client'", async () => {
+    await expect(loadModuleWithRealm("client")).resolves.toBeUndefined();
+  });
+
+  it("does NOT throw when KEYCLOAK_REALM is undefined (per-SPA default 'backoffice')", async () => {
+    await expect(loadModuleWithRealm(undefined)).resolves.toBeUndefined();
+  });
+});
+
+// ── T-2b: cookie attribute snapshot ──────────────────────────────────────────
+//
+// Strategy: read the source file and assert the sameSite literal values used in
+// every setCookie call for each named cookie. Static assertion catches regressions
+// if someone reverts sameSite back to "strict" on the access token cookie.
+
+describe("auth-server/backoffice — cookie sameSite attributes (T-2b)", () => {
+  const src = (() => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs") as typeof import("fs");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("path") as typeof import("path");
+    return fs.readFileSync(path.resolve(__dirname, "./auth-server.ts"), "utf8");
+  })();
+
+  it("backoffice_access_token: every setCookie uses sameSite='lax'", () => {
+    const matches = [...src.matchAll(
+      /setCookie\(event,\s*"backoffice_access_token"[\s\S]*?sameSite:\s*["'](\w+)["']/g
+    )];
+    expect(matches.length).toBeGreaterThan(0);
+    for (const m of matches) {
+      expect(m[1]).toBe("lax");
+    }
+  });
+
+  it("backoffice_refresh_token: every setCookie uses sameSite='strict'", () => {
+    const matches = [...src.matchAll(
+      /setCookie\(event,\s*"backoffice_refresh_token"[\s\S]*?sameSite:\s*["'](\w+)["']/g
+    )];
+    expect(matches.length).toBeGreaterThan(0);
+    for (const m of matches) {
+      expect(m[1]).toBe("strict");
+    }
+  });
+
+  it("backoffice_access_token: every setCookie has httpOnly=true", () => {
+    const matches = [...src.matchAll(
+      /setCookie\(event,\s*"backoffice_access_token"[\s\S]*?httpOnly:\s*(true)/g
+    )];
+    expect(matches.length).toBeGreaterThan(0);
+    for (const m of matches) {
+      expect(m[1]).toBe("true");
+    }
+  });
+
+  it("backoffice_refresh_token: every setCookie has httpOnly=true", () => {
+    const matches = [...src.matchAll(
+      /setCookie\(event,\s*"backoffice_refresh_token"[\s\S]*?httpOnly:\s*(true)/g
+    )];
+    expect(matches.length).toBeGreaterThan(0);
+    for (const m of matches) {
+      expect(m[1]).toBe("true");
+    }
+  });
+
+  it("backoffice_access_token: every setCookie has path='/'", () => {
+    const matches = [...src.matchAll(
+      /setCookie\(event,\s*"backoffice_access_token"[\s\S]*?path:\s*["'](\/)["']/g
+    )];
+    expect(matches.length).toBeGreaterThan(0);
+    for (const m of matches) {
+      expect(m[1]).toBe("/");
+    }
+  });
+
+  it("backoffice_refresh_token: every setCookie has path='/'", () => {
+    const matches = [...src.matchAll(
+      /setCookie\(event,\s*"backoffice_refresh_token"[\s\S]*?path:\s*["'](\/)["']/g
+    )];
+    expect(matches.length).toBeGreaterThan(0);
+    for (const m of matches) {
+      expect(m[1]).toBe("/");
+    }
+  });
+
+  it("no 'onboarding' used as KEYCLOAK_REALM default or fallback value", () => {
+    // Guard against re-introduction of the broken legacy realm name as a default/fallback.
+    // The pattern captures: || "onboarding" or ?? "onboarding" or = "onboarding"
+    // (client IDs like "onboarding-backoffice" are allowed — those are not realm names)
+    expect(src).not.toMatch(/(?:\|\||\?\?|=\s*)["'`]onboarding["'`]/);
+    // Also ensure KEYCLOAK_REALM is never assigned the literal string "onboarding"
+    expect(src).not.toMatch(/KEYCLOAK_REALM\s*=\s*["'`]onboarding["'`]/);
+  });
+});

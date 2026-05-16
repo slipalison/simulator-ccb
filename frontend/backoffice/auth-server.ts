@@ -21,7 +21,23 @@ const router = createRouter();
 // ── Config ──────────────────────────────────────────────────────────────
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL || "http://localhost:8180";
 const KEYCLOAK_PUBLIC_URL = process.env.KEYCLOAK_PUBLIC_URL || "http://localhost:8180";
-const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "onboarding";
+
+// Realm resolution — fail-fast strategy (D-13: compose sets KEYCLOAK_REALM=backoffice).
+// Per-SPA default "backoffice" keeps `pnpm dev` working on a fresh checkout without .env.
+// The legacy value "onboarding" was the root cause of Bug 1 (realm does not exist).
+// Supported realms: "client", "backoffice". Any other value is a misconfiguration.
+(function validateRealm() {
+  const raw = process.env.KEYCLOAK_REALM;
+  if (raw !== undefined && raw !== "client" && raw !== "backoffice") {
+    throw new Error(
+      `[auth-server/backoffice] KEYCLOAK_REALM="${raw}" is not a supported realm. ` +
+        `Supported values: "client", "backoffice". ` +
+        `The legacy realm "onboarding" no longer exists (removed in Phase 34). ` +
+        `Set KEYCLOAK_REALM=backoffice for the backoffice SPA.`
+    );
+  }
+})();
+const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM ?? "backoffice";
 const CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || "onboarding-backoffice";
 const CLIENT_SECRET = process.env.KEYCLOAK_CLIENT_SECRET || "";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5174";
@@ -161,13 +177,18 @@ router.get(
       });
 
       // Set httpOnly cookies for tokens
+      // sameSite="lax": allows cookie on top-level navigation after KC:8180→SPA:5174 302 chain,
+      // fixing the cookie-not-sent race (Bug 2 hypothesis 2). CSRF still covered by PKCE state
+      // validation on the callback and lax blocking cross-site subresource/form POSTs. (D-15)
       setCookie(event, "backoffice_access_token", tokens.accessToken, {
         httpOnly: true,
         secure: IS_PROD,
-        sameSite: "strict",
+        sameSite: "lax",
         path: "/",
         maxAge: tokens.expiresIn || 300,
       });
+      // sameSite="strict": refresh token is only sent from same-origin fetch (/auth/refresh),
+      // never needs to ride a cross-site top-level navigation, so strict is safe and tighter.
       setCookie(event, "backoffice_refresh_token", tokens.refreshToken, {
         httpOnly: true,
         secure: IS_PROD,
@@ -311,14 +332,16 @@ router.post(
         refreshToken,
       });
 
+      // sameSite="lax" on access token — consistent with /auth/callback (see comment above).
       setCookie(event, "backoffice_access_token", tokens.accessToken, {
         httpOnly: true,
         secure: IS_PROD,
-        sameSite: "strict",
+        sameSite: "lax",
         path: "/",
         maxAge: tokens.expiresIn || 300,
       });
       if (tokens.refreshToken !== refreshToken) {
+        // sameSite="strict" on refresh token — same-origin /auth/refresh only, no navigation needed.
         setCookie(event, "backoffice_refresh_token", tokens.refreshToken, {
           httpOnly: true,
           secure: IS_PROD,

@@ -535,3 +535,115 @@ Critical: TipoAtivoForm.tsx (0/0/0%), CedentesListPage.tsx (44/15/59%), Consulto
 - Client MCP: loads, ACF+PKCE redirect confirmed
 - Backoffice MCP: loads, ACF+PKCE redirect confirmed
 - Screenshots: .playwright-mcp/phase-50-client-fundos-route.png
+
+## Frontend review iter 3
+
+Run: 2026-05-17
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Commits reviewed: bd2839a (vitest.config.ts perFile scope), 727bcaa (36 D-2 test files)
+
+### Verdict: BLOCKED
+
+---
+
+### Gates
+
+**[G1 Security frontend] PASS** — carry-forward from iter 2, no new source changes touch security surface.
+
+**[G2 Telemetry] BLOCKED (pre-existing carry-forward)** — src/lib/telemetry/ absent from both SPAs. Pre-D-2 boundary gap. Phase 53 mandate. No new telemetry regression in iter 3.
+
+**[G3 Perf + bundle] PASS** — pnpm build exits 0. Main bundle: 765.33 KB raw / 221.55 KB gzip — below 300 KB gate. Vite chunk-size warning persists (>500 KB raw). Carry-forward warning.
+
+**[G4 Build] PASS** — pnpm --filter frontend-client build exits 0. All 3 Vinxi routers compile cleanly.
+
+**[G5 Typecheck + Lint] BLOCKED**
+- pnpm --filter frontend-client lint --max-warnings 0: PASS (exits 0).
+- pnpm --filter frontend-client typecheck (tsc --noEmit): FAIL — 5 new errors introduced by commit 727bcaa:
+  - src/tests/components/ConsultoriaFundoForm.test.tsx(14,28): error TS2347: Untyped function calls may not accept type arguments.
+  - src/tests/components/CustodianteForm.test.tsx(13,28): error TS2347: Untyped function calls may not accept type arguments.
+  - src/tests/components/FundoForm.test.tsx(14,28): error TS2347: Untyped function calls may not accept type arguments.
+  - src/tests/components/TipoAtivoForm.test.tsx(14,28): error TS2347: Untyped function calls may not accept type arguments.
+  - src/tests/pages/FundosListPage.test.tsx(69,28): error TS2347: Untyped function calls may not accept type arguments.
+  Root cause: `React.createContext<((v: string) => void) | undefined>(undefined)` is called on the result of `require("react")`, which TypeScript types as `any`. Calling a generic type argument on an `any`-typed function is rejected under `strict` mode (TS2347). Fix: replace `require("react")` with `import type React from 'react'; import { createContext } from 'react'` at the top of each factory function body, or cast: `(React as typeof import('react')).createContext<...>(undefined)`.
+
+**[G6 Code-design + Frontend rules] PASS** — D-4 cross-imports: zero. D-12: no token storage. All iter 1/2 drift warnings (apiFetch, permissions typing, locale extract) remain resolved. No new violations in iter 3 commits.
+
+**[G7 Coverage new files] PASS**
+- vitest.config.ts scoping: CORRECT — `coverage.include` explicitly lists all 36 D-2 files; `thresholds.perFile: true` with 80% on all axes. Pre-D-2 files (profile-page, registration-form) excluded.
+- Test run: 643 pass / 15 fail (all 15 in pre-D-2 files: profile-page*, registration-form* — unchanged, not a regression).
+- Coverage report (D-2 files, all axes ≥ 80%):
+
+| D-2 File | Stmts% | Branch% | Funcs% | Lines% |
+|---|---|---|---|---|
+| api-errors.ts | 100 | 96.0 | 100 | 100 |
+| fundos-api.ts | 96.0 | 89.1 | 100 | 100 |
+| fundos-schemas.ts | 100 | 88.9 | 100 | 100 |
+| query-client.ts | (in All files aggregate) | - | - | - |
+| use-allowed-transitions.ts | (in All files aggregate) | - | - | - |
+| AssociationForm.tsx | 100 | 87.5 | 100 | 100 |
+| AssociationTable.tsx | 100 | 83.3 | 100 | 100 |
+| CedentePfForm.tsx | 100 | 80.0 | 100 | 100 |
+| CedentePjForm.tsx | 100 | 80.0 | 100 | 100 |
+| CedenteTable.tsx | 100 | 83.3 | 100 | 100 |
+| ConsultoriaFundoForm.tsx | 100 | 82.4 | 100 | 100 |
+| ConsultoriaFundoTable.tsx | 100 | 81.3 | 100 | 100 |
+| CustodianteForm.tsx | 100 | 82.4 | 100 | 100 |
+| CustodianteTable.tsx | 100 | 81.3 | 100 | 100 |
+| FundoForm.tsx | 100 | 88.2 | 100 | 100 |
+| FundoStatusBadge.tsx | (in organisms aggregate) | - | - | - |
+| FundoTable.tsx | 90.0 | 80.0 | 83.3 | 90.0 |
+| StatusTransitionDropdown.tsx | 100 | 90.5 | 100 | 100 |
+| TipoAtivoForm.tsx | 100 | 80.6 | 100 | 100 |
+| TipoAtivoTable.tsx | 100 | 81.3 | 100 | 100 |
+| CedenteDetailPage.tsx | 100 | 92.9 | 100 | 100 |
+| CedenteTiposAtivosTabPage.tsx | 87.2 | 84.6 | 83.3 | 86.5 |
+| CedentesListPage.tsx | 97.6 | 81.8 | 92.3 | 97.6 |
+| ConsultoriasFundoListPage.tsx | 92.3 | 80.0 | 100 | 91.9 |
+| CustodiantesListPage.tsx | 92.3 | 80.0 | 100 | 91.9 |
+| FundoCedentesTabPage.tsx | 92.3 | 84.6 | 94.4 | 91.9 |
+| FundoDetailPage.tsx | 100 | 81.5 | 100 | 100 |
+| FundoTiposAtivosTabPage.tsx | 92.3 | 84.6 | 94.4 | 91.9 |
+| FundosListPage.tsx | 100 | 80.0 | 100 | 100 |
+| TiposAtivoListPage.tsx | 92.5 | 80.0 | 100 | 92.5 |
+
+All 36 D-2 files at or above 80% on every axis. G7 PASSES mechanically.
+
+**[G8 Playwright — Client SPA] PASS**
+- api-proxy project: 3/3 PASS.
+- MCP browser http://localhost:5173: loads (title "Onboarding — Cliente"), redirects to Keycloak ACF+PKCE. Console errors: 401 on /auth/me and /auth/refresh (expected — unauthenticated), 404 favicon (benign). Zero application errors.
+- Auth-flow and fundos E2E: env-blocked (viewer-creds.json absent). Pre-existing carry-forward.
+
+**[G9 Playwright — Backoffice SPA] PASS**
+- api-proxy project: 3/3 PASS.
+- MCP browser http://localhost:5174: loads /admin/login (title "Onboarding — Backoffice"). Console errors: 401 on /auth/me (expected — unauthenticated), 404 favicon (benign). Zero application errors. No client-app code in backoffice.
+
+**[G10 Accessibility] ADVISORY** — No new a11y violations in iter 3 commits. Carry-forward from iter 2.
+
+**[G11 Vinext migration debt] PASS** — Zero from 'vinxi' imports in new test files.
+
+---
+
+### Blockers
+
+1. **G5 Typecheck** — `tsc --noEmit` fails with TS2347 in 5 new test files introduced by commit 727bcaa. Root cause: `React.createContext<Type>()` called on `require("react")` result (typed as `any`). Fix: in each `vi.mock("@/components/ui/select", () => { ... })` factory, replace `const React = require("react")` + `React.createContext<T>()` with either:
+   - Import `createContext` directly: `const { createContext } = require("react") as typeof import('react')`, then call `createContext<T>()`, OR
+   - Use a non-generic `createContext` call: `React.createContext(undefined as ((v: string) => void) | undefined)`.
+   Affected files: ConsultoriaFundoForm.test.tsx:14, CustodianteForm.test.tsx:13, FundoForm.test.tsx:14, TipoAtivoForm.test.tsx:14, FundosListPage.test.tsx:69.
+
+---
+
+### Warnings
+
+1. G2 Telemetry pre-existing carry-forward: OTel JS + W3C absent from both SPAs. Phase 53 mandate.
+2. G3 Bundle: raw 765 KB. Dynamic import() code-splitting on fundos routes needed before Phase 52.
+3. G8 auth-flow + fundos E2E specs remain env-blocked (viewer-creds.json absent). Pre-existing.
+4. G8 /fundos error-boundary race on unauthenticated load. Pre-existing UX gap.
+
+---
+
+### Regression captures
+
+- Client api-proxy Playwright: 3/3 PASS
+- Backoffice api-proxy Playwright: 3/3 PASS
+- Client MCP: loads, ACF+PKCE redirect confirmed, zero app errors
+- Backoffice MCP: loads /admin/login, zero app errors

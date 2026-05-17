@@ -3,12 +3,14 @@ phase_slug: frontend-client-fundos
 phase_position: 51
 iter: 1
 total_resets: 0
-status: converged
+status: running
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-17T00:00:00Z
-converged_at: 2026-05-17T00:00:00Z
-verdict: APPROVED_WITH_WARNINGS
+prior_converged_at: 2026-05-17T00:00:00Z
+prior_verdict: APPROVED_WITH_WARNINGS
+reopened_at: 2026-05-17T00:00:00Z
+reopened_reason: User requested iter 2 to address G7 coverage BLOCKER (internal) + drift items (apiFetch DRY, auth.permissions any-cast, fundosLocale extract) + W1 backend lint
 ---
 
 ## History
@@ -40,4 +42,10 @@ verdict: APPROVED_WITH_WARNINGS
 
 ### iter=1 — converged
 - iter 1: APPROVED_WITH_WARNINGS, hash=cb7e152bd0e3, commit=86cd982, ts=2026-05-17T00:00:00Z
+
+--- REOPENED 2026-05-17 — user requested iter 2 to fix carry-forwards before ship; status=running, iter advances to 2 ---
+
+### iter=2 — start (2026-05-17)
+- Wave 1 parallel dispatch: backend C# doer (fix W1 lint) + frontend Vinext doer (install @vitest/coverage-v8, add unit tests for 25+ D-2 files, fix apiFetch DRY, fix AuthContextValue.permissions type, extract fundosLocale to src/locales/pt-BR/fundos.ts)
+- Wave 2: 3 reviewers re-verify
 

@@ -270,8 +270,10 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
             $"/api/fundos/{_fundoAId}/cedentes", payload);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
-        var body = await response.Content.ReadAsStringAsync();
-        body.ShouldContain("ATIVO");
+        // Status is serialized as integer (no JsonStringEnumConverter configured — D-3 / no change to API).
+        // RelationshipStatus.ATIVO = 1
+        var dto = await response.Content.ReadFromJsonAsync<JsonElement>();
+        dto.GetProperty("status").GetInt32().ShouldBe(1, "Created association must have ATIVO status (= 1).");
     }
 
     [Fact]
@@ -358,14 +360,14 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
         var assocId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
 
-        // Transition ATIVO → INATIVO
+        // Transition ATIVO → INATIVO (RelationshipStatus.INATIVO = 2)
         var transitionResp = await client.PostAsJsonAsync(
             $"/api/fundos/{_fundoAId}/cedentes/{assocId}/status",
-            new { newStatus = "INATIVO" });
+            new { newStatus = 2 });
 
         transitionResp.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var body = await transitionResp.Content.ReadAsStringAsync();
-        body.ShouldContain("INATIVO");
+        var transitionDto = await transitionResp.Content.ReadFromJsonAsync<JsonElement>();
+        transitionDto.GetProperty("status").GetInt32().ShouldBe(2, "Status must be INATIVO (= 2) after transition.");
     }
 
     [Fact]
@@ -385,16 +387,16 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
         var assocId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
 
-        // ATIVO → HISTORICO (terminal)
+        // ATIVO → HISTORICO (terminal). RelationshipStatus.HISTORICO = 3
         var toHistorico = await client.PostAsJsonAsync(
             $"/api/fundos/{_fundoAId}/cedentes/{assocId}/status",
-            new { newStatus = "HISTORICO" });
+            new { newStatus = 3 });
         toHistorico.StatusCode.ShouldBe(HttpStatusCode.OK);
 
-        // HISTORICO → ATIVO must fail
+        // HISTORICO → ATIVO must fail. RelationshipStatus.ATIVO = 1
         var fromHistorico = await client.PostAsJsonAsync(
             $"/api/fundos/{_fundoAId}/cedentes/{assocId}/status",
-            new { newStatus = "ATIVO" });
+            new { newStatus = 1 });
         fromHistorico.StatusCode.ShouldBe(HttpStatusCode.BadRequest,
             "HISTORICO is terminal — transition to any other status must return 400.");
     }
@@ -439,8 +441,8 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
             $"/api/cedentes/{_cedenteAId}/tipos-ativos", payload);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
-        var body = await response.Content.ReadAsStringAsync();
-        body.ShouldContain("ATIVO");
+        var ctaDto = await response.Content.ReadFromJsonAsync<JsonElement>();
+        ctaDto.GetProperty("status").GetInt32().ShouldBe(1, "Created association must have ATIVO status (= 1).");
     }
 
     [Fact]
@@ -507,9 +509,10 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
         var assocId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
 
+        // RelationshipStatus.INATIVO = 2
         var transResp = await client.PostAsJsonAsync(
             $"/api/cedentes/{_cedenteAId}/tipos-ativos/{assocId}/status",
-            new { newStatus = "INATIVO" });
+            new { newStatus = 2 });
 
         transResp.StatusCode.ShouldBe(HttpStatusCode.OK);
     }
@@ -542,8 +545,8 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
             $"/api/fundos/{_fundoAId}/tipos-ativos", payload);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
-        var body = await response.Content.ReadAsStringAsync();
-        body.ShouldContain("ATIVO");
+        var ftaDto = await response.Content.ReadFromJsonAsync<JsonElement>();
+        ftaDto.GetProperty("status").GetInt32().ShouldBe(1, "Created association must have ATIVO status (= 1).");
     }
 
     [Fact]
@@ -598,9 +601,10 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
         var assocId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
 
+        // RelationshipStatus.INATIVO = 2
         var transResp = await client.PostAsJsonAsync(
             $"/api/fundos/{_fundoAId}/tipos-ativos/{assocId}/status",
-            new { newStatus = "INATIVO" });
+            new { newStatus = 2 });
 
         transResp.StatusCode.ShouldBe(HttpStatusCode.OK);
     }

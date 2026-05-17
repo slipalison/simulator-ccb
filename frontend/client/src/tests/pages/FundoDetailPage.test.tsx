@@ -9,11 +9,16 @@ import { FundoDetailPage } from "@/components/pages/FundoDetailPage";
 
 // Router mocks
 const mockNavigate = vi.fn();
+vi.mock("@/router", () => ({
+  fundoDetailRouteApi: {
+    useParams: () => ({ fundoId: "uuid-fundo-1" }),
+  },
+}));
+// useNavigate is still imported directly from @tanstack/react-router in FundoDetailPage
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const mod = await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...mod,
-    useParams: () => ({ fundoId: "uuid-fundo-1" }),
     useNavigate: () => mockNavigate,
   };
 });

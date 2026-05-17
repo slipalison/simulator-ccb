@@ -5,7 +5,8 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
+import { fundoDetailRouteApi } from "@/router";
 import {
   Dialog,
   DialogContent,
@@ -35,8 +36,7 @@ import { useForm } from "react-hook-form";
 type Tab = "dados" | "cedentes" | "tipos-ativos";
 
 export function FundoDetailPage() {
-  const params = useParams({ from: "/fundos/$fundoId" as any });
-  const fundoId = (params as any).fundoId as string;
+  const { fundoId } = fundoDetailRouteApi.useParams();
   const navigate = useNavigate();
   const { auth } = useAuth();
   const permissions = auth.permissions;
@@ -130,7 +130,7 @@ export function FundoDetailPage() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate({ to: "/fundos" as any })}
+          onClick={() => navigate({ to: "/fundos" })}
           aria-label="Voltar para lista de fundos"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />

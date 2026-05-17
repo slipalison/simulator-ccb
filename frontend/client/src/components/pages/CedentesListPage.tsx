@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearch, useNavigate } from "@tanstack/react-router";
+import { cedentesRouteApi } from "@/router";
 import {
   Dialog,
   DialogContent,
@@ -36,10 +36,10 @@ export function CedentesListPage() {
   const permissions = auth.permissions;
   const canWrite = permissions.includes("funds:write");
 
-  const navigate = useNavigate({ from: "/cedentes" });
-  const search = useSearch({ from: "/cedentes" as any });
-  const page = (search as any).page ?? 1;
-  const searchQuery = (search as any).search ?? "";
+  const navigate = cedentesRouteApi.useNavigate();
+  const search = cedentesRouteApi.useSearch();
+  const page = search.page ?? 1;
+  const searchQuery = search.search ?? "";
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newCedenteTipo, setNewCedenteTipo] = useState<CedenteTipo>("PF");
@@ -72,15 +72,15 @@ export function CedentesListPage() {
   });
 
   function handleSearch(value: string) {
-    navigate({ search: { page: 1, search: value } as any, replace: true });
+    navigate({ search: { page: 1, search: value }, replace: true });
   }
 
   function handlePageChange(newPage: number) {
-    navigate({ search: { page: newPage, search: searchQuery } as any });
+    navigate({ search: { page: newPage, search: searchQuery } });
   }
 
   function handleDetail(item: CedenteDto) {
-    navigate({ to: `/cedentes/${item.id}` as any });
+    navigate({ to: "/cedentes/$cedenteId", params: { cedenteId: item.id } });
   }
 
   async function handleSubmitPf(formData: CreateCedentePfData) {

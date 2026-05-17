@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearch, useNavigate } from "@tanstack/react-router";
+import { custodiantesRouteApi } from "@/router";
 import {
   Dialog,
   DialogContent,
@@ -33,10 +33,10 @@ export function CustodiantesListPage() {
   const permissions = auth.permissions;
   const canWrite = permissions.includes("funds:write");
 
-  const navigate = useNavigate({ from: "/custodiantes" });
-  const search = useSearch({ from: "/custodiantes" as any });
-  const page = (search as any).page ?? 1;
-  const searchQuery = (search as any).search ?? "";
+  const navigate = custodiantesRouteApi.useNavigate();
+  const search = custodiantesRouteApi.useSearch();
+  const page = search.page ?? 1;
+  const searchQuery = search.search ?? "";
 
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
   const [editItem, setEditItem] = useState<CustodianteDto | null>(null);
@@ -69,11 +69,11 @@ export function CustodiantesListPage() {
   });
 
   function handleSearch(value: string) {
-    navigate({ search: { page: 1, search: value } as any, replace: true });
+    navigate({ search: { page: 1, search: value }, replace: true });
   }
 
   function handlePageChange(newPage: number) {
-    navigate({ search: { page: newPage, search: searchQuery } as any });
+    navigate({ search: { page: newPage, search: searchQuery } });
   }
 
   async function handleSubmit(

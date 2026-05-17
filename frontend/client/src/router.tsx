@@ -2,6 +2,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  getRouteApi,
   Outlet,
   useNavigate,
 } from "@tanstack/react-router";
@@ -197,6 +198,23 @@ const routeTree = rootRoute.addChildren([
 
 // Router instance
 export const router = createRouter({ routeTree });
+
+// ---------------------------------------------------------------------------
+// Route API instances — canonical v1 pattern for type-safe hooks in page
+// components that live outside the route definition (Path A fix for iter 5).
+// Using getRouteApi with path string resolves correctly regardless of the
+// pathless parent layout route id ("authenticated").
+// ---------------------------------------------------------------------------
+// Route IDs for children of the pathless "authenticated" layout route are
+// prefixed with /authenticated/<path> — NOT bare /<path>.
+// Using the full internal route ID is required for getRouteApi to resolve correctly.
+export const tiposAtivoRouteApi = getRouteApi("/authenticated/tipos-ativos");
+export const consultoriasFundoRouteApi = getRouteApi("/authenticated/consultorias-fundo");
+export const custodiantesRouteApi = getRouteApi("/authenticated/custodiantes");
+export const cedentesRouteApi = getRouteApi("/authenticated/cedentes");
+export const cedenteDetailRouteApi = getRouteApi("/authenticated/cedentes/$cedenteId");
+export const fundosRouteApi = getRouteApi("/authenticated/fundos");
+export const fundoDetailRouteApi = getRouteApi("/authenticated/fundos/$fundoId");
 
 // Mandatory TypeScript registration for type safety
 declare module "@tanstack/react-router" {

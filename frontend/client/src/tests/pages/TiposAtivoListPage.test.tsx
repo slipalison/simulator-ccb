@@ -9,15 +9,12 @@ import { TiposAtivoListPage } from "@/components/pages/TiposAtivoListPage";
 
 const mockNavigate = vi.fn();
 
-// Mock react-router hooks
-vi.mock("@tanstack/react-router", async (importOriginal) => {
-  const mod = await importOriginal<typeof import("@tanstack/react-router")>();
-  return {
-    ...mod,
+vi.mock("@/router", () => ({
+  tiposAtivoRouteApi: {
     useSearch: () => ({ page: 1, search: "" }),
     useNavigate: () => mockNavigate,
-  };
-});
+  },
+}));
 
 // Auth mock — writable so individual tests can override permissions
 let mockPermissions = ["funds:read", "funds:write"];

@@ -9,14 +9,12 @@ import { ConsultoriasFundoListPage } from "@/components/pages/ConsultoriasFundoL
 
 const mockNavigate = vi.fn();
 
-vi.mock("@tanstack/react-router", async (importOriginal) => {
-  const mod = await importOriginal<typeof import("@tanstack/react-router")>();
-  return {
-    ...mod,
+vi.mock("@/router", () => ({
+  consultoriasFundoRouteApi: {
     useSearch: () => ({ page: 1, search: "" }),
     useNavigate: () => mockNavigate,
-  };
-});
+  },
+}));
 
 let mockPermissions = ["funds:read", "funds:write"];
 vi.mock("@/lib/auth-context", () => ({

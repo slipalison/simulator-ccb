@@ -5,7 +5,8 @@
 // ---------------------------------------------------------------------------
 
 import { useQuery } from "@tanstack/react-query";
-import { useParams, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
+import { cedenteDetailRouteApi } from "@/router";
 import { getCedente } from "@/lib/fundos-api";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -14,8 +15,7 @@ import { SIMPLE_STATUS_LABELS } from "@/lib/fundos-schemas";
 import { CedenteTiposAtivosTabPage } from "@/components/pages/CedenteTiposAtivosTabPage";
 
 export function CedenteDetailPage() {
-  const params = useParams({ from: "/cedentes/$cedenteId" as any });
-  const cedenteId = (params as any).cedenteId as string;
+  const { cedenteId } = cedenteDetailRouteApi.useParams();
   const navigate = useNavigate();
 
   const { data: cedente, isLoading } = useQuery({
@@ -47,7 +47,7 @@ export function CedenteDetailPage() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate({ to: "/cedentes" as any })}
+          onClick={() => navigate({ to: "/cedentes" })}
           aria-label="Voltar para lista de cedentes"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />

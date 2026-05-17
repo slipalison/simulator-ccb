@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearch, useNavigate } from "@tanstack/react-router";
+import { tiposAtivoRouteApi } from "@/router";
 import {
   Dialog,
   DialogContent,
@@ -35,10 +35,10 @@ export function TiposAtivoListPage() {
   const permissions = auth.permissions;
   const canWrite = permissions.includes("funds:write");
 
-  const navigate = useNavigate({ from: "/tipos-ativos" });
-  const search = useSearch({ from: "/tipos-ativos" as any });
-  const page = (search as any).page ?? 1;
-  const searchQuery = (search as any).search ?? "";
+  const navigate = tiposAtivoRouteApi.useNavigate();
+  const search = tiposAtivoRouteApi.useSearch();
+  const page = search.page ?? 1;
+  const searchQuery = search.search ?? "";
 
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
   const [editItem, setEditItem] = useState<TipoAtivoDto | null>(null);
@@ -73,14 +73,11 @@ export function TiposAtivoListPage() {
   const dummyForm = useForm();
 
   function handleSearch(value: string) {
-    navigate({
-      search: { page: 1, search: value } as any,
-      replace: true,
-    });
+    navigate({ search: { page: 1, search: value }, replace: true });
   }
 
   function handlePageChange(newPage: number) {
-    navigate({ search: { page: newPage, search: searchQuery } as any });
+    navigate({ search: { page: newPage, search: searchQuery } });
   }
 
   function handleOpenCreate() {

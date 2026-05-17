@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearch, useNavigate } from "@tanstack/react-router";
+import { fundosRouteApi } from "@/router";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,7 @@ import {
   FundoStatusEnum,
   FUNDO_STATUS_LABELS,
   type FundoDto,
+  type FundoListSearch,
   type CreateFundoData,
 } from "@/lib/fundos-schemas";
 import { useForm } from "react-hook-form";
@@ -41,11 +42,11 @@ export function FundosListPage() {
   const permissions = auth.permissions;
   const canWrite = permissions.includes("funds:write");
 
-  const navigate = useNavigate({ from: "/fundos" });
-  const search = useSearch({ from: "/fundos" as any });
-  const page = (search as any).page ?? 1;
-  const searchQuery = (search as any).search ?? "";
-  const statusFilter = (search as any).status as string | undefined;
+  const navigate = fundosRouteApi.useNavigate();
+  const search = fundosRouteApi.useSearch();
+  const page = search.page ?? 1;
+  const searchQuery = search.search ?? "";
+  const statusFilter = search.status as string | undefined;
 
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
@@ -73,26 +74,26 @@ export function FundosListPage() {
   });
 
   function handleSearch(value: string) {
-    navigate({ search: { page: 1, search: value, status: statusFilter } as any, replace: true });
+    navigate({ search: { page: 1, search: value, status: statusFilter as FundoListSearch["status"] }, replace: true });
   }
 
   function handlePageChange(newPage: number) {
-    navigate({ search: { page: newPage, search: searchQuery, status: statusFilter } as any });
+    navigate({ search: { page: newPage, search: searchQuery, status: statusFilter as FundoListSearch["status"] } });
   }
 
   function handleStatusFilter(value: string) {
     navigate({
-      search: { page: 1, search: searchQuery, status: value === "all" ? undefined : value } as any,
+      search: { page: 1, search: searchQuery, status: value === "all" ? undefined : (value as FundoListSearch["status"]) },
       replace: true,
     });
   }
 
   function handleDetail(item: FundoDto) {
-    navigate({ to: `/fundos/${item.id}` as any });
+    navigate({ to: "/fundos/$fundoId", params: { fundoId: item.id } });
   }
 
   function handleEdit(item: FundoDto) {
-    navigate({ to: `/fundos/${item.id}` as any });
+    navigate({ to: "/fundos/$fundoId", params: { fundoId: item.id } });
   }
 
   async function handleSubmit(formData: CreateFundoData) {

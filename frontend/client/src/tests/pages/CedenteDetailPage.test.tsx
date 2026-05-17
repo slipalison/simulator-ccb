@@ -9,11 +9,16 @@ import { CedenteDetailPage } from "@/components/pages/CedenteDetailPage";
 
 const mockNavigate = vi.fn();
 
+vi.mock("@/router", () => ({
+  cedenteDetailRouteApi: {
+    useParams: () => ({ cedenteId: "uuid-ced-1" }),
+  },
+}));
+// useNavigate is still imported directly from @tanstack/react-router in CedenteDetailPage
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const mod = await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...mod,
-    useParams: () => ({ cedenteId: "uuid-ced-1" }),
     useNavigate: () => mockNavigate,
   };
 });

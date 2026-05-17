@@ -312,3 +312,65 @@ None.
 - Playwright api-proxy: 3/3 PASS
 - Playwright auth-flow: 5 failures (pre-existing, not phase regression)
 - Vitest: 209 tests pass / 15 fail (all in profile-page + registration-form files not touched in Phase 50)
+
+## Security review iter 2
+
+### Verdict: APPROVED_WITH_WARNINGS
+
+Iter 2 commits: 64e1651 (dotnet format), a86a0f4 (coverage dep), 997184a (apiFetch dedup), 25069ee (permissions typing), 123e316 (locale extract), 6cc40f1 (23 test files).
+
+---
+
+### Gates
+
+**[G1 Multi-tenant isolation (D-5)]** PASS — no new query handlers, aggregates, or EF configs in iter 2. Pure refactor + test additions. D-5 posture unchanged.
+
+**[G2 AuthZ coverage]** PASS — no new endpoints, controllers, or routes added. Existing coverage unaffected.
+
+**[G3 Secrets + env hygiene]** PASS — grep over all 24 new/modified files: zero hardcoded passwords, secrets, tokens, or bearer headers. New test files use mock objects and vi.fn() with no real credentials. theme-provider.test.tsx localStorage usage is pre-boundary (stores only "theme" key, not tokens).
+
+**[G4 Semgrep]** PASS — no new C# logic; 64e1651 is whitespace-only. No semgrep re-run required for format-only diff.
+
+**[G5 Trivy]** DEFERRED — single new dep (@vitest/coverage-v8@4.1.6, MIT). No Dockerfile or container changes in iter 2. Trivy CI-deferred (same as iter 1).
+
+**[G6 Keycloak hardening drift]** PASS — git log scoped to 20859b0..6cc40f1 -- keycloak/ returns empty. Iter 2 touches only frontend/client/ and tests/. The post.logout.redirect.uris and clientProfiles no-wildcard enforcer changes are pre-iter-2 hardening improvements, not regressions.
+
+**[G7 Security headers]** NOT VERIFIED — stack not running; same deferral as iter 1.
+
+**[G8 Dependency OSS (D-3)]** PASS — @vitest/coverage-v8@4.1.6 license: MIT (verified from node_modules/package.json). No commercial dependency introduced.
+
+**[G9 Audit log]** N/A — no new mutation commands in iter 2.
+
+---
+
+### apiFetch consolidation (W1 iter 1 — resolved)
+
+fundos-api.ts now imports apiFetch from @/lib/api (line 7). The shared apiFetch in api.ts retains credentials: 'include' as its base option (api.ts:41) with no Authorization header at any call site. No bearer token in frontend. W1 closed.
+
+---
+
+### AuthContextValue.permissions typing (W4 iter 1 — resolved)
+
+permissions: string[] is now declared on the AuthContextValue.auth interface (auth-context.tsx:36). State is initialized as [] and populated exclusively from /auth/me response (auth-context.tsx:95: setPermissions(data.permissions ?? [])). No localStorage write of permissions anywhere. No client-side mutation pathway. W4 closed.
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+1. **Gitleaks / Trivy deferred to CI** — carry-forward from iter 1. Must pass CI before ship.
+2. **Security headers (G7) not live-verified** — carry-forward from iter 1. Stack not running locally.
+3. **D-12 localStorage in theme-provider.test.tsx** — pre-boundary file, stores only "theme" key, not tokens. No action needed; documented for traceability.
+
+---
+
+### Pipeline artifacts
+
+- Gitleaks: deferred to CI.
+- Trivy FS: deferred to CI.
+- Semgrep: no re-run needed (format-only C# diff + TS-only changes with no new logic patterns).

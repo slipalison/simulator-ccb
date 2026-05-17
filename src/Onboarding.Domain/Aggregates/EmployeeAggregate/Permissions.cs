@@ -13,9 +13,16 @@ public static class Permissions
     public const string DashboardAccess = "dashboard:access";
     public const string AccessGroupsManage = "access-groups:manage";
 
+    // Fund permissions (PERM-01)
+    public const string FundsRead = "funds:read";
+    public const string FundsWrite = "funds:write";
+    public const string FundsDelete = "funds:delete";
+    public const string FundsManage = "funds:manage";
+
     public static readonly string[] All =
     {
         EmployeesRead, EmployeesWrite, EmployeesDelete,
-        AuditRead, DashboardAccess, AccessGroupsManage
+        AuditRead, DashboardAccess, AccessGroupsManage,
+        FundsRead, FundsWrite, FundsDelete, FundsManage
     };
 }

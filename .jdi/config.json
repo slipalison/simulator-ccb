@@ -1,0 +1,30 @@
+{
+  "$schema_version": "1.1",
+  "project_slug": "onboarding-keycloak",
+  "adopted": true,
+  "adopted_at": "2026-05-11",
+  "adopted_commit": "968eefb19dba216d729723e8ffa6a9e166d7698c",
+  "main_branch": "master",
+  "language": "csharp+typescript",
+  "code_design": "ddd",
+  "context_window": 200000,
+  "thresholds": {
+    "warn_pct": 60,
+    "critical_pct": 70
+  },
+  "budgets": {
+    "max_context_chars": 6000,
+    "max_plan_chars": 12000,
+    "max_summary_chars": 8192
+  },
+  "compaction": {
+    "keep_phases": 2,
+    "archive_after": 5
+  },
+  "coverage_min": 80,
+  "coverage_scope": "new-files-only",
+  "conventional_commits": true,
+  "llm_provider": "anthropic",
+  "discussion_language": "pt-BR",
+  "code_language": "en"
+}

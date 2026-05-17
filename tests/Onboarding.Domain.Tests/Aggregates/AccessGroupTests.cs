@@ -51,26 +51,36 @@ public class AccessGroupTests
 
         var admin = groups[0];
         admin.Name.ShouldBe("admin-empresa");
-        admin.Permissions.Count.ShouldBe(6);
-        admin.Permissions.ShouldContain(Permissions.EmployeesRead);
-        admin.Permissions.ShouldContain(Permissions.EmployeesWrite);
-        admin.Permissions.ShouldContain(Permissions.EmployeesDelete);
-        admin.Permissions.ShouldContain(Permissions.AuditRead);
-        admin.Permissions.ShouldContain(Permissions.DashboardAccess);
-        admin.Permissions.ShouldContain(Permissions.AccessGroupsManage);
+        admin.Permissions.Count.ShouldBe(Permissions.All.Length);
+        foreach (var perm in Permissions.All)
+        {
+            admin.Permissions.ShouldContain(perm);
+        }
     }
 
     [Fact]
-    public void CreateDefaultGroups_viewer_hasReadAndAuditPermissions()
+    public void CreateDefaultGroups_viewer_hasReadAuditAndFundsReadPermissions()
     {
         var companyId = Guid.NewGuid();
         var groups = AccessGroup.CreateDefaultGroups(companyId);
 
         var viewer = groups[1];
         viewer.Name.ShouldBe("viewer");
-        viewer.Permissions.Count.ShouldBe(2);
+        viewer.Permissions.Count.ShouldBe(3);
         viewer.Permissions.ShouldContain(Permissions.EmployeesRead);
         viewer.Permissions.ShouldContain(Permissions.AuditRead);
+        viewer.Permissions.ShouldContain(Permissions.FundsRead);
+    }
+
+    [Fact]
+    public void CreateDefaultGroups_adminEmpresa_containsFundsManage()
+    {
+        var companyId = Guid.NewGuid();
+        var groups = AccessGroup.CreateDefaultGroups(companyId);
+
+        var admin = groups[0];
+        // funds:manage is included via Perm.All — implies all funds:* operations by convention.
+        admin.Permissions.ShouldContain(Permissions.FundsManage);
     }
 
     [Fact]

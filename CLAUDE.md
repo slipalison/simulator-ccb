@@ -1,145 +1,98 @@
-<!-- GSD:project-start source:PROJECT.md -->
-## Project
+# JDI — Instrucoes Claude Code
 
-**Onboarding de Clientes**
+Este projeto usa o JDI (Just Do It) como workflow de desenvolvimento. JDI eh um workflow enxuto: 6 comandos no loop principal, 5 agents core + 2 per-project specialists.
 
-Sistema de onboarding para cadastro de clientes Pessoa Física (PF) e Pessoa Jurídica (PJ). O usuário se cadastra com dados básicos e senha, é direcionado ao login, e após autenticação visualiza seus dados cadastrais em modo leitura. A segurança é prioridade — Keycloak hardened, infraestrutura containerizada.
+## Loop canonico
 
-**Core Value:** Cadastro seguro e funcional de clientes PF/PJ com autenticação robusta via Keycloak — se a segurança falhar, nada mais importa.
+```
+/jdi-new "<descricao>"   -> research + PROJECT.md + ROADMAP.md
+/jdi-bootstrap           -> cria specialists per-project (doer + reviewer)
+/jdi-discuss <N>         -> captura decisoes locked da phase
+/jdi-plan <N>            -> decompoe em tasks com waves
+/jdi-do <N>              -> executa via doer specialist
+/jdi-verify <N>          -> gates de qualidade via reviewer specialist
+/jdi-ship <N>            -> finaliza phase + avanca pra proxima
 
-### Constraints
+# Roadmap mutation (qualquer hora)
+/jdi-add-phase "<name>" [--goal "<t>"] [--at <pos>]   -> adiciona phase
+/jdi-remove-phase <N> [--force]                        -> remove future/pending phase
 
-- **Tech Stack**: .NET 10 + React/Vinxi + PostgreSQL + Keycloak — stack definida pelo usuário
-- **Infra**: Tudo deve rodar em Docker Compose localmente
-- **Segurança**: Keycloak deve ser hardened contra vulnerabilidades documentadas
-- **API Style**: Controllers ASP.NET (sem Minimal API)
-- **Observabilidade**: Serilog + OpenTelemetry obrigatórios desde o início
-<!-- GSD:project-end -->
+# Continuidade / snapshot
+/jdi-status                                            -> resumo: phase atual + ultima acao + proximo comando
+```
 
-<!-- GSD:stack-start source:research/STACK.md -->
-## Technology Stack
+`/jdi-create [desc]` gera novos agents/skills genericos no `core/` (rodado dentro do repo JDI, nao de projetos consumindo).
 
-## Backend — .NET 10
-| Component | Package | Version | Rationale | Confidence |
-|-----------|---------|---------|-----------|------------|
-| Runtime | .NET 10 | 10.0 | Latest LTS (Nov 2025). User-specified. | HIGH |
-| Web framework | ASP.NET Core Controllers | 10.0 | User requires no Minimal API. Controllers with proper routing. | HIGH |
-| ORM | Entity Framework Core | 10.0 | Standard .NET ORM. Code-first migrations, LINQ queries. | HIGH |
-| PostgreSQL driver | Npgsql.EntityFrameworkCore.PostgreSQL | 10.0.x | Official EF Core provider for PostgreSQL. | HIGH |
-| Logging | Serilog | 4.x | Structured logging. User-specified. | HIGH |
-| Serilog ASP.NET | Serilog.AspNetCore | 9.x | ASP.NET Core integration for request logging. | HIGH |
-| Serilog OTLP sink | Serilog.Sinks.OpenTelemetry | 4.x | Export logs via OTLP protocol. | HIGH |
-| OpenTelemetry | OpenTelemetry.Extensions.Hosting | 1.10.x | Traces + metrics SDK for .NET. | HIGH |
-| OTEL ASP.NET | OpenTelemetry.Instrumentation.AspNetCore | 1.10.x | Auto-instrument HTTP requests. | HIGH |
-| OTEL HttpClient | OpenTelemetry.Instrumentation.Http | 1.10.x | Auto-instrument outbound HTTP (Keycloak Admin API calls). | HIGH |
-| OTEL EF Core | OpenTelemetry.Instrumentation.EntityFrameworkCore | 1.0.x | Auto-instrument database queries. | MEDIUM |
-| OTEL Exporter | OpenTelemetry.Exporter.OpenTelemetryProtocol | 1.10.x | OTLP exporter for traces/metrics. | HIGH |
-| JWT Auth | Microsoft.AspNetCore.Authentication.JwtBearer | 10.0 | Built-in JWT validation middleware. | HIGH |
-| Keycloak Admin | Keycloak.AuthServices.Sdk | 2.7.x | .NET SDK for Keycloak Admin REST API. | MEDIUM |
-| Token management | Duende.AccessTokenManagement | 3.x | Automatic service account token lifecycle. | MEDIUM |
-| Validation | FluentValidation | 11.x | Command/DTO validation in Application layer. | HIGH |
-| CQRS | Manual DI | - | Command/query handlers injected via built-in DI. No third-party mediator. | HIGH |
-| Testing | xUnit | 2.9.x | Standard .NET test framework. User wants TDD. | HIGH |
-| Test assertions | Shouldly | 4.x | Readable test assertions. MIT license — fully open source. | HIGH |
-| Integration tests | Microsoft.AspNetCore.Mvc.Testing | 10.0 | WebApplicationFactory for API integration tests. | HIGH |
-| Test containers | Testcontainers | 4.x | Spin up PostgreSQL + Keycloak in integration tests. | HIGH |
-| Mocking | NSubstitute | 5.x | Mocking for unit tests. Simpler than Moq. | HIGH |
-### License Rule
-**All libraries must be open source (Apache 2.0, MIT, or equivalent permissive license).** Before adding any NuGet package, verify its license. Reject any package that is proprietary, source-available-only, or has moved to a commercial model.
+## Agents core (em `.claude/agents/`)
 
-### What NOT to Use
-| Package | Why Avoid |
-|---------|-----------|
-| Minimal API | User explicitly excluded. Use Controllers. |
-| Moq | License controversy (SponsorLink). Use NSubstitute. |
-| Dapper alongside EF Core | Unnecessary complexity for this scope. EF Core handles all queries. |
-| IdentityServer/Duende IdentityServer | Keycloak IS the identity provider. Don't add another. |
-| ASP.NET Core Identity | Keycloak manages users. Don't mix identity systems. |
-| MediatR | No longer open source (commercial license). Use manual DI for CQRS. |
-| FluentAssertions | v8+ moved to commercial license (Xceed). Use Shouldly (MIT) instead. |
-| MassTransit | Out of scope — message bus não é necessário neste projeto. |
-## Frontend — React + Vinxi
-| Component | Package | Version | Rationale | Confidence |
-|-----------|---------|---------|-----------|------------|
-| Meta-framework | Vinxi | 0.5.x | Vite-based fullstack framework. User-specified. | MEDIUM |
-| UI library | React | 19.x | User-specified. | HIGH |
-| Routing | TanStack Router | 1.x | Type-safe routing, works well with Vinxi. | MEDIUM |
-| HTTP client | ky or fetch | native | Lightweight. No need for axios overhead. | MEDIUM |
-| Forms | React Hook Form | 7.x | Performant form handling, validation integration. | HIGH |
-| Validation | Zod | 3.x | Schema validation shared between forms and API contracts. | HIGH |
-| Styling | Tailwind CSS | 4.x | Utility-first, pairs well with Atomic Design. | HIGH |
-| Type checking | TypeScript | 5.7.x | Type safety across the frontend. | HIGH |
-### What NOT to Use
-| Package | Why Avoid |
-|---------|-----------|
-| Next.js | Different framework. User chose Vinxi. |
-| Redux/Zustand | Over-engineering for auth state + profile view. React Context sufficient. |
-| Axios | fetch + ky is lighter. No interceptor complexity needed. |
-| keycloak-js | Designed for Authorization Code Flow. ROPC grant doesn't need it. |
-| localStorage for tokens | XSS vulnerability. Store in memory only. |
-## Infrastructure
-| Component | Image/Version | Configuration | Confidence |
-|-----------|---------------|---------------|------------|
-| Keycloak | quay.io/keycloak/keycloak:26.1 | Production mode, hardened config | HIGH |
-| PostgreSQL (app) | postgres:16-alpine | Dedicated for application data | HIGH |
-| PostgreSQL (Keycloak) | postgres:16-alpine | Dedicated for Keycloak internal state | HIGH |
-| Docker Compose | v2 (Compose V2) | Multi-service local environment | HIGH |
-### Keycloak Configuration
-- **Realm:** `onboarding`
-- **Public client:** `onboarding-app` (Direct Access Grants Enabled, no secret)
-- **Confidential client:** `onboarding-api-admin` (Service Account Enabled, `manage-users` role)
-- **Brute force protection:** Enabled (max 5 failures, 30s wait, escalating)
-- **Password policy:** min 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special char
-- **Session timeouts:** SSO Session Max = 8h, Access Token lifespan = 5 min
-- **HTTPS:** Required in production (HTTP allowed for local dev only)
-## Observability Stack
-| Component | Purpose | Notes |
-|-----------|---------|-------|
-| Serilog + OTLP Sink | Structured logs → stdout (JSON) | Correlation with traces via TraceId automatic in Serilog 4.x |
-| OpenTelemetry SDK | Traces + Metrics collection | Instrument ASP.NET Core, HttpClient, EF Core |
-| OTLP Exporter | Export to collector | Stdout JSON for dev. OTLP endpoint for prod. |
-## Sources
-- [.NET 10 Release Notes — Microsoft](https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-10/overview)
-- [Keycloak 26.x Release — quay.io](https://quay.io/repository/keycloak/keycloak)
-- [Serilog.Sinks.OpenTelemetry — GitHub](https://github.com/serilog/serilog-sinks-opentelemetry)
-- [OpenTelemetry .NET SDK](https://opentelemetry.io/docs/languages/net/)
-- [Keycloak.AuthServices — NuGet](https://www.nuget.org/packages/Keycloak.AuthServices.Sdk)
-- [Vinxi — GitHub](https://github.com/nksaraf/vinxi)
-- [FluentValidation — GitHub](https://github.com/FluentValidation/FluentValidation)
-- [MediatR — GitHub](https://github.com/jbogard/MediatR)
-- [Testcontainers for .NET](https://dotnet.testcontainers.org/)
-<!-- GSD:stack-end -->
+Genericos, shipped pelo JDI:
 
-<!-- GSD:conventions-start source:CONVENTIONS.md -->
-## Conventions
+| Agent | Modelo | Funcao |
+|---|---|---|
+| `jdi-researcher` | Opus | Research pre-roadmap. Le ideia, pergunta, gera PROJECT.md + ROADMAP.md |
+| `jdi-bootstrap` | Sonnet | Dispara architect modo specialist pra gerar per-project doer + reviewer |
+| `jdi-asker` | Sonnet | Loop adaptativo de perguntas pra capturar decisoes locked (CONTEXT.md) |
+| `jdi-planner` | Opus | Decompoe phase em tasks, agrupa em waves de paralelismo (PLAN.md) |
+| `jdi-architect` | Opus | Meta-agent. 2 modos: cria agents/skills genericos no core/ OU cria specialists per-project |
 
-Conventions not yet established. Will populate as patterns emerge during development.
-<!-- GSD:conventions-end -->
+## Specialists per-project (em `.jdi/agents/`)
 
-<!-- GSD:architecture-start source:ARCHITECTURE.md -->
-## Architecture
+Gerados pelo `/jdi-bootstrap` baseado em PROJECT.md:
 
-Architecture not yet mapped. Follow existing patterns found in the codebase.
-<!-- GSD:architecture-end -->
+| Agent | Funcao |
+|---|---|
+| `jdi-doer-{slug}` | Executor que ja conhece stack/code-design/conventions do projeto. Sem descoberta, ja sabe |
+| `jdi-reviewer-{slug}` | Roda gates de qualidade definidos pra stack: build, tests, coverage, lint, security |
 
-<!-- GSD:workflow-start source:GSD defaults -->
-## GSD Workflow Enforcement
+Routing em `.jdi/specialists.md` e `.jdi/reviewers.md`.
 
-Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
+## Memoria — files em `.jdi/`
 
-Use these entry points:
-- `/gsd:quick` for small fixes, doc updates, and ad-hoc tasks
-- `/gsd:debug` for investigation and bug fixing
-- `/gsd:execute-phase` for planned phase work
+```
+.jdi/
+  PROJECT.md          <- visao + stack + code-design locked
+  ROADMAP.md          <- phases + status
+  DECISIONS.md        <- D-XX append-only (decisoes locked)
+  STATE.md            <- current_phase + next_step
+  specialists.md      <- routing pro doer
+  reviewers.md        <- routing pro reviewer
+  registry.md         <- audit trail dos specialists criados
+  agents/             <- per-project specialists
+    jdi-doer-{slug}.md
+    jdi-reviewer-{slug}.md
+  phases/{NN-slug}/
+    CONTEXT.md        <- output do asker
+    PLAN.md           <- output do planner
+    SUMMARY.md        <- output do doer
+    REVIEW.md         <- output do reviewer
+```
 
-Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
-<!-- GSD:workflow-end -->
+## Convencoes
 
+- Conventional Commits — scope = phase slug, ex: `feat(01-setup-api): ...`
+- Atomic commits — 1 task = 1 commit
+- 80% cobertura minima (overridable via PROJECT.md)
+- Code design locked uma vez no `/jdi-new`, nunca muda
+- D-XX referenciado em commit message quando aplicavel
 
+## Idioma
 
-<!-- GSD:profile-start -->
-## Developer Profile
+- Codigo, commits, PRs: ingles
+- Discussao, docs em `.jdi/`: pt-BR
+- i18n no frontend: nunca string hardcoded em pt-BR no JSX
 
-> Profile not yet configured. Run `/gsd:profile-user` to generate your developer profile.
-> This section is managed by `generate-claude-profile` -- do not edit manually.
-<!-- GSD:profile-end -->
+## Prioridade quando conflita
+
+1. Seguranca
+2. Performance
+3. Boas praticas
+
+## Hooks (opcional)
+
+`.githooks/pre-commit` e `post-commit` shipped. Pra ativar:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Windows: hooks rodam via Git Bash (vem com Git for Windows). Sem ele, hooks sao silenciosamente ignorados.

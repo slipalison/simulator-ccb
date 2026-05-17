@@ -6,9 +6,9 @@ namespace Onboarding.Domain.Tests.Aggregates;
 public class PermissionsTests
 {
     [Fact]
-    public void All_containsExactly6Permissions()
+    public void All_containsExactly10Permissions()
     {
-        Permissions.All.Length.ShouldBe(6);
+        Permissions.All.Length.ShouldBe(10);
     }
 
     [Fact]
@@ -51,5 +51,33 @@ public class PermissionsTests
     {
         Permissions.All.ShouldContain(Permissions.AccessGroupsManage);
         Permissions.AccessGroupsManage.ShouldBe("access-groups:manage");
+    }
+
+    [Fact]
+    public void All_containsFundsRead()
+    {
+        Permissions.All.ShouldContain(Permissions.FundsRead);
+        Permissions.FundsRead.ShouldBe("funds:read");
+    }
+
+    [Fact]
+    public void All_containsFundsWrite()
+    {
+        Permissions.All.ShouldContain(Permissions.FundsWrite);
+        Permissions.FundsWrite.ShouldBe("funds:write");
+    }
+
+    [Fact]
+    public void All_containsFundsDelete()
+    {
+        Permissions.All.ShouldContain(Permissions.FundsDelete);
+        Permissions.FundsDelete.ShouldBe("funds:delete");
+    }
+
+    [Fact]
+    public void All_containsFundsManage()
+    {
+        Permissions.All.ShouldContain(Permissions.FundsManage);
+        Permissions.FundsManage.ShouldBe("funds:manage");
     }
 }

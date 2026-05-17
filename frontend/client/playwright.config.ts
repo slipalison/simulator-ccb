@@ -16,14 +16,41 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: 'html',
   timeout: 60000,
+  globalSetup: './playwright/global-setup.ts',
 
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://127.0.0.1:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
 
   projects: [
+    // Auth-flow regression suite (T-7 Phase 49) — fresh browser, no storageState.
+    // baseURL overrides to localhost: Keycloak realm redirectUris only contain
+    // http://localhost:5173/auth/callback — pkce_state cookie set on 127.0.0.1 is
+    // NOT sent on the localhost callback, breaking state validation. D-17 narrows to
+    // api-proxy probes only (iter 3, 2026-05-16). See .jdi/DECISIONS.md D-17.
+    {
+      name: 'auth-flow',
+      testDir: './playwright/specs',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:5173',
+      },
+      testMatch: /auth-flow\.spec\.ts/,
+    },
+
+    // api-proxy regression suite (T-9 Phase 49 iter 2) — IPv4 + proxy smoke tests
+    {
+      name: 'api-proxy',
+      testDir: './playwright/specs',
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+      testMatch: /api-proxy\.spec\.ts/,
+    },
+
+
     // Setup: authenticate and save storageState for each role
     {
       name: 'setup',

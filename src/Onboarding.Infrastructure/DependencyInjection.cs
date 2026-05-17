@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Onboarding.Application.Common;
+using Onboarding.Application.Fundos.Queries.Admin;
 using Onboarding.Application.Services;
 using Onboarding.Domain.Repositories;
 using Onboarding.Infrastructure.Services;
@@ -95,6 +96,38 @@ public static class InfrastructureServiceExtensions
 
         // Password reset token repository
         services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
+
+        // Fundos module repositories (Phase 46)
+        services.AddScoped<IFundoRepository, FundoRepository>();
+        services.AddScoped<IConsultoriaFundoRepository, ConsultoriaFundoRepository>();
+        services.AddScoped<ICustodianteRepository, CustodianteRepository>();
+        services.AddScoped<ICedenteRepository, CedenteRepository>();
+        services.AddScoped<ITipoAtivoRepository, TipoAtivoRepository>();
+
+        // Phase 50 — standalone relationship aggregate repositories (D-21)
+        services.AddScoped<IFundoCedenteAggregateRepository, FundoCedenteAggregateRepository>();
+        services.AddScoped<ICedenteTipoAtivoAggregateRepository, CedenteTipoAtivoAggregateRepository>();
+        services.AddScoped<IFundoTipoAtivoAggregateRepository, FundoTipoAtivoAggregateRepository>();
+
+        // Admin Fundos cross-company query handlers (Phase 48 — T-48.6, D-8).
+        // Handlers live in Infrastructure (require AppDbContext) and are registered here.
+        // SECURITY: Only consumed by AdminFundosController (BearerBackoffice + CrossCompanyAccess).
+        services.AddScoped<IQueryHandler<ListAdminFundoQuery, PaginatedResult<AdminFundoDto>>,
+            ListAdminFundoQueryHandler>();
+        services.AddScoped<IQueryHandler<ListAdminConsultoriaQuery, PaginatedResult<AdminConsultoriaFundoDto>>,
+            ListAdminConsultoriaQueryHandler>();
+        services.AddScoped<IQueryHandler<ListAdminCustodianteQuery, PaginatedResult<AdminCustodianteDto>>,
+            ListAdminCustodianteQueryHandler>();
+        services.AddScoped<IQueryHandler<ListAdminCedenteQuery, PaginatedResult<AdminCedenteDto>>,
+            ListAdminCedenteQueryHandler>();
+
+        // Phase 50 — relationship aggregate admin query handlers (D-8, D-21)
+        services.AddScoped<IQueryHandler<ListAdminFundoCedenteQuery, PaginatedResult<AdminRelFundoCedenteDto>>,
+            ListAdminFundoCedenteQueryHandler>();
+        services.AddScoped<IQueryHandler<ListAdminFundoTipoAtivoQuery, PaginatedResult<AdminRelFundoTipoAtivoDto>>,
+            ListAdminFundoTipoAtivoQueryHandler>();
+        services.AddScoped<IQueryHandler<ListAdminCedenteTipoAtivoQuery, PaginatedResult<AdminRelCedenteTipoAtivoDto>>,
+            ListAdminCedenteTipoAtivoQueryHandler>();
 
         // Keycloak token endpoint — ROPC/refresh calls (D-11, D-12)
         // Named client without auth handler — ROPC calls do not carry outbound Bearer token

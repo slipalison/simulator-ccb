@@ -1,0 +1,96 @@
+---
+name: jdi-plan
+description: Generates phase PLAN.md. Decomposes into tasks with files_modified, acceptance, parallelism waves. Accepts slug or position.
+argument_hint: "<slug|position> [--review]"
+runtime_intent:
+  invokes_agent: jdi-planner
+runtime_overrides:
+  claude:
+    allowed-tools: [Read, Write, Bash, Grep, Glob, AskUserQuestion, Agent]
+  copilot:
+    tools: [read, write, grep, glob]
+  opencode:
+    agent: jdi-planner
+    subtask: true
+    model: anthropic/claude-sonnet-4-20250514
+  antigravity:
+    triggers:
+      - "/jdi-plan"
+      - "plan phase"
+---
+
+<objective>
+Generates PLAN.md for the given phase. Decomposes into tasks (max 8), groups into parallelism waves, maps files_modified and acceptance.
+</objective>
+
+<arguments>
+- `phase_id` (required): canonical slug, legacy slug, or integer position
+- `--review` (optional): show preview and ask for approval before saving
+</arguments>
+
+<process>
+
+### Step 1: Validation
+```bash
+test -d .jdi/ || { echo "Not a JDI project. Run /jdi-new."; exit 1; }
+test -f .jdi/PROJECT.md || { echo "PROJECT.md missing."; exit 1; }
+
+JDI_LIB="$(dirname "$(command -v jdi 2>/dev/null || echo /usr/local/bin/jdi)")/../lib"
+```
+
+### Step 2: Resolve phase
+
+```bash
+eval $(bash "$JDI_LIB/jdi-resolve-phase.sh" "$1") || { echo "Phase '$1' not found."; exit 1; }
+PHASE_SLUG="$JDI_PHASE_SLUG"
+PHASE_DIR="$JDI_PHASE_DIR"
+PHASE_POSITION="$JDI_PHASE_POSITION"
+```
+
+PowerShell:
+```powershell
+$r = & "$JDI_LIB\jdi-resolve-phase.ps1" -Id $args[0] -AsObject
+$phaseSlug = $r.Slug; $phaseDir = $r.Dir; $phasePosition = $r.Position
+```
+
+### Step 3: Verify CONTEXT.md
+
+```bash
+test -f "$PHASE_DIR/CONTEXT.md" || { echo "CONTEXT.md missing. Run /jdi-discuss $PHASE_SLUG"; exit 1; }
+
+# Context budget warm-up (does not block)
+if [ -f "$JDI_LIB/jdi-monitor.sh" ]; then
+  bash "$JDI_LIB/jdi-monitor.sh" .jdi/PROJECT.md .jdi/DECISIONS.md "$PHASE_DIR/CONTEXT.md" || true
+fi
+```
+
+PowerShell: `pwsh -File "$JDI_LIB/jdi-monitor.ps1" -Paths @(...)`.
+
+### Step 4: Spawn planner
+Invoke `jdi-planner` with:
+- `phase_slug=$PHASE_SLUG`
+- `phase_dir=$PHASE_DIR`
+- `phase_position=$PHASE_POSITION`
+
+Wait.
+
+### Step 5: Verify
+```bash
+test -f "$PHASE_DIR/PLAN.md" || { echo "PLAN.md not created"; exit 1; }
+```
+
+### Step 6: Confirm
+Show plan summary + suggest `/jdi-do $PHASE_SLUG`.
+
+</process>
+
+<gates>
+- pre: `.jdi/PROJECT.md` + `$PHASE_DIR/CONTEXT.md` exist
+- post: PLAN.md created + STATE.md updated + commit
+</gates>
+
+<errors>
+- CONTEXT.md missing → suggest `/jdi-discuss $PHASE_SLUG`
+- Phase id not resolvable → exit with hint
+- Planner cancelled → exit clean
+</errors>

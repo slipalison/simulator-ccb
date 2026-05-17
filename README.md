@@ -41,21 +41,20 @@ See [CI Pipeline Architecture](docs/ci-pipeline.md) for multi-stage details and 
 - **Infrastructure**: Docker Compose, GitHub Actions CI/CD
 - **Observability**: Serilog, OpenTelemetry
 
+## Local Development
+
+Use `docker compose up -d` to start the full stack. Do not run `pnpm dev` directly on the host — see [docs/dev-setup.md](./docs/dev-setup.md) for why and for the escape hatch.
+
 ## Quick Start
 
 ```bash
-# Start infrastructure
+# Start the full stack (frontend SPAs included via docker compose)
+cp .env.example .env   # fill secrets
 docker compose up -d
 
-# Backend
+# Backend (optional, runs inside compose — start separately only for debugger attach)
 dotnet restore Onboarding.slnx
 dotnet run --project src/Onboarding.API
-
-# Frontend Client
-cd frontend/client && npm ci && npm run dev
-
-# Frontend Backoffice
-cd frontend/backoffice && npm ci && npm run dev
 ```
 
 ## Documentation

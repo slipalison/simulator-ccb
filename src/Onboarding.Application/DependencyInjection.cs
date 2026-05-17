@@ -12,7 +12,21 @@ using Onboarding.Application.Common;
 using Onboarding.Application.Companies.Commands;
 using Onboarding.Application.Companies.DTOs;
 using Onboarding.Application.Companies.Queries;
-
+using Onboarding.Application.Fundos.Commands;
+using Onboarding.Application.Fundos.Commands.CreateCedenteTipoAtivo;
+using Onboarding.Application.Fundos.Commands.CreateFundoCedente;
+using Onboarding.Application.Fundos.Commands.CreateFundoTipoAtivo;
+using Onboarding.Application.Fundos.Commands.TransitionCedenteTipoAtivoStatus;
+using Onboarding.Application.Fundos.Commands.TransitionFundoCedenteStatus;
+using Onboarding.Application.Fundos.Commands.TransitionFundoTipoAtivoStatus;
+using Onboarding.Application.Fundos.Commands.UpdateCedenteTipoAtivoLimite;
+using Onboarding.Application.Fundos.Commands.UpdateFundoCedenteLimite;
+using Onboarding.Application.Fundos.Commands.UpdateFundoTipoAtivoLimite;
+using Onboarding.Application.Fundos.DTOs;
+using Onboarding.Application.Fundos.Queries;
+using Onboarding.Application.Fundos.Queries.GetCedenteTiposAtivos;
+using Onboarding.Application.Fundos.Queries.GetFundoCedentes;
+using Onboarding.Application.Fundos.Queries.GetFundoTiposAtivos;
 namespace Onboarding.Application;
 
 /// <summary>
@@ -93,6 +107,76 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IValidator<UpdateAdministratorCommand>, UpdateAdministratorCommandValidator>();
         services.AddScoped<IValidator<ResetAdministratorPasswordCommand>, ResetAdministratorPasswordCommandValidator>();
         services.AddScoped<IValidator<ToggleAdministratorStatusCommand>, ToggleAdministratorStatusCommandValidator>();
+
+        // Fund CRUD commands (Phase 47 — CAD-01..21, ADM-04)
+        // ConsultoriaFundo (company-scoped per D-01)
+        services.AddScoped<ICommandHandler<RegisterConsultoriaFundoCommand, ConsultoriaFundoDto>, RegisterConsultoriaFundoCommandHandler>();
+        services.AddScoped<IValidator<RegisterConsultoriaFundoCommand>, RegisterConsultoriaFundoCommandValidator>();
+        services.AddScoped<ICommandHandler<UpdateConsultoriaFundoCommand, ConsultoriaFundoDto>, UpdateConsultoriaFundoCommandHandler>();
+        services.AddScoped<IValidator<UpdateConsultoriaFundoCommand>, UpdateConsultoriaFundoCommandValidator>();
+
+        // Custodiante (company-scoped per D-01)
+        services.AddScoped<ICommandHandler<RegisterCustodianteCommand, CustodianteDto>, RegisterCustodianteCommandHandler>();
+        services.AddScoped<IValidator<RegisterCustodianteCommand>, RegisterCustodianteCommandValidator>();
+        services.AddScoped<ICommandHandler<UpdateCustodianteCommand, CustodianteDto>, UpdateCustodianteCommandHandler>();
+        services.AddScoped<IValidator<UpdateCustodianteCommand>, UpdateCustodianteCommandValidator>();
+
+        // Fundo (company-scoped per D-01, state machine D-02)
+        services.AddScoped<ICommandHandler<RegisterFundoCommand, FundoDto>, RegisterFundoCommandHandler>();
+        services.AddScoped<IValidator<RegisterFundoCommand>, RegisterFundoCommandValidator>();
+        services.AddScoped<ICommandHandler<UpdateFundoCommand, FundoDto>, UpdateFundoCommandHandler>();
+        services.AddScoped<IValidator<UpdateFundoCommand>, UpdateFundoCommandValidator>();
+        services.AddScoped<ICommandHandler<TransitionFundoStatusCommand, FundoDto>, TransitionFundoStatusCommandHandler>();
+        services.AddScoped<IValidator<TransitionFundoStatusCommand>, TransitionFundoStatusCommandValidator>();
+
+        // Cedente (company-scoped per D-01, PF/PJ polymorphic via CedenteDocumento D-05/D-06)
+        services.AddScoped<ICommandHandler<RegisterCedentePfCommand, CedenteDto>, RegisterCedentePfCommandHandler>();
+        services.AddScoped<IValidator<RegisterCedentePfCommand>, RegisterCedentePfCommandValidator>();
+        services.AddScoped<ICommandHandler<RegisterCedentePjCommand, CedenteDto>, RegisterCedentePjCommandHandler>();
+        services.AddScoped<IValidator<RegisterCedentePjCommand>, RegisterCedentePjCommandValidator>();
+        services.AddScoped<ICommandHandler<UpdateCedenteCommand, CedenteDto>, UpdateCedenteCommandHandler>();
+        services.AddScoped<IValidator<UpdateCedenteCommand>, UpdateCedenteCommandValidator>();
+
+        // TipoAtivo (global per D-03/TEN-03 — no company scope)
+        services.AddScoped<ICommandHandler<CreateTipoAtivoCommand, TipoAtivoDto>, CreateTipoAtivoCommandHandler>();
+        services.AddScoped<IValidator<CreateTipoAtivoCommand>, CreateTipoAtivoCommandValidator>();
+        services.AddScoped<ICommandHandler<UpdateTipoAtivoCommand, TipoAtivoDto>, UpdateTipoAtivoCommandHandler>();
+        services.AddScoped<IValidator<UpdateTipoAtivoCommand>, UpdateTipoAtivoCommandValidator>();
+
+        // Fund CRUD queries (Phase 47 — CAD-02, CAD-06, CAD-10, CAD-16, CAD-20)
+        services.AddScoped<IQueryHandler<ListConsultoriaFundoQuery, PaginatedResult<ConsultoriaFundoDto>>, ListConsultoriaFundoQueryHandler>();
+        services.AddScoped<IQueryHandler<ListCustodianteQuery, PaginatedResult<CustodianteDto>>, ListCustodianteQueryHandler>();
+        services.AddScoped<IQueryHandler<ListFundoQuery, PaginatedResult<FundoDto>>, ListFundoQueryHandler>();
+        services.AddScoped<IQueryHandler<ListCedenteQuery, PaginatedResult<CedenteDto>>, ListCedenteQueryHandler>();
+        services.AddScoped<IQueryHandler<ListTipoAtivoQuery, PaginatedResult<TipoAtivoDto>>, ListTipoAtivoQueryHandler>();
+
+        // Phase 50 — relationship aggregate commands + queries (D-21)
+        // FundoCedente
+        services.AddScoped<ICommandHandler<CreateFundoCedenteCommand, RelFundoCedenteDto>, CreateFundoCedenteHandler>();
+        services.AddScoped<IValidator<CreateFundoCedenteCommand>, CreateFundoCedenteValidator>();
+        services.AddScoped<ICommandHandler<UpdateFundoCedenteLimiteCommand, RelFundoCedenteDto>, UpdateFundoCedenteLimiteHandler>();
+        services.AddScoped<IValidator<UpdateFundoCedenteLimiteCommand>, UpdateFundoCedenteLimiteValidator>();
+        services.AddScoped<ICommandHandler<TransitionFundoCedenteStatusCommand, RelFundoCedenteDto>, TransitionFundoCedenteStatusHandler>();
+        services.AddScoped<IValidator<TransitionFundoCedenteStatusCommand>, TransitionFundoCedenteStatusValidator>();
+        services.AddScoped<IQueryHandler<GetFundoCedentesQuery, PaginatedResult<RelFundoCedenteDto>>, GetFundoCedentesQueryHandler>();
+
+        // CedenteTipoAtivo
+        services.AddScoped<ICommandHandler<CreateCedenteTipoAtivoCommand, RelCedenteTipoAtivoDto>, CreateCedenteTipoAtivoHandler>();
+        services.AddScoped<IValidator<CreateCedenteTipoAtivoCommand>, CreateCedenteTipoAtivoValidator>();
+        services.AddScoped<ICommandHandler<UpdateCedenteTipoAtivoLimiteCommand, RelCedenteTipoAtivoDto>, UpdateCedenteTipoAtivoLimiteHandler>();
+        services.AddScoped<IValidator<UpdateCedenteTipoAtivoLimiteCommand>, UpdateCedenteTipoAtivoLimiteValidator>();
+        services.AddScoped<ICommandHandler<TransitionCedenteTipoAtivoStatusCommand, RelCedenteTipoAtivoDto>, TransitionCedenteTipoAtivoStatusHandler>();
+        services.AddScoped<IValidator<TransitionCedenteTipoAtivoStatusCommand>, TransitionCedenteTipoAtivoStatusValidator>();
+        services.AddScoped<IQueryHandler<GetCedenteTiposAtivosQuery, PaginatedResult<RelCedenteTipoAtivoDto>>, GetCedenteTiposAtivosQueryHandler>();
+
+        // FundoTipoAtivo
+        services.AddScoped<ICommandHandler<CreateFundoTipoAtivoCommand, RelFundoTipoAtivoDto>, CreateFundoTipoAtivoHandler>();
+        services.AddScoped<IValidator<CreateFundoTipoAtivoCommand>, CreateFundoTipoAtivoValidator>();
+        services.AddScoped<ICommandHandler<UpdateFundoTipoAtivoLimiteCommand, RelFundoTipoAtivoDto>, UpdateFundoTipoAtivoLimiteHandler>();
+        services.AddScoped<IValidator<UpdateFundoTipoAtivoLimiteCommand>, UpdateFundoTipoAtivoLimiteValidator>();
+        services.AddScoped<ICommandHandler<TransitionFundoTipoAtivoStatusCommand, RelFundoTipoAtivoDto>, TransitionFundoTipoAtivoStatusHandler>();
+        services.AddScoped<IValidator<TransitionFundoTipoAtivoStatusCommand>, TransitionFundoTipoAtivoStatusValidator>();
+        services.AddScoped<IQueryHandler<GetFundoTiposAtivosQuery, PaginatedResult<RelFundoTipoAtivoDto>>, GetFundoTiposAtivosQueryHandler>();
 
         return services;
     }

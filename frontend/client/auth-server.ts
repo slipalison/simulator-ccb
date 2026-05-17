@@ -20,7 +20,23 @@ const router = createRouter();
 // ── Config ──────────────────────────────────────────────────────────────
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL || "http://localhost:8180";
 const KEYCLOAK_PUBLIC_URL = process.env.KEYCLOAK_PUBLIC_URL || "http://localhost:8180";
-const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "onboarding";
+
+// Realm resolution — fail-fast strategy (D-13: compose sets KEYCLOAK_REALM=client).
+// Per-SPA default "client" keeps `pnpm dev` working on a fresh checkout without .env.
+// The legacy value "onboarding" was the root cause of Bug 1 (realm does not exist).
+// Supported realms: "client", "backoffice". Any other value is a misconfiguration.
+(function validateRealm() {
+  const raw = process.env.KEYCLOAK_REALM;
+  if (raw !== undefined && raw !== "client" && raw !== "backoffice") {
+    throw new Error(
+      `[auth-server/client] KEYCLOAK_REALM="${raw}" is not a supported realm. ` +
+        `Supported values: "client", "backoffice". ` +
+        `The legacy realm "onboarding" no longer exists (removed in Phase 34). ` +
+        `Set KEYCLOAK_REALM=client for the client SPA.`
+    );
+  }
+})();
+const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM ?? "client";
 const CLIENT_ID = process.env.KEYCLOAK_CLIENT_ACF_CLIENT_ID || "onboarding-client-acf";
 const CLIENT_SECRET = process.env.KEYCLOAK_CLIENT_ACF_CLIENT_SECRET || "";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
@@ -107,13 +123,18 @@ router.get(
       });
 
       // Set httpOnly cookies for tokens (client-specific names to avoid conflict with backoffice)
+      // sameSite="lax": allows cookie on top-level navigation after KC→SPA 302 redirect chain,
+      // fixing the cookie-not-sent race (Bug 2 hypothesis 2). CSRF still covered by PKCE state
+      // validation on the callback and lax blocking cross-site subresource/form POSTs. (D-15)
       setCookie(event, "client_access_token", tokens.accessToken, {
         httpOnly: true,
         secure: IS_PROD,
-        sameSite: "strict",
+        sameSite: "lax",
         path: "/",
         maxAge: tokens.expiresIn || 300,
       });
+      // sameSite="strict": refresh token is only sent from same-origin fetch (/auth/refresh),
+      // never needs to ride a cross-site top-level navigation, so strict is safe and tighter.
       setCookie(event, "client_refresh_token", tokens.refreshToken, {
         httpOnly: true,
         secure: IS_PROD,
@@ -121,6 +142,20 @@ router.get(
         path: "/",
         maxAge: 28800,
       });
+      // id_token stored server-side only (T-18 / W-SEC-IT4-1). Used exclusively as
+      // id_token_hint on logout so Keycloak can skip the confirmation page. Never exposed
+      // to browser JS. D-12: id_token never in localStorage / sessionStorage / JS-readable
+      // cookie. maxAge aligned with access token TTL — the hint is only meaningful for the
+      // same session; a fresh login will overwrite this cookie.
+      if (tokens.idToken) {
+        setCookie(event, "client_id_token", tokens.idToken, {
+          httpOnly: true,
+          secure: IS_PROD,
+          sameSite: "lax",
+          path: "/",
+          maxAge: tokens.expiresIn || 300,
+        });
+      }
 
       // Clean up PKCE cookies
       deleteCookie(event, "pkce_code_verifier", { path: "/auth" });
@@ -142,12 +177,31 @@ router.get(
 router.get(
   "/logout",
   defineEventHandler(async (event) => {
+    // Read id_token BEFORE deleting cookies (T-18 / W-SEC-IT4-1).
+    // id_token_hint allows Keycloak to skip the "Do you want to log out?"
+    // confirmation page and redirect straight to post_logout_redirect_uri.
+    // If absent (e.g. older session predating T-18), we fall back gracefully
+    // to the client_id-only path — D-15 invariant is met in both cases.
+    const idToken = getCookie(event, "client_id_token");
+
     deleteCookie(event, "client_access_token", { path: "/" });
     deleteCookie(event, "client_refresh_token", { path: "/" });
+    // Delete id_token cookie alongside access/refresh (D-12: no token persists post-logout).
+    deleteCookie(event, "client_id_token", { path: "/" });
 
     const logoutUrl = `${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/logout`;
     const postLogoutRedirectUri = `${FRONTEND_URL}/auth/login`;
-    const fullUrl = `${logoutUrl}?post_logout_redirect_uri=${encodeURIComponent(postLogoutRedirectUri)}`;
+    // W-FE-3 / W1 fix (iter 3): include client_id so Keycloak validates
+    // post_logout_redirect_uri against this client's specific validPostLogoutRedirectUris
+    // list (set in T-1 client-realm.json). Without client_id Keycloak falls back to a
+    // global check and the SSO session is NOT terminated on KC 26 when id_token_hint is
+    // absent. Backoffice (auth-server.ts:270) already includes client_id correctly.
+    let fullUrl = `${logoutUrl}?post_logout_redirect_uri=${encodeURIComponent(postLogoutRedirectUri)}&client_id=${encodeURIComponent(CLIENT_ID)}`;
+    // T-18: append id_token_hint when available so KC skips confirmation page (D-15 strengthened).
+    // Graceful fallback: omit parameter entirely when cookie absent — do NOT hard-fail.
+    if (idToken) {
+      fullUrl += `&id_token_hint=${encodeURIComponent(idToken)}`;
+    }
 
     return sendRedirect(event, fullUrl, 302);
   })
@@ -339,14 +393,16 @@ router.post(
         refreshToken,
       });
 
+      // sameSite="lax" on access token — consistent with /auth/callback (see comment above).
       setCookie(event, "client_access_token", tokens.accessToken, {
         httpOnly: true,
         secure: IS_PROD,
-        sameSite: "strict",
+        sameSite: "lax",
         path: "/",
         maxAge: tokens.expiresIn || 300,
       });
       if (tokens.refreshToken !== refreshToken) {
+        // sameSite="strict" on refresh token — same-origin /auth/refresh only, no navigation needed.
         setCookie(event, "client_refresh_token", tokens.refreshToken, {
           httpOnly: true,
           secure: IS_PROD,

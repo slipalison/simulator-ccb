@@ -15,9 +15,11 @@ vi.mock("@/lib/admin-api", () => ({
     }
   },
   AdminApiError: class AdminApiError extends Error {
-    constructor(message: string) {
+    public status?: number;
+    constructor(message: string, status?: number) {
       super(message);
       this.name = "AdminApiError";
+      this.status = status;
     }
   },
 }));
@@ -146,5 +148,75 @@ describe("AdminAuthContext", () => {
 
     expect(restored).toBe(false);
     expect(result.current.admin.isAuthenticated).toBe(false);
+  });
+
+  // T-6b: single bounded retry — first /auth/me returns 401, retry returns 200 → authenticated.
+  // adminApi.AdminApiError is the mocked class that admin-auth-context.tsx also receives via the
+  // same vi.mock factory — instanceof works because both sides share the same class reference.
+  // waitFor timeout is raised to 2000ms to accommodate the 200ms retry delay.
+  it(
+    "tryRestore retries once on 401 and authenticates on successful retry",
+    async () => {
+      vi.mocked(adminApi.getAdminMe)
+        // First call: 401 (post-redirect cookie-commit race)
+        .mockRejectedValueOnce(new adminApi.AdminApiError("Session invalid", 401))
+        // Second call (after 200ms): success
+        .mockResolvedValueOnce({
+          adminName: "Admin User",
+          adminEmail: "admin@onboarding.local",
+          adminId: "admin-id-retry",
+        });
+
+      const { result } = renderHook(() => useAdminAuth(), { wrapper });
+
+      await waitFor(
+        () => { expect(result.current.admin.isLoading).toBe(false); },
+        { timeout: 2000 }
+      );
+
+      expect(result.current.admin.isAuthenticated).toBe(true);
+      expect(result.current.admin.adminName).toBe("Admin User");
+      expect(adminApi.getAdminMe).toHaveBeenCalledTimes(2);
+    },
+    2500
+  );
+
+  // T-6b: single bounded retry — first 401, retry also 401 → not authenticated (no infinite loop)
+  it(
+    "tryRestore retries once on 401 and finalizes as unauthenticated on second 401",
+    async () => {
+      vi.mocked(adminApi.getAdminMe)
+        .mockRejectedValueOnce(new adminApi.AdminApiError("Session invalid", 401))
+        .mockRejectedValueOnce(new adminApi.AdminApiError("Session invalid", 401));
+
+      const { result } = renderHook(() => useAdminAuth(), { wrapper });
+
+      await waitFor(
+        () => { expect(result.current.admin.isLoading).toBe(false); },
+        { timeout: 2000 }
+      );
+
+      expect(result.current.admin.isAuthenticated).toBe(false);
+      // Exactly 2 calls: initial attempt + single retry — no further retries
+      expect(adminApi.getAdminMe).toHaveBeenCalledTimes(2);
+    },
+    2500
+  );
+
+  // T-6b: 5xx error → fails fast without retry (no 200ms delay)
+  it("tryRestore does not retry on 5xx error", async () => {
+    vi.mocked(adminApi.getAdminMe).mockRejectedValueOnce(
+      new adminApi.AdminApiError("Server error", 500)
+    );
+
+    const { result } = renderHook(() => useAdminAuth(), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.admin.isLoading).toBe(false);
+    });
+
+    expect(result.current.admin.isAuthenticated).toBe(false);
+    // Only 1 call — 5xx does not trigger retry
+    expect(adminApi.getAdminMe).toHaveBeenCalledTimes(1);
   });
 });

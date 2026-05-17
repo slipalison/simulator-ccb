@@ -80,6 +80,119 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                     b.ToTable("admin_audit_logs", (string)null);
                 });
 
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.CedenteAggregate.Cedente", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cliente_id");
+
+                    b.Property<string>("CnpjCedenteValue")
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)")
+                        .HasColumnName("cnpj_cedente");
+
+                    b.Property<string>("CpfValue")
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)")
+                        .HasColumnName("cpf");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("DocumentoTipo")
+                        .IsRequired()
+                        .HasMaxLength(2)
+                        .HasColumnType("character varying(2)")
+                        .HasColumnName("documento_tipo");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("Endereco")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("endereco");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Telefone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("telefone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClienteId")
+                        .HasDatabaseName("IX_cedentes_cliente_id");
+
+                    b.HasIndex("ClienteId", "CnpjCedenteValue")
+                        .IsUnique()
+                        .HasDatabaseName("IX_cedentes_cliente_id_cnpj_cedente")
+                        .HasFilter("documento_tipo = 'PJ' AND cnpj_cedente IS NOT NULL");
+
+                    b.HasIndex("ClienteId", "CpfValue")
+                        .IsUnique()
+                        .HasDatabaseName("IX_cedentes_cliente_id_cpf")
+                        .HasFilter("documento_tipo = 'PF' AND cpf IS NOT NULL");
+
+                    b.ToTable("cedentes", (string)null);
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.CedenteTipoAtivoAggregate.CedenteTipoAtivoAggregate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CedenteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cedente_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TipoAtivoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tipo_ativo_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CedenteId")
+                        .HasDatabaseName("IX_rel_cedente_tipo_ativo_cedente_id");
+
+                    b.HasIndex("TipoAtivoId")
+                        .HasDatabaseName("IX_rel_cedente_tipo_ativo_tipo_ativo_id");
+
+                    b.HasIndex("CedenteId", "TipoAtivoId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_rel_cedente_tipo_ativo_active")
+                        .HasFilter("status = 'ATIVO'");
+
+                    b.ToTable("rel_cedente_tipo_ativo", (string)null);
+                });
+
             modelBuilder.Entity("Onboarding.Domain.Aggregates.CompanyAggregate.Company", b =>
                 {
                     b.Property<Guid>("Id")
@@ -128,6 +241,120 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("companies", (string)null);
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate.ConsultoriaFundo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cliente_id");
+
+                    b.Property<string>("Cnpj")
+                        .IsRequired()
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)")
+                        .HasColumnName("cnpj");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("NomeFantasia")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome_fantasia");
+
+                    b.Property<string>("RazaoSocial")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("razao_social");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Telefone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("telefone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClienteId")
+                        .HasDatabaseName("IX_consultoria_fundos_cliente_id");
+
+                    b.HasIndex("ClienteId", "Cnpj")
+                        .IsUnique()
+                        .HasDatabaseName("IX_consultoria_fundos_cliente_id_cnpj");
+
+                    b.ToTable("consultoria_fundos", (string)null);
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.CustodianteAggregate.Custodiante", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ClienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cliente_id");
+
+                    b.Property<string>("Cnpj")
+                        .IsRequired()
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)")
+                        .HasColumnName("cnpj");
+
+                    b.Property<string>("CodigoInterno")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("codigo_interno");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("email");
+
+                    b.Property<string>("RazaoSocial")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("razao_social");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Telefone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("telefone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClienteId")
+                        .HasDatabaseName("IX_custodiantes_cliente_id");
+
+                    b.HasIndex("ClienteId", "Cnpj")
+                        .IsUnique()
+                        .HasDatabaseName("IX_custodiantes_cliente_id_cnpj");
+
+                    b.ToTable("custodiantes", (string)null);
                 });
 
             modelBuilder.Entity("Onboarding.Domain.Aggregates.EmployeeAggregate.AccessGroup", b =>
@@ -234,6 +461,160 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                     b.ToTable("employees", (string)null);
                 });
 
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.FundoAggregate.Fundo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ClasseAnbima")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("classe_anbima");
+
+                    b.Property<Guid>("ClienteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cliente_id");
+
+                    b.Property<string>("Cnpj")
+                        .IsRequired()
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)")
+                        .HasColumnName("cnpj");
+
+                    b.Property<Guid>("ConsultoriaFundoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("consultoria_fundo_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("CustodianteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("custodiante_id");
+
+                    b.Property<DateTimeOffset?>("DataConstituicao")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("data_constituicao");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("nome");
+
+                    b.Property<string>("Segmento")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("segmento");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<int>("TipoFundo")
+                        .HasColumnType("integer")
+                        .HasColumnName("tipo_fundo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClienteId")
+                        .HasDatabaseName("IX_fundos_cliente_id");
+
+                    b.HasIndex("ConsultoriaFundoId")
+                        .HasDatabaseName("IX_fundos_consultoria_fundo_id");
+
+                    b.HasIndex("CustodianteId")
+                        .HasDatabaseName("IX_fundos_custodiante_id");
+
+                    b.HasIndex("ClienteId", "Cnpj")
+                        .IsUnique()
+                        .HasDatabaseName("IX_fundos_cliente_id_cnpj");
+
+                    b.ToTable("fundos", (string)null);
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.FundoCedenteAggregate.FundoCedenteAggregate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CedenteId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cedente_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("FundoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fundo_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CedenteId")
+                        .HasDatabaseName("IX_rel_fundo_cedente_cedente_id");
+
+                    b.HasIndex("FundoId")
+                        .HasDatabaseName("IX_rel_fundo_cedente_fundo_id");
+
+                    b.HasIndex("FundoId", "CedenteId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_rel_fundo_cedente_active")
+                        .HasFilter("status = 'ATIVO'");
+
+                    b.ToTable("rel_fundo_cedente", (string)null);
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.FundoTipoAtivoAggregate.FundoTipoAtivoAggregate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("FundoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("fundo_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid>("TipoAtivoId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tipo_ativo_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FundoId")
+                        .HasDatabaseName("IX_rel_fundo_tipo_ativo_fundo_id");
+
+                    b.HasIndex("TipoAtivoId")
+                        .HasDatabaseName("IX_rel_fundo_tipo_ativo_tipo_ativo_id");
+
+                    b.HasIndex("FundoId", "TipoAtivoId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_rel_fundo_tipo_ativo_active")
+                        .HasFilter("status = 'ATIVO'");
+
+                    b.ToTable("rel_fundo_tipo_ativo", (string)null);
+                });
+
             modelBuilder.Entity("Onboarding.Domain.Aggregates.PasswordReset.PasswordResetToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -276,6 +657,160 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                     b.ToTable("password_reset_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.TipoAtivoAggregate.TipoAtivo", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Categoria")
+                        .HasColumnType("integer")
+                        .HasColumnName("categoria");
+
+                    b.Property<string>("Codigo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("codigo");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("descricao");
+
+                    b.Property<int>("OrdemExibicao")
+                        .HasColumnType("integer")
+                        .HasColumnName("ordem_exibicao");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Subcategoria")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("subcategoria");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Codigo")
+                        .IsUnique()
+                        .HasDatabaseName("IX_tipos_ativo_codigo");
+
+                    b.ToTable("tipos_ativo", (string)null);
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.CedenteAggregate.Cedente", b =>
+                {
+                    b.HasOne("Onboarding.Domain.Aggregates.CompanyAggregate.Company", null)
+                        .WithMany()
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsMany("Onboarding.Domain.Aggregates.CedenteAggregate.CedenteTipoAtivo", "TiposAtivo", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("CedenteId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("cedente_id");
+
+                            b1.Property<Guid>("TipoAtivoId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("tipo_ativo_id");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("TipoAtivoId");
+
+                            b1.HasIndex("CedenteId", "TipoAtivoId")
+                                .IsUnique()
+                                .HasDatabaseName("IX_cedente_tipos_ativo_cedente_id_tipo_ativo_id");
+
+                            b1.ToTable("cedente_tipos_ativo", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("CedenteId");
+
+                            b1.HasOne("Onboarding.Domain.Aggregates.TipoAtivoAggregate.TipoAtivo", null)
+                                .WithMany()
+                                .HasForeignKey("TipoAtivoId")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .IsRequired();
+                        });
+
+                    b.Navigation("TiposAtivo");
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.CedenteTipoAtivoAggregate.CedenteTipoAtivoAggregate", b =>
+                {
+                    b.HasOne("Onboarding.Domain.Aggregates.CedenteAggregate.Cedente", null)
+                        .WithMany()
+                        .HasForeignKey("CedenteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Onboarding.Domain.Aggregates.TipoAtivoAggregate.TipoAtivo", null)
+                        .WithMany()
+                        .HasForeignKey("TipoAtivoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("Onboarding.Domain.ValueObjects.JanelaVigencia", "Janela", b1 =>
+                        {
+                            b1.Property<Guid>("CedenteTipoAtivoAggregateId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateTimeOffset?>("DataFim")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("data_fim");
+
+                            b1.Property<DateTimeOffset>("DataInicio")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("data_inicio");
+
+                            b1.HasKey("CedenteTipoAtivoAggregateId");
+
+                            b1.ToTable("rel_cedente_tipo_ativo");
+
+                            b1.WithOwner()
+                                .HasForeignKey("CedenteTipoAtivoAggregateId");
+                        });
+
+                    b.OwnsOne("Onboarding.Domain.ValueObjects.LimiteExposicao", "Limite", b1 =>
+                        {
+                            b1.Property<Guid>("CedenteTipoAtivoAggregateId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal?>("Percentual")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("numeric(5,2)")
+                                .HasColumnName("limite_percentual");
+
+                            b1.Property<decimal?>("Valor")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("numeric(18,4)")
+                                .HasColumnName("limite_valor");
+
+                            b1.HasKey("CedenteTipoAtivoAggregateId");
+
+                            b1.ToTable("rel_cedente_tipo_ativo");
+
+                            b1.WithOwner()
+                                .HasForeignKey("CedenteTipoAtivoAggregateId");
+                        });
+
+                    b.Navigation("Janela")
+                        .IsRequired();
+
+                    b.Navigation("Limite")
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Onboarding.Domain.Aggregates.CompanyAggregate.Company", b =>
                 {
                     b.OwnsOne("Onboarding.Domain.Aggregates.CompanyAggregate.TermsAcceptance", "TermsAcceptance", b1 =>
@@ -311,6 +846,24 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate.ConsultoriaFundo", b =>
+                {
+                    b.HasOne("Onboarding.Domain.Aggregates.CompanyAggregate.Company", null)
+                        .WithMany()
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.CustodianteAggregate.Custodiante", b =>
+                {
+                    b.HasOne("Onboarding.Domain.Aggregates.CompanyAggregate.Company", null)
+                        .WithMany()
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Onboarding.Domain.Aggregates.EmployeeAggregate.AccessGroup", b =>
                 {
                     b.HasOne("Onboarding.Domain.Aggregates.CompanyAggregate.Company", null)
@@ -332,6 +885,252 @@ namespace Onboarding.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("CompanyId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.FundoAggregate.Fundo", b =>
+                {
+                    b.HasOne("Onboarding.Domain.Aggregates.CompanyAggregate.Company", null)
+                        .WithMany()
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate.ConsultoriaFundo", null)
+                        .WithMany()
+                        .HasForeignKey("ConsultoriaFundoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Onboarding.Domain.Aggregates.CustodianteAggregate.Custodiante", null)
+                        .WithMany()
+                        .HasForeignKey("CustodianteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsMany("Onboarding.Domain.Aggregates.FundoAggregate.FundoCedente", "Cedentes", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("CedenteId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("cedente_id");
+
+                            b1.Property<DateTimeOffset?>("DataFim")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("data_fim");
+
+                            b1.Property<DateTimeOffset>("DataInicio")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("data_inicio");
+
+                            b1.Property<Guid>("FundoId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("fundo_id");
+
+                            b1.Property<decimal>("LimiteExposicaoPercentual")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("numeric(5,2)")
+                                .HasColumnName("limite_exposicao_percentual");
+
+                            b1.Property<decimal?>("LimiteExposicaoValor")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("numeric(18,4)")
+                                .HasColumnName("limite_exposicao_valor");
+
+                            b1.Property<int>("Status")
+                                .HasColumnType("integer")
+                                .HasColumnName("status");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("CedenteId");
+
+                            b1.HasIndex("FundoId", "CedenteId")
+                                .IsUnique()
+                                .HasDatabaseName("IX_fundo_cedentes_fundo_id_cedente_id_active")
+                                .HasFilter("status = 1");
+
+                            b1.ToTable("fundo_cedentes", (string)null);
+
+                            b1.HasOne("Onboarding.Domain.Aggregates.CedenteAggregate.Cedente", null)
+                                .WithMany()
+                                .HasForeignKey("CedenteId")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .IsRequired();
+
+                            b1.WithOwner()
+                                .HasForeignKey("FundoId");
+                        });
+
+                    b.OwnsMany("Onboarding.Domain.Aggregates.FundoAggregate.FundoTipoAtivo", "TiposAtivo", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("uuid");
+
+                            b1.Property<Guid>("FundoId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("fundo_id");
+
+                            b1.Property<Guid>("TipoAtivoId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("tipo_ativo_id");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("TipoAtivoId");
+
+                            b1.HasIndex("FundoId", "TipoAtivoId")
+                                .IsUnique()
+                                .HasDatabaseName("IX_fundo_tipos_ativo_fundo_id_tipo_ativo_id");
+
+                            b1.ToTable("fundo_tipos_ativo", (string)null);
+
+                            b1.WithOwner()
+                                .HasForeignKey("FundoId");
+
+                            b1.HasOne("Onboarding.Domain.Aggregates.TipoAtivoAggregate.TipoAtivo", null)
+                                .WithMany()
+                                .HasForeignKey("TipoAtivoId")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .IsRequired();
+                        });
+
+                    b.Navigation("Cedentes");
+
+                    b.Navigation("TiposAtivo");
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.FundoCedenteAggregate.FundoCedenteAggregate", b =>
+                {
+                    b.HasOne("Onboarding.Domain.Aggregates.CedenteAggregate.Cedente", null)
+                        .WithMany()
+                        .HasForeignKey("CedenteId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Onboarding.Domain.Aggregates.FundoAggregate.Fundo", null)
+                        .WithMany()
+                        .HasForeignKey("FundoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("Onboarding.Domain.ValueObjects.JanelaVigencia", "Janela", b1 =>
+                        {
+                            b1.Property<Guid>("FundoCedenteAggregateId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateTimeOffset?>("DataFim")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("data_fim");
+
+                            b1.Property<DateTimeOffset>("DataInicio")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("data_inicio");
+
+                            b1.HasKey("FundoCedenteAggregateId");
+
+                            b1.ToTable("rel_fundo_cedente");
+
+                            b1.WithOwner()
+                                .HasForeignKey("FundoCedenteAggregateId");
+                        });
+
+                    b.OwnsOne("Onboarding.Domain.ValueObjects.LimiteExposicao", "Limite", b1 =>
+                        {
+                            b1.Property<Guid>("FundoCedenteAggregateId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal?>("Percentual")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("numeric(5,2)")
+                                .HasColumnName("limite_percentual");
+
+                            b1.Property<decimal?>("Valor")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("numeric(18,4)")
+                                .HasColumnName("limite_valor");
+
+                            b1.HasKey("FundoCedenteAggregateId");
+
+                            b1.ToTable("rel_fundo_cedente");
+
+                            b1.WithOwner()
+                                .HasForeignKey("FundoCedenteAggregateId");
+                        });
+
+                    b.Navigation("Janela")
+                        .IsRequired();
+
+                    b.Navigation("Limite")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Onboarding.Domain.Aggregates.FundoTipoAtivoAggregate.FundoTipoAtivoAggregate", b =>
+                {
+                    b.HasOne("Onboarding.Domain.Aggregates.FundoAggregate.Fundo", null)
+                        .WithMany()
+                        .HasForeignKey("FundoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Onboarding.Domain.Aggregates.TipoAtivoAggregate.TipoAtivo", null)
+                        .WithMany()
+                        .HasForeignKey("TipoAtivoId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.OwnsOne("Onboarding.Domain.ValueObjects.JanelaVigencia", "Janela", b1 =>
+                        {
+                            b1.Property<Guid>("FundoTipoAtivoAggregateId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<DateTimeOffset?>("DataFim")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("data_fim");
+
+                            b1.Property<DateTimeOffset>("DataInicio")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("data_inicio");
+
+                            b1.HasKey("FundoTipoAtivoAggregateId");
+
+                            b1.ToTable("rel_fundo_tipo_ativo");
+
+                            b1.WithOwner()
+                                .HasForeignKey("FundoTipoAtivoAggregateId");
+                        });
+
+                    b.OwnsOne("Onboarding.Domain.ValueObjects.LimiteExposicao", "Limite", b1 =>
+                        {
+                            b1.Property<Guid>("FundoTipoAtivoAggregateId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal?>("Percentual")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("numeric(5,2)")
+                                .HasColumnName("limite_percentual");
+
+                            b1.Property<decimal?>("Valor")
+                                .HasPrecision(18, 4)
+                                .HasColumnType("numeric(18,4)")
+                                .HasColumnName("limite_valor");
+
+                            b1.HasKey("FundoTipoAtivoAggregateId");
+
+                            b1.ToTable("rel_fundo_tipo_ativo");
+
+                            b1.WithOwner()
+                                .HasForeignKey("FundoTipoAtivoAggregateId");
+                        });
+
+                    b.Navigation("Janela")
+                        .IsRequired();
+
+                    b.Navigation("Limite")
                         .IsRequired();
                 });
 #pragma warning restore 612, 618

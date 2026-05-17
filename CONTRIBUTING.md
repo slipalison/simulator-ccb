@@ -11,20 +11,30 @@
 
 ### Local Development
 
+**IMPORTANT:** Do not run `pnpm dev` / `npm run dev` on the host for the frontend SPAs.
+Doing so creates a Vinxi process that conflicts with the docker compose port mapping and causes
+503 errors on all `/api/*` routes. See [docs/dev-setup.md](./docs/dev-setup.md) for the full
+explanation (D-16).
+
 ```bash
-# Start infrastructure (PostgreSQL + Keycloak)
+# 1. Copy env template and fill secrets
+cp .env.example .env
+
+# 2. Start the full stack — frontend SPAs run inside compose with hot reload via bind mounts
 docker compose up -d
 
-# Backend
+# 3. Verify frontend proxy is reachable
+curl http://127.0.0.1:5173/api/healthz/live
+# Expected: Healthy
+
+# Backend (optional — already running in compose; start separately only for debugger attach)
 dotnet restore Onboarding.slnx
 dotnet run --project src/Onboarding.API
-
-# Frontend Client
-cd frontend/client && npm ci && npm run dev
-
-# Frontend Backoffice
-cd frontend/backoffice && npm ci && npm run dev
 ```
+
+A `predev` guard in both `frontend/client/package.json` and `frontend/backoffice/package.json`
+will abort `pnpm dev` if the compose service is already running. Use `ALLOW_HOST_DEV=1 pnpm dev`
+only when you explicitly need a host-side debugger (see [docs/dev-setup.md](./docs/dev-setup.md)).
 
 ## Code Quality
 

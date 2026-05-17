@@ -4,11 +4,15 @@
   "description": "Backoffice admin frontend for user management",
   "main": "index.js",
   "scripts": {
+    "predev": "node ../../scripts/check-dev-env.mjs frontend-backoffice",
     "dev": "vinxi dev --port 5174 --host",
     "build": "vinxi build",
     "start": "vinxi start",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "pnpm exec playwright test",
+    "test:e2e:ui": "pnpm exec playwright test --ui",
+    "test:e2e:report": "pnpm exec playwright show-report playwright-report",
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit"
   },
@@ -50,6 +54,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",
+    "@playwright/test": "^1.59.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",

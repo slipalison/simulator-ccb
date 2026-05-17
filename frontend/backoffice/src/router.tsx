@@ -11,6 +11,7 @@ import { AdminAccessDeniedPage } from "@/components/pages/AdminAccessDeniedPage"
 import { AuthErrorPage } from "@/components/pages/AuthErrorPage";
 import { AdminCompaniesPage } from "@/components/pages/AdminCompaniesPage";
 import { AdminEmployeesPage } from "@/components/pages/AdminEmployeesPage";
+import { AdminUsersPage } from "@/components/pages/AdminUsersPage";
 import { CreateAdminPage } from "@/components/pages/CreateAdminPage";
 import { PasswordChangePage } from "@/components/pages/PasswordChangePage";
 import { AuditLogPage } from "@/components/pages/AuditLogPage";
@@ -74,12 +75,19 @@ const adminEmployeesRoute = createRoute({
   ),
 });
 
-// Rota admin users (legacy redirect): /admin/users → /admin/companies
+// Rota admin users: /admin/users — user management list
+// Note: auth-server.ts post-login redirect previously pointed here, then bounced to
+// /admin/companies via RedirectCompanies. That was resolved by pointing auth-server.ts
+// directly to /admin/companies (T-6c, option B). This route now serves the real page.
 const adminUsersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/users",
-  component: RedirectCompanies,
-} as any);
+  component: () => (
+    <AdminLayout>
+      <AdminUsersPage />
+    </AdminLayout>
+  ),
+});
 
 // Rota admin create: /admin/create
 const adminCreateRoute = createRoute({
@@ -164,12 +172,3 @@ function IndexRoute() {
   return null;
 }
 
-function RedirectCompanies() {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    navigate({ to: "/admin/companies" as any, replace: true });
-  }, [navigate]);
-
-  return null;
-}

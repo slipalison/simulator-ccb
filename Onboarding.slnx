@@ -14,6 +14,7 @@
     <Project Path="src/Onboarding.Infrastructure/Onboarding.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Onboarding.Application.Tests/Onboarding.Application.Tests.csproj" />
     <Project Path="tests/Onboarding.Domain.Tests/Onboarding.Domain.Tests.csproj" />
     <Project Path="tests/Onboarding.API.Tests/Onboarding.API.Tests.csproj" />
     <Project Path="tests/Onboarding.Integration.Tests/Onboarding.Integration.Tests.csproj" />

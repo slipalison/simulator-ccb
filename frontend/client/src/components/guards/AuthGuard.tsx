@@ -7,20 +7,29 @@ interface AuthGuardProps {
 }
 
 /**
- * AuthGuard: protects routes from unauthenticated access
- * Redirects to /login if user is not authenticated
+ * AuthGuard: protects routes from unauthenticated access.
+ *
+ * State machine:
+ *   isLoading === true  → render skeleton; do NOT navigate (tryRestore in progress)
+ *   isLoading === false && isAuthenticated === false → navigate to /login
+ *   isLoading === false && isAuthenticated === true  → render children
+ *
+ * Bug fix (T-5a / auth-flow-fix): the previous implementation fired navigate on
+ * `!isAuthenticated` alone, which triggered during the initial render when
+ * isLoading=true and isAuthenticated=false (AuthProvider default state), causing
+ * a transient redirect flash before tryRestore() could complete.
  */
 export function AuthGuard({ children }: AuthGuardProps) {
   const { auth } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!auth.isAuthenticated) {
+    if (!auth.isLoading && !auth.isAuthenticated) {
       navigate({ to: "/login" as any, replace: true });
     }
-  }, [auth.isAuthenticated, navigate]);
+  }, [auth.isLoading, auth.isAuthenticated, navigate]);
 
-  if (!auth.isAuthenticated) {
+  if (auth.isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center" data-testid="auth-guard-loading">
         <div className="text-center">
@@ -29,6 +38,10 @@ export function AuthGuard({ children }: AuthGuardProps) {
         </div>
       </div>
     );
+  }
+
+  if (!auth.isAuthenticated) {
+    return null;
   }
 
   return <>{children}</>;

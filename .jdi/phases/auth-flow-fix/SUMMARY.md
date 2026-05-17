@@ -668,3 +668,46 @@ Both suites green. The 4 skipped tests are pre-existing (TracePropagationTests x
 ---
 
 **Conclusion:** Backend auth wiring is correct and aligned with runtime config. No defect found. No code change required.
+
+---
+
+### T-20 (2026-05-17T03:30:00Z)
+
+**Status:** DONE — W3 resolved; `clientProfiles`/`clientPolicies` added to `client-realm.json`
+
+**Finding addressed (W3, verbatim from REVIEW.md iter 1):**
+> `keycloak/client-realm.json` — Missing `clientProfiles`/`clientPolicies` no-wildcard redirect URI enforcer. `backoffice-realm.json` has the `enforce-no-wildcard-redirects` policy active via Keycloak `secure-redirect-uris-enforcer` executor. `client-realm.json` relies only on the static JSON having no wildcards today, without server-side enforcement. Recommend porting the policy block.
+
+**Diff summary (`keycloak/client-realm.json`):**
+- Added `"clientProfiles"` block with profile `"no-wildcard-redirects"`, executor `"secure-redirect-uris-enforcer"`, configuration: `allow-wildcard-in-redirect-uri: false`, `allow-open-redirect: false`, `allow-http-scheme: true`, `allow-ipv4-loopback-address: true`, `allow-ipv6-loopback-address: true`, `oauth-2-1-compliant: false`.
+- Added `"clientPolicies"` block with policy `"enforce-no-wildcard-redirects"`, `enabled: true`, condition `"any-client"` (using correct field `"configuration": {}` — NOT `"config": {}`), profile reference `"no-wildcard-redirects"`.
+- Profile/policy names are neutral (no "backoffice" embedded) — identical names to `backoffice-realm.json` but scoped within separate realm namespaces; no collision.
+- All other realm fields (`bruteForceProtected: true`, `redirectUris`, `post.logout.redirect.uris` from T-1, `webOrigins`, `onboarding-client-acf`, legacy `onboarding-app` ROPC client from D-11) unchanged.
+
+**Field name correction:** The `backoffice-realm.json` original uses `"config": {}` for the `any-client` condition, which Keycloak 26 does not recognise (`ClientPolicyConditionRepresentation` has `"configuration"`, not `"config"`). This causes a WARN + fallback to empty profiles in backoffice. For `client-realm.json` (newly authored), the correct field `"configuration": {}` was used so the policy actually enforces on import. The backoffice WARN is pre-existing and out of T-20 scope.
+
+**Verification — JSON parse:**
+```
+python3 -c 'import json; json.load(open("keycloak/client-realm.json"))'; print('JSON parse OK')
+# Output: JSON parse OK
+```
+
+**Verification — Keycloak boot (docker compose down -v && docker compose up -d):**
+```
+keycloak-1 | Importing from directory /opt/keycloak/bin/../data/import
+keycloak-1 | Full model import requested. Strategy: IGNORE_EXISTING
+keycloak-1 | Realm 'master' imported
+keycloak-1 | Realm 'backoffice' imported   [WARN pre-existing: backoffice "config" field]
+keycloak-1 | Realm 'client' imported       [NO WARN — "configuration" field used correctly]
+keycloak-1 | Import finished successfully
+```
+Keycloak status: healthy. No error or failure lines for the `client` realm import.
+
+**Verification — seed-test-users.sh:**
+Script ran clean. Both `e2e-client@example.com` (client realm, group `admin-empresa`) and `e2e-admin@example.com` (backoffice realm, role `admin`) seeded successfully. Idempotency preserved.
+
+**Verification — Playwright auth-flow (client SPA):**
+Result: 5 failed, 1 skipped. All 5 failures are pre-existing `waitForURL /profile` timeouts blocked by Keycloak's `UPDATE_PROFILE` required action firing before post-login redirect — identical failure mode documented in all prior iters; root causes being addressed by T-5, T-6, T-14, T-15, T-18, T-19 (parallel Wave 6 tasks). No new failure introduced by T-20. The `clientProfiles` policy does not affect redirect URI negotiation for existing valid URIs (only rejects wildcard attempts).
+
+**Verification — keycloak-hardening check script:**
+`tests/keycloak-hardening/verify-hardening.sh` targets `KC_REALM="onboarding"` (pre-existing W2 defect — realm does not exist). Script exits with `ERROR: Cannot obtain admin token`. No update to the hardening test performed per T-20 scope constraint (W2 fix is separate). The new `clientProfiles` block is not checked by the current script; a future W2 fix iteration should add a `SEC-08` check for `clientPolicies` presence on both realms.

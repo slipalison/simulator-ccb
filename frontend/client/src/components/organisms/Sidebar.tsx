@@ -109,9 +109,7 @@ export function Sidebar() {
   }
 
   const userGroup = auth.accessGroup;
-  // auth.permissions is not on the AuthContextValue type yet; cast to any to avoid breaking change.
-  // TODO: add permissions: string[] to AuthContextValue in Phase 51 or next refactor.
-  const permissions: string[] = (auth as any).permissions ?? [];
+  const permissions = auth.permissions;
 
   // Filter nav items based on user's access group
   const visibleItems = userGroup

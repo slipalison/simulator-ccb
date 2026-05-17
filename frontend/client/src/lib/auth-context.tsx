@@ -33,6 +33,7 @@ interface AuthContextValue {
     email: string | null;
     accessGroup: AccessGroup | null;
     companyId: string | null;
+    permissions: string[];
   };
   /** Redirects to /auth/login (Vinxi server → Keycloak ACF) */
   login: () => void;
@@ -53,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState<string | null>(null);
   const [accessGroup, setAccessGroup] = useState<AccessGroup | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
 
   // Session restoration on mount via /auth/me
   // If /auth/me fails with 401, try /auth/refresh first (access token
@@ -79,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             isAuthenticated: boolean;
             accessGroup?: string | null;
             companyId?: string | null;
+            permissions?: string[] | null;
           };
           setUserName(data.userName);
           setEmail(data.email);
@@ -89,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               : null
           );
           setCompanyId(data.companyId ?? null);
+          setPermissions(data.permissions ?? []);
         }
       } catch {
         // Session invalid — user needs to login
@@ -111,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        auth: { isAuthenticated, isLoading, userName, email, accessGroup, companyId },
+        auth: { isAuthenticated, isLoading, userName, email, accessGroup, companyId, permissions },
         login,
         logout,
       }}

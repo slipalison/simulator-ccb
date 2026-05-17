@@ -39,7 +39,7 @@ export function FundoDetailPage() {
   const fundoId = (params as any).fundoId as string;
   const navigate = useNavigate();
   const { auth } = useAuth();
-  const permissions: string[] = (auth as any).permissions ?? [];
+  const permissions = auth.permissions;
   const canWrite = permissions.includes("funds:write");
   const canManage = permissions.includes("funds:manage");
 

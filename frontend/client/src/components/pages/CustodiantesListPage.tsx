@@ -30,7 +30,7 @@ import { useForm } from "react-hook-form";
 
 export function CustodiantesListPage() {
   const { auth } = useAuth();
-  const permissions: string[] = (auth as any).permissions ?? [];
+  const permissions = auth.permissions;
   const canWrite = permissions.includes("funds:write");
 
   const navigate = useNavigate({ from: "/custodiantes" });

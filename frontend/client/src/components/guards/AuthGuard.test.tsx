@@ -31,6 +31,7 @@ function setupAuth(isLoading: boolean, isAuthenticated: boolean) {
       email: null,
       accessGroup: null,
       companyId: null,
+      permissions: [],
     },
     login: vi.fn(),
     logout: vi.fn(),

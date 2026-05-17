@@ -38,7 +38,7 @@ interface FundoTiposAtivosTabPageProps {
 
 export function FundoTiposAtivosTabPage({ fundoId }: FundoTiposAtivosTabPageProps) {
   const { auth } = useAuth();
-  const permissions: string[] = (auth as any).permissions ?? [];
+  const permissions = auth.permissions;
   const canWrite = permissions.includes("funds:write");
 
   const [page, setPage] = useState(1);

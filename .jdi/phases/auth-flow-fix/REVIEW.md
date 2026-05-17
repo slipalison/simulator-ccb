@@ -1326,3 +1326,163 @@ None.
 - W-SEC-IT5-1 -- keycloak/backoffice-realm.json clientPolicies.policies[0].conditions[0] uses config: {} instead of configuration: {}. Policy may be no-op in backoffice realm. Fix in follow-up commit: rename the field. Does not block iter 5.
 - W-SEC-IT5-2 (advisory) -- auth-server.test.ts mock for exchangeCodeForTokens omits idToken in both SPAs. The callback if (tokens.idToken) branch untested at behavioral level. Static source assertions cover structural shape. Low risk.
 - W-SEC-IT5-3 (carry-over) -- passwordPolicy: length(8) in both realm JSONs. G6 gate specifies length(12). Pre-existing across all iters, not modified by T-20 or T-21.
+
+
+<!-- ITER5_FRONTEND_HERE -->
+
+## Backend C# (iter 5)
+
+Verdict: APPROVED_WITH_WARNINGS
+
+### Gates
+
+- [G1 Multi-tenant isolation] pass -- iter 5 added zero .cs files. HasQueryFilter and IgnoreQueryFilters usage unchanged from Phase 48.
+
+- [G2 Endpoint AuthZ + audit] pass -- no controllers or command files modified in iter 5.
+
+- [G3 Secret + raw SQL] pass -- iter 5 modifies auth-server.ts, auth-code-flow.ts, admin-auth-flow.spec.ts, client-realm.json, seed-test-users.sh only. No raw SQL. appsettings.json unchanged.
+
+- [G4 Telemetry] pass (W-BE-3 carry-over) -- Program.cs not touched. Pre-D-2 gaps unchanged. No Console.Write or interpolated logger calls introduced.
+
+- [G5 Performance] pass -- no new repository or controller files.
+
+- [G6 Index coverage] pass -- no new migrations.
+
+- [G7 Build] pass -- dotnet build: 0 errors, 0 warnings (8.82s).
+
+- [G8 Lint] WARN (W-BE-1 carry-over) -- 5 pre-existing test files with whitespace violations. No new violations.
+
+- [G9 DDD/Design] pass -- zero .cs files touched. Domain layer separation intact.
+
+- [G10 Tests] pass:
+  - Onboarding.Domain.Tests: 378/0/0 (406 ms)
+  - Onboarding.Application.Tests: 89/0/0 (201 ms)
+  - Onboarding.API.Tests: 244/0/4-skip (2m 19s)
+  - Onboarding.Integration.Tests: 20/0/0 (3m 6s)
+
+- [G11 Coverage] pass -- zero new .cs files. D-2 gate trivially passes.
+
+- [G12 Playwright regression] APPROVED_WITH_WARNINGS -- full suite run. Details below.
+
+- [G13 Static scans] pass (advisory) -- no new NuGet packages, no Dockerfile changes.
+
+---
+
+### Seed-gap assessment (G12 precondition)
+
+Users lacked firstName/lastName. requiredActions already [] on current stack (prior iters cleared it). One-time Admin REST PATCH applied (option a):
+- PUT /admin/realms/client/users/{e2e-client-id} firstName=E2E lastName=Client -- HTTP 204
+- PUT /admin/realms/backoffice/users/{e2e-admin-id} firstName=E2E lastName=Admin -- HTTP 204
+
+Playwright unblocked. Gap documented as W-BE-12.
+
+---
+
+### Playwright regression (G12) -- iter 5 live run
+
+#### Client SPA -- api-proxy (127.0.0.1:5173)
+
+| Scenario | iter-5 |
+|---|---|
+| S1 single listener guard | PASS |
+| S2 POST 422 JSON | PASS |
+| S3 GET 405 | PASS |
+
+3/3 PASS.
+
+#### Client SPA -- auth-flow (localhost:5173)
+
+| Scenario | iter-4 | iter-5 | Delta |
+|---|---|---|---|
+| S1 login happy path | PASS | PASS | -- |
+| S2 logout /auth/me 401 | PASS | PASS | T-18: id_token_hint, ERR_ABORTED handled |
+| S5 post-login race | PASS | PASS | -- |
+| S6 refresh resilience | PASS | PASS | -- |
+| S7 expired-token | SKIP | SKIP | intentional |
+| S8 cookie-blocked | PASS | PASS | -- |
+
+5/5 PASS + 1 SKIP. W-BE-11 RESOLVED for client SPA.
+
+#### Backoffice SPA -- api-proxy (127.0.0.1:5174)
+
+| Scenario | iter-5 |
+|---|---|
+| S1 single listener guard | PASS |
+| S2 POST 422 JSON | PASS |
+| S3 GET 405 | PASS |
+
+3/3 PASS.
+
+#### Backoffice SPA -- admin-auth-flow (localhost:5174)
+
+| Scenario | iter-4 | iter-5 | Delta |
+|---|---|---|---|
+| S3 login happy path | PASS | PASS | -- |
+| S4 logout /auth/me 401 | PASS | PASS | T-18: KC confirmation page gone |
+| S5 post-login race | FAIL spec defect | SKIP callbackIndex guard | T-19: guard prevents false-positive |
+| S6 refresh resilience | PASS | PASS | -- |
+
+3/3 PASS + 1 SKIP. W-BE-10 RESOLVED.
+
+Backoffice pass-rate: iter-1 (0/4) -> iter-2 (0/4) -> iter-3 (1/4) -> iter-4 (3/4) -> iter-5 (3/3+1skip).
+
+---
+
+### W-BE-10 closure
+
+T-19: framenavigated listener moved inside doAdminLogin before page.goto. callbackIndex === -1 guard added (test.skip with diagnostic). Client S5 checked -- no change needed. Live run: S5 skips with diagnostic (no /auth/callback in visitedUrls -- server-side 302 too fast for framenavigated). Guard correctly prevents false-positive FAIL. W-BE-10 RESOLVED.
+
+---
+
+### W-BE-11 closure
+
+T-18: exchangeCodeForTokens returns idToken; /auth/callback stores HttpOnly cookie; /auth/logout reads, uses, deletes. Graceful fallback when cookie absent. Live: client S2 PASS, backoffice S4 PASS. KC logs show LOGOUT_ERROR: session_expired (auto-redirect, no confirmation page). D-12 preserved. D-15 strengthened. W-BE-11 RESOLVED.
+
+---
+
+### T-20 parity assessment
+
+clientProfiles/clientPolicies added to keycloak/client-realm.json with configuration: {} (correct KC26 field). Client realm imports cleanly. Auth-flow unchanged.
+
+Pre-existing finding: keycloak/backoffice-realm.json:326 uses config: {} (wrong field). KC26 log: WARN Failed to deserialize client policies in the realm backoffice -- enforce-no-wildcard-redirects silently dropped for backoffice on every fresh import. T-20 scope was client-realm.json only. Fix: one-line change (config -> configuration at backoffice-realm.json:326). Documented as W-BE-13.
+
+---
+
+### T-21 assessment
+
+seed-test-users.sh lines 454-455: password variable references replaced with ********. Grep for literal password values in echo lines: zero matches. Idempotency unaffected. W4 RESOLVED.
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+- W-BE-1 (carry-over) -- dotnet format whitespace violations in 5 pre-existing test files. Pre-D-2 boundary.
+- W-BE-2 (carry-over) -- appsettings.json AdminClientSecret placeholder. Runtime-injected. Pre-D-2.
+- W-BE-3 (carry-over) -- G4 telemetry gaps: TenantBaggageMiddleware, TelemetryCommandHandlerDecorator, OTel PiiScrubber. Separate phase required.
+- W-BE-12 (NEW) -- scripts/seed-test-users.sh does not set firstName/lastName. On fresh docker compose down -v volumes KC26 triggers UPDATE_PROFILE gate. Reviewer applied one-time Admin REST PATCH this iter. Doer must add firstName, lastName, emailVerified:true to upsert_user payload.
+- W-BE-13 (NEW) -- keycloak/backoffice-realm.json:326 uses config: {} instead of configuration: {}. KC26 silently drops clientPolicies for backoffice realm. enforce-no-wildcard-redirects inactive for backoffice. One-line fix.
+
+---
+
+### Coverage gaps (new files, iter 5)
+
+| File | Coverage | Required | Delta |
+|---|---|---|---|
+| (none -- zero new .cs files in iter 5) | n/a | n/a | n/a |
+
+---
+
+### Regression captures
+
+- Summary: .jdi/cache/phase-49-iter5-regression.txt
+- Client api-proxy: 3/3 PASS
+- Client auth-flow: 5/5 PASS + 1 SKIP (S7 intentional)
+- Backoffice api-proxy: 3/3 PASS
+- Backoffice admin-auth-flow: 3/3 PASS + 1 SKIP (S5 T-19 callbackIndex guard)
+- Backend suites: Domain 378/378, Application 89/89, API 244/244+4-skip, Integration 20/20

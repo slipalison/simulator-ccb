@@ -19,6 +19,16 @@ import { AppLayout } from "@/components/templates/AppLayout";
 import { useAuth, getDefaultRouteForGroup } from "@/lib/auth-context";
 import { z } from "zod";
 
+// Fundos module pages (Phase 51)
+import { TiposAtivoListPage } from "@/components/pages/TiposAtivoListPage";
+import { ConsultoriasFundoListPage } from "@/components/pages/ConsultoriasFundoListPage";
+import { CustodiantesListPage } from "@/components/pages/CustodiantesListPage";
+import { CedentesListPage } from "@/components/pages/CedentesListPage";
+import { CedenteDetailPage } from "@/components/pages/CedenteDetailPage";
+import { FundosListPage } from "@/components/pages/FundosListPage";
+import { FundoDetailPage } from "@/components/pages/FundoDetailPage";
+import { paginatedSearchSchema, fundoListSearchSchema } from "@/lib/fundos-schemas";
+
 // Root route: notFoundComponent for type-safe 404 routing
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -103,9 +113,80 @@ const indexRoute = createRoute({
   component: RootRoute,
 });
 
+// ---------------------------------------------------------------------------
+// Fundos module routes (Phase 51)
+// ---------------------------------------------------------------------------
+
+// TipoAtivo: /tipos-ativos
+const tiposAtivoRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/tipos-ativos",
+  component: TiposAtivoListPage,
+  validateSearch: paginatedSearchSchema,
+});
+
+// ConsultoriaFundo: /consultorias-fundo
+const consultoriasFundoRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/consultorias-fundo",
+  component: ConsultoriasFundoListPage,
+  validateSearch: paginatedSearchSchema,
+});
+
+// Custodiante: /custodiantes
+const custodiantesRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/custodiantes",
+  component: CustodiantesListPage,
+  validateSearch: paginatedSearchSchema,
+});
+
+// Cedente list: /cedentes
+const cedentesRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/cedentes",
+  component: CedentesListPage,
+  validateSearch: paginatedSearchSchema,
+});
+
+// Cedente detail: /cedentes/$cedenteId
+const cedenteDetailRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/cedentes/$cedenteId",
+  component: CedenteDetailPage,
+});
+
+// Fundos list: /fundos
+const fundosRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/fundos",
+  component: FundosListPage,
+  validateSearch: fundoListSearchSchema,
+});
+
+// Fundo detail: /fundos/$fundoId
+const fundoDetailRoute = createRoute({
+  getParentRoute: () => authenticatedRoute,
+  path: "/fundos/$fundoId",
+  component: FundoDetailPage,
+});
+
 // Route tree
 const routeTree = rootRoute.addChildren([
-  authenticatedRoute.addChildren([dashboardRoute, employeesRoute, accessGroupsRoute, profileRoute]),
+  authenticatedRoute.addChildren([
+    dashboardRoute,
+    employeesRoute,
+    accessGroupsRoute,
+    profileRoute,
+    // Fundos module routes (Phase 51)
+    tiposAtivoRoute,
+    consultoriasFundoRoute,
+    custodiantesRoute,
+    cedentesRoute,
+    cedenteDetailRoute,
+    fundosRoute,
+    fundoDetailRoute,
+  ]),
   registerRoute,
   authLoginRoute,
   authErrorRoute,

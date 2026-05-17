@@ -451,5 +451,5 @@ echo "  [${BACKOFFICE_REALM}] ${E2E_ADMIN_EMAIL} ready (id=${ADMIN_USER_ID})"
 
 echo ""
 echo "==> Done. Test users seeded successfully."
-echo "    client realm  : ${E2E_CLIENT_EMAIL} / ${E2E_CLIENT_PASSWORD} (group: ${E2E_CLIENT_GROUP})"
-echo "    backoffice    : ${E2E_ADMIN_EMAIL} / ${E2E_ADMIN_PASSWORD} (role: ${E2E_ADMIN_ROLE})"
+echo "    client realm  : ${E2E_CLIENT_EMAIL} / ******** (group: ${E2E_CLIENT_GROUP}) — password set per D-14"
+echo "    backoffice    : ${E2E_ADMIN_EMAIL} / ******** (role: ${E2E_ADMIN_ROLE}) — password set per D-14"

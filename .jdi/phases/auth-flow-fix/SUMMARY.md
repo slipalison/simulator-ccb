@@ -2,6 +2,33 @@
 
 ---
 
+## Iter 5 entries (2026-05-17)
+
+### T-21 (2026-05-17T00:00:00Z)
+
+**Status:** DONE — W4 / W-SEC-IT4-2 resolved; seeded passwords masked in stdout
+
+**Finding (verbatim from REVIEW.md iter 1 / iter 4):**
+> scripts/seed-test-users.sh:273-274 — E2E passwords printed in plaintext to stdout at script completion. Acceptable per D-14 (dev-only), but CI log exposure is avoidable. Recommend masking passwords in final echo lines.
+> W-SEC-IT4-2 (iter 4): scripts/seed-test-users.sh:453-455 — E2E passwords printed to stdout (carry-forward W4 iter 1). Dev-only per D-14. CI log masking recommended.
+
+**Root cause:** Lines 454-455 of the final summary echo block interpolated `${E2E_CLIENT_PASSWORD}` and `${E2E_ADMIN_PASSWORD}` directly, printing `E2EClient@123!` and `E2EAdmin@123!` to stdout on every run.
+
+**Fix:** Replaced both password variable references in the two cosmetic summary echo lines with `********` and appended `— password set per D-14` as the canonical reference. No other lines in the script emit passwords to stdout — the password variables are only used internally in `upsert_user` and `reset_password` curl calls, which route all output to `/dev/null` via `-o /dev/null`.
+
+**Lines changed:** 2 (lines 454-455 of `scripts/seed-test-users.sh`)
+
+**Passwords / D-14 compliance:** Password values themselves are unchanged. The variable assignments on lines 48 and 52 retain the locked D-14 values. Only the cosmetic stdout echo is masked.
+
+**Grep verification post-fix:** `grep -F 'E2EClient@123!' scripts/seed-test-users.sh` matches only comment lines (27) and variable assignment (48) — zero echo/printf output occurrences. Same for `E2EAdmin@123!`.
+
+**Idempotency:** No behavioral change. Script seeding logic is identical to post-T-17 shape.
+
+**Files modified:**
+- `scripts/seed-test-users.sh`
+
+---
+
 ## Iter 4 entries (2026-05-16)
 
 ### T-17 (2026-05-16T23:58:00Z)

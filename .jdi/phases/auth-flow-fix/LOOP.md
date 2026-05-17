@@ -3,7 +3,7 @@ phase_slug: auth-flow-fix
 phase_position: 49
 iter: 4
 total_resets: 0
-status: running
+status: converged
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-16T00:00:00Z
@@ -103,4 +103,30 @@ verdict: APPROVED_WITH_WARNINGS
 - T-16 (frontend): Fix W-FE-1 — `frontend/client/vitest.config.ts` (and backoffice if applicable) exclude `playwright/specs/` so vitest no longer attempts to compile Playwright tests.
 - T-17 (security): Fix W-FE-5/W-BE-6 — `scripts/seed-test-users.sh` removes hard `jq` dependency (Python fallback or POSIX parsing).
 - W-BE-7 (TanStack scroll sessionStorage), W2/W3/W4/W5 (pre-existing or future-phase): NOT in iter 4 scope (user choice).
-- Reviewer aggregate after Wave 5.
+
+### iter=4 — doer commits (executed)
+- T-14 `637ff03` — logout spec asserts on actual KC resting URL per SPA (NF-1 fix).
+- T-15 `96bcf8c` — cookie-blocked spec uses isolated `browser.newContext()` (NF-2 fix). Intermediate iteration commits: `0593897`, `d5b0739`, `8bf5161`, `fec49d9`.
+- T-16 `62c9a50` — `vitest.config.ts` excludes `playwright/**` in both SPAs (W-FE-1 fix).
+- T-17 — content bundled into `8bf5161` (commit msg says T-15 due to parallel-agent race; diff includes 197-line `scripts/seed-test-users.sh` rewrite with jq detection + Python fallback `json_get`/`json_has_key`).
+
+### iter=4 — reviewer aggregate (worst-case rule)
+- Backend `8264951` — APPROVED_WITH_WARNINGS. 0 blockers. Build/tests clean. Playwright live: client api-proxy 3/3, client auth-flow 5/5+1skip, backoffice api-proxy 3/3, backoffice admin-auth-flow 3/4 (S5 fail = spec defect). New warnings: W-BE-10 (S5 spec defect), W-BE-11 (`id_token_hint` UX).
+- Frontend `f16c782` — APPROVED_WITH_WARNINGS. 0 blockers. NF-1 + NF-2 confirmed RESOLVED. T-16 vitest exclude validated. Backoffice S5 root-cause analyzed: `callbackIndex === -1` + IndexRoute pre-callback navigation = test-only measurement artifact; T-6 production fix correct.
+- Security `61cd723` — APPROVED_WITH_WARNINGS. 0 blockers. D-15 gates unchanged (zero auth-surface touched iter 4). `id_token_hint` finding WARNING not BLOCKER (D-15 item 6 met via `client_id`; SPA cookies cleared; `/auth/me` 401 post-logout; SSO confirmation is UX friction not security bypass). T-17 Python fallback PASS (no shell injection, no eval/exec, idempotent).
+- Aggregate verdict: **APPROVED_WITH_WARNINGS** (worst-case wins, all 3 approved).
+
+### iter=4 — converged
+- All Wave 5 fixes verified end-to-end against live `docker compose`.
+- Client Playwright: 8/8+1skip (api-proxy 3/3 + auth-flow 5/5+1skip).
+- Backoffice Playwright: 6/7 (api-proxy 3/3 + admin-auth-flow 3/4; S5 spec defect documented).
+- Ship-time follow-ups (all non-blocking, deferred to future phase or iter 5 if user prefers):
+  - W-BE-10 / W-FE-S5-spec: backoffice S5 spec design defect — 1-line `framenavigated` listener re-ordering + `callbackIndex === -1` guard.
+  - W-BE-11 / W-SEC-IT4-1: backoffice logout `id_token_hint` — structural fix needs `id_token` capture at callback + short-lived HttpOnly cookie + logout forward. Hardening phase recommended.
+  - W-BE-1: lint whitespace drift (5 pre-existing test files, pre-D-2 boundary).
+  - W-BE-3 / G2: telemetry gaps (pre-existing architectural debt, separate phase).
+  - W2: `verify-hardening.sh` realm rename (pre-Phase 34 carry, pre-existing).
+  - W3: client-realm clientProfiles parity with backoffice.
+  - W4: seed passwords echo to stdout (dev-only per D-14, cosmetic).
+  - W5: ROPC `onboarding-app` cleanup (D-11 acknowledged, future phase).
+- Next: `/jdi-ship auth-flow-fix`

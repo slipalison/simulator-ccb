@@ -374,3 +374,48 @@ None.
 - Gitleaks: deferred to CI.
 - Trivy FS: deferred to CI.
 - Semgrep: no re-run needed (format-only C# diff + TS-only changes with no new logic patterns).
+
+## Backend C# review iter 2
+
+Run: 2026-05-17
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Commit reviewed: 64e1651 (dotnet format — test whitespace fix)
+
+### Verdict
+APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+- [G7 Build] PASS — dotnet build: 0 errors, 0 warnings (6.89s).
+
+- [G8 Lint/format] PASS (W1 cleared) — dotnet format --verify-no-changes: zero hits in tests/ — StateMachineAllowedTransitionsTests.cs:233,283 violations resolved. 14 remaining WHITESPACE errors are all in src/ pre-existing files (Program.cs:254, CreateAdminCommand.cs:40, ResetAdministratorPasswordCommand.cs:97-101, AdminAuditLog.cs:19,26, KeycloakUserService.cs:30,35,85, AppDbContextFactory.cs:16,17,19) — identical set present at boundary 968eefb, not introduced by this phase. Pre-existing treatment consistent with iter 1 and Phase 49 policy.
+
+- [G10 Tests] PASS — 988/988 passed, 4 skipped (pre-existing), 0 failed. Breakdown: Domain.Tests 474/0/0, Application.Tests 138/0/0, API.Tests 335/0/4skip, Integration.Tests 41/0/0. Count identical to iter 1 — no regression.
+
+- [G12 Playwright regression] PASS — Not re-run (commit 64e1651 is whitespace-only in test files; no source logic, endpoint, handler, or EF config changed). UAT baseline from iter 1 (9 passed / 13 failed / 2 cascade / 8 ignored) remains the reference. No new code path that could alter regression behavior.
+
+- [All other gates] CARRY-FORWARD from iter 1 — G1/G2/G3/G4/G5/G6/G9/G11/G13 posture unchanged. No src/*.cs logic modified in 64e1651.
+
+---
+
+### Scope confirmation
+
+Commit 64e1651 modified 7 files (all in tests/): FundoTests.cs, StateMachineAllowedTransitionsTests.cs, CreateAdminCommandHandlerTests.cs, GetAuditLogQueryHandlerTests.cs, KeycloakUserServiceFirstLoginTests.cs, AuditServiceTests.cs, KeycloakUserServiceTests.cs. All changes are whitespace-only (CRLF normalization). Zero src/ files touched. No migration, no EF config, no handler, no controller modified.
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+- W2 (pre-existing, carried): TenantBaggageMiddleware and TelemetryCommandHandlerDecorator absent at boundary 968eefb. Not introduced by this phase. Must be addressed before production cutover.
+
+- W3 (pre-existing, carried): src/Onboarding.API/appsettings.json:18 AdminClientSecret plaintext. Legacy (D-2). Inject via env var or secrets manager in staging/prod.
+
+- W4 (pre-existing, carried): 14 WHITESPACE lint errors in src/ pre-existing files (see G8 above). Not introduced by this phase.

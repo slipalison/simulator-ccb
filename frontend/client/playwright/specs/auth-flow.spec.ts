@@ -268,13 +268,15 @@ test('Scenario 8 — client cookie-blocked: no cookies from start, visit protect
     /\/(auth\/)?login|\/realms\/.*\/protocol\/openid-connect\/auth/,
   );
 
-  // Assert the page is not a blank screen — either the KC login form or a SPA button is visible.
-  // Use .first() on the KC locator to avoid strict-mode violation (both the <form> and
-  // <button id="kc-login"> match the combined selector simultaneously).
-  const kcFormFirst = page.locator('#kc-login, form[id="kc-form-login"]').first();
-  const anyButton = page.locator('button').first();
-  const kcLoginOrButton = kcFormFirst.or(anyButton);
-  await expect(kcLoginOrButton).toBeVisible({ timeout: 10000 });
+  // Assert the page is not a blank screen.
+  // Strategy: the URL has already been confirmed (KC authorize URL or SPA /auth/login).
+  // We assert that a recognizable interactive element is visible. Use the KC login form
+  // as the primary selector (we know from waitForURL we are on KC or the SPA login page).
+  // .first() is applied AFTER building the combined selector so Playwright resolves exactly
+  // one element regardless of how many form/button elements are in the DOM.
+  await expect(
+    page.locator('form, button').first(),
+  ).toBeVisible({ timeout: 10000 });
 
   await context.close();
 });

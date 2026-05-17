@@ -1,9 +1,11 @@
 ---
 phase_slug: frontend-client-fundos
 phase_position: 51
-iter: 4
+iter: 5
 total_resets: 0
-status: running
+status: converged
+final_converged_at: 2026-05-17T00:00:00Z
+final_verdict: APPROVED_WITH_WARNINGS
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-17T00:00:00Z
@@ -103,4 +105,17 @@ second_reopen_at: 2026-05-17T00:00:00Z
 - Hypothesis: TanStack Router v1 `from` expects full route ID (parent layout `id: "authenticated"` makes child IDs hierarchical) or runtime tree resolution fails for the literal path keys.
 - Coverage of regression: existing Vitest tests for these pages mock the router → didn't surface; mandatory Playwright regression env-blocked (viewer-creds.json absent) → never exercised the real flow. Coverage gate passed mechanically but did NOT prove the feature works.
 - Frontend doer dispatched: investigate, fix all 7 occurrences, RUN dev server + Playwright + manual MCP verify each Fundos route loads without error before commit.
+
+### iter=5 — doer commit (2026-05-17)
+- Frontend `bc1b823` — `getRouteApi` migration (canonical TanStack Router v1 pattern). `router.tsx` exports 7 *RouteApi instances bound to correct internal IDs `/authenticated/<path>`. 7 page components migrated to `routeApi.useSearch()` / `.useNavigate()` / `.useParams()`. 7 test mocks updated (`vi.mock("@/router")` with stub APIs).
+- Browser MCP verification: all 7 routes load without invariant error. /fundos /cedentes /tipos-ativos /consultorias-fundo /custodiantes + 2 detail routes confirmed. Console clean (only API 403/404 + Vite HMR WS noise).
+
+### iter=5 — reviewer (frontend only)
+- Frontend `dba8bda` — APPROVED_WITH_WARNINGS (runtime blocker RESOLVED; G5/G4/G7/G8/G9 all PASS; bundle 221.73 KB gz; 3 carry-forward warnings: G2 OTel JS, G3 bundle raw advisory, G8 viewer-creds.json env block)
+- Backend + Security verdicts unchanged from iter 2 (zero source change iter 5)
+- Hash: ac683c587774 (vs iter4 b314fd74adbc — different, no oscillation)
+- Aggregate verdict (worst-case): **APPROVED_WITH_WARNINGS**
+
+### iter=5 — converged
+- iter 5: APPROVED_WITH_WARNINGS, hash=ac683c587774, commit=dba8bda, ts=2026-05-17T00:00:00Z
 

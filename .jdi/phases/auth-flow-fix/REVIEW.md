@@ -741,9 +741,6 @@ Cross-check on every D-15 guarded path:
 | Permission*.cs / Auth*.cs (non-test) | NO |
 
 git diff 2e452cd..HEAD -- frontend/*/auth-server.ts returns empty. Realm JSONs untouched. Backend src/ untouched. All D-15 gates inherited pass from iter 3 -- no regression possible.
-
----
-
 ### Action 2 - NEW finding: backoffice id_token_hint classification
 
 #### Fact pattern
@@ -966,7 +963,7 @@ None. Wave 5 adds zero new production source files. D-2 gate does not apply.
 - Backoffice api-proxy: 3/3 PASS (127.0.0.1:5174)
 - Backoffice auth-flow: 3/4 PASS + 1 FAIL (Scenario 5 pre-existing spec defect) -- up from 1/4 in iter 3
 - Screenshots: .jdi/cache/ (playwright auto-capture on S5 failure: admin-auth-flow-Scenario-5-fdb10-allback-and-admin-companies-backoffice-auth/test-failed-1.png)
----
+
 
 ## Backend C# (iter 4)
 
@@ -974,7 +971,122 @@ Verdict: APPROVED_WITH_WARNINGS
 
 ### Gates
 
+- [G1 Multi-tenant isolation] pass -- iter 4 (T-14/T-15/T-16/T-17) added zero .cs files. HasQueryFilter coverage and IgnoreQueryFilters usage unchanged since Phase 48.
+- [G2 Endpoint AuthZ + audit] pass -- no controllers or command files modified in iter 4. All Phase 48 ActorSub/ActorEmail captures and policy attributes unchanged.
+- [G3 Secret + raw SQL] pass -- iter 4 modifies only .spec.ts, vitest.config.ts, and scripts/seed-test-users.sh. No raw SQL or secret exposure introduced.
+- [G4 Telemetry] pass (W-BE-3 carry-over) -- Program.cs not touched. Pre-D-2 boundary gaps flagged as W-BE-3. SensitiveDataDestructuringPolicy covers PII at log layer.
+- [G5 Performance] pass -- no new repository or controller files.
+- [G6 Index coverage] pass -- no new migrations.
+- [G7 Build] pass -- dotnet build: 0 errors, 0 warnings (7.5s).
+- [G8 Lint] WARN (W-BE-1 carry-over) -- 5 pre-existing test files with whitespace violations. No new violations in iter 4.
+- [G9 DDD/Design] pass -- zero .cs files touched in iter 4.
+- [G10 Tests] pass:
   - Onboarding.Domain.Tests: 378 passed / 0 failed / 0 skipped (299 ms)
   - Onboarding.Application.Tests: 89 passed / 0 failed / 0 skipped (162 ms)
   - Onboarding.API.Tests: 244 passed / 0 failed / 4 skipped (TracePropagationTests x2 + AdminCompanyDetailsTests x2) (1m 56s)
   - Onboarding.Integration.Tests: 20 passed / 0 failed / 0 skipped (2m 57s)
+- [G11 Coverage] pass -- zero new .cs files in iter 4. D-2 gate trivially passes.
+- [G12 Playwright regression] APPROVED_WITH_WARNINGS -- full suite run against live stack. Details below.
+- [G13 Static scans] pass (advisory) -- no new NuGet packages, no Dockerfile changes.
+
+### Playwright regression (G12) -- iter 4 live run
+
+Stack: api (healthy), keycloak (healthy), frontend-client (Up), frontend-backoffice (Up), app_db (healthy). Single listener per port confirmed (127.0.0.1 Docker mapper only, no stale host vinxi).
+
+#### Client SPA -- api-proxy (pw-no-setup.config.ts, 127.0.0.1:5173)
+
+| Scenario | Result |
+|---|---|
+| S1 -- single listener guard | PASS |
+| S2 -- POST /api/companies/registration returns 422 JSON | PASS |
+| S3 -- GET /api/companies/registration returns 405 | PASS |
+
+3/3 PASS. Identical to iter-3 baseline.
+
+#### Client SPA -- auth-flow (pw-no-setup.config.ts, localhost:5173)
+
+| Scenario | iter-3 | iter-4 |
+|---|---|---|
+| S1 -- login happy path | PASS | PASS |
+| S2 -- logout: /auth/me returns 401 | FAIL-NF1 | PASS (T-14 fix) |
+| S5 -- post-login race | PASS | PASS |
+| S6 -- refresh resilience | PASS | PASS |
+| S7 -- expired-token refresh | SKIP | SKIP (intentional) |
+| S8 -- cookie-blocked graceful error | FAIL-NF2 | PASS (T-15 fix) |
+
+5/5 PASS + 1 SKIP. Delta from iter-3: +2 passes (NF-1 and NF-2 resolved).
+
+W-BE-7 (TanStack scroll sessionStorage): RESOLVED incidentally by T-14. Scenario 3 backoffice D-12 assertion now filters tsr-scroll-restoration entries. W-BE-7 closed.
+
+#### Backoffice SPA -- api-proxy (pw-no-setup.config.ts, 127.0.0.1:5174)
+
+| Scenario | Result |
+|---|---|
+| S1 -- single listener guard | PASS |
+| S2 -- POST /api/companies/registration returns 422 JSON | PASS |
+| S3 -- GET /api/companies/registration returns 405 | PASS |
+
+3/3 PASS. Identical to iter-3 baseline.
+
+#### Backoffice SPA -- admin-auth-flow (playwright.config.ts, localhost:5174)
+
+| Scenario | iter-3 | iter-4 |
+|---|---|---|
+| S3 -- login happy path | FAIL-NF | PASS (T-14 D-12 assertion loosened) |
+| S4 -- logout: /auth/me returns 401 | FAIL-NF1 | PASS (T-14 waitForURL regex fix) |
+| S5 -- post-login race | FAIL-NF | FAIL (pre-existing spec defect) |
+| S6 -- refresh resilience | PASS | PASS |
+
+3/4 PASS. Delta from iter-3: +2 passes. S5 remains failing.
+
+Backoffice pass-rate: iter-1 (0/4 env-blocked) -> iter-2 (0/4 B-BE-2) -> iter-3 (1/4) -> iter-4 (3/4).
+
+### S5 classification: pre-existing spec defect -- WARNING, not BLOCKER
+
+Scenario 5 fails with: Received array: ["http://localhost:5174/admin/login", "http://localhost:5174/admin/login"]
+
+Root cause: callbackIndex === -1 because the h3 server-side handler processes /auth/callback and issues a 302 immediately -- the browser never fires a framenavigated event for /auth/callback. With callbackIndex = -1, slice(-1 + 1) == slice(0) returns all collected URLs including the two pre-callback /admin/login navigations (initial page load + TanStack Router IndexRoute client-side redirect). The spec incorrectly classifies these pre-callback entries as post-callback login flashes.
+
+This is not a product regression. Scenario 3 (login happy path) and Scenario 6 (reload resilience) both PASS -- Bug 2 (AdminLayout race, T-6) is confirmed fixed. The iter-3 backend reviewer claim that T-6 was incomplete was based on this same spec defect. Fix: use page.on("request") to capture /auth/callback rather than framenavigated.
+
+Classification: WARNING (W-BE-10). Not BLOCKER.
+
+### id_token_hint classification: WARNING, not BLOCKER
+
+frontend/backoffice/auth-server.ts logout handler (lines 268-274): sends client_id but no id_token_hint.
+
+Without id_token_hint, Keycloak 26 shows a confirmation page rather than auto-redirecting to post_logout_redirect_uri. SUMMARY T-14 documents this: final resting URL is /realms/backoffice/protocol/openid-connect/logout (the confirmation page).
+
+Security invariant (D-15 gate 6) IS satisfied: deleteCookie for backoffice_access_token and backoffice_refresh_token execute BEFORE the Keycloak redirect (lines 265-266). /auth/me returns 401 -- confirmed by Scenario 4 PASS. SPA cookies are cleared regardless of user action on the KC confirmation page.
+
+A user who ignores the confirmation cannot use the backoffice SPA (all routes return 401). This is a UX degradation vs the client SPA -- consistent with Security reviewer classification W-SEC-IT4-1.
+
+Classification: WARNING (W-BE-11). Not BLOCKER. Fix: capture id_token_hint from decoded access token payload before deleteCookie calls and append to logout URL.
+
+### Blockers
+
+None.
+
+### Warnings
+
+- W-BE-1 (carry-over) -- dotnet format whitespace violations in 5 pre-existing test files (KeycloakUserServiceFirstLoginTests.cs, AuditServiceTests.cs, KeycloakUserServiceTests.cs, CreateAdminCommandHandlerTests.cs, GetAuditLogQueryHandlerTests.cs). Pre-D-2 boundary.
+- W-BE-3 (carry-over) -- G4 telemetry gaps in Program.cs: TenantBaggageMiddleware, TelemetryCommandHandlerDecorator, OTel PiiScrubber absent. Pre-D-2 boundary debt. Separate phase required.
+- W-BE-7 (RESOLVED) -- backoffice Scenario 3 sessionStorage TanStack scroll assertion. Closed by T-14.
+- W-BE-8 (RESOLVED) -- auth-flow Scenario 2 waitForURL spec defect (NF-1). Fixed by T-14. Closed.
+- W-BE-9 (RESOLVED) -- Scenario 8 KC SSO isolation defect (NF-2). Fixed by T-15. Closed.
+- W-BE-10 (new) -- Backoffice S5 spec defect: callbackIndex === -1 includes pre-callback /admin/login navigations. Not a product regression. Fix: use request-event capture for /auth/callback URL.
+- W-BE-11 (new) -- Backoffice logout omits id_token_hint. KC 26 shows confirmation page. D-15 gate 6 satisfied (cookies cleared, /auth/me 401). UX degradation. Fix: append id_token_hint from decoded access token.
+
+### Coverage gaps (new files, iter 4)
+
+| File | Coverage | Required | Delta |
+|---|---|---|---|
+| (none -- zero new .cs files in iter 4) | n/a | n/a | n/a |
+
+### Regression captures
+- Client api-proxy 3/3: PASS
+- Client auth-flow 5/5 PASS + 1 SKIP (T-14 S2 + T-15 S8 fixed; W-BE-8 + W-BE-9 RESOLVED)
+- Backoffice api-proxy 3/3: PASS
+- Backoffice admin-auth-flow 3/4: S3 PASS, S4 PASS, S5 FAIL (W-BE-10 spec defect), S6 PASS
+- Backend API suites: Domain 378/378, Application 89/89, API 244/244+4-skip, Integration 20/20
+- Screenshot: D:/REPO/keycloak-tests/frontend/backoffice/playwright/results/admin-auth-flow-Scenario-5-fdb10-allback-and-admin-companies-backoffice-auth/test-failed-1.png

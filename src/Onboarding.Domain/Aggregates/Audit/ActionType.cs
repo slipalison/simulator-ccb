@@ -54,4 +54,14 @@ public enum ActionType
     FundoCedenteAssociated = 42,
     FundoCedenteUpdated = 43,
     FundoCedenteRemoved = 44,
+    // Phase 50 — relationship aggregate actions (D-22)
+    RelFundoCedenteCreated = 45,
+    RelFundoCedenteLimiteUpdated = 46,
+    RelFundoCedenteStatusChanged = 47,
+    RelCedenteTipoAtivoCreated = 48,
+    RelCedenteTipoAtivoLimiteUpdated = 49,
+    RelCedenteTipoAtivoStatusChanged = 50,
+    RelFundoTipoAtivoCreated = 51,
+    RelFundoTipoAtivoLimiteUpdated = 52,
+    RelFundoTipoAtivoStatusChanged = 53,
 }

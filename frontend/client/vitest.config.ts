@@ -15,6 +15,23 @@ export default defineConfig({
       'playwright/**',
       'e2e/**',
     ],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'lcov'],
+      thresholds: {
+        branches: 80,
+        functions: 80,
+        lines: 80,
+        statements: 80,
+      },
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.test.{ts,tsx}',
+        'src/main.tsx',
+        'src/router.tsx',
+        'src/vinxi.d.ts',
+      ],
+    },
   },
   resolve: {
     alias: {

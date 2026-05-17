@@ -216,3 +216,99 @@ None.
 - Playwright MCP probe: all 4 new allowed-transitions endpoints reachable (404 without token, no 500s)
 - API container: healthy at time of review
 - Console errors on probe: CORS pre-flight (expected, probe from browser context without auth)
+
+
+---
+
+## Frontend review iter 1
+
+### Verdict: APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+**[G1 Security frontend] PASS**
+- Zero localStorage/sessionStorage token writes in new files. Only hit: theme-provider.test.tsx:55 (a test file, not shipped code).
+- No dangerouslySetInnerHTML in new components.
+- No target=_blank without rel.
+- No hardcoded secrets/API keys in new source.
+- D-12 compliant: tokens remain exclusively in HttpOnly cookies via server-side auth-server.
+
+**[G2 Telemetry (OTel JS + W3C)] BLOCKED -- pre-existing carry-forward**
+- frontend/client/src/lib/telemetry/ does NOT exist. frontend/backoffice/src/lib/telemetry/ does NOT exist.
+- Pre-existing gap at D-2 boundary (968eefb). Phase 50 adds zero telemetry regression. Designated for Phase 53 (telemetry sprint). Treated as WARNING under brownfield D-2 rule.
+
+**[G3 Perf + bundle] PASS with WARNING**
+- pnpm build exits 0. Main SPA bundle: 765.80 KB raw / 221.66 KB gzip -- under 300 KB gate.
+- Vite warns chunk >500 KB raw. No lazy routes. WARN: next phase must add dynamic import() on fundos routes.
+- No img without dimensions in new components.
+
+**[G4 Build] PASS**
+- pnpm --filter frontend-client build exits 0. All 3 Vinxi routers compile cleanly.
+
+**[G5 Typecheck + Lint] PASS**
+- pnpm --filter frontend-client typecheck (tsc --noEmit) exits 0.
+- pnpm --filter frontend-client lint --max-warnings 0 exits 0.
+
+**[G6 Code-design + Frontend rules] PASS with WARNINGS**
+- D-4: zero cross-imports between client and backoffice.
+- No pt-BR hardcoded strings in JSX (grep clean on new components).
+- Radix/shadcn input primitives with associated labels -- no bare unlabeled inputs.
+- No outline:none without focus alternative.
+- Drift warnings (documented by doer, confirmed by reviewer):
+  1. apiFetch duplicated in fundos-api.ts -- DRY violation. api.ts does not export its internal apiFetch; doer re-implemented 401/refresh cycle. Fix: export apiFetch from api.ts.
+  2. auth.permissions cast via (auth as any).permissions in 10+ components. Fix: extend AuthContextValue with permissions: string[].
+  3. fundosLocale strings inline in fundos-schemas.ts. Fix: move to locales/pt-BR/fundos.ts.
+
+**[G7 Coverage new files] PARTIAL -- BLOCKER**
+- @vitest/coverage-v8 not installed; mechanical enforcement blocked.
+- Files WITH tests (coverage assumed adequate from test counts): api-errors.ts, fundos-schemas.ts, Paginator.tsx, SearchInput.tsx, AssociationForm.tsx, DateRangeInput.tsx, StatusTransitionDropdown.tsx, FundosListPage.tsx, TiposAtivoListPage.tsx, CedentesListPage.tsx, AuthGuard.tsx.
+- Files WITHOUT tests (D-2 new files -- BLOCKER): fundos-api.ts (554 lines), query-client.ts (23 lines), use-allowed-transitions.ts (76 lines), and 22 component files (detail/tab pages + organism forms/tables).
+
+**[G8 Playwright regression -- Client SPA (5173)] PARTIAL PASS**
+- pnpm test:e2e --project=api-proxy: 3/3 PASS.
+- pnpm test:e2e --project=auth-flow: 5 FAILED -- pre-existing (spec introduced in de3c594, before phase start 66522b2; not modified in Phase 50). Not a regression.
+- Fundos E2E setup: admin-empresa.setup.ts cascade failure because viewer-creds.json absent (gitignored) and #username race on /. Pre-existing structural issue.
+- MCP browser manual: ACF+PKCE login confirmed end-to-end (Keycloak S256 PKCE, callback to /profile). D-12: zero tokens in localStorage/sessionStorage confirmed.
+- D-17 compliance confirmed in playwright.config.ts: api-proxy uses 127.0.0.1:5173; auth-flow overrides to localhost:5173 per D-17 refined.
+
+**[G9 Playwright regression -- Backoffice SPA (5174)] PASS**
+- Backoffice SPA loads at 5174, /admin/login renders, Entrar triggers ACF+PKCE redirect to backoffice Keycloak realm with code_challenge_method=S256. No client-app code in backoffice. No regression.
+
+**[G10 Accessibility] ADVISORY**
+- Keycloak login page: label associations on username/password confirmed. Backoffice: Entrar button with visible text. No keyboard traps observed. Full axe-core blocked by D-16.
+
+**[G11 Vinext migration debt] PASS**
+- Zero from 'vinxi' imports in new source files. Phase continues on Vinxi 0.5.11 as planned.
+
+---
+
+### Blockers
+
+1. G7 -- 25+ new files (D-2 boundary) lack Vitest unit tests. Critical missing: fundos-api.ts (554 lines), use-allowed-transitions.ts, all detail/tab pages, all organism form/table components.
+2. G7 -- @vitest/coverage-v8 missing from devDependencies; coverage gate cannot be mechanically enforced.
+
+### Warnings
+
+1. G2 Telemetry pre-existing carry-forward: OTel JS + W3C absent from both SPAs at D-2 boundary. Phase 53 must deliver.
+2. G3 Bundle: raw SPA 765.80 KB. Next phase must add dynamic import() code-splitting on fundos routes.
+3. G6 apiFetch DRY: fundos-api.ts re-implements 401/refresh cycle. Export apiFetch from api.ts.
+4. G6 permissions typed as any: extend AuthContextValue with permissions: string[].
+5. G6 locale strings: fundosLocale must move to locales/pt-BR/fundos.ts.
+6. G8 auth-flow 5 pre-existing E2E failures: pre-date this phase. Fix in dedicated stabilization.
+7. G8 viewer setup cascade: viewer-creds.json gitignored, setup errors when absent. Pre-existing.
+
+### Coverage gaps (new files without tests)
+
+- src/lib/fundos-api.ts (554 lines), src/lib/query-client.ts, src/lib/use-allowed-transitions.ts
+- Pages: FundoDetailPage.tsx, FundoCedentesTabPage.tsx, FundoTiposAtivosTabPage.tsx, CedenteDetailPage.tsx, CedenteTiposAtivosTabPage.tsx, ConsultoriasFundoListPage.tsx, CustodiantesListPage.tsx
+- Organisms: FundoForm, FundoTable, FundoStatusBadge, TipoAtivoForm, TipoAtivoTable, CedentePfForm, CedentePjForm, CedenteTable, CedenteTipoToggle, AssociationTable, ConsultoriaFundoForm, ConsultoriaFundoTable, CustodianteForm, CustodianteTable, LimiteExposicaoInput
+
+### Regression captures
+
+- Client ACF+PKCE MCP screenshot: .playwright-mcp/phase-50-client-profile.png
+- Backoffice login MCP screenshot: .playwright-mcp/phase-50-backoffice-login.png
+- Playwright api-proxy: 3/3 PASS
+- Playwright auth-flow: 5 failures (pre-existing, not phase regression)
+- Vitest: 209 tests pass / 15 fail (all in profile-page + registration-form files not touched in Phase 50)

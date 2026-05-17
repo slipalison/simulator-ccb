@@ -647,3 +647,76 @@ All 36 D-2 files at or above 80% on every axis. G7 PASSES mechanically.
 - Backoffice api-proxy Playwright: 3/3 PASS
 - Client MCP: loads, ACF+PKCE redirect confirmed, zero app errors
 - Backoffice MCP: loads /admin/login, zero app errors
+
+## Frontend review iter 4
+
+Run: 2026-05-17
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Commit reviewed: 0ad59ec (5 files — require("react") cast in test mock factories)
+
+### Verdict: APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+**[G5 Typecheck + Lint] PASS**
+- pnpm --filter frontend-client typecheck (tsc --noEmit): exit 0. Zero TS2347 errors. Zero other errors.
+- pnpm --filter frontend-client lint --max-warnings 0: exit 0.
+- Spot-check grep on src/tests/: all 5 affected files now carry `require("react") as typeof import("react")` cast. No remaining uncast `require("react")` calls in those files.
+
+**[G7 Coverage new files] PASS** (carry-forward from iter 3 — unchanged)
+- vitest run: 643 pass / 15 fail. All 15 failures in pre-D-2 files (profile-page*, registration-form*) — unchanged, not a regression.
+- vitest.config.ts perFile thresholds on 36 D-2 files: all axes >= 80% (confirmed by iter 3 lcov analysis; no coverage-affecting code changed in iter 4).
+
+**[G4 Build] PASS**
+- pnpm --filter frontend-client build exits 0. All 3 Vinxi routers compile cleanly.
+- Main bundle: 765.33 KB raw / 221.55 KB gzip — below 300 KB gate. (Unchanged from iter 3 — no source code changed.)
+
+**[G8 Playwright — Client SPA] PASS**
+- api-proxy project (pw-no-setup.config.ts): 3/3 PASS.
+- MCP browser http://localhost:5173: loads (title "Onboarding — Cliente"), redirects to Keycloak ACF+PKCE (S256). Zero application errors. 401 on /auth/me is expected (unauthenticated).
+- D-17 compliance intact: api-proxy uses 127.0.0.1:5173; auth-flow overrides to localhost:5173.
+
+**[G9 Playwright — Backoffice SPA] PASS**
+- api-proxy project: 3/3 PASS.
+- MCP browser http://localhost:5174: loads /admin/login. 401 on /auth/me expected (unauthenticated). Zero application errors. No client-app code in backoffice.
+
+**[G1 Security frontend] PASS** — carry-forward from iter 3. No security-surface changes in iter 4.
+**[G2 Telemetry] BLOCKED (pre-existing carry-forward)** — Phase 53 mandate. No new regression.
+**[G3 Perf + bundle] PASS** — 221.55 KB gzip. Chunk-size warning carry-forward.
+**[G6 Code-design + Frontend rules] PASS** — D-4 cross-imports: zero. D-12: no token storage. All drift warnings from iter 1/2 remain resolved.
+**[G10 Accessibility] ADVISORY** — No new violations. Carry-forward.
+**[G11 Vinext migration debt] PASS** — Zero from 'vinxi' imports in new test files.
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+1. G2 Telemetry pre-existing carry-forward: OTel JS + W3C absent from both SPAs. Phase 53 mandate.
+2. G3 Bundle: raw 765 KB. Dynamic import() code-splitting on fundos routes needed before Phase 52.
+3. G8 auth-flow + fundos E2E specs remain env-blocked (viewer-creds.json absent, pre-existing).
+4. G8 /fundos error-boundary race on unauthenticated load. Pre-existing UX gap.
+
+---
+
+### Notes
+
+- Iter 4 scope was surgical: 5 test files, 5 lines changed (require("react") cast). All other gates are stable carry-forwards from iter 3.
+- 15 pre-existing Vitest failures (profile-page*, registration-form*) remain unchanged — not a regression introduced by this phase.
+- Fundos E2E env-blocked status is structural (gitignored viewer-creds.json) — not a new regression.
+
+---
+
+### Regression captures
+
+- Client api-proxy Playwright: 3/3 PASS
+- Backoffice api-proxy Playwright: 3/3 PASS
+- Client MCP: loads, ACF+PKCE redirect confirmed, zero app errors
+- Backoffice MCP: loads /admin/login, 401 on /auth/me (expected), zero app errors

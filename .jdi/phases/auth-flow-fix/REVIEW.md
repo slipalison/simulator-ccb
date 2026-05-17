@@ -1227,3 +1227,102 @@ No new production source files added in iter 5. D-2 coverage gate does not apply
 - Backoffice api-proxy: 3/3 PASS
 - Screenshots: D:/REPO/keycloak-tests/.jdi/cache/phase-49-iter5-client-login.png
 - Screenshots: D:/REPO/keycloak-tests/.jdi/cache/phase-49-iter5-backoffice-login.png
+
+## Security (iter 5)
+
+Verdict: APPROVED_WITH_WARNINGS
+
+### T-18 Cookie Audit Summary
+
+**id_token capture path (auth-code-flow.ts -- both SPAs)**
+
+Both frontend/client/src/lib/auth-code-flow.ts and frontend/backoffice/src/lib/auth-code-flow.ts are identical in the T-18 delta. exchangeCodeForTokens now reads data.id_token from the token response and returns it as idToken: string | null. The value is typed to null when the field is absent or not a string -- safe null-check. No console.log, console.info, or any logging call touches the idToken variable in either file. D-12 comment is present in-source.
+
+**Cookie storage (client auth-server.ts -- callback handler, lines 150-158)**
+
+- Cookie name: client_id_token -- unique per SPA, no collision with backoffice_id_token (D-4 preserved).
+- Attributes confirmed: httpOnly: true, secure: IS_PROD, sameSite: lax, path: /, maxAge: tokens.expiresIn || 300 -- aligned with access token TTL.
+- Write is conditional (if tokens.idToken) -- no write when id_token absent from response.
+- No path writes id_token to localStorage or sessionStorage. The only match for localStorage.setItem in the frontend tree is frontend/client/src/tests/theme-provider.test.tsx:55 -- theme persistence test, unrelated to tokens.
+
+**Cookie storage (backoffice auth-server.ts -- callback handler, lines 204-212)**
+
+- Cookie name: backoffice_id_token -- confirmed unique.
+- Attributes confirmed: httpOnly: true, secure: IS_PROD, sameSite: lax, path: /, maxAge: tokens.expiresIn || 300.
+- Same conditional write pattern. Same D-12 comment.
+- Additional coverage: the isFirstLogin branch (lines 258-263) explicitly calls deleteCookie for backoffice_id_token before redirecting to /admin/login, so a stale id_token hint cannot survive a first-login forced re-auth cycle.
+
+**No token logging**
+
+- frontend/client/auth-server.ts: no console.log/console.info calls present.
+- frontend/backoffice/auth-server.ts: two console calls exist -- console.warn at line 129 (PKCE mismatch diagnostic, masks cookie values via =*** substitution, does not reference idToken); console.error at line 250 (logs caught exception from isFirstLogin backend call, not any token value). Neither leaks id_token.
+
+**Logout flow (both SPAs)**
+
+- id_token is read via getCookie BEFORE deleteCookie calls in both logout handlers (client line 185, backoffice line 287). Read-before-delete order is correct.
+- All three cookies (*_access_token, *_refresh_token, *_id_token) are deleted in the same logout response before sendRedirect -- no token persists post-logout.
+- id_token_hint is appended via encodeURIComponent(idToken) inside a conditional block if (idToken). When cookie absent, fallback is client_id-only URL -- no exception, no hard failure.
+- The logout URL is used exclusively as target of a server-side sendRedirect(event, fullUrl, 302). The browser receives a 302 to Keycloak; id_token_hint appears in the address bar momentarily while Keycloak processes the logout -- standard OIDC RP-Initiated Logout protocol behaviour. encodeURIComponent is applied.
+- Referer header risk: the logout redirect goes browser -> Keycloak (cross-origin). Keycloak is the first-party recipient of the id_token_hint. There are no third-party origins in the redirect chain; post_logout_redirect_uri points back to the SPA. Keycloak processes the hint on the GET request; hint value does not propagate further. No material Referer leak vector identified.
+
+**D-12 storage gate re-grep**
+
+semgrep --severity ERROR on iter-5 files: 0 findings (2 rules, 4 TypeScript files). localStorage.setItem/sessionStorage.setItem in frontend/ tree: one match at frontend/client/src/tests/theme-provider.test.tsx:55 -- theme key, not a token. Zero matches in auth-server.ts or auth-code-flow.ts. D-12 confirmed clean.
+
+### T-18 Test Coverage Assessment
+
+9 tests per SPA cover: static source assertions for httpOnly/sameSite/path on *_id_token cookie (3 tests), logout reads cookie (1), conditional id_token_hint append present in source (1), cookie deletion in logout handler (1), if (idToken) guard present (1), behavioral cookie-present branch (1), behavioral cookie-absent branch (1). Coverage is structurally complete.
+
+Gap noted (advisory, W-SEC-IT5-2): The exchangeCodeForTokens mock in both test files returns { accessToken, refreshToken, expiresIn } without idToken. The callback handler if (tokens.idToken) branch cannot be exercised behaviorally through the mock. Static source assertions cover structural shape. Advisory only.
+
+### Gates
+
+- [G1 Multi-tenant filter] N/A -- no aggregate or EF config files touched in iter 5.
+- [G2 Permission policy coverage] N/A -- no controller files touched in iter 5.
+- [G3 Secrets + env hygiene] PASS -- gitleaks not installed; manual analysis of iter-5 diff: zero net-new secrets. E2EClient@123! / E2EAdmin@123! remain as variable assignments in seed-test-users.sh (lines 48, 52) -- pre-existing dev-only fixture per D-14. Stdout echo lines 454-455 now print ******** (T-21 accepted). No new secret exposure.
+- [G4 Semgrep] PASS -- 0 ERROR findings, 0 WARNING findings. 2 rules, 4 TypeScript files scanned.
+- [G5 Trivy FS + container] N/A -- no Dockerfile change, no new dependencies.
+- [G6 Keycloak hardening] PASS with WARNING -- see T-20 detail below.
+- [G7 Security headers] N/A -- no server middleware changes in iter 5. Carry-forward from iter-4 assessment.
+- [G8 Dependabot] N/A -- not assessed this iter (no dependency changes).
+- [G9 Audit log] N/A -- no new mutation commands added in iter 5.
+
+### T-20 -- Keycloak client-realm.json clientProfiles parity
+
+**JSON validity:** client-realm.json parses cleanly.
+
+**clientProfiles (client realm):** Present. Profile no-wildcard-redirects, executor secure-redirect-uris-enforcer, field name configuration (correct per Keycloak 26). allow-wildcard-in-redirect-uri: false, allow-open-redirect: false. Matches backoffice-realm.json profile structure.
+
+**clientPolicies (client realm):** Present. Policy enforce-no-wildcard-redirects, enabled: true, condition any-client with configuration: {} (correct Keycloak 26 field name).
+
+**Hardening invariants preserved:**
+
+- bruteForceProtected: true, failureFactor: 5, ssoSessionIdleTimeout: 1800
+- onboarding-client-acf: directAccessGrantsEnabled: false, publicClient: false, post.logout.redirect.uris: http://localhost:5173/auth/login (T-1 attribute preserved)
+- Legacy onboarding-app ROPC: unchanged, D-11 status preserved -- marked for future removal
+
+**Note on passwordPolicy:** length(8) in client-realm.json. G6 gate specifies length(12). Pre-existing, unchanged by T-20. Carried as W-SEC-IT5-3.
+
+**W-SEC-IT5-1 -- backoffice-realm.json clientPolicies condition field name typo**
+
+keycloak/backoffice-realm.json clientPolicies.policies[0].conditions[0] uses config: {} instead of configuration: {}. Keycloak 26 canonical field is configuration; config is silently ignored, so the any-client condition in the backoffice realm may not activate and enforce-no-wildcard-redirects may be a no-op there. T-20 correctly used configuration in client-realm.json but did not fix the backoffice typo. Fix: change the field name in that JSON node. Does not block iter 5.
+
+### T-21 -- seed-test-users.sh stdout password masking
+
+Stdout echo lines 454-455 output ******** -- not the literal passwords. Variable assignments at lines 48 and 52 retain the literal values (required for Keycloak API calls). No grep match for literal passwords in any echo statement. T-21 acceptance criterion met. Idempotency and REST call structure unchanged.
+
+### D-15 item 6 -- Final stance
+
+**Previous stance (iter 4): WARNING** -- logout URL omitted id_token_hint; KC 26 showed confirmation page; SSO session not terminated from KC side.
+
+**Current stance (iter 5): PASS** -- T-18 implements id_token_hint as primary parameter with client_id-only graceful fallback. Fully conformant with OIDC RP-Initiated Logout 1.0 spec (primary: id_token_hint + post_logout_redirect_uri + client_id; fallback: client_id + post_logout_redirect_uri). KC 26 skips confirmation page when id_token_hint is present and valid. SSO session is terminated. W-SEC-IT4-1 is RESOLVED.
+
+### Blockers
+
+None.
+
+### Warnings
+
+- W-SEC-IT5-1 -- keycloak/backoffice-realm.json clientPolicies.policies[0].conditions[0] uses config: {} instead of configuration: {}. Policy may be no-op in backoffice realm. Fix in follow-up commit: rename the field. Does not block iter 5.
+- W-SEC-IT5-2 (advisory) -- auth-server.test.ts mock for exchangeCodeForTokens omits idToken in both SPAs. The callback if (tokens.idToken) branch untested at behavioral level. Static source assertions cover structural shape. Low risk.
+- W-SEC-IT5-3 (carry-over) -- passwordPolicy: length(8) in both realm JSONs. G6 gate specifies length(12). Pre-existing across all iters, not modified by T-20 or T-21.

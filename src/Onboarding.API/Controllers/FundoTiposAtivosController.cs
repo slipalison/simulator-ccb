@@ -7,6 +7,7 @@ using Onboarding.Application.Fundos.Commands.TransitionFundoTipoAtivoStatus;
 using Onboarding.Application.Fundos.Commands.UpdateFundoTipoAtivoLimite;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries.GetFundoTiposAtivos;
+using Onboarding.Application.Fundos.Queries.GetFundoTipoAtivoAllowedTransitions;
 using Onboarding.Domain.Aggregates.FundoCedenteAggregate;
 using Onboarding.Domain.Aggregates.FundoTipoAtivoAggregate;
 using Onboarding.Domain.Exceptions;
@@ -31,6 +32,7 @@ public sealed class FundoTiposAtivosController : ControllerBase
     private readonly ICommandHandler<UpdateFundoTipoAtivoLimiteCommand, RelFundoTipoAtivoDto> _updateLimiteHandler;
     private readonly ICommandHandler<TransitionFundoTipoAtivoStatusCommand, RelFundoTipoAtivoDto> _transitionHandler;
     private readonly IQueryHandler<GetFundoTiposAtivosQuery, PaginatedResult<RelFundoTipoAtivoDto>> _listHandler;
+    private readonly IQueryHandler<GetFundoTipoAtivoAllowedTransitionsQuery, IReadOnlyList<string>?> _allowedTransitionsHandler;
     private readonly IFundoTipoAtivoAggregateRepository _repository;
     private readonly IFundoRepository _fundoRepository;
     private readonly ICurrentCompanyService _currentCompanyService;
@@ -40,6 +42,7 @@ public sealed class FundoTiposAtivosController : ControllerBase
         ICommandHandler<UpdateFundoTipoAtivoLimiteCommand, RelFundoTipoAtivoDto> updateLimiteHandler,
         ICommandHandler<TransitionFundoTipoAtivoStatusCommand, RelFundoTipoAtivoDto> transitionHandler,
         IQueryHandler<GetFundoTiposAtivosQuery, PaginatedResult<RelFundoTipoAtivoDto>> listHandler,
+        IQueryHandler<GetFundoTipoAtivoAllowedTransitionsQuery, IReadOnlyList<string>?> allowedTransitionsHandler,
         IFundoTipoAtivoAggregateRepository repository,
         IFundoRepository fundoRepository,
         ICurrentCompanyService currentCompanyService)
@@ -48,6 +51,7 @@ public sealed class FundoTiposAtivosController : ControllerBase
         _updateLimiteHandler = updateLimiteHandler;
         _transitionHandler = transitionHandler;
         _listHandler = listHandler;
+        _allowedTransitionsHandler = allowedTransitionsHandler;
         _repository = repository;
         _fundoRepository = fundoRepository;
         _currentCompanyService = currentCompanyService;
@@ -248,6 +252,26 @@ public sealed class FundoTiposAtivosController : ControllerBase
         {
             return NotFound(new ProblemDetails { Title = "Not found", Status = 404, Detail = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// GET /api/fundos/{fundoId}/tipos-ativos/{id}/allowed-transitions — Returns valid next statuses (D-25).
+    /// 200 OK with string[]; 404 if not found or cross-tenant.
+    /// </summary>
+    [HttpGet("{id:guid}/allowed-transitions")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
+    [ProducesResponseType(typeof(string[]), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetFundoTipoAtivoAllowedTransitions(
+        Guid fundoId, Guid id, CancellationToken ct)
+    {
+        var query = new GetFundoTipoAtivoAllowedTransitionsQuery(fundoId, id);
+        var result = await _allowedTransitionsHandler.HandleAsync(query, ct);
+        if (result is null)
+            return NotFound();
+        return Ok(result);
     }
 
     private static RelFundoTipoAtivoDto ToDto(FundoTipoAtivoAggregate a) => new(

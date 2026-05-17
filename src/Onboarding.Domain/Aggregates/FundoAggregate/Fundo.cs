@@ -74,6 +74,22 @@ public sealed class Fundo : Entity<Guid>
     }
 
     /// <summary>
+    /// Returns the list of valid next statuses from the current Status.
+    /// Single source of truth — delegates to FundoStatusValidator (D-25).
+    /// </summary>
+    public IReadOnlyList<string> GetAllowedNextStates()
+    {
+        var all = (FundoStatus[])Enum.GetValues(typeof(FundoStatus));
+        var result = new List<string>(all.Length);
+        foreach (var candidate in all)
+        {
+            if (FundoStatusValidator.CanTransitionTo(Status, candidate))
+                result.Add(candidate.ToString());
+        }
+        return result;
+    }
+
+    /// <summary>
     /// Updates mutable Fundo data. Nome is required.
     /// </summary>
     public void Update(string nome, string? classeAnbima, string? segmento, DateTimeOffset? dataConstituicao)

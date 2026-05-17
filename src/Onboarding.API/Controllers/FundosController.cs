@@ -5,6 +5,7 @@ using Onboarding.Application.Common;
 using Onboarding.Application.Fundos.Commands;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries;
+using Onboarding.Application.Fundos.Queries.GetFundoAllowedTransitions;
 using Onboarding.API.Security;
 using Onboarding.Domain.Aggregates.CedenteAggregate;
 using Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate;
@@ -90,6 +91,9 @@ public sealed class FundosController : ControllerBase
     private readonly IQueryHandler<ListCedenteQuery, PaginatedResult<CedenteDto>> _listCedenteHandler;
     private readonly ICedenteRepository _cedenteRepository;
 
+    // Allowed transitions query (D-25)
+    private readonly IQueryHandler<GetFundoAllowedTransitionsQuery, IReadOnlyList<string>?> _allowedTransitionsHandler;
+
     // Cross-cutting
     private readonly ICurrentCompanyService _currentCompanyService;
     private readonly ILogger<FundosController> _logger;
@@ -129,6 +133,7 @@ public sealed class FundosController : ControllerBase
         IValidator<UpdateCedenteCommand> updateCedenteValidator,
         IQueryHandler<ListCedenteQuery, PaginatedResult<CedenteDto>> listCedenteHandler,
         ICedenteRepository cedenteRepository,
+        IQueryHandler<GetFundoAllowedTransitionsQuery, IReadOnlyList<string>?> allowedTransitionsHandler,
         ICurrentCompanyService currentCompanyService,
         ILogger<FundosController> logger)
     {
@@ -171,6 +176,7 @@ public sealed class FundosController : ControllerBase
         _listCedenteHandler = listCedenteHandler;
         _cedenteRepository = cedenteRepository;
 
+        _allowedTransitionsHandler = allowedTransitionsHandler;
         _currentCompanyService = currentCompanyService;
         _logger = logger;
     }
@@ -780,6 +786,25 @@ public sealed class FundosController : ControllerBase
         {
             return NotFound(new ProblemDetails { Title = "Not found", Status = 404, Detail = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// GET /api/fundos/{id}/allowed-transitions — Returns valid next statuses for a Fundo (D-25).
+    /// 200 OK with string[]; 404 if not found or cross-tenant.
+    /// </summary>
+    [HttpGet("{id:guid}/allowed-transitions")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
+    [ProducesResponseType(typeof(string[]), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetFundoAllowedTransitions(Guid id, CancellationToken ct)
+    {
+        var query = new GetFundoAllowedTransitionsQuery(id);
+        var result = await _allowedTransitionsHandler.HandleAsync(query, ct);
+        if (result is null)
+            return NotFound();
+        return Ok(result);
     }
 
     // =========================================================================

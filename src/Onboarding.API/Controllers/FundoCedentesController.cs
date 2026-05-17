@@ -7,6 +7,7 @@ using Onboarding.Application.Fundos.Commands.TransitionFundoCedenteStatus;
 using Onboarding.Application.Fundos.Commands.UpdateFundoCedenteLimite;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries.GetFundoCedentes;
+using Onboarding.Application.Fundos.Queries.GetFundoCedenteAllowedTransitions;
 using Onboarding.Domain.Aggregates.FundoCedenteAggregate;
 using Onboarding.Domain.Exceptions;
 using Onboarding.Domain.Repositories;
@@ -30,6 +31,7 @@ public sealed class FundoCedentesController : ControllerBase
     private readonly ICommandHandler<UpdateFundoCedenteLimiteCommand, RelFundoCedenteDto> _updateLimiteHandler;
     private readonly ICommandHandler<TransitionFundoCedenteStatusCommand, RelFundoCedenteDto> _transitionHandler;
     private readonly IQueryHandler<GetFundoCedentesQuery, PaginatedResult<RelFundoCedenteDto>> _listHandler;
+    private readonly IQueryHandler<GetFundoCedenteAllowedTransitionsQuery, IReadOnlyList<string>?> _allowedTransitionsHandler;
     private readonly IFundoCedenteAggregateRepository _repository;
     private readonly IFundoRepository _fundoRepository;
     private readonly ICurrentCompanyService _currentCompanyService;
@@ -39,6 +41,7 @@ public sealed class FundoCedentesController : ControllerBase
         ICommandHandler<UpdateFundoCedenteLimiteCommand, RelFundoCedenteDto> updateLimiteHandler,
         ICommandHandler<TransitionFundoCedenteStatusCommand, RelFundoCedenteDto> transitionHandler,
         IQueryHandler<GetFundoCedentesQuery, PaginatedResult<RelFundoCedenteDto>> listHandler,
+        IQueryHandler<GetFundoCedenteAllowedTransitionsQuery, IReadOnlyList<string>?> allowedTransitionsHandler,
         IFundoCedenteAggregateRepository repository,
         IFundoRepository fundoRepository,
         ICurrentCompanyService currentCompanyService)
@@ -47,6 +50,7 @@ public sealed class FundoCedentesController : ControllerBase
         _updateLimiteHandler = updateLimiteHandler;
         _transitionHandler = transitionHandler;
         _listHandler = listHandler;
+        _allowedTransitionsHandler = allowedTransitionsHandler;
         _repository = repository;
         _fundoRepository = fundoRepository;
         _currentCompanyService = currentCompanyService;
@@ -248,6 +252,26 @@ public sealed class FundoCedentesController : ControllerBase
         {
             return NotFound(new ProblemDetails { Title = "Not found", Status = 404, Detail = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// GET /api/fundos/{fundoId}/cedentes/{id}/allowed-transitions — Returns valid next statuses (D-25).
+    /// 200 OK with string[]; 404 if not found or cross-tenant.
+    /// </summary>
+    [HttpGet("{id:guid}/allowed-transitions")]
+    [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
+    [ProducesResponseType(typeof(string[]), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetFundoCedenteAllowedTransitions(
+        Guid fundoId, Guid id, CancellationToken ct)
+    {
+        var query = new GetFundoCedenteAllowedTransitionsQuery(fundoId, id);
+        var result = await _allowedTransitionsHandler.HandleAsync(query, ct);
+        if (result is null)
+            return NotFound();
+        return Ok(result);
     }
 
     private static RelFundoCedenteDto ToDto(FundoCedenteAggregate a) => new(

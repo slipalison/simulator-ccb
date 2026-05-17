@@ -14,6 +14,7 @@ using Onboarding.Application.Fundos.Commands.TransitionFundoTipoAtivoStatus;
 using Onboarding.Application.Fundos.Commands.UpdateFundoTipoAtivoLimite;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries.GetFundoTiposAtivos;
+using Onboarding.Application.Fundos.Queries.GetFundoTipoAtivoAllowedTransitions;
 using Onboarding.Domain.Aggregates.FundoCedenteAggregate;
 using Onboarding.Domain.Aggregates.FundoAggregate;
 using Onboarding.Domain.Aggregates.FundoTipoAtivoAggregate;
@@ -60,6 +61,7 @@ public class FundoTiposAtivosControllerTests
 
         _sut = new FundoTiposAtivosController(
             _createHandler, _updateHandler, _transitionHandler, _listHandler,
+            Substitute.For<IQueryHandler<GetFundoTipoAtivoAllowedTransitionsQuery, IReadOnlyList<string>?>>(),
             _repo, _fundoRepo, _company);
 
         _sut.ControllerContext = new ControllerContext

@@ -14,6 +14,7 @@ using Onboarding.Application.Common;
 using Onboarding.Application.Fundos.Commands;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries;
+using Onboarding.Application.Fundos.Queries.GetFundoAllowedTransitions;
 using Onboarding.Domain.Aggregates.CedenteAggregate;
 using Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate;
 using Onboarding.Domain.Aggregates.CustodianteAggregate;
@@ -209,6 +210,7 @@ public class FundosControllerTests
             _updateCedenteValidator,
             _listCedenteHandler,
             _cedenteRepo,
+            Substitute.For<IQueryHandler<GetFundoAllowedTransitionsQuery, IReadOnlyList<string>?>>(),
             _companyService,
             Substitute.For<ILogger<FundosController>>()
         );

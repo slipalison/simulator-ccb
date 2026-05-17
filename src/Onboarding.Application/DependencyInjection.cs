@@ -27,6 +27,10 @@ using Onboarding.Application.Fundos.Queries;
 using Onboarding.Application.Fundos.Queries.GetCedenteTiposAtivos;
 using Onboarding.Application.Fundos.Queries.GetFundoCedentes;
 using Onboarding.Application.Fundos.Queries.GetFundoTiposAtivos;
+using Onboarding.Application.Fundos.Queries.GetFundoAllowedTransitions;
+using Onboarding.Application.Fundos.Queries.GetFundoCedenteAllowedTransitions;
+using Onboarding.Application.Fundos.Queries.GetFundoTipoAtivoAllowedTransitions;
+using Onboarding.Application.Fundos.Queries.GetCedenteTipoAtivoAllowedTransitions;
 namespace Onboarding.Application;
 
 /// <summary>
@@ -177,6 +181,20 @@ public static class ApplicationServiceExtensions
         services.AddScoped<ICommandHandler<TransitionFundoTipoAtivoStatusCommand, RelFundoTipoAtivoDto>, TransitionFundoTipoAtivoStatusHandler>();
         services.AddScoped<IValidator<TransitionFundoTipoAtivoStatusCommand>, TransitionFundoTipoAtivoStatusValidator>();
         services.AddScoped<IQueryHandler<GetFundoTiposAtivosQuery, PaginatedResult<RelFundoTipoAtivoDto>>, GetFundoTiposAtivosQueryHandler>();
+
+        // Phase 51 — allowed-transitions query handlers (D-25)
+        services.AddScoped<
+            IQueryHandler<GetFundoAllowedTransitionsQuery, IReadOnlyList<string>?>,
+            GetFundoAllowedTransitionsQueryHandler>();
+        services.AddScoped<
+            IQueryHandler<GetFundoCedenteAllowedTransitionsQuery, IReadOnlyList<string>?>,
+            GetFundoCedenteAllowedTransitionsQueryHandler>();
+        services.AddScoped<
+            IQueryHandler<GetFundoTipoAtivoAllowedTransitionsQuery, IReadOnlyList<string>?>,
+            GetFundoTipoAtivoAllowedTransitionsQueryHandler>();
+        services.AddScoped<
+            IQueryHandler<GetCedenteTipoAtivoAllowedTransitionsQuery, IReadOnlyList<string>?>,
+            GetCedenteTipoAtivoAllowedTransitionsQueryHandler>();
 
         return services;
     }

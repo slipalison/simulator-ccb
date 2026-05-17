@@ -15,6 +15,7 @@ using Onboarding.Application.Fundos.Commands.TransitionFundoCedenteStatus;
 using Onboarding.Application.Fundos.Commands.UpdateFundoCedenteLimite;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries.GetFundoCedentes;
+using Onboarding.Application.Fundos.Queries.GetFundoCedenteAllowedTransitions;
 using Onboarding.Domain.Aggregates.FundoCedenteAggregate;
 using Onboarding.Domain.Aggregates.FundoAggregate;
 using Onboarding.Domain.Exceptions;
@@ -61,6 +62,7 @@ public class FundoCedentesControllerTests
 
         _sut = new FundoCedentesController(
             _createHandler, _updateHandler, _transitionHandler, _listHandler,
+            Substitute.For<IQueryHandler<GetFundoCedenteAllowedTransitionsQuery, IReadOnlyList<string>?>>(),
             _repo, _fundoRepo, _company);
 
         _sut.ControllerContext = new ControllerContext

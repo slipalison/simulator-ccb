@@ -106,4 +106,20 @@ public sealed class CedenteTipoAtivoAggregate : Entity<Guid>
             _ => false
         };
     }
+
+    /// <summary>
+    /// Returns the list of valid next statuses from the current Status.
+    /// Single source of truth — delegates to CanTransitionTo (D-25).
+    /// </summary>
+    public IReadOnlyList<string> GetAllowedNextStates()
+    {
+        var all = (RelationshipStatus[])Enum.GetValues(typeof(RelationshipStatus));
+        var result = new List<string>(all.Length);
+        foreach (var candidate in all)
+        {
+            if (CanTransitionTo(candidate))
+                result.Add(candidate.ToString());
+        }
+        return result;
+    }
 }

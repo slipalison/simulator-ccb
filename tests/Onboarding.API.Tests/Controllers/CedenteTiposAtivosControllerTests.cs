@@ -14,6 +14,7 @@ using Onboarding.Application.Fundos.Commands.TransitionCedenteTipoAtivoStatus;
 using Onboarding.Application.Fundos.Commands.UpdateCedenteTipoAtivoLimite;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries.GetCedenteTiposAtivos;
+using Onboarding.Application.Fundos.Queries.GetCedenteTipoAtivoAllowedTransitions;
 using Onboarding.Domain.Aggregates.CedenteAggregate;
 using Onboarding.Domain.Aggregates.CedenteTipoAtivoAggregate;
 using Onboarding.Domain.Aggregates.FundoCedenteAggregate;
@@ -60,6 +61,7 @@ public class CedenteTiposAtivosControllerTests
 
         _sut = new CedenteTiposAtivosController(
             _createHandler, _updateHandler, _transitionHandler, _listHandler,
+            Substitute.For<IQueryHandler<GetCedenteTipoAtivoAllowedTransitionsQuery, IReadOnlyList<string>?>>(),
             _repo, _cedenteRepo, _company);
 
         _sut.ControllerContext = new ControllerContext

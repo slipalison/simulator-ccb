@@ -1,9 +1,9 @@
 ---
 phase_slug: auth-flow-fix
 phase_position: 49
-iter: 3
+iter: 4
 total_resets: 0
-status: converged
+status: running
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-16T00:00:00Z
@@ -93,4 +93,14 @@ verdict: APPROVED_WITH_WARNINGS
   - W3: `keycloak/client-realm.json` clientProfiles parity with backoffice (iter-1 carry).
   - W5: legacy ROPC `onboarding-app` cleanup (acknowledged D-11, separate phase).
   - W-FE-5 / W-BE-6: `jq` dependency in `seed-test-users.sh` — install or rewrite in pure POSIX; out of scope for iter 4 unless prioritised.
-- Next: `/jdi-ship auth-flow-fix`
+- Next: `/jdi-ship auth-flow-fix` (user declined — chose to fix residual warnings first; see iter 4 below)
+
+--- REOPENED 2026-05-16 (iter 4) — user declined ship at iter-3 convergence, requested NF-1/NF-2/W-FE-1/jq fixes ---
+
+### iter=4 — Wave 5 dispatch (pending)
+- T-14 (frontend): Fix NF-1 — `auth-flow.spec.ts` Scenario 2 + admin Scenario equivalent. `waitForURL` on `/auth/login` is wrong (server 302 hop); use final logout-resting URL.
+- T-15 (frontend): Fix NF-2 — `auth-flow.spec.ts` Scenario 8 uses fresh `browser.newContext()` to avoid silent Keycloak SSO re-auth race after `clearCookies()`.
+- T-16 (frontend): Fix W-FE-1 — `frontend/client/vitest.config.ts` (and backoffice if applicable) exclude `playwright/specs/` so vitest no longer attempts to compile Playwright tests.
+- T-17 (security): Fix W-FE-5/W-BE-6 — `scripts/seed-test-users.sh` removes hard `jq` dependency (Python fallback or POSIX parsing).
+- W-BE-7 (TanStack scroll sessionStorage), W2/W3/W4/W5 (pre-existing or future-phase): NOT in iter 4 scope (user choice).
+- Reviewer aggregate after Wave 5.

@@ -143,10 +143,59 @@ Root cause documented in `INVESTIGATION-api-proxy.md`: vinxi-host stale processe
 - **Test:** `pnpm --filter ./frontend/client exec playwright test api-proxy` and `pnpm --filter ./frontend/backoffice exec playwright test api-proxy` against a fresh `docker compose up -d`.
 - **Status:** pending
 
+### Wave 5 (added iter 4, 2026-05-16 — clean residual warnings before ship)
+
+User chose to NOT ship at iter-3 convergence and instead address remaining test-defect + config + script warnings. All four added below. Phase 49 stays open until iter 4 converges APPROVED or APPROVED_WITH_WARNINGS once more (re-judging the residual set).
+
+#### T-14: Fix NF-1 — logout spec `waitForURL` defect (client + backoffice)
+- **Specialist:** jdi-doer-onboarding-keycloak-frontend-vinext
+- **Files modified:** `frontend/client/playwright/specs/auth-flow.spec.ts`, `frontend/backoffice/playwright/specs/admin-auth-flow.spec.ts`
+- **Acceptance:**
+  - Scenario 2 (client logout) and the backoffice equivalent assert on the FINAL post-logout URL the browser actually dwells on (NOT the server-side 302 hop `/auth/login` or `/admin/login` that immediately redirects to Keycloak). Use `page.waitForURL` matching either (a) the Keycloak `/realms/.../logout` page, OR (b) the SPA URL the user lands on after the full logout chain completes. Read `auth-server.ts` logout handler to identify the canonical resting URL.
+  - Both scenarios also assert `/auth/me` returns 401 immediately after the logout request finishes (keep this — it's the strong invariant).
+  - No production code change.
+- **Dependencies:** none
+- **Test:** `pnpm exec playwright test auth-flow` in client; `pnpm exec playwright test admin-auth-flow` in backoffice. Both Scenario 2-equivalent passes.
+- **Status:** pending
+
+#### T-15: Fix NF-2 — cookie-blocked spec needs isolated context
+- **Specialist:** jdi-doer-onboarding-keycloak-frontend-vinext
+- **Files modified:** `frontend/client/playwright/specs/auth-flow.spec.ts` (Scenario 8 + any analogous backoffice scenario)
+- **Acceptance:**
+  - Scenario 8 (cookie-blocked graceful error) uses a fresh `browser.newContext()` (never authenticated) instead of relying on `clearCookies()` on an already-authenticated context. This prevents the residual Keycloak SSO session from silently re-authenticating mid-test.
+  - The scenario still asserts: visiting a protected route without cookies redirects to `/auth/login` (or `/admin/login`), shows an actionable error/login UI, no infinite redirect loop.
+  - Same pattern applied to any backoffice equivalent that suffers the same race.
+  - No production code change.
+- **Dependencies:** none (different scenario from T-14 in the same files but easy disjoint edits)
+- **Test:** `pnpm exec playwright test auth-flow -g "cookie"` (or whatever the scenario is named). Pass.
+- **Status:** pending
+
+#### T-16: Fix W-FE-1 — `vitest.config.ts` exclude `playwright/specs/`
+- **Specialist:** jdi-doer-onboarding-keycloak-frontend-vinext
+- **Files modified:** `frontend/client/vitest.config.ts` (and `frontend/backoffice/vitest.config.ts` if it has the same issue)
+- **Acceptance:**
+  - `vitest` `test.exclude` (or `test.include`) is configured so files under `playwright/specs/**` are NEVER picked up. Run `pnpm vitest run` from each SPA to confirm the suite no longer attempts to load the Playwright specs.
+  - Net effect: client vitest passing count moves from 113/128 to 113/X where X reflects only real vitest files (the structural failure noise from the playwright spec disappears).
+- **Dependencies:** none
+- **Test:** `pnpm vitest run` in each SPA. Zero references to `playwright/specs/` in the runner output.
+- **Status:** pending
+
+#### T-17: Fix W-FE-5 / W-BE-6 — `scripts/seed-test-users.sh` jq dependency
+- **Specialist:** jdi-doer-onboarding-keycloak-security
+- **Files modified:** `scripts/seed-test-users.sh`, possibly `scripts/seed-test-users.lib.sh` (extracted helpers; only if length crosses ~150 lines)
+- **Acceptance:**
+  - Either (a) replace `jq` usage with `python3 -c '...'` parsing (Python ships with Linux runners and is on most dev hosts), OR (b) use POSIX shell parameter expansion / `grep -oE` for the specific JSON paths read by the script (small surface — only `access_token`, user-id lookup, etc).
+  - Re-running the script after `docker compose down -v && docker compose up -d` still produces idempotent seed (no duplicates, no failures).
+  - Top-of-file comment updated to reflect the new dependency set (or its absence).
+  - If you keep `jq` as the primary path with a Python fallback, document both invariants.
+- **Dependencies:** none
+- **Test:** Manual on a host without `jq` (or simulate by `PATH=$(echo $PATH | tr ':' '\n' | grep -v jq | paste -sd:)` if available; otherwise just verify the Python fallback path runs).
+- **Status:** pending
+
 ## Execution
-- Total tasks: 9 (T-1..T-7 done iter 1; T-8, T-9 added iter 2)
-- Waves: 4 (W1 4-parallel, W2 2-parallel, W3 1, W4 1 [T-8 then T-9])
-- Estimated parallel speedup: ~9/4 ≈ 2.25x
+- Total tasks: 13 (T-1..T-7 done iter 1; T-8/T-9 done iter 2; T-10..T-13 done iter 3; T-14..T-17 added iter 4)
+- Waves: 5 (Waves 1-4 historical; Wave 5 = T-14 / T-15 / T-16 frontend + T-17 security, all parallel-eligible)
+- Estimated parallel speedup at full run: ~13/5 ≈ 2.6x
 
 ## Files modified (all tasks)
 - `keycloak/client-realm.json`

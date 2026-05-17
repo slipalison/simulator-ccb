@@ -419,3 +419,119 @@ None.
 - W3 (pre-existing, carried): src/Onboarding.API/appsettings.json:18 AdminClientSecret plaintext. Legacy (D-2). Inject via env var or secrets manager in staging/prod.
 
 - W4 (pre-existing, carried): 14 WHITESPACE lint errors in src/ pre-existing files (see G8 above). Not introduced by this phase.
+
+## Frontend review iter 2
+
+Run: 2026-05-17
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Commits reviewed: a86a0f4, 997184a, 25069ee, 123e316, 6cc40f1
+
+### Verdict: BLOCKED
+
+---
+
+### Gates
+
+**[G1 Security frontend] PASS**
+- Zero localStorage/sessionStorage token writes in all new/modified files.
+- grep `(auth as any).permissions` across all src: 0 hits (resolved).
+- No dangerouslySetInnerHTML. No target=_blank without rel. No hardcoded secrets.
+- D-12 compliant.
+
+**[G2 Telemetry] BLOCKED (pre-existing carry-forward)**
+- src/lib/telemetry/ absent from both SPAs. Pre-D-2 boundary gap. Treated as WARNING per brownfield rule (Phase 53 mandate). No new telemetry regression in iter 2.
+
+**[G3 Perf + bundle] PASS**
+- Build exits 0. Main bundle: 765.33 KB raw / 221.55 KB gzip — below 300 KB gate.
+- Vite chunk-size warning still present (raw >500 KB). No new lazy routes added (tracked warning, not new in iter 2).
+
+**[G4 Build] PASS**
+- pnpm --filter frontend-client build exits 0. All 3 Vinxi routers compile cleanly.
+
+**[G5 Typecheck + Lint] PASS**
+- tsc --noEmit exits 0.
+- eslint --max-warnings 0 exits 0.
+
+**[G6 Code-design + Frontend rules] PASS**
+- D-4: zero cross-imports (grep clean).
+- D-12: no token storage in new tests or code.
+- apiFetch dedup confirmed: fundos-api.ts imports apiFetch from @/lib/api (line 7), no local refresh cycle.
+- AuthContextValue.permissions: string[] confirmed declared; zero `(auth as any).permissions` hits.
+- fundosLocale confirmed extracted to src/locales/pt-BR/fundos.ts; fundos-schemas.ts imports from it.
+- All 3 iter 1 drift warnings resolved.
+
+**[G7 Coverage new files] BLOCKED**
+- vitest run: 388 pass / 15 fail (all 15 in pre-D-2 files: profile-page*, registration-form*).
+- @vitest/coverage-v8 installed; coverage report now runs (--coverage.reportOnFailure).
+- Global thresholds: Lines 52%, Functions 43%, Branches 44% — below 80% gate. This reflects the whole project (pre-D-2 files pull the total down), but the gate is scoped to D-2 new files per G7 rule.
+- Per-file lcov analysis on 36 D-2 source files: **21 files below 80% on at least one axis** — this IS a blocker on the D-2-scoped gate.
+
+D-2 files below 80% threshold (any axis):
+| File | Lines% | Funcs% | Branch% |
+|---|---|---|---|
+| LimiteExposicaoInput.tsx | 20.0% | 33.3% | 50.0% |
+| Paginator.tsx | 50.0% | 100.0% | 57.1% |
+| AssociationForm.tsx | 71.4% | 42.9% | 62.5% |
+| CedentePjForm.tsx | 100.0% | 100.0% | 70.0% |
+| ConsultoriaFundoForm.tsx | 87.5% | 66.7% | 80.6% |
+| CustodianteForm.tsx | 87.5% | 66.7% | 79.4% |
+| FundoForm.tsx | 81.3% | 66.7% | 88.2% |
+| TipoAtivoForm.tsx | 0.0% | 0.0% | 0.0% |
+| CedenteDetailPage.tsx | 81.8% | 66.7% | 71.4% |
+| CedenteTiposAtivosTabPage.tsx | 54.1% | 38.9% | 76.9% |
+| CedentesListPage.tsx | 43.9% | 15.4% | 59.1% |
+| ConsultoriasFundoListPage.tsx | 43.2% | 16.7% | 56.7% |
+| CustodiantesListPage.tsx | 43.2% | 16.7% | 56.7% |
+| FundoCedentesTabPage.tsx | 54.1% | 38.9% | 76.9% |
+| FundoDetailPage.tsx | 48.9% | 30.8% | 66.7% |
+| FundoTiposAtivosTabPage.tsx | 54.1% | 38.9% | 76.9% |
+| FundosListPage.tsx | 51.6% | 25.0% | 60.0% |
+| TiposAtivoListPage.tsx | 42.5% | 16.7% | 56.7% |
+| api-errors.ts | 80.6% | 33.3% | 68.0% |
+| fundos-api.ts | 100.0% | 100.0% | 59.8% |
+| fundos-schemas.ts | 92.5% | 55.6% | 44.4% |
+
+Files meeting 80% on all axes: CedenteTipoToggle.tsx, DateRangeInput.tsx, SearchInput.tsx, AssociationTable.tsx, CedentePfForm.tsx, CedenteTable.tsx, ConsultoriaFundoTable.tsx, CustodianteTable.tsx, FundoStatusBadge.tsx, FundoTable.tsx, StatusTransitionDropdown.tsx, TipoAtivoTable.tsx, query-client.ts, use-allowed-transitions.ts, fundos.ts.
+
+**[G8 Playwright — Client SPA] PASS (api-proxy scope)**
+- Playwright api-proxy project (pw-no-setup.config.ts): 3/3 PASS. Proxy reaches backend on POST (422 JSON), GET (405), single-listener guard passes.
+- MCP browser: http://localhost:5173 loads, redirects to Keycloak ACF+PKCE (code_challenge_method=S256). No console application errors.
+- http://localhost:5173/fundos: navigates to /fundos?page=1&search=&pageSize=20 but renders an error boundary ("Invariant failed: Could not find an active match from '/fundos'") because the user is unauthenticated and FundosListPage calls useSearch() before the auth redirect resolves. Route IS registered in routeTree (fundosRoute with validateSearch). This is a pre-existing UX gap (auth redirect race) not introduced by iter 2.
+- Auth-flow and fundos E2E specs: env-blocked (viewer-creds.json absent, pre-existing). Carry-forward from iter 1 — not a new regression.
+
+**[G9 Playwright — Backoffice SPA] PASS**
+- Playwright api-proxy: 3/3 PASS.
+- MCP browser: http://localhost:5174 loads /admin/login. Entrar button triggers ACF+PKCE to keycloak:8180/realms/backoffice with S256. No client-app code in backoffice. No regression.
+
+**[G10 Accessibility] ADVISORY**
+- No new a11y violations observed in manual MCP snapshot. Pre-existing axe-core gap (D-16 blocks cross-origin import) not affected.
+
+**[G11 Vinext migration debt] PASS**
+- Zero from 'vinxi' imports in new test files.
+
+---
+
+### Blockers
+
+1. **G7 Coverage** — 21 of 36 D-2 source files fail the 80% threshold on at least one axis (lines/functions/branches). Worst offenders: TipoAtivoForm.tsx (0%), CedentesListPage.tsx (15% funcs), ConsultoriasFundoListPage.tsx/CustodiantesListPage.tsx/TiposAtivoListPage.tsx (16.7% funcs). Doer must add targeted test cases for uncovered branch/function paths in these files.
+
+---
+
+### Warnings
+
+1. G2 Telemetry pre-existing carry-forward: OTel JS + W3C absent from both SPAs at D-2 boundary. Phase 53 must deliver.
+2. G3 Bundle: raw 765 KB. Dynamic import() code-splitting on fundos routes needed before Phase 52.
+3. G8 /fundos route renders error boundary when unauthenticated (useSearch race). Auth guard should redirect before FundosListPage mounts. Low severity — UX only, route is gated by auth in practice.
+4. G8 auth-flow + fundos E2E specs remain env-blocked (viewer-creds.json, Keycloak setup). Pre-existing.
+
+### Coverage gaps (D-2 files remaining below 80%)
+
+Critical: TipoAtivoForm.tsx (0/0/0%), CedentesListPage.tsx (44/15/59%), ConsultoriasFundoListPage.tsx (43/17/57%), CustodiantesListPage.tsx (43/17/57%), TiposAtivoListPage.tsx (43/17/57%), FundoDetailPage.tsx (49/31/67%).
+
+### Regression captures
+
+- Client api-proxy Playwright: 3/3 PASS
+- Backoffice api-proxy Playwright: 3/3 PASS
+- Client MCP: loads, ACF+PKCE redirect confirmed
+- Backoffice MCP: loads, ACF+PKCE redirect confirmed
+- Screenshots: .playwright-mcp/phase-50-client-fundos-route.png

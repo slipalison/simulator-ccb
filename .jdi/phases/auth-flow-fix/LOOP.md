@@ -129,4 +129,15 @@ verdict: APPROVED_WITH_WARNINGS
   - W3: client-realm clientProfiles parity with backoffice.
   - W4: seed passwords echo to stdout (dev-only per D-14, cosmetic).
   - W5: ROPC `onboarding-app` cleanup (D-11 acknowledged, future phase).
-- Next: `/jdi-ship auth-flow-fix`
+- Next: `/jdi-ship auth-flow-fix` (user declined again — chose iter 5 for additional hardening; see below)
+
+--- REOPENED 2026-05-17 (iter 5) — user declined ship at iter-4 convergence, requested T-18 / T-19 / T-20 / T-21 fixes ---
+
+### iter=5 — Wave 6 dispatch (pending)
+- T-18 (frontend, security re-review trigger): id_token_hint structural — capture id_token at callback, store HttpOnly cookie, forward at logout for both SPAs.
+- T-19 (frontend): backoffice S5 spec re-design — listener re-order + callbackIndex guard.
+- T-20 (security): `keycloak/client-realm.json` clientProfiles parity with backoffice.
+- T-21 (security): mask seed-test-users.sh stdout passwords.
+- W-BE-1 lint whitespace, W2 verify-hardening realm rename, W5 ROPC cleanup, W-BE-3 telemetry: NOT in iter 5 scope.
+- CAP NOTE: iter 5 is the last in this round before human gate (max_iter_per_round=5). If BLOCKED → AskUserQuestion to reset (total_resets++) or escalate.
+- Reviewer aggregate after Wave 6 commits.

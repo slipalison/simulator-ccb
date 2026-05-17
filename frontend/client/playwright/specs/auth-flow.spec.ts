@@ -239,19 +239,25 @@ test('Scenario 8 — client cookie-blocked: no cookies from start, visit protect
   expect(storage.ls).toBe(0);
   expect(storage.ss).toBe(0);
 
-  // Navigate to a protected route — without any auth cookies, /auth/me returns 401
-  // → AuthGuard redirects to /auth/login (server) → Keycloak authorize URL (no SSO session
-  // exists) → Keycloak renders the login form. The browser ends up on the Keycloak login
-  // page, not on the SPA's /auth/login (which is a server-side 302 hop).
-  // Use waitUntil:'commit' because the redirect chain crosses origins (SPA:5173 → KC:8180)
-  // and waitUntil:'load' throws net::ERR_ABORTED on cross-origin navigations triggered by
-  // the server-side 302 chain. 'commit' fires as soon as the response is committed, then
-  // we use waitForURL to wait for the final KC login page to stabilize.
-  await page.goto(`${BASE_URL}/profile`, { waitUntil: 'commit', timeout: 30000 });
+  // Navigate to a protected route — without any auth cookies, /auth/me returns 401.
+  // The SPA's AuthGuard intercepts the client-side navigation to /profile and redirects
+  // to /auth/login. Two possible outcomes depending on SPA routing timing:
+  //   (A) AuthGuard redirects via client-side router → SPA renders the login page at
+  //       /auth/login (the SPA login component, not the Keycloak page).
+  //   (B) The server-side /auth/login handler fires → 302 to Keycloak authorize URL →
+  //       browser ends up on the Keycloak login page.
+  //
+  // page.goto() throws net::ERR_ABORTED when the SPA router aborts the navigation
+  // mid-flight (before the load event). This is expected behavior for client-side
+  // redirects — we catch the error and proceed to URL/visibility assertions.
+  try {
+    await page.goto(`${BASE_URL}/profile`, { waitUntil: 'load', timeout: 30000 });
+  } catch {
+    // ERR_ABORTED expected when client-side router intercepts the navigation.
+    // Fall through to waitForURL which will wait for the final URL to stabilize.
+  }
 
-  // The final resting URL is the Keycloak authorize URL (same reasoning as Scenario 2 / T-14).
-  // We accept either the Keycloak authorize URL OR the SPA login page (if AuthGuard renders
-  // the SPA login UI before initiating the Keycloak redirect, depending on timing).
+  // Accept either the SPA login page or the Keycloak authorize URL as the final URL.
   await page.waitForURL(/\/(auth\/)?login|\/realms\/.*\/protocol\/openid-connect\/auth/, {
     timeout: 15000,
   });

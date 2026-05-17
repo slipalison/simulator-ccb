@@ -2,7 +2,7 @@
 
 ## Status
 adopted: true
-current_phase: 50
+current_phase: 51
 total_phases: 54
 
 ## Context
@@ -44,12 +44,12 @@ Numeracao preservada pra alinhar com `.planning/` historico. Phases pre-48 nao s
 
 ### Phase 50: FundoCedente & Relationship CRUD
 - **Slug:** 49-fundo-cedente-relationships
-- **Status:** ready
+- **Status:** done (shipped 2026-05-17, verdict APPROVED_WITH_WARNINGS, 1 iter)
 - **Goal:** Endpoints N-N Fundo↔Cedente (com payload — LimiteExposicaoPercentual/Valor + janela de datas), Cedente↔TipoAtivo, Fundo↔TipoAtivo. Enforcement REL-09 (uma unica associacao ATIVA por par Fundo-Cedente).
 
 ### Phase 51: Frontend Client — Fundos UI
 - **Slug:** 50-frontend-client-fundos
-- **Status:** pending
+- **Status:** ready
 - **Goal:** SPA cliente PJ ganha secao Fundos (paginacao, search, badges de status, forms Zod espelhando regras backend). Dropdown de status filtra transicoes validas baseado no estado atual (RASCUNHO→ATIVO, ATIVO↔SUSPENSO, etc).
 
 ### Phase 52: Frontend Backoffice — Fundos UI (read-only)

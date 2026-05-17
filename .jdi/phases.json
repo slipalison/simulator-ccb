@@ -23,7 +23,7 @@
       "slug": "fundo-cedente-relationships",
       "raw_slug": "49-fundo-cedente-relationships",
       "folder": ".jdi/phases/49-fundo-cedente-relationships",
-      "status": "ready",
+      "status": "done",
       "legacy": true
     },
     {
@@ -31,7 +31,7 @@
       "slug": "frontend-client-fundos",
       "raw_slug": "50-frontend-client-fundos",
       "folder": ".jdi/phases/50-frontend-client-fundos",
-      "status": "pending",
+      "status": "ready",
       "legacy": true
     },
     {

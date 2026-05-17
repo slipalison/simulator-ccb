@@ -4,17 +4,7 @@
 // Returns typed data or throws Response (caller handles via TanStack Query).
 // ---------------------------------------------------------------------------
 
-// NOTE: apiFetch is defined in api.ts but not exported — we replicate the
-// auto-refresh pattern using the exported fetch wrapper from the same module.
-// We define a local apiFetch that delegates to the module-level function
-// by importing via the module barrel.
-
-// apiFetch is not exported from api.ts — import via the module-level helper.
-// We use a local wrapper that delegates to the internal apiFetch by calling
-// the existing exported functions as a guide, and define our own thin version
-// here that re-implements the 401/refresh pattern (DRY violation flag:
-// ideally apiFetch would be exported from api.ts — tracked in SUMMARY.md).
-
+import { apiFetch } from "@/lib/api";
 import type {
   TipoAtivoDto,
   ConsultoriaFundoDto,
@@ -41,42 +31,6 @@ import type {
   PaginatedSearch,
   FundoListSearch,
 } from "@/lib/fundos-schemas";
-
-// ---------------------------------------------------------------------------
-// apiFetch (local — mirrors api.ts pattern; avoids module coupling)
-// ---------------------------------------------------------------------------
-
-let _isRefreshing = false;
-let _refreshPromise: Promise<boolean> | null = null;
-
-async function _refreshToken(): Promise<boolean> {
-  if (_isRefreshing && _refreshPromise) return _refreshPromise;
-  _isRefreshing = true;
-  _refreshPromise = (async () => {
-    try {
-      const res = await fetch("/auth/refresh", { method: "POST", credentials: "include" });
-      return res.ok;
-    } catch {
-      return false;
-    } finally {
-      _isRefreshing = false;
-    }
-  })();
-  return _refreshPromise;
-}
-
-async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
-  const response = await fetch(url, { credentials: "include", ...init });
-  if (response.status !== 401) return response;
-  const refreshed = await _refreshToken();
-  if (!refreshed) {
-    window.location.href = "/auth/login";
-    return response;
-  }
-  const retry = await fetch(url, { credentials: "include", ...init });
-  if (retry.status === 401) window.location.href = "/auth/login";
-  return retry;
-}
 
 // ---------------------------------------------------------------------------
 // Paginated result shape

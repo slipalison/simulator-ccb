@@ -37,7 +37,7 @@ async function refreshAccessToken(): Promise<boolean> {
   return refreshPromise;
 }
 
-async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
+export async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
   const response = await fetch(url, { credentials: "include", ...init });
 
   if (response.status !== 401) {

@@ -153,20 +153,29 @@ public static class ApplicationServiceExtensions
         // Phase 50 — relationship aggregate commands + queries (D-21)
         // FundoCedente
         services.AddScoped<ICommandHandler<CreateFundoCedenteCommand, RelFundoCedenteDto>, CreateFundoCedenteHandler>();
+        services.AddScoped<IValidator<CreateFundoCedenteCommand>, CreateFundoCedenteValidator>();
         services.AddScoped<ICommandHandler<UpdateFundoCedenteLimiteCommand, RelFundoCedenteDto>, UpdateFundoCedenteLimiteHandler>();
+        services.AddScoped<IValidator<UpdateFundoCedenteLimiteCommand>, UpdateFundoCedenteLimiteValidator>();
         services.AddScoped<ICommandHandler<TransitionFundoCedenteStatusCommand, RelFundoCedenteDto>, TransitionFundoCedenteStatusHandler>();
+        services.AddScoped<IValidator<TransitionFundoCedenteStatusCommand>, TransitionFundoCedenteStatusValidator>();
         services.AddScoped<IQueryHandler<GetFundoCedentesQuery, PaginatedResult<RelFundoCedenteDto>>, GetFundoCedentesQueryHandler>();
 
         // CedenteTipoAtivo
         services.AddScoped<ICommandHandler<CreateCedenteTipoAtivoCommand, RelCedenteTipoAtivoDto>, CreateCedenteTipoAtivoHandler>();
+        services.AddScoped<IValidator<CreateCedenteTipoAtivoCommand>, CreateCedenteTipoAtivoValidator>();
         services.AddScoped<ICommandHandler<UpdateCedenteTipoAtivoLimiteCommand, RelCedenteTipoAtivoDto>, UpdateCedenteTipoAtivoLimiteHandler>();
+        services.AddScoped<IValidator<UpdateCedenteTipoAtivoLimiteCommand>, UpdateCedenteTipoAtivoLimiteValidator>();
         services.AddScoped<ICommandHandler<TransitionCedenteTipoAtivoStatusCommand, RelCedenteTipoAtivoDto>, TransitionCedenteTipoAtivoStatusHandler>();
+        services.AddScoped<IValidator<TransitionCedenteTipoAtivoStatusCommand>, TransitionCedenteTipoAtivoStatusValidator>();
         services.AddScoped<IQueryHandler<GetCedenteTiposAtivosQuery, PaginatedResult<RelCedenteTipoAtivoDto>>, GetCedenteTiposAtivosQueryHandler>();
 
         // FundoTipoAtivo
         services.AddScoped<ICommandHandler<CreateFundoTipoAtivoCommand, RelFundoTipoAtivoDto>, CreateFundoTipoAtivoHandler>();
+        services.AddScoped<IValidator<CreateFundoTipoAtivoCommand>, CreateFundoTipoAtivoValidator>();
         services.AddScoped<ICommandHandler<UpdateFundoTipoAtivoLimiteCommand, RelFundoTipoAtivoDto>, UpdateFundoTipoAtivoLimiteHandler>();
+        services.AddScoped<IValidator<UpdateFundoTipoAtivoLimiteCommand>, UpdateFundoTipoAtivoLimiteValidator>();
         services.AddScoped<ICommandHandler<TransitionFundoTipoAtivoStatusCommand, RelFundoTipoAtivoDto>, TransitionFundoTipoAtivoStatusHandler>();
+        services.AddScoped<IValidator<TransitionFundoTipoAtivoStatusCommand>, TransitionFundoTipoAtivoStatusValidator>();
         services.AddScoped<IQueryHandler<GetFundoTiposAtivosQuery, PaginatedResult<RelFundoTipoAtivoDto>>, GetFundoTiposAtivosQueryHandler>();
 
         return services;

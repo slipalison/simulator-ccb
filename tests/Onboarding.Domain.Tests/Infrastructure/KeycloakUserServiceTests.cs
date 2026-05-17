@@ -37,7 +37,7 @@ public class KeycloakUserServiceTests
         // Arrange
         var email = "test@example.com";
         var expectedUserId = "user-123";
-        
+
         // Mock POST (create user)
         _httpMessageHandler.When(HttpMethod.Post, "admin/realms/client/users")
             .Respond(HttpStatusCode.Created);
@@ -65,7 +65,7 @@ public class KeycloakUserServiceTests
             .Respond(HttpStatusCode.Conflict, "User already exists");
 
         // Act & Assert
-        await Should.ThrowAsync<DuplicateKeycloakUserException>(() => 
+        await Should.ThrowAsync<DuplicateKeycloakUserException>(() =>
             _sut.CreateUserAsync("client", "username", "test@example.com", "password", "firstName"));
     }
 
@@ -75,7 +75,7 @@ public class KeycloakUserServiceTests
         // Arrange
         var email = "test@example.com";
         var userId = "user-123";
-        
+
         _httpMessageHandler.When(HttpMethod.Get, $"admin/realms/client/users?email={Uri.EscapeDataString(email)}&exact=true")
             .Respond(HttpStatusCode.OK, new List<UserRepresentation> { new() { Id = userId } });
 
@@ -160,7 +160,7 @@ public class MockHttpMessageHandler : HttpMessageHandler
         _sentRequests.Add(request);
         var match = _responses.FirstOrDefault(r => r.predicate(request));
         if (match.response != null) return match.response;
-        
+
         return new HttpResponseMessage(HttpStatusCode.NotFound);
     }
 

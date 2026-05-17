@@ -77,8 +77,8 @@ public class FundoTests
     [Fact]
     public void Register_EmptyNome_ThrowsArgumentException()
     {
-            Should.Throw<ArgumentException>(() =>
-            Fundo.Register("", "11222333000181", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), TipoFundo.RendaFixa));
+        Should.Throw<ArgumentException>(() =>
+        Fundo.Register("", "11222333000181", Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), TipoFundo.RendaFixa));
     }
 
     [Fact]

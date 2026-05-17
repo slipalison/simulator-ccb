@@ -66,7 +66,7 @@ public class CreateAdminCommandHandlerTests
 
         // Act & Assert
         await Should.ThrowAsync<InvalidOperationException>(() => _sut.HandleAsync(command));
-        
+
         await _keycloakUserService.DidNotReceive().CreateAdminUserAsync(
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
     }

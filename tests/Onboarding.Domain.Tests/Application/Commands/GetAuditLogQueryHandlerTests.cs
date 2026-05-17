@@ -95,7 +95,7 @@ public class GetAuditLogQueryHandlerTests
     public async Task HandleAsync_MapsAllDtoFields()
     {
         var log = AdminAuditLog.Create(
-            Guid.NewGuid(), "admin1", ActionType.AdminCreated, 
+            Guid.NewGuid(), "admin1", ActionType.AdminCreated,
             Guid.NewGuid(), "User1", "created admin", "192.168.0.1");
         var logs = new List<AdminAuditLog> { log }.AsReadOnly();
 

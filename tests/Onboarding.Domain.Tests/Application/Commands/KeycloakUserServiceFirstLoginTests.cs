@@ -22,14 +22,14 @@ public sealed class KeycloakUserServiceFirstLoginTests
     public KeycloakUserServiceFirstLoginTests()
     {
         _configurationMock["Keycloak:Realm"].Returns("onboarding");
-        
+
         var httpClient = new HttpClient(_httpHandler) { BaseAddress = new Uri("http://localhost:8180/") };
-        
+
         _httpClientFactoryMock.CreateClient("keycloak-admin-backoffice")
             .Returns(httpClient);
         _httpClientFactoryMock.CreateClient("keycloak-admin-client")
             .Returns(httpClient);
-            
+
         _sut = new KeycloakUserService(_httpClientFactoryMock, _loggerMock);
     }
 
@@ -47,7 +47,7 @@ public sealed class KeycloakUserServiceFirstLoginTests
             }
         };
 
-        _httpHandler.Responses[$"http://localhost:8180/admin/realms/backoffice/users/{userId}"] = 
+        _httpHandler.Responses[$"http://localhost:8180/admin/realms/backoffice/users/{userId}"] =
             () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(user)) };
 
         // Act
@@ -57,7 +57,7 @@ public sealed class KeycloakUserServiceFirstLoginTests
         var putRequest = _httpHandler.Requests.FirstOrDefault(r => r.Method == HttpMethod.Put);
         putRequest.ShouldNotBeNull();
         putRequest.RequestUri!.ToString().ShouldContain($"/users/{userId}");
-        
+
         var body = await putRequest.Content!.ReadAsStringAsync();
         var updatedUser = JsonSerializer.Deserialize<UserRepresentation>(body);
         updatedUser!.Attributes!["isFirstLogin"].First().ShouldBe("false");
@@ -74,7 +74,7 @@ public sealed class KeycloakUserServiceFirstLoginTests
             Attributes = null
         };
 
-        _httpHandler.Responses[$"http://localhost:8180/admin/realms/backoffice/users/{userId}"] = 
+        _httpHandler.Responses[$"http://localhost:8180/admin/realms/backoffice/users/{userId}"] =
             () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(user)) };
 
         // Act
@@ -98,7 +98,7 @@ public sealed class KeycloakUserServiceFirstLoginTests
             }
         };
 
-        _httpHandler.Responses[$"http://localhost:8180/admin/realms/backoffice/users/{userId}"] = 
+        _httpHandler.Responses[$"http://localhost:8180/admin/realms/backoffice/users/{userId}"] =
             () => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(user)) };
 
         // Act
@@ -118,7 +118,7 @@ public sealed class KeycloakUserServiceFirstLoginTests
             Requests.Add(request);
             if (Responses.TryGetValue(request.RequestUri!.ToString(), out var responseFunc))
                 return Task.FromResult(responseFunc());
-            
+
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         }
     }

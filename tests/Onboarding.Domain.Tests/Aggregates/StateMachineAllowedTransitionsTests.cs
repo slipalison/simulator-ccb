@@ -231,7 +231,7 @@ public class StateMachineAllowedTransitionsTests
                 fundo.TransitionTo(FundoStatus.EM_LIQUIDACAO);
                 fundo.TransitionTo(FundoStatus.ENCERRADO);
                 break;
-            // RASCUNHO is the initial state — no action needed
+                // RASCUNHO is the initial state — no action needed
         }
     }
 
@@ -281,7 +281,7 @@ public class StateMachineAllowedTransitionsTests
             case RelationshipStatus.HISTORICO:
                 transitionTo(RelationshipStatus.HISTORICO);
                 break;
-            // ATIVO is the initial state
+                // ATIVO is the initial state
         }
     }
 }

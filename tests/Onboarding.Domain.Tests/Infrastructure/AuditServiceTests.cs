@@ -28,11 +28,11 @@ public class AuditServiceTests
         await _sut.RecordAsync(actorSub, actorEmail, action);
 
         // Assert
-        await _repo.Received(1).AddAsync(Arg.Is<AdminAuditLog>(log => 
-            log.AdminUserId == Guid.Parse(actorSub) && 
-            log.AdminUserName == actorEmail && 
+        await _repo.Received(1).AddAsync(Arg.Is<AdminAuditLog>(log =>
+            log.AdminUserId == Guid.Parse(actorSub) &&
+            log.AdminUserName == actorEmail &&
             log.ActionType == action), Arg.Any<CancellationToken>());
-        
+
         await _repo.Received(1).SaveChangesAsync(Arg.Any<CancellationToken>());
     }
 
@@ -48,7 +48,7 @@ public class AuditServiceTests
         await _sut.RecordAsync(actorSub, actorEmail, action);
 
         // Assert
-        await _repo.Received(1).AddAsync(Arg.Is<AdminAuditLog>(log => 
+        await _repo.Received(1).AddAsync(Arg.Is<AdminAuditLog>(log =>
             log.AdminUserId == Guid.Empty), Arg.Any<CancellationToken>());
     }
 }

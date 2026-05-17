@@ -65,6 +65,33 @@
 
 ---
 
+### T-15 (2026-05-16T22:15:00Z)
+
+**Status:** DONE — NF-2 resolved in client SPA (backoffice has no analogous scenario)
+
+**NF-2 root cause (verbatim from REVIEW.md iter 3):**
+> NF-2 (Scenario 8 — cookie-blocked): After clearing cookies and navigating to `/profile`, the SPA redirects to `/auth/login` which goes to Keycloak. If the previous Keycloak SSO session is still alive, Keycloak silently re-authenticates and redirects to `/auth/callback`. The callback handler finds no `pkce_state` cookie (cleared) → `Invalid state` error. Not a product bug — a test design problem.
+
+**Root cause analysis:**
+The original Scenario 8 created `browser.newContext()`, called `doLogin()` (establishing a Keycloak SSO session on port 8180), then called `clearCookies()`. Clearing cookies removes the SPA's HttpOnly token cookies but NOT the Keycloak session cookies (on port 8180) because those live under a different origin within the same browser context. When the test navigated to `/profile`, the SPA redirected to `/auth/login` → Keycloak found an active SSO session → silently re-authenticated → `/auth/callback` with no `pkce_state` cookie → `Invalid state`.
+
+**Fix mechanism (Option A from PLAN.md — preferred):**
+- Removed the `doLogin()` call entirely from Scenario 8. A fresh context that has NEVER authenticated has zero Keycloak SSO session — no silent re-auth is possible.
+- No `clearCookies()` needed. The context starts with zero cookies via `browser.newContext({ storageState: undefined })`.
+- Added inline comment citing NF-2 explaining why `doLogin()` was removed.
+- Updated `waitForURL` to accept both the Keycloak authorize URL (most likely final destination when no SSO session) and the SPA `/auth/login` route (if AuthGuard renders the SPA login UI before initiating the Keycloak redirect), consistent with T-14's approach.
+- Added visual gate: `#kc-login, form[id="kc-form-login"]` OR `button` must be visible (handles both Keycloak and SPA login page variants).
+- Updated test name to reflect the new behavior ("no cookies from start" rather than "clear cookies after login").
+
+**Backoffice equivalent:** `admin-auth-flow.spec.ts` only covers Scenarios 3, 4, 5, 6. No cookie-blocked scenario exists there. No backoffice changes needed.
+
+**Files modified:**
+- `frontend/client/playwright/specs/auth-flow.spec.ts` — Scenario 8 rewritten
+
+**Vinext migration debt:** None. Test-only change.
+
+---
+
 ## Iter 3 entries (2026-05-16)
 
 ### T-10 (2026-05-16T20:35:00Z)

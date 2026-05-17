@@ -2,6 +2,37 @@
 
 ---
 
+## Iter 4 entries (2026-05-16)
+
+### T-14 (2026-05-16T22:00:00Z)
+
+**Status:** DONE — NF-1 resolved in both SPAs
+
+**NF-1 root cause (verbatim from REVIEW.md iter 3):**
+> NF-1 (Scenario 2 — client logout): The spec waits for `page.waitForURL('http://localhost:5173/auth/login')` after logout. But `/auth/login` is a server-side route (h3 handler) that immediately 302-redirects to Keycloak's authorize endpoint. The browser never lands on `localhost:5173/auth/login`. This is a spec defect introduced in T-7.
+
+**Logout chain (both SPAs):**
+1. Browser navigates to `/auth/logout` (server-side h3 handler).
+2. Handler clears `*_access_token` + `*_refresh_token` cookies, then 302s to Keycloak `end_session_endpoint`.
+3. Keycloak processes logout, 302s to `post_logout_redirect_uri` = `http://localhost:{PORT}/auth/login`.
+4. `/auth/login` is a server-side h3 route (not the SPA) that immediately 302s to Keycloak's authorize URL.
+5. Browser ends up on the Keycloak login page (`/realms/{realm}/protocol/openid-connect/auth`), NOT on `localhost:{PORT}/auth/login`.
+
+**Fix mechanism:**
+- Replaced `page.waitForURL('http://localhost:5173/auth/login')` with `page.waitForURL(/\/realms\/.*\/protocol\/openid-connect\/auth/)`.
+- Added `expect(page.locator('#kc-login, form[id="kc-form-login"]')).toBeVisible()` to confirm the KC login form is rendered (optional visual gate).
+- Kept `page.request.get('/auth/me')` → 401 assertion unchanged (this is the strong D-15 invariant, testing via the server context not impacted by where the browser navigated to).
+- Applied identical fix to backoffice Scenario 4 (`admin-auth-flow.spec.ts`).
+- Added inline comments citing NF-1 and explaining the 302 chain so the assertion rationale is self-documenting.
+
+**Files modified:**
+- `frontend/client/playwright/specs/auth-flow.spec.ts` — Scenario 2
+- `frontend/backoffice/playwright/specs/admin-auth-flow.spec.ts` — Scenario 4
+
+**Vinext migration debt:** None. Test-only change.
+
+---
+
 ## Iter 3 entries (2026-05-16)
 
 ### T-10 (2026-05-16T20:35:00Z)

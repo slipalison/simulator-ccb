@@ -1,9 +1,9 @@
 ---
 phase_slug: auth-flow-fix
 phase_position: 49
-iter: 4
+iter: 5
 total_resets: 0
-status: converged
+status: running
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-16T00:00:00Z

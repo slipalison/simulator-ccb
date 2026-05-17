@@ -192,10 +192,63 @@ User chose to NOT ship at iter-3 convergence and instead address remaining test-
 - **Test:** Manual on a host without `jq` (or simulate by `PATH=$(echo $PATH | tr ':' '\n' | grep -v jq | paste -sd:)` if available; otherwise just verify the Python fallback path runs).
 - **Status:** pending
 
+### Wave 6 (added iter 5, 2026-05-17 — final hardening before ship)
+
+Iter 4 converged APPROVED_WITH_WARNINGS. User chose iter 5 to address the structural `id_token_hint` finding (W-BE-11/W-SEC-IT4-1), the backoffice S5 spec re-design (W-BE-10), and two pre-existing security/UX polish items (W3, W4).
+
+#### T-18: Capture `id_token` and forward as `id_token_hint` in logout (both SPAs)
+- **Specialist:** jdi-doer-onboarding-keycloak-frontend-vinext (with mandatory security re-review trigger; auth surface touched)
+- **Files modified:** `frontend/client/src/lib/auth-code-flow.ts`, `frontend/backoffice/src/lib/auth-code-flow.ts`, `frontend/client/auth-server.ts`, `frontend/backoffice/auth-server.ts`, plus existing tests `auth-server.test.ts` in both SPAs
+- **Acceptance:**
+  - `exchangeCodeForTokens` (`auth-code-flow.ts`) includes `id_token` in the returned object (currently discarded).
+  - `auth-server.ts` `/auth/callback` handler stores `id_token` in a short-lived HttpOnly cookie (`*_id_token`, same security attributes as access token: `httpOnly:true`, `secure:IS_PROD`, `sameSite:lax`, `path:"/"`, `maxAge` matches token TTL).
+  - `auth-server.ts` `/auth/logout` handler reads `*_id_token` cookie and appends `id_token_hint=${encodeURIComponent(idToken)}` to the Keycloak `end_session_endpoint` URL. Cookie deleted before redirect (same pattern as access/refresh tokens).
+  - When `id_token` cookie absent (e.g. older session), fall back to existing `client_id` path — do NOT hard-fail.
+  - Live Playwright verification: backoffice logout no longer shows Keycloak "Do you want to log out?" confirmation page; goes straight back to `/admin/login`. Client also auto-completes.
+  - D-12 preserved: id_token never written to localStorage/sessionStorage. D-15 strengthened: `end_session_endpoint` now spec-conformant with `id_token_hint` primary + `client_id` fallback.
+- **Dependencies:** none
+- **Test:** Vitest unit test asserts `id_token_hint=` present in logout URL when cookie exists; absent gracefully when cookie missing. Playwright auth-flow + admin-auth-flow logout scenarios pass without test-side regex workaround for confirmation page.
+- **Status:** pending
+
+#### T-19: Re-order Playwright `framenavigated` listener + add `callbackIndex` guard
+- **Specialist:** jdi-doer-onboarding-keycloak-frontend-vinext
+- **Files modified:** `frontend/backoffice/playwright/specs/admin-auth-flow.spec.ts` (S5), plus client equivalent if same pattern exists
+- **Acceptance:**
+  - The `page.on('framenavigated')` listener is registered BEFORE `page.goto('/admin/login')` (or whichever initial navigation kicks off the test) so `/auth/callback` navigation is captured.
+  - The Scenario 5 assertion guards `if (callbackIndex === -1) test.skip(true, '...')` — skip with reason instead of asserting against `slice(0)` which captures pre-callback navigations.
+  - Backoffice S5 passes against live `docker compose`.
+- **Dependencies:** none (different file from T-18)
+- **Test:** `pnpm exec playwright test admin-auth-flow -g "race"` (or whatever S5 is named) passes.
+- **Status:** pending
+
+#### T-20: `keycloak/client-realm.json` clientProfiles parity (W3)
+- **Specialist:** jdi-doer-onboarding-keycloak-security
+- **Files modified:** `keycloak/client-realm.json`
+- **Acceptance:**
+  - `clientProfiles` block added matching `backoffice-realm.json` structure: `enforce-no-wildcard-redirects` profile with `secure-redirect-uris-enforcer` executor.
+  - `clientPolicies` block added enabling the profile on the realm.
+  - `bruteForceProtected:true` preserved.
+  - All other realm settings unchanged.
+  - `tests/keycloak-hardening/` static checks pass (or replicate-as-grep validation).
+- **Dependencies:** none
+- **Test:** Manual: confirm `docker compose down -v && docker compose up -d` boots Keycloak cleanly with new realm config (no parse errors). Existing Playwright auth-flow still passes.
+- **Status:** pending
+
+#### T-21: Mask seed passwords in stdout (W4)
+- **Specialist:** jdi-doer-onboarding-keycloak-security
+- **Files modified:** `scripts/seed-test-users.sh`
+- **Acceptance:**
+  - Final echo summarizing seeded users no longer prints the literal `E2EClient@123!` / `E2EAdmin@123!` passwords. Replace with `********` placeholder, or print only "(password set per .env / D-14)".
+  - Idempotency preserved.
+  - Re-running script does not regress prior behavior.
+- **Dependencies:** none
+- **Test:** Run script, grep stdout for `E2EClient@123!` / `E2EAdmin@123!` — must be zero matches.
+- **Status:** pending
+
 ## Execution
-- Total tasks: 13 (T-1..T-7 done iter 1; T-8/T-9 done iter 2; T-10..T-13 done iter 3; T-14..T-17 added iter 4)
-- Waves: 5 (Waves 1-4 historical; Wave 5 = T-14 / T-15 / T-16 frontend + T-17 security, all parallel-eligible)
-- Estimated parallel speedup at full run: ~13/5 ≈ 2.6x
+- Total tasks: 17 (T-1..T-7 iter 1; T-8/T-9 iter 2; T-10..T-13 iter 3; T-14..T-17 iter 4; T-18..T-21 iter 5)
+- Waves: 6 (Waves 1-5 historical; Wave 6 = T-18 + T-19 frontend + T-20 + T-21 security, all 4 parallel-eligible — disjoint files)
+- Estimated parallel speedup at full run: ~17/6 ≈ 2.8x
 
 ## Files modified (all tasks)
 - `keycloak/client-realm.json`

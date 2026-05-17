@@ -47,6 +47,14 @@ public class AdminFundosControllerTests
     private readonly IQueryHandler<ListAdminCedenteQuery, PaginatedResult<AdminCedenteDto>> _listCedenteHandler =
         Substitute.For<IQueryHandler<ListAdminCedenteQuery, PaginatedResult<AdminCedenteDto>>>();
 
+    // Phase 50 — relationship aggregate admin query handlers
+    private readonly IQueryHandler<ListAdminFundoCedenteQuery, PaginatedResult<AdminRelFundoCedenteDto>> _listFundoCedenteHandler =
+        Substitute.For<IQueryHandler<ListAdminFundoCedenteQuery, PaginatedResult<AdminRelFundoCedenteDto>>>();
+    private readonly IQueryHandler<ListAdminFundoTipoAtivoQuery, PaginatedResult<AdminRelFundoTipoAtivoDto>> _listFundoTipoAtivoHandler =
+        Substitute.For<IQueryHandler<ListAdminFundoTipoAtivoQuery, PaginatedResult<AdminRelFundoTipoAtivoDto>>>();
+    private readonly IQueryHandler<ListAdminCedenteTipoAtivoQuery, PaginatedResult<AdminRelCedenteTipoAtivoDto>> _listCedenteTipoAtivoHandler =
+        Substitute.For<IQueryHandler<ListAdminCedenteTipoAtivoQuery, PaginatedResult<AdminRelCedenteTipoAtivoDto>>>();
+
     private readonly AdminFundosController _sut;
 
     // -------------------------------------------------------------------------
@@ -101,7 +109,10 @@ public class AdminFundosControllerTests
             _listFundoHandler,
             _listConsultoriaHandler,
             _listCustodianteHandler,
-            _listCedenteHandler);
+            _listCedenteHandler,
+            _listFundoCedenteHandler,
+            _listFundoTipoAtivoHandler,
+            _listCedenteTipoAtivoHandler);
 
         // Admin JWT context (BearerBackoffice sub)
         _sut.ControllerContext = new ControllerContext
@@ -139,6 +150,9 @@ public class AdminFundosControllerTests
     [InlineData(nameof(AdminFundosController.ListConsultorias))]
     [InlineData(nameof(AdminFundosController.ListCustodiantes))]
     [InlineData(nameof(AdminFundosController.ListCedentes))]
+    [InlineData(nameof(AdminFundosController.ListFundoCedentes))]
+    [InlineData(nameof(AdminFundosController.ListFundoTiposAtivos))]
+    [InlineData(nameof(AdminFundosController.ListCedenteTiposAtivos))]
     public void Endpoint_DoesNotOverrideClassLevelAuthorize_WithLessRestrictiveAttribute(string methodName)
     {
         // Verify no endpoint-level [AllowAnonymous] or weaker [Authorize] overrides the class attribute.

@@ -4,7 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 
 export default tseslint.config(
-  { ignores: ['dist', '.vinxi', '.output', 'node_modules'] },
+  { ignores: ['dist', '.vinxi', '.output', 'node_modules', 'coverage'] },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

@@ -15,7 +15,7 @@
       "slug": "auth-flow-fix",
       "raw_slug": "auth-flow-fix",
       "folder": ".jdi/phases/auth-flow-fix",
-      "status": "ready",
+      "status": "done",
       "legacy": false
     },
     {
@@ -23,7 +23,7 @@
       "slug": "fundo-cedente-relationships",
       "raw_slug": "49-fundo-cedente-relationships",
       "folder": ".jdi/phases/49-fundo-cedente-relationships",
-      "status": "pending",
+      "status": "ready",
       "legacy": true
     },
     {

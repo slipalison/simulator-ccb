@@ -2,7 +2,7 @@
 
 ## Status
 adopted: true
-current_phase: 49
+current_phase: 50
 total_phases: 54
 
 ## Context
@@ -33,7 +33,7 @@ Numeracao preservada pra alinhar com `.planning/` historico. Phases pre-48 nao s
 
 ### Phase 49: Auth Flow Fix (login/logout + post-login error screen)
 - **Slug:** auth-flow-fix
-- **Status:** ready
+- **Status:** done (shipped 2026-05-17, verdict APPROVED_WITH_WARNINGS, 5 iter)
 - **Goal:** Diagnosticar e corrigir 2 bugs do fluxo ACF+PKCE (client SPA 5173 + backoffice SPA 5174):
   1. Login/logout caindo de volta na pagina Keycloak `/realms/onboarding/protocol/openid-connect/auth` (autenticacao nao completa)
   2. Tela de erro pos-login que desaparece no reload (race condition cookie/session/hidration)
@@ -44,7 +44,7 @@ Numeracao preservada pra alinhar com `.planning/` historico. Phases pre-48 nao s
 
 ### Phase 50: FundoCedente & Relationship CRUD
 - **Slug:** 49-fundo-cedente-relationships
-- **Status:** pending
+- **Status:** ready
 - **Goal:** Endpoints N-N Fundo↔Cedente (com payload — LimiteExposicaoPercentual/Valor + janela de datas), Cedente↔TipoAtivo, Fundo↔TipoAtivo. Enforcement REL-09 (uma unica associacao ATIVA por par Fundo-Cedente).
 
 ### Phase 51: Frontend Client — Fundos UI

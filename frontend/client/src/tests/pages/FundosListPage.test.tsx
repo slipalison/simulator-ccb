@@ -65,7 +65,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 // Mock Radix Select — threads onValueChange from Select → SelectItem via React context
 vi.mock("@/components/ui/select", () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const React = require("react");
+  const React = require("react") as typeof import("react");
   const OnValueChangeCtx = React.createContext<((v: string) => void) | undefined>(undefined);
   return {
     Select: ({ children, onValueChange, value }: any) => (

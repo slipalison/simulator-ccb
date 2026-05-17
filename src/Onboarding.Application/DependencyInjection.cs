@@ -13,8 +13,20 @@ using Onboarding.Application.Companies.Commands;
 using Onboarding.Application.Companies.DTOs;
 using Onboarding.Application.Companies.Queries;
 using Onboarding.Application.Fundos.Commands;
+using Onboarding.Application.Fundos.Commands.CreateCedenteTipoAtivo;
+using Onboarding.Application.Fundos.Commands.CreateFundoCedente;
+using Onboarding.Application.Fundos.Commands.CreateFundoTipoAtivo;
+using Onboarding.Application.Fundos.Commands.TransitionCedenteTipoAtivoStatus;
+using Onboarding.Application.Fundos.Commands.TransitionFundoCedenteStatus;
+using Onboarding.Application.Fundos.Commands.TransitionFundoTipoAtivoStatus;
+using Onboarding.Application.Fundos.Commands.UpdateCedenteTipoAtivoLimite;
+using Onboarding.Application.Fundos.Commands.UpdateFundoCedenteLimite;
+using Onboarding.Application.Fundos.Commands.UpdateFundoTipoAtivoLimite;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries;
+using Onboarding.Application.Fundos.Queries.GetCedenteTiposAtivos;
+using Onboarding.Application.Fundos.Queries.GetFundoCedentes;
+using Onboarding.Application.Fundos.Queries.GetFundoTiposAtivos;
 namespace Onboarding.Application;
 
 /// <summary>
@@ -137,6 +149,25 @@ public static class ApplicationServiceExtensions
         services.AddScoped<IQueryHandler<ListFundoQuery, PaginatedResult<FundoDto>>, ListFundoQueryHandler>();
         services.AddScoped<IQueryHandler<ListCedenteQuery, PaginatedResult<CedenteDto>>, ListCedenteQueryHandler>();
         services.AddScoped<IQueryHandler<ListTipoAtivoQuery, PaginatedResult<TipoAtivoDto>>, ListTipoAtivoQueryHandler>();
+
+        // Phase 50 — relationship aggregate commands + queries (D-21)
+        // FundoCedente
+        services.AddScoped<ICommandHandler<CreateFundoCedenteCommand, RelFundoCedenteDto>, CreateFundoCedenteHandler>();
+        services.AddScoped<ICommandHandler<UpdateFundoCedenteLimiteCommand, RelFundoCedenteDto>, UpdateFundoCedenteLimiteHandler>();
+        services.AddScoped<ICommandHandler<TransitionFundoCedenteStatusCommand, RelFundoCedenteDto>, TransitionFundoCedenteStatusHandler>();
+        services.AddScoped<IQueryHandler<GetFundoCedentesQuery, PaginatedResult<RelFundoCedenteDto>>, GetFundoCedentesQueryHandler>();
+
+        // CedenteTipoAtivo
+        services.AddScoped<ICommandHandler<CreateCedenteTipoAtivoCommand, RelCedenteTipoAtivoDto>, CreateCedenteTipoAtivoHandler>();
+        services.AddScoped<ICommandHandler<UpdateCedenteTipoAtivoLimiteCommand, RelCedenteTipoAtivoDto>, UpdateCedenteTipoAtivoLimiteHandler>();
+        services.AddScoped<ICommandHandler<TransitionCedenteTipoAtivoStatusCommand, RelCedenteTipoAtivoDto>, TransitionCedenteTipoAtivoStatusHandler>();
+        services.AddScoped<IQueryHandler<GetCedenteTiposAtivosQuery, PaginatedResult<RelCedenteTipoAtivoDto>>, GetCedenteTiposAtivosQueryHandler>();
+
+        // FundoTipoAtivo
+        services.AddScoped<ICommandHandler<CreateFundoTipoAtivoCommand, RelFundoTipoAtivoDto>, CreateFundoTipoAtivoHandler>();
+        services.AddScoped<ICommandHandler<UpdateFundoTipoAtivoLimiteCommand, RelFundoTipoAtivoDto>, UpdateFundoTipoAtivoLimiteHandler>();
+        services.AddScoped<ICommandHandler<TransitionFundoTipoAtivoStatusCommand, RelFundoTipoAtivoDto>, TransitionFundoTipoAtivoStatusHandler>();
+        services.AddScoped<IQueryHandler<GetFundoTiposAtivosQuery, PaginatedResult<RelFundoTipoAtivoDto>>, GetFundoTiposAtivosQueryHandler>();
 
         return services;
     }

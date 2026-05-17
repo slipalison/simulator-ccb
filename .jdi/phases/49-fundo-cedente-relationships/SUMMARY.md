@@ -13,7 +13,7 @@ Executed via /jdi-loop iter 1 — all 7 tasks completed.
 | T-4 | `e44ac89` | CedenteTipoAtivo + FundoTipoAtivo application layer (symmetric) |
 | T-5 | `a90baab` | API controllers + DI registrations (3 controllers, 3 test files) |
 | T-6 | `777b331` | AdminFundosController relationship extensions (D-8, IgnoreQueryFilters) |
-| T-7 | (pending) | 21 integration scenarios + DI validator fix |
+| T-7 | `768d3fe` | 21 integration scenarios + DI validator fix (RelationshipAggregatesIntegrationTests) |
 
 ## Task-level design decisions
 
@@ -40,3 +40,8 @@ Expected: exactly one 201 + one 409. Dedicated _cedenteConcurrentId (CPF 4048460
 InitializeAsync to isolate from other tests. DB partial index rejects second insert → GlobalExceptionHandler → 409.
 
 ### T-7 (2026-05-17)
+- Commit: `768d3fe`
+- 21 scenarios in single file (RelationshipAggregatesIntegrationTests.cs)
+- Race condition test uses dedicated cedente (CPF 40484604805) seeded in InitializeAsync
+- DependencyInjection.cs fix included — 9 missing IValidator registrations (pre-staged M)
+- LOOP.md and SUMMARY.md committed in same T-7 commit

@@ -3,7 +3,7 @@ phase_slug: auth-flow-fix
 phase_position: 49
 iter: 5
 total_resets: 0
-status: running
+status: converged
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-16T00:00:00Z
@@ -141,3 +141,27 @@ verdict: APPROVED_WITH_WARNINGS
 - W-BE-1 lint whitespace, W2 verify-hardening realm rename, W5 ROPC cleanup, W-BE-3 telemetry: NOT in iter 5 scope.
 - CAP NOTE: iter 5 is the last in this round before human gate (max_iter_per_round=5). If BLOCKED → AskUserQuestion to reset (total_resets++) or escalate.
 - Reviewer aggregate after Wave 6 commits.
+
+### iter=5 — doer commits (executed)
+- T-18 `6d70dd0` — id_token_hint structural for both SPAs (capture in `auth-code-flow.ts`, HttpOnly cookie set at callback, forward as `id_token_hint` at logout, graceful fallback for older sessions). 9 new vitest tests per SPA.
+- T-19 `1394f51` — `admin-auth-flow.spec.ts` listener registration moved inside `doAdminLogin` before goto + `callbackIndex === -1` guard via `test.skip`.
+- T-20 `7c89b3c` — `keycloak/client-realm.json` adds `clientProfiles` + `clientPolicies` blocks (uses correct field name `"configuration"`).
+- T-21 `110a552` — `scripts/seed-test-users.sh` final summary masks passwords as `********`.
+
+### iter=5 — reviewer aggregate (worst-case rule)
+- Backend `98cf025` — APPROVED_WITH_WARNINGS. 0 blockers. Playwright 14/14 active pass + 2 intentional skips. W-BE-10 + W-BE-11 RESOLVED. New: W-BE-12 (seed gap firstName/lastName), W-BE-13 (backoffice "config" typo).
+- Frontend `456d598` — APPROVED_WITH_WARNINGS. 0 blockers. Same Playwright counts. T-18 cookie audit PASS. New: W-SEED-1 (seed gap), W-IT5-1 (S5 still skips — `/auth/callback` 302 too fast for framenavigated).
+- Security `23aed8f` — APPROVED_WITH_WARNINGS. 0 blockers. **D-15 item 6 UPGRADED from WARNING (iter 4) to PASS** (T-18 fully OIDC RP-Initiated Logout spec-conformant). T-18 cookie audit PASS (all 5 required attributes, no token logging, deletion before redirect, graceful fallback). New: W-SEC-IT5-1 (backoffice `config` typo same as W-BE-13), W-SEC-IT5-2 (mock advisory low-risk), W-SEC-IT5-3 (passwordPolicy length pre-existing carry).
+- Aggregate verdict: **APPROVED_WITH_WARNINGS** (worst-case, all 3 approved).
+
+### iter=5 — converged
+- D-15 item 6 (logout end_session_endpoint) UPGRADED to PASS. All iter-4 carries (W-BE-10, W-BE-11) RESOLVED.
+- Live Playwright: 14/14 active pass + 2 intentional skips on both SPAs.
+- New residual warnings discovered during execution:
+  - W-BE-12 / W-SEED-1: `seed-test-users.sh` missing `firstName`/`lastName` causes UPDATE_PROFILE gate on fresh `down -v` volume. Workaround: Admin REST PATCH. Fix: add fields to upsert payload.
+  - W-BE-13 / W-SEC-IT5-1: `backoffice-realm.json` clientPolicies condition uses `"config": {}` (Keycloak 26 silently drops; canonical is `"configuration"`). One-line JSON edit.
+  - W-IT5-1: backoffice S5 (post-login race detection) still skips because `/auth/callback` server 302 is too fast for `framenavigated` event capture regardless of listener timing. Race scenario unverifiable via this approach — alternative measurement strategy needed.
+  - W-SEC-IT5-2: vitest mock advisory (low-risk).
+  - W-SEC-IT5-3: passwordPolicy `length(8)` vs G6 spec `length(12)` — pre-existing carry.
+- Carry-overs still: W-BE-1 lint whitespace (pre-D-2), W-BE-3 telemetry (pre-existing architectural debt, future phase per phase 48 precedent), W2 verify-hardening.sh realm name, W5 ROPC cleanup (D-11 ack).
+- Next: `/jdi-ship auth-flow-fix`

@@ -102,6 +102,75 @@ export default defineConfig({
       dependencies: ['setup'],
       testMatch: /.*employee-login\.spec\.ts/,
     },
+
+    // ── Phase 50: Fundos section E2E ─────────────────────────────────────────
+
+    // Fundos — TipoAtivo CRUD (admin-empresa, funds:write)
+    {
+      name: 'fundos-tipo-ativo',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/admin-empresa.json',
+      },
+      dependencies: ['setup'],
+      testMatch: /.*fundos-tipo-ativo\.spec\.ts/,
+    },
+
+    // Fundos — Cedente CRUD (admin-empresa, funds:write)
+    {
+      name: 'fundos-cedente',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/admin-empresa.json',
+      },
+      dependencies: ['setup'],
+      testMatch: /.*fundos-cedente\.spec\.ts/,
+    },
+
+    // Fundos — Consultoria + Custodiante CRUD (admin-empresa, funds:write)
+    {
+      name: 'fundos-consultoria-custodiante',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/admin-empresa.json',
+      },
+      dependencies: ['setup'],
+      testMatch: /.*fundos-consultoria-custodiante\.spec\.ts/,
+    },
+
+    // Fundos — Fundo CRUD + status (admin-empresa, funds:write)
+    {
+      name: 'fundos-fundo',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/admin-empresa.json',
+      },
+      dependencies: ['setup'],
+      testMatch: /.*fundos-fundo\.spec\.ts/,
+    },
+
+    // Fundos — Associations (FundoCedente, FundoTipoAtivo, CedenteTipoAtivo)
+    {
+      name: 'fundos-associations',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/admin-empresa.json',
+      },
+      dependencies: ['setup'],
+      testMatch: /.*fundos-associations\.spec\.ts/,
+    },
+
+    // Fundos — Permission-gated UI + OTel security checks
+    // viewer user (funds:read only) for write-button absence tests
+    {
+      name: 'fundos-permissions',
+      use: {
+        ...devices['Desktop Chrome'],
+        storageState: 'playwright/.auth/viewer.json',
+      },
+      dependencies: ['setup'],
+      testMatch: /.*fundos-permissions\.spec\.ts/,
+    },
   ],
 
   // No webServer — Docker Compose must be running before E2E tests

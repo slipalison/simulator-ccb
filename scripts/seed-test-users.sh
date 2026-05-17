@@ -10,6 +10,12 @@
 #   - KC_ADMIN_CLIENT_SECRET env var set to the onboarding-api-admin secret
 #     (matches value in .env / compose.yaml; default: dev-admin-secret)
 #
+# requires: bash 4+, curl, AND (jq OR python3)
+#   jq    — preferred JSON parser (https://jqlang.github.io/jq/)
+#   python3 — fallback; ships with all Linux CI runners, macOS, and most
+#             Windows dev hosts (Git-Bash does not bundle it; install via
+#             python.org or winget).
+#
 # Invocation:
 #   KC_ADMIN_CLIENT_SECRET=dev-admin-secret bash scripts/seed-test-users.sh
 #   # or, if .env is sourced:
@@ -46,6 +52,181 @@ E2E_ADMIN_EMAIL="e2e-admin@example.com"
 E2E_ADMIN_PASSWORD="E2EAdmin@123!"
 E2E_ADMIN_ROLE="admin"
 
+# ── JSON tool detection (Option C: jq primary, python3 fallback) ──────────────
+#
+# json_get <path> — reads JSON from stdin, extracts value at <path>.
+# Supported path syntax (subset of jq):
+#   '.field'                     simple field lookup
+#   '.[0].field'                 array index then field
+#   '.[] | select(.k == "v") | .out_field'
+#                                filter array, return first match's out_field
+#   '.error'                     existence check (used with json_has_key)
+#
+# json_has_key — reads JSON from stdin, returns 0 (true) if path yields a
+# non-null, non-empty value; used in place of `jq -e '.error'`.
+
+if command -v jq >/dev/null 2>&1; then
+  # jq available: direct passthrough, preserving all original call-site syntax.
+  json_get() {
+    jq -r "$1"
+  }
+  # json_has_key: exit 0 if path exists and is not null/false/"".
+  json_has_key() {
+    jq -e "$1" >/dev/null 2>&1
+  }
+elif command -v python3 >/dev/null 2>&1; then
+  # python3 fallback: implement jq-like path resolution in Python.
+  # Handles: simple fields, array index, '.[0].field', and the
+  # '.[] | select(.k == "v") | .field' pattern used in this script.
+  #
+  # The Python snippet is passed via $1 (the path expression). It reads JSON
+  # from stdin. For the select() pattern it returns the first match only,
+  # matching `| head -1` already applied at every call-site.
+  json_get() {
+    python3 -c "
+import sys, json
+
+path = sys.argv[1]
+raw = sys.stdin.read()
+if not raw.strip():
+    sys.exit(0)
+data = json.loads(raw)
+
+# ── select() pattern: '.[] | select(.k == \"v\") | .out' ──────────────────
+# Detect by presence of ' | select('
+if ' | select(' in path:
+    # Extract the condition field, expected value, and output field.
+    # Pattern: '.[] | select(.COND_KEY == \"COND_VAL\") | .OUT_KEY'
+    import re
+    m = re.match(
+        r'\.\[\]\s*\|\s*select\(\.(\w+)\s*==\s*\"([^\"]*)\"\)\s*\|\s*\.(\w+)',
+        path.strip()
+    )
+    if not m:
+        sys.stderr.write('json_get: unsupported select() pattern: ' + path + '\n')
+        sys.exit(1)
+    cond_key, cond_val, out_key = m.group(1), m.group(2), m.group(3)
+    if not isinstance(data, list):
+        sys.exit(0)
+    for item in data:
+        if isinstance(item, dict) and item.get(cond_key) == cond_val:
+            v = item.get(out_key)
+            if v is not None:
+                print(v)
+            sys.exit(0)
+    # No match — print nothing (mirrors jq empty output).
+    sys.exit(0)
+
+# ── Simple path resolver: '.field', '.[N].field', '.[N]', '.field.nested' ──
+def resolve(d, p):
+    if p == '.' or p == '':
+        return d
+    parts = []
+    buf = ''
+    i = 0
+    while i < len(p):
+        c = p[i]
+        if c == '.':
+            if buf:
+                parts.append(buf)
+                buf = ''
+        elif c == '[':
+            if buf:
+                parts.append(buf)
+                buf = ''
+            end = p.index(']', i)
+            parts.append(int(p[i+1:end]))
+            i = end
+        else:
+            buf += c
+        i += 1
+    if buf:
+        parts.append(buf)
+    for part in parts:
+        if d is None:
+            return None
+        if isinstance(part, int):
+            if not isinstance(d, list) or part >= len(d):
+                return None
+            d = d[part]
+        else:
+            if not isinstance(d, dict):
+                return None
+            d = d.get(part)
+    return d
+
+v = resolve(data, path)
+if v is None:
+    sys.exit(0)  # empty output, like jq '// empty'
+if isinstance(v, (dict, list)):
+    print(json.dumps(v))
+else:
+    print(v)
+" "$1"
+  }
+
+  # json_has_key: exit 0 if the path resolves to a non-null value.
+  json_has_key() {
+    python3 -c "
+import sys, json
+
+path = sys.argv[1]
+raw = sys.stdin.read()
+if not raw.strip():
+    sys.exit(1)
+try:
+    data = json.loads(raw)
+except json.JSONDecodeError:
+    sys.exit(1)
+
+def resolve(d, p):
+    if p == '.' or p == '':
+        return d
+    parts = []
+    buf = ''
+    i = 0
+    while i < len(p):
+        c = p[i]
+        if c == '.':
+            if buf:
+                parts.append(buf)
+                buf = ''
+        elif c == '[':
+            if buf:
+                parts.append(buf)
+                buf = ''
+            end = p.index(']', i)
+            parts.append(int(p[i+1:end]))
+            i = end
+        else:
+            buf += c
+        i += 1
+    if buf:
+        parts.append(buf)
+    for part in parts:
+        if d is None:
+            return None
+        if isinstance(part, int):
+            if not isinstance(d, list) or part >= len(d):
+                return None
+            d = d[part]
+        else:
+            if not isinstance(d, dict):
+                return None
+            d = d.get(part)
+    return d
+
+v = resolve(data, path)
+if v is None or v == '' or v is False:
+    sys.exit(1)
+sys.exit(0)
+" "$1"
+  }
+else
+  echo "[seed-test-users] ERROR: requires either 'jq' or 'python3' on PATH." >&2
+  exit 1
+fi
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 # get_token <realm>
@@ -59,7 +240,7 @@ get_token() {
     -d "grant_type=client_credentials" \
     -d "client_id=${KC_ADMIN_CLIENT_ID}" \
     -d "client_secret=${KC_ADMIN_CLIENT_SECRET}")
-  echo "${response}" | jq -r '.access_token'
+  echo "${response}" | json_get '.access_token'
 }
 
 # get_user_id <realm> <token> <email>
@@ -71,7 +252,7 @@ get_user_id() {
   curl -s \
     "${KEYCLOAK_URL}/admin/realms/${realm}/users?email=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "${email}")&exact=true" \
     -H "Authorization: Bearer ${token}" \
-    | jq -r '.[0].id // empty'
+    | json_get '.[0].id'
 }
 
 # url_encode <string>
@@ -92,7 +273,7 @@ upsert_user() {
   existing_id=$(curl -s \
     "${KEYCLOAK_URL}/admin/realms/${realm}/users?email=$(url_encode "${email}")&exact=true" \
     -H "Authorization: Bearer ${token}" \
-    | jq -r '.[0].id // empty')
+    | json_get '.[0].id')
 
   if [ -z "${existing_id}" ]; then
     echo "  [${realm}] Creating user ${email}..." >&2
@@ -114,7 +295,7 @@ upsert_user() {
       existing_id=$(curl -s \
         "${KEYCLOAK_URL}/admin/realms/${realm}/users?email=$(url_encode "${email}")&exact=true" \
         -H "Authorization: Bearer ${token}" \
-        | jq -r '.[0].id // empty')
+        | json_get '.[0].id')
     else
       existing_id="${location##*/}"
     fi
@@ -161,7 +342,7 @@ ensure_group_membership() {
   group_id=$(curl -s \
     "${KEYCLOAK_URL}/admin/realms/${realm}/groups?search=$(url_encode "${group_name}")&exact=true" \
     -H "Authorization: Bearer ${token}" \
-    | jq -r '.[] | select(.name == "'"${group_name}"'") | .id' | head -1)
+    | json_get ".[] | select(.name == \"${group_name}\") | .id" | head -1)
 
   if [ -z "${group_id}" ]; then
     echo "  [${realm}] WARNING: group '${group_name}' not found — skipping group assignment" >&2
@@ -173,7 +354,7 @@ ensure_group_membership() {
   already_member=$(curl -s \
     "${KEYCLOAK_URL}/admin/realms/${realm}/users/${user_id}/groups" \
     -H "Authorization: Bearer ${token}" \
-    | jq -r '.[] | select(.id == "'"${group_id}"'") | .id' | head -1)
+    | json_get ".[] | select(.id == \"${group_id}\") | .id" | head -1)
 
   if [ -z "${already_member}" ]; then
     curl -s -o /dev/null -X PUT \
@@ -198,7 +379,7 @@ ensure_realm_role() {
     "${KEYCLOAK_URL}/admin/realms/${realm}/roles/${role_name}" \
     -H "Authorization: Bearer ${token}")
 
-  if echo "${role_json}" | jq -e '.error' > /dev/null 2>&1; then
+  if echo "${role_json}" | json_has_key '.error'; then
     echo "  [${realm}] WARNING: realm role '${role_name}' not found — skipping role assignment" >&2
     return 0
   fi
@@ -208,7 +389,7 @@ ensure_realm_role() {
   already_has_role=$(curl -s \
     "${KEYCLOAK_URL}/admin/realms/${realm}/users/${user_id}/role-mappings/realm" \
     -H "Authorization: Bearer ${token}" \
-    | jq -r '.[] | select(.name == "'"${role_name}"'") | .name' | head -1)
+    | json_get ".[] | select(.name == \"${role_name}\") | .name" | head -1)
 
   if [ -z "${already_has_role}" ]; then
     curl -s -o /dev/null -X POST \

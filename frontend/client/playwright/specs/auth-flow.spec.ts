@@ -243,7 +243,11 @@ test('Scenario 8 — client cookie-blocked: no cookies from start, visit protect
   // → AuthGuard redirects to /auth/login (server) → Keycloak authorize URL (no SSO session
   // exists) → Keycloak renders the login form. The browser ends up on the Keycloak login
   // page, not on the SPA's /auth/login (which is a server-side 302 hop).
-  await page.goto(`${BASE_URL}/profile`, { waitUntil: 'load', timeout: 30000 });
+  // Use waitUntil:'commit' because the redirect chain crosses origins (SPA:5173 → KC:8180)
+  // and waitUntil:'load' throws net::ERR_ABORTED on cross-origin navigations triggered by
+  // the server-side 302 chain. 'commit' fires as soon as the response is committed, then
+  // we use waitForURL to wait for the final KC login page to stabilize.
+  await page.goto(`${BASE_URL}/profile`, { waitUntil: 'commit', timeout: 30000 });
 
   // The final resting URL is the Keycloak authorize URL (same reasoning as Scenario 2 / T-14).
   // We accept either the Keycloak authorize URL OR the SPA login page (if AuthGuard renders

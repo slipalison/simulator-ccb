@@ -4,6 +4,75 @@
 
 ## Iter 4 entries (2026-05-16)
 
+### T-17 (2026-05-16T23:58:00Z)
+
+**Status:** DONE — W-FE-5 / W-BE-6 resolved; jq hard dependency removed via Option C
+
+**W-FE-5 / W-BE-6 root cause (verbatim from REVIEW.md iter 1):**
+> scripts/seed-test-users.sh requires jq (not available on reviewer host). Playwright global-setup.ts invokes the script; will fail on systems without jq even with a healthy stack.
+
+**Approach chosen:** Option C — `jq` primary with `python3` fallback, detected once at script startup.
+
+**Detection block:** `command -v jq` at startup. If present, `json_get()` delegates directly to `jq -r "$1"` and `json_has_key()` delegates to `jq -e "$1"`. If absent but `python3` is available, both functions are implemented in Python with a path resolver covering all call-site patterns. If neither is found, the script exits 1 with an actionable error.
+
+**jq call-sites replaced (8 total):**
+- L243 `get_token`: `.access_token` — simple field
+- L255/L276/L298 `upsert_user` + `get_user_id`: `.[0].id` — array index + field
+- L345 `ensure_group_membership`: `.[] | select(.name == "...") | .id` — filter + field
+- L357 `ensure_group_membership`: `.[] | select(.id == "...") | .id` — filter + field
+- L382 `ensure_realm_role`: `.error` existence check — replaced with `json_has_key`
+- L392 `ensure_realm_role`: `.[] | select(.name == "...") | .name` — filter + field
+
+**select() pattern:** Handled in the Python fallback via `re.match` on the pattern `.[] | select(.KEY == "VAL") | .FIELD`. All three instances in the script match this exact form. No carve-out needed — the regex covers them.
+
+**`// empty` idiom:** Replaced by Python returning `sys.exit(0)` (no output) when the resolved value is `None`, which bash sees as an empty string — equivalent to `jq -r '// empty'`.
+
+**Dependency block update:**
+```
+# requires: bash 4+, curl, AND (jq OR python3)
+```
+
+**Files modified:**
+- `scripts/seed-test-users.sh`
+
+**Python logic unit tests (10/10 pass, run pre-commit):**
+Test invocations executed against the exact Python snippet logic:
+```
+L243 .access_token          [PASS]
+L276 .[0].id present        [PASS]
+L276 .[0].id empty          [PASS]
+L345 select by name         [PASS]
+L357 select by id           [PASS]
+L357 select not found       [PASS]
+L382 has_key .error present [PASS]
+L382 has_key .error absent  [PASS]
+L392 select role name       [PASS]
+L392 select role not found  [PASS]
+```
+
+**Integration test runs (both on host without jq — python3 path exercised for all runs):**
+
+Run 1 (python3 fallback, first run with users already present from prior iterations):
+```
+bash scripts/seed-test-users.sh
+# -> exit 0
+# [client]    e2e-client@example.com already exists, updated, group confirmed
+# [backoffice] e2e-admin@example.com already exists, updated, role confirmed
+```
+
+Run 2 (python3 fallback, idempotency check):
+```
+bash scripts/seed-test-users.sh
+# -> exit 0
+# Identical output. No duplicates. No errors.
+```
+
+**jq path verification:** `command -v jq` returns nothing on this host; the python3 branch activates. When jq is present on a host, the `jq -r "$1"` and `jq -e "$1"` delegates are used — exact same call-site syntax as before T-17, so the jq path is a transparent passthrough.
+
+**Passwords / usernames / realms:** Unchanged from D-14 locked values.
+
+---
+
 ### T-16 (2026-05-16T23:42:00Z)
 
 **Status:** DONE — W-FE-1 resolved in both SPAs

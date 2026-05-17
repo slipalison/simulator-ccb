@@ -22,11 +22,20 @@
  */
 
 import { execSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import process from "node:process";
 
 const TRUTHY = new Set(["1", "true", "yes"]);
 
-export function run(serviceNames, execSyncImpl = execSync) {
+export function run(serviceNames, execSyncImpl = execSync, existsSyncImpl = existsSync) {
+  // Container short-circuit: predev fires inside the container when Dockerfile
+  // CMD runs `pnpm dev`. The guard is host-only — D-16 specifies the compose
+  // workflow IS the canonical runtime — so skip silently inside containers.
+  // `/.dockerenv` is the standard Docker marker.
+  if (existsSyncImpl("/.dockerenv")) {
+    return 0;
+  }
+
   // Bypass escape hatch (documented in docs/dev-setup.md, D-16)
   if (TRUTHY.has((process.env.ALLOW_HOST_DEV ?? "").toLowerCase())) {
     console.log(

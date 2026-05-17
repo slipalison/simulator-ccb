@@ -95,4 +95,14 @@ describe("check-dev-env guard", () => {
     const result = run(["frontend-client"], execSync);
     expect(result).toBe(0);
   });
+
+  it("exits 0 short-circuit when /.dockerenv exists (inside container)", () => {
+    const execSync = makeExecSync("frontend-client\n");
+    const existsSync = vi.fn().mockImplementation((p) => p === "/.dockerenv");
+    const result = run(["frontend-client"], execSync, existsSync);
+    expect(result).toBe(0);
+    expect(existsSync).toHaveBeenCalledWith("/.dockerenv");
+    // execSync must NOT be called — container check is before docker query
+    expect(execSync).not.toHaveBeenCalled();
+  });
 });

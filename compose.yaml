@@ -107,6 +107,7 @@ services:
       - ./frontend/client/server.ts:/app/server.ts
       - ./frontend/client/app.config.ts:/app/app.config.ts
       - ./frontend/client/auth-server.ts:/app/auth-server.ts:ro
+      - ./scripts:/scripts:ro
     environment:
       VITE_API_URL: http://localhost:8080
       VITE_KEYCLOAK_URL: http://localhost:8180
@@ -132,6 +133,7 @@ services:
       - ./frontend/backoffice/server.ts:/app/server.ts
       - ./frontend/backoffice/app.config.ts:/app/app.config.ts
       - ./frontend/backoffice/auth-server.ts:/app/auth-server.ts:ro
+      - ./scripts:/scripts:ro
     environment:
       VITE_API_URL: http://localhost:8080
       VITE_KEYCLOAK_URL: http://localhost:8180

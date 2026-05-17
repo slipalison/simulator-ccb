@@ -3,31 +3,35 @@
 // ---------------------------------------------------------------------------
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CedenteDetailPage } from "@/components/pages/CedenteDetailPage";
+
+const mockNavigate = vi.fn();
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const mod = await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...mod,
     useParams: () => ({ cedenteId: "uuid-ced-1" }),
-    useNavigate: () => vi.fn(),
+    useNavigate: () => mockNavigate,
   };
 });
 
+let getCedenteMock = vi.fn().mockResolvedValue({
+  id: "uuid-ced-1",
+  documento: "12345678901",
+  nome: "João Silva",
+  email: "joao@example.com",
+  telefone: null,
+  endereco: null,
+  cedenteTipo: "PF",
+  status: "ATIVO",
+  createdAt: "2020-01-01T00:00:00Z",
+});
+
 vi.mock("@/lib/fundos-api", () => ({
-  getCedente: vi.fn().mockResolvedValue({
-    id: "uuid-ced-1",
-    documento: "12345678901",
-    nome: "João Silva",
-    email: "joao@example.com",
-    telefone: null,
-    endereco: null,
-    cedenteTipo: "PF",
-    status: "ATIVO",
-    createdAt: "2020-01-01T00:00:00Z",
-  }),
+  get getCedente() { return getCedenteMock; },
   listCedenteTiposAtivo: vi.fn().mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 }),
 }));
 
@@ -51,6 +55,17 @@ function renderPage() {
 describe("CedenteDetailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getCedenteMock = vi.fn().mockResolvedValue({
+      id: "uuid-ced-1",
+      documento: "12345678901",
+      nome: "João Silva",
+      email: "joao@example.com",
+      telefone: null,
+      endereco: null,
+      cedenteTipo: "PF",
+      status: "ATIVO",
+      createdAt: "2020-01-01T00:00:00Z",
+    });
   });
 
   it("renders cedente name after loading", async () => {
@@ -95,6 +110,50 @@ describe("CedenteDetailPage", () => {
     renderPage();
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /voltar para lista de cedentes/i })).toBeInTheDocument();
+    });
+  });
+
+  it("back button calls navigate to /cedentes", async () => {
+    renderPage();
+    await waitFor(() => screen.getByRole("button", { name: /voltar para lista de cedentes/i }));
+    fireEvent.click(screen.getByRole("button", { name: /voltar para lista de cedentes/i }));
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "/cedentes" })
+    );
+  });
+
+  it("renders 'Cedente não encontrado' when query returns null", async () => {
+    getCedenteMock = vi.fn().mockResolvedValue(null);
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText(/cedente não encontrado/i)).toBeInTheDocument();
+    });
+  });
+
+  it("renders telefone fallback dash when null", async () => {
+    renderPage();
+    await waitFor(() => {
+      // telefone is null → renders "—"
+      const dds = screen.getAllByText("—");
+      expect(dds.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("renders status as non-ATIVO correctly (INATIVO)", async () => {
+    getCedenteMock = vi.fn().mockResolvedValue({
+      id: "uuid-ced-1",
+      documento: "12345678901",
+      nome: "João Inativo",
+      email: null,
+      telefone: null,
+      endereco: null,
+      cedenteTipo: "PF",
+      status: "INATIVO",
+      createdAt: "2020-01-01T00:00:00Z",
+    });
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText("Inativo")).toBeInTheDocument();
     });
   });
 });

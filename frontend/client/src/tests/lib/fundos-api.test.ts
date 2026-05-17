@@ -585,3 +585,193 @@ describe("getCedenteTipoAtivoAllowedTransitions", () => {
     expect(result).toEqual(["ATIVO", "HISTORICO"]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Error branch coverage — non-ok responses throw for all mutation paths
+// ---------------------------------------------------------------------------
+
+describe("Error branches — 401 unauthorized responses", () => {
+  it("listConsultoriasFundo throws on 401", async () => {
+    const res401 = mockNotOk(401);
+    mockApiFetch.mockResolvedValueOnce(res401);
+    await expect(listConsultoriasFundo({ page: 1, pageSize: 20, search: "" })).rejects.toBe(res401);
+  });
+
+  it("getConsultoriaFundo throws on 404", async () => {
+    const res404 = mockNotOk(404);
+    mockApiFetch.mockResolvedValueOnce(res404);
+    await expect(getConsultoriaFundo("bad-id")).rejects.toBe(res404);
+  });
+
+  it("updateConsultoriaFundo throws on 400", async () => {
+    const res400 = mockNotOk(400);
+    mockApiFetch.mockResolvedValueOnce(res400);
+    await expect(updateConsultoriaFundo("id", { razaoSocial: "X", status: "ATIVO" })).rejects.toBe(res400);
+  });
+
+  it("listCustodiantes throws on 500", async () => {
+    const res500 = mockNotOk(500);
+    mockApiFetch.mockResolvedValueOnce(res500);
+    await expect(listCustodiantes({ page: 1, pageSize: 20, search: "" })).rejects.toBe(res500);
+  });
+
+  it("getCustodiante throws on 404", async () => {
+    const res404 = mockNotOk(404);
+    mockApiFetch.mockResolvedValueOnce(res404);
+    await expect(getCustodiante("bad-id")).rejects.toBe(res404);
+  });
+
+  it("updateCustodiante throws on 409", async () => {
+    const res409 = mockNotOk(409);
+    mockApiFetch.mockResolvedValueOnce(res409);
+    await expect(updateCustodiante("id", { razaoSocial: "X", status: "ATIVO" })).rejects.toBe(res409);
+  });
+
+  it("listCedentes throws on 401", async () => {
+    const res401 = mockNotOk(401);
+    mockApiFetch.mockResolvedValueOnce(res401);
+    await expect(listCedentes({ page: 1, pageSize: 20, search: "" })).rejects.toBe(res401);
+  });
+
+  it("getCedente throws on 404", async () => {
+    const res404 = mockNotOk(404);
+    mockApiFetch.mockResolvedValueOnce(res404);
+    await expect(getCedente("bad-id")).rejects.toBe(res404);
+  });
+
+  it("updateCedente throws on 404", async () => {
+    const res404 = mockNotOk(404);
+    mockApiFetch.mockResolvedValueOnce(res404);
+    await expect(updateCedente("id", { nome: "X", status: "ATIVO" })).rejects.toBe(res404);
+  });
+
+  it("getFundo throws on 404", async () => {
+    const res404 = mockNotOk(404);
+    mockApiFetch.mockResolvedValueOnce(res404);
+    await expect(getFundo("bad-id")).rejects.toBe(res404);
+  });
+
+  it("updateFundo throws on 400 FluentValidation", async () => {
+    const res400 = mockNotOk(400);
+    mockApiFetch.mockResolvedValueOnce(res400);
+    await expect(updateFundo("id", { nome: "F" })).rejects.toBe(res400);
+  });
+
+  it("getFundoAllowedTransitions throws on 404", async () => {
+    const res404 = mockNotOk(404);
+    mockApiFetch.mockResolvedValueOnce(res404);
+    await expect(getFundoAllowedTransitions("bad-id")).rejects.toBe(res404);
+  });
+
+  it("listFundoCedentes throws on 404", async () => {
+    const res404 = mockNotOk(404);
+    mockApiFetch.mockResolvedValueOnce(res404);
+    await expect(listFundoCedentes("fundo-bad", { page: 1, pageSize: 20, search: "" })).rejects.toBe(res404);
+  });
+
+  it("getFundoCedente throws on 404", async () => {
+    const res404 = mockNotOk(404);
+    mockApiFetch.mockResolvedValueOnce(res404);
+    await expect(getFundoCedente("fundo-bad", "assoc-bad")).rejects.toBe(res404);
+  });
+
+  it("createFundoCedente throws on 409", async () => {
+    const res409 = mockNotOk(409);
+    mockApiFetch.mockResolvedValueOnce(res409);
+    await expect(createFundoCedente("fundo-1", { cedenteId: "ced-1", dataInicio: "2024-01-01" })).rejects.toBe(res409);
+  });
+
+  it("updateFundoCedenteLimits throws on 400", async () => {
+    const res400 = mockNotOk(400);
+    mockApiFetch.mockResolvedValueOnce(res400);
+    await expect(updateFundoCedenteLimits("fundo-1", "assoc-1", { limitePercentual: 200 })).rejects.toBe(res400);
+  });
+
+  it("getFundoCedenteAllowedTransitions throws on 404", async () => {
+    const res404 = mockNotOk(404);
+    mockApiFetch.mockResolvedValueOnce(res404);
+    await expect(getFundoCedenteAllowedTransitions("fundo-bad", "assoc-bad")).rejects.toBe(res404);
+  });
+
+  it("listFundoTiposAtivo throws on 401", async () => {
+    const res401 = mockNotOk(401);
+    mockApiFetch.mockResolvedValueOnce(res401);
+    await expect(listFundoTiposAtivo("fundo-1", { page: 1, pageSize: 20, search: "" })).rejects.toBe(res401);
+  });
+
+  it("createFundoTipoAtivo throws on 409", async () => {
+    const res409 = mockNotOk(409);
+    mockApiFetch.mockResolvedValueOnce(res409);
+    await expect(createFundoTipoAtivo("fundo-1", { tipoAtivoId: "tipo-1", dataInicio: "2024-01-01" })).rejects.toBe(res409);
+  });
+
+  it("updateFundoTipoAtivoLimits throws on 400", async () => {
+    const res400 = mockNotOk(400);
+    mockApiFetch.mockResolvedValueOnce(res400);
+    await expect(updateFundoTipoAtivoLimits("fundo-1", "assoc-2", { limitePercentual: 200 })).rejects.toBe(res400);
+  });
+
+  it("transitionFundoTipoAtivoStatus throws on 400", async () => {
+    const res400 = mockNotOk(400);
+    mockApiFetch.mockResolvedValueOnce(res400);
+    await expect(transitionFundoTipoAtivoStatus("fundo-1", "assoc-2", "HISTORICO")).rejects.toBe(res400);
+  });
+
+  it("getFundoTipoAtivoAllowedTransitions throws on 404", async () => {
+    const res404 = mockNotOk(404);
+    mockApiFetch.mockResolvedValueOnce(res404);
+    await expect(getFundoTipoAtivoAllowedTransitions("fundo-bad", "assoc-bad")).rejects.toBe(res404);
+  });
+
+  it("listCedenteTiposAtivo throws on 401", async () => {
+    const res401 = mockNotOk(401);
+    mockApiFetch.mockResolvedValueOnce(res401);
+    await expect(listCedenteTiposAtivo("ced-1", { page: 1, pageSize: 20, search: "" })).rejects.toBe(res401);
+  });
+
+  it("createCedenteTipoAtivo throws on 409", async () => {
+    const res409 = mockNotOk(409);
+    mockApiFetch.mockResolvedValueOnce(res409);
+    await expect(createCedenteTipoAtivo("ced-1", { tipoAtivoId: "tipo-1", dataInicio: "2024-01-01" })).rejects.toBe(res409);
+  });
+
+  it("updateCedenteTipoAtivoLimits throws on 400", async () => {
+    const res400 = mockNotOk(400);
+    mockApiFetch.mockResolvedValueOnce(res400);
+    await expect(updateCedenteTipoAtivoLimits("ced-1", "assoc-3", { limitePercentual: 200 })).rejects.toBe(res400);
+  });
+
+  it("getCedenteTipoAtivoAllowedTransitions throws on 404", async () => {
+    const res404 = mockNotOk(404);
+    mockApiFetch.mockResolvedValueOnce(res404);
+    await expect(getCedenteTipoAtivoAllowedTransitions("ced-bad", "assoc-bad")).rejects.toBe(res404);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// buildPaginatedParams — search param branches
+// ---------------------------------------------------------------------------
+
+describe("buildPaginatedParams — search branch coverage", () => {
+  it("omits search param when search is empty string", async () => {
+    mockApiFetch.mockResolvedValueOnce(mockOkJson({ items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 }));
+    await listTiposAtivo({ page: 1, pageSize: 20, search: "" });
+    const url = mockApiFetch.mock.calls[0][0] as string;
+    expect(url).not.toContain("search=");
+  });
+
+  it("uses default page=1 when page not provided (undefined coerces)", async () => {
+    mockApiFetch.mockResolvedValueOnce(mockOkJson({ items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 }));
+    // page undefined coerces to 1 via ?? 1
+    await listTiposAtivo({ page: undefined as unknown as number, pageSize: 20, search: "" });
+    const url = mockApiFetch.mock.calls[0][0] as string;
+    expect(url).toContain("page=1");
+  });
+
+  it("omits status param when status undefined in listFundos", async () => {
+    mockApiFetch.mockResolvedValueOnce(mockOkJson({ items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 }));
+    await listFundos({ page: 1, pageSize: 20, search: "" });
+    const url = mockApiFetch.mock.calls[0][0] as string;
+    expect(url).not.toContain("status=");
+  });
+});

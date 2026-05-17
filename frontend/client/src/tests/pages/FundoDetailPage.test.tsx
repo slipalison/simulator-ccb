@@ -3,17 +3,18 @@
 // ---------------------------------------------------------------------------
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { FundoDetailPage } from "@/components/pages/FundoDetailPage";
 
 // Router mocks
+const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const mod = await importOriginal<typeof import("@tanstack/react-router")>();
   return {
     ...mod,
     useParams: () => ({ fundoId: "uuid-fundo-1" }),
-    useNavigate: () => vi.fn(),
+    useNavigate: () => mockNavigate,
   };
 });
 
@@ -28,6 +29,9 @@ vi.mock("@/lib/auth-context", () => ({
     },
   }),
 }));
+
+const mockUpdateFundo = vi.fn().mockResolvedValue({ id: "uuid-fundo-1" });
+const mockTransitionFundoStatus = vi.fn().mockResolvedValue({});
 
 // Mock fundos-api
 vi.mock("@/lib/fundos-api", () => ({
@@ -44,8 +48,8 @@ vi.mock("@/lib/fundos-api", () => ({
     status: "ATIVO",
     createdAt: "2020-01-01T00:00:00Z",
   }),
-  updateFundo: vi.fn(),
-  transitionFundoStatus: vi.fn(),
+  updateFundo: (...args: unknown[]) => mockUpdateFundo(...args),
+  transitionFundoStatus: (...args: unknown[]) => mockTransitionFundoStatus(...args),
   listFundoCedentes: vi.fn().mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 }),
   listCedentes: vi.fn().mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 }),
   listFundoTiposAtivo: vi.fn().mockResolvedValue({ items: [], totalCount: 0, page: 1, pageSize: 20, totalPages: 0 }),
@@ -61,11 +65,16 @@ vi.mock("@/lib/use-allowed-transitions", () => ({
   useFundoTipoAtivoAllowedTransitions: () => ({ data: [], isLoading: false }),
 }));
 
-// Mock StatusTransitionDropdown to avoid Radix portal issues
+// Mock StatusTransitionDropdown
 vi.mock("@/components/organisms/StatusTransitionDropdown", () => ({
-  StatusTransitionDropdown: ({ currentStatus }: { currentStatus: string }) => (
-    <div data-testid="status-dropdown">{currentStatus}</div>
-  ),
+  StatusTransitionDropdown: ({ currentStatus, onTransition }: { currentStatus: string; onTransition: (s: string) => void }) => {
+    return (
+      <div data-testid="status-dropdown">
+        {currentStatus}
+        <button type="button" onClick={() => onTransition("SUSPENSO")}>Transitar SUSPENSO</button>
+      </div>
+    );
+  },
 }));
 
 // Mock sub-tab pages
@@ -76,9 +85,16 @@ vi.mock("@/components/pages/FundoTiposAtivosTabPage", () => ({
   FundoTiposAtivosTabPage: () => <div data-testid="tipos-ativos-tab">Tipos Ativos</div>,
 }));
 
-// Mock FundoForm to avoid Radix Select issues
+// Mock FundoForm to capture onSubmit
 vi.mock("@/components/organisms/FundoForm", () => ({
-  FundoForm: () => <form aria-label="Editar fundo" />,
+  FundoForm: ({ onSubmit, onCancel }: { onSubmit: (d: unknown) => Promise<void>; onCancel: () => void }) => (
+    <form aria-label="Editar fundo">
+      <button type="button" onClick={onCancel}>Cancelar</button>
+      <button type="button" onClick={() => onSubmit({ nome: "Fundo Alpha Editado", cnpj: "11222333000181", tipoFundo: "Multimercado", classeAnbima: "Macro", dataConstituicao: "2020-01-01", consultoriaFundoId: "uuid-cons-1", custodianteId: "uuid-cust-1" })}>
+        Submeter
+      </button>
+    </form>
+  ),
 }));
 
 function renderPage() {
@@ -93,6 +109,7 @@ function renderPage() {
 describe("FundoDetailPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockNavigate.mockReset();
   });
 
   it("renders fundo name after loading", async () => {
@@ -134,6 +151,15 @@ describe("FundoDetailPage", () => {
     });
   });
 
+  it("switches to Tipos de Ativo tab on click", async () => {
+    renderPage();
+    await waitFor(() => screen.getByRole("tab", { name: /tipos de ativo/i }));
+    fireEvent.click(screen.getByRole("tab", { name: /tipos de ativo/i }));
+    await waitFor(() => {
+      expect(screen.getByTestId("tipos-ativos-tab")).toBeInTheDocument();
+    });
+  });
+
   it("shows Editar button for users with funds:write", async () => {
     renderPage();
     await waitFor(() => {
@@ -145,6 +171,121 @@ describe("FundoDetailPage", () => {
     renderPage();
     await waitFor(() => {
       expect(screen.getByTestId("status-dropdown")).toBeInTheDocument();
+    });
+  });
+
+  it("opens edit dialog when Editar button clicked", async () => {
+    renderPage();
+    await waitFor(() => screen.getByRole("button", { name: /editar fundo/i }));
+    fireEvent.click(screen.getByRole("button", { name: /editar fundo/i }));
+    await waitFor(() => {
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+    });
+  });
+
+  it("calls handleUpdateSubmit when edit form submits", async () => {
+    renderPage();
+    await waitFor(() => screen.getByRole("button", { name: /editar fundo/i }));
+    fireEvent.click(screen.getByRole("button", { name: /editar fundo/i }));
+    await waitFor(() => screen.getByRole("dialog"));
+    const submitBtn = screen.getByRole("button", { name: /submeter/i });
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+    await waitFor(() => {
+      expect(mockUpdateFundo).toHaveBeenCalled();
+    });
+  });
+
+  it("calls handleTransition when status transition triggered", async () => {
+    renderPage();
+    await waitFor(() => screen.getByTestId("status-dropdown"));
+    const transitBtn = screen.getByRole("button", { name: /transitar suspenso/i });
+    await act(async () => {
+      fireEvent.click(transitBtn);
+    });
+    await waitFor(() => {
+      expect(mockTransitionFundoStatus).toHaveBeenCalledWith("uuid-fundo-1", "SUSPENSO");
+    });
+  });
+
+  it("renders back navigation button", async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /voltar/i })).toBeInTheDocument();
+    });
+  });
+
+  it("renders fundo CNPJ in detail section", async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText(/11222333000181/)).toBeInTheDocument();
+    });
+  });
+
+  it("renders canManage-only features with funds:manage permission", async () => {
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByTestId("status-dropdown")).toBeInTheDocument();
+    });
+  });
+
+  it("shows not-found message when fundo is null", async () => {
+    const fundosApi = await import("@/lib/fundos-api");
+    vi.mocked(fundosApi.getFundo).mockResolvedValueOnce(null as any);
+    renderPage();
+    await waitFor(() => {
+      expect(screen.getByText(/fundo não encontrado/i)).toBeInTheDocument();
+    });
+  });
+
+  it("calls navigate when back button is clicked", async () => {
+    renderPage();
+    await waitFor(() => screen.getByRole("button", { name: /voltar/i }));
+    fireEvent.click(screen.getByRole("button", { name: /voltar/i }));
+    expect(mockNavigate).toHaveBeenCalled();
+  });
+
+  it("closes edit dialog when cancel button in form clicked", async () => {
+    renderPage();
+    await waitFor(() => screen.getByRole("button", { name: /editar fundo/i }));
+    fireEvent.click(screen.getByRole("button", { name: /editar fundo/i }));
+    await waitFor(() => screen.getByRole("dialog"));
+    fireEvent.click(screen.getByRole("button", { name: /cancelar/i }));
+    await waitFor(() => {
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+  });
+
+  it("handles Response error in handleUpdateSubmit catch path", async () => {
+    mockUpdateFundo.mockRejectedValueOnce(
+      new Response(JSON.stringify({ type: "ValidationError", errors: [] }), { status: 422 })
+    );
+    renderPage();
+    await waitFor(() => screen.getByRole("button", { name: /editar fundo/i }));
+    fireEvent.click(screen.getByRole("button", { name: /editar fundo/i }));
+    await waitFor(() => screen.getByRole("dialog"));
+    const submitBtn = screen.getByRole("button", { name: /submeter/i });
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+    await waitFor(() => {
+      expect(mockUpdateFundo).toHaveBeenCalled();
+    });
+  });
+
+  it("handles Response error in handleTransition catch path", async () => {
+    mockTransitionFundoStatus.mockRejectedValueOnce(
+      new Response(JSON.stringify({ type: "ValidationError", errors: [] }), { status: 422 })
+    );
+    renderPage();
+    await waitFor(() => screen.getByTestId("status-dropdown"));
+    const transitBtn = screen.getByRole("button", { name: /transitar suspenso/i });
+    await act(async () => {
+      fireEvent.click(transitBtn);
+    });
+    await waitFor(() => {
+      expect(mockTransitionFundoStatus).toHaveBeenCalled();
     });
   });
 });

@@ -3,7 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { CedentePjForm } from "@/components/organisms/CedentePjForm";
 
 function renderForm(props: Partial<React.ComponentProps<typeof CedentePjForm>> = {}) {
@@ -42,5 +42,47 @@ describe("CedentePjForm", () => {
   it("disables submit button when isSubmitting", () => {
     renderForm({ isSubmitting: true });
     expect(screen.getByRole("button", { name: /criar cedente pj/i })).toBeDisabled();
+  });
+
+  it("disables cancel button when isSubmitting", () => {
+    renderForm({ isSubmitting: true });
+    expect(screen.getByRole("button", { name: /cancelar/i })).toBeDisabled();
+  });
+
+  it("calls onSubmit with valid data", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    renderForm({ onSubmit });
+    fireEvent.change(screen.getByLabelText(/cnpj/i), { target: { value: "11222333000181" } });
+    fireEvent.change(screen.getByLabelText(/razão social/i), { target: { value: "Empresa SA" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /criar cedente pj/i }));
+    });
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ cnpj: "11222333000181", razaoSocial: "Empresa SA" }),
+        expect.anything()
+      );
+    });
+  });
+
+  it("shows email validation error when invalid email provided", async () => {
+    renderForm();
+    fireEvent.change(screen.getByLabelText(/cnpj/i), { target: { value: "11222333000181" } });
+    fireEvent.change(screen.getByLabelText(/razão social/i), { target: { value: "Empresa SA" } });
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "not-an-email" } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /criar cedente pj/i }));
+    });
+    await waitFor(() => {
+      const alerts = screen.queryAllByRole("alert");
+      expect(alerts.length).toBeGreaterThan(0);
+    });
+  });
+
+  it("renders optional fields: email, telefone, endereço", () => {
+    renderForm();
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/telefone/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/endereço/i)).toBeInTheDocument();
   });
 });

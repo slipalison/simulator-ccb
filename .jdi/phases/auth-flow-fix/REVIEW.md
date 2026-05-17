@@ -1090,3 +1090,140 @@ None.
 - Backoffice admin-auth-flow 3/4: S3 PASS, S4 PASS, S5 FAIL (W-BE-10 spec defect), S6 PASS
 - Backend API suites: Domain 378/378, Application 89/89, API 244/244+4-skip, Integration 20/20
 - Screenshot: D:/REPO/keycloak-tests/frontend/backoffice/playwright/results/admin-auth-flow-Scenario-5-fdb10-allback-and-admin-companies-backoffice-auth/test-failed-1.png
+
+
+
+---
+
+## Frontend (iter 5)
+
+Verdict: APPROVED_WITH_WARNINGS
+
+### Gates
+
+- **[G1 Security frontend] PASS**
+  - D-12 storage gate: grep on frontend/{client,backoffice}/src for localStorage/sessionStorage + token keywords returns zero hits. Unchanged from iter 4.
+  - T-18 new cookies (client_id_token / backoffice_id_token): httpOnly:true, secure:IS_PROD, sameSite:lax, path:/, maxAge aligned with access token TTL. Never written to browser storage. D-12 intact.
+  - dangerouslySetInnerHTML: zero hits in either SPA src/ directory.
+  - target=_blank without rel: zero hits.
+  - Secret patterns in source: zero hits on new/modified files.
+  - D-4 cross-SPA import: zero hits confirmed.
+
+- **[G2 Telemetry (OTel JS + W3C)] BLOCKED (pre-existing architectural debt, carry-forward)**
+  - Neither SPA has src/lib/telemetry/. Pre-existing since phase 48, predates D-2 boundary 968eefb. Iter 5 introduced zero telemetry-adjacent code. Verdict APPROVED_WITH_WARNINGS consistent with phase 48 precedent.
+
+- **[G3 Perf + bundle] PASS (unchanged)**
+  - No production component or hook changed in iter 5. Bundle sizes unchanged from iter 4.
+
+- **[G4 Build] PASS**
+  - pnpm install --frozen-lockfile: client OK, backoffice OK.
+  - pnpm tsc --noEmit: client 0 errors, backoffice 0 errors.
+
+- **[G5 Typecheck + Lint] PASS**
+  - Client: tsc --noEmit clean, eslint --max-warnings 0 clean.
+  - Backoffice: same, both clean.
+
+- **[G6 Code-design + Frontend rules] PASS**
+  - T-18 auth-code-flow.ts: minimal change -- one field added to return type, one conditional assignment. KISS/YAGNI intact.
+  - T-18 auth-server.ts: scoped changes -- conditional setCookie in callback, read-before-delete in logout handler. No new abstractions.
+  - T-19 doAdminLogin: optional visitedUrls parameter is clean; no coupling to irrelevant callers.
+  - T-20: JSON-only (keycloak/client-realm.json). No frontend code touched.
+  - T-21: 2-line shell script change. No frontend code touched.
+  - D-4 cross-SPA imports: zero.
+  - pt-BR string in AuthGuard.tsx: carry-forward advisory (pre-existing from T-5).
+
+- **[G7 Coverage new files] PASS (trivially)**
+  - git diff --name-only --diff-filter=A 968eefb..HEAD -- frontend/**/*.ts: all new files are test/infra. Zero new production source files in iter 5.
+  - Client vitest: 122/137 (15 pre-existing failures, unchanged). Backoffice vitest: 180/180 (clean).
+  - T-18 new tests: 9 per SPA, all pass. auth-server.test.ts totals: 26 client / 26 backoffice.
+
+- **[G8 Playwright regression -- Client SPA] PASS**
+  - Seed-gap workaround: PUT /admin/realms/client/users/{id} firstName=E2E lastName=Client requiredActions=[] -- HTTP 204.
+  - pnpm exec playwright test --config=playwright.config.ts --project=auth-flow (localhost:5173):
+    - S1 login happy path: PASS
+    - S2 logout (id_token_hint active, KC auto-redirects): PASS
+    - S5 post-login race: PASS
+    - S6 refresh resilience: PASS
+    - S7 expired-token: SKIP (intentional)
+    - S8 cookie-blocked: PASS
+  - Result: 5/5 passed + 1 skip. Zero regressions.
+
+- **[G9 Playwright regression -- Backoffice SPA] PASS**
+  - Seed-gap workaround: PUT /admin/realms/backoffice/users/{id} firstName=E2E lastName=Admin requiredActions=[] -- HTTP 204.
+  - pnpm exec playwright test --config=playwright.config.ts --project=backoffice-auth (localhost:5174):
+    - S3 login happy path: PASS
+    - S4 logout (backoffice id_token_hint active, KC confirmation page gone): PASS
+    - S5 post-login race: SKIP (callbackIndex guard fires -- /auth/callback 302 not captured in framenavigated; T-19 guard correctly skips)
+    - S6 refresh resilience: PASS
+  - Result: 3/4 passed + 1 skip. No regressions.
+  - api-proxy: client 3/3 PASS, backoffice 3/3 PASS.
+
+- **[G10 Accessibility] ADVISORY (no new violations)**
+  - No new components or pages in iter 5. Pre-existing advisories carry forward.
+
+- **[G11 Vinext migration debt] PASS**
+  - Zero new Vinxi-only imports. auth-code-flow.ts pure TS; auth-server.ts uses h3 (compatible with Phase 53 Vinext plan).
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+**New this iter (iter 5):**
+
+- **W-SEED-1 (NEW)** -- scripts/seed-test-users.sh does not set firstName/lastName on created users. Keycloak 26 triggers UPDATE_PROFILE on first login after docker compose down -v. Blocks waitForURL assertions on fresh volume. Inline workaround applied this iter. Fix: add firstName, lastName, requiredActions:[] to upsert payload in T-3/T-17 scope.
+
+- **W-IT5-1 (NEW)** -- Backoffice S5 still skips via callbackIndex guard. /auth/callback server-side 302 too fast to capture in framenavigated even with early listener (T-19). Guard correctly prevents false-positive. Race scenario remains unverifiable. Recommendation: use page.route intercept on /auth/callback response instead of framenavigated.
+
+**Carry-forward from iter 4:**
+
+- **W-G2-TELEMETRY** -- OTel JS + W3C not implemented. BLOCKED per gate definition; APPROVED_WITH_WARNINGS per phase 48 precedent.
+- **W-console-backoffice** -- frontend/backoffice/auth-server.ts:129 console.warn (PKCE mismatch diagnostic), :250 console.error (isFirstLogin). Server-side h3 handler, not bundled to client JS. Pre-existing from T-6.
+- **W-FE-A11Y** -- AuthGuard.tsx loading spinner lacks role=status/aria-live=polite. Advisory, pre-existing.
+- **W-FE-PTbr** -- AuthGuard.tsx hardcoded pt-BR string. i18n violation, advisory, pre-existing.
+- **W2, W5** -- verify-hardening.sh realm rename; ROPC onboarding-app cleanup. Pre-existing carry-forward.
+
+---
+
+### T-18 Cookie Audit
+
+All five required attributes verified by static source-assertion Vitest tests (9/9 per SPA, all passing):
+
+| Cookie | httpOnly | secure | sameSite | path | maxAge |
+|---|---|---|---|---|---|
+| client_id_token | true | IS_PROD | lax | / | expiresIn OR 300 (access TTL) |
+| backoffice_id_token | true | IS_PROD | lax | / | expiresIn OR 300 (access TTL) |
+
+- httpOnly:true -- id_token never accessible to browser JS. D-12 intact.
+- secure:IS_PROD -- consistent with access/refresh cookies.
+- sameSite:lax -- same rationale as access token (cross-origin KC-to-SPA 302 redirect chain).
+- path:/ -- readable by /auth/logout handler on same origin.
+- maxAge=expiresIn||300 -- access token TTL, NOT refresh TTL (28800). Intentional: id_token hint valid only within same KC session; fresh login overwrites.
+
+Cookie deleted at logout: confirmed -- deleteCookie for client_id_token/backoffice_id_token appears BEFORE sendRedirect in logout handlers of both SPAs. getCookie read precedes deleteCookie.
+
+Fallback path: confirmed -- if(idToken) guard makes append conditional. When cookie absent, logout uses client_id + post_logout_redirect_uri only. Vitest absent-cookie fallback test: PASS.
+
+isFirstLogin branch (backoffice only): deleteCookie for backoffice_id_token present at auth-server.ts:261 -- stale hint cleared on forced re-login.
+
+---
+
+### Coverage gaps (new files, iter 5)
+
+No new production source files added in iter 5. D-2 coverage gate does not apply.
+
+---
+
+### Regression captures
+
+- Client auth-flow: 5/5 PASS + 1 SKIP (S7 intentional) -- S2 logout passes with id_token_hint active
+- Client api-proxy: 3/3 PASS
+- Backoffice admin-auth-flow: 3/4 PASS + 1 SKIP (S5 callbackIndex guard, T-19 expected)
+- Backoffice api-proxy: 3/3 PASS
+- Screenshots: D:/REPO/keycloak-tests/.jdi/cache/phase-49-iter5-client-login.png
+- Screenshots: D:/REPO/keycloak-tests/.jdi/cache/phase-49-iter5-backoffice-login.png

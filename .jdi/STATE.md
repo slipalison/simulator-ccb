@@ -9,7 +9,8 @@ specialists:
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
 current_phase: fundo-cedente-relationships
 current_phase_slug: fundo-cedente-relationships
-phase_status: planned
+phase_status: verified
+phase_verdict: APPROVED_WITH_WARNINGS
 prior_phase_slug: auth-flow-fix
 prior_phase_verdict: APPROVED_WITH_WARNINGS
-next_step: /jdi-do fundo-cedente-relationships
+next_step: /jdi-ship fundo-cedente-relationships

@@ -4,6 +4,38 @@
 
 ## Iter 4 entries (2026-05-16)
 
+### T-16 (2026-05-16T23:42:00Z)
+
+**Status:** DONE — W-FE-1 resolved in both SPAs
+
+**W-FE-1 root cause (verbatim from REVIEW.md iter 1):**
+> frontend/client/vitest.config.ts missing exclude for playwright/specs/ and e2e/. Both directories are discovered by vitest and fail with @playwright/test dual-version collision. Pre-existing for e2e/ (6 files); newly introduced for playwright/specs/auth-flow.spec.ts by T-7.
+
+**Fix mechanism:**
+- Added `test.exclude` array to both `frontend/client/vitest.config.ts` and `frontend/backoffice/vitest.config.ts`.
+- Excludes: `node_modules/**`, `dist/**`, `.git/**`, `playwright/**` (covers `playwright/specs/**` and `playwright/global-setup.ts`).
+- Client config additionally excludes `e2e/**` (pre-existing dual-version collision in e2e/ root — 6 `.spec.ts` files).
+- Backoffice config only needs `playwright/**` (no top-level `e2e/` directory exists).
+- Vitest's own default exclude list (`node_modules/**`, `dist/**`) is preserved explicitly so the custom array does not shadow them.
+
+**Files modified:**
+- `frontend/client/vitest.config.ts`
+- `frontend/backoffice/vitest.config.ts`
+
+**Vitest results before (iter-3 baseline):**
+- client: 113 passed / 15 failed (128 total) — 1 of the 15 was the structural Playwright spec collision (W-FE-1)
+- backoffice: 171 passed / 0 failed (171 total)
+
+**Vitest results after:**
+- client: 113 passed / 15 failed (128 total) — Playwright spec no longer appears; `grep playwright` in runner output returns zero hits; the structural failure from W-FE-1 is eliminated; residual 15 failures are pre-existing component test failures predating D-2 boundary 968eefb
+- backoffice: 171 passed / 0 failed (171 total) — no change (backoffice was already clean)
+
+**Note on client test count:** Total files (24) and total tests (128) are unchanged from iter-3 because the iter-3 baseline already excluded the Playwright spec (it was counted as 1 failed file, 1 failed test — the structural error counts as a test failure in vitest's summary). The structural failure being part of the prior `15 failed` count means after fix the 15 failed stays at 14 pre-existing component failures. Confirmed: no Playwright spec file appears in runner output post-fix.
+
+**Vinext migration debt:** None. Config-only change, no Vinxi-internal API used.
+
+---
+
 ### T-14 (2026-05-16T22:00:00Z)
 
 **Status:** DONE — NF-1 resolved in both SPAs

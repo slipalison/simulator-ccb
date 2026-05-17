@@ -742,7 +742,123 @@ Cross-check on every D-15 guarded path:
 
 git diff 2e452cd..HEAD -- frontend/*/auth-server.ts returns empty. Realm JSONs untouched. Backend src/ untouched. All D-15 gates inherited pass from iter 3 -- no regression possible.
 
-test
+---
+
+### Action 2 - NEW finding: backoffice id_token_hint classification
+
+#### Fact pattern
+
+frontend/backoffice/auth-server.ts:270 constructs the logout URL with post_logout_redirect_uri and client_id only. No id_token_hint present. Pre-existing since T-1.
+
+The auth-code-flow.ts exchangeCodeForTokens return type captures only accessToken, refreshToken, and expiresIn. The id_token from the Keycloak token response is explicitly discarded. Supplying id_token_hint requires structural changes: capture id_token at token exchange, store server-side, forward at logout.
+
+Backoffice Scenario 4 live Playwright run in iter 4 (SUMMARY.md T-14) confirmed:
+
+1. /auth/logout clears cookies, 302s to Keycloak end_session_endpoint.
+2. Keycloak renders a confirmation page at /realms/backoffice/protocol/openid-connect/logout.
+3. User must click to complete logout on KC side.
+4. SPA cookies are cleared before the KC redirect (backoffice auth-server.ts:265-266). /auth/me returns 401. D-15 item 6 passes.
+
+#### Classification: WARNING (not BLOCKER)
+
+1. D-15 item 6 is met. The decision text requires end_session_endpoint with client_id. Present. /auth/me returns 401 post-logout per Playwright Scenario 4. The SPA has already forgotten the user.
+
+2. Not an exploitable logout bypass. SPA tokens in HttpOnly cookies are deleted before the KC redirect. Silent re-authentication via SPA cookie is impossible. The confirmation page is UX friction, not a security bypass.
+
+3. id_token_hint is not structurally available. Neither SPA stores id_token. Fix requires T-18 with structural changes.
+
+4. client_id is the OIDC RP-Initiated Logout spec alternative when id_token_hint is unavailable. Legitimate alternative.
+
+Classification: WARNING W-SEC-IT4-1 -- backoffice logout shows KC confirmation page; UX friction only, D-15 security invariant intact.
+
+---
+
+### Action 3 - T-17 Python fallback security review (scripts/seed-test-users.sh)
+
+**Shell injection via Python heredoc: PASS**
+
+The Python snippet is passed as a literal -c argument. The bash path expression variable is consumed in Python via sys.argv[1] only -- never string-interpolated into the Python source. No shell metacharacter can break out of the Python sandbox. The select() regex result values are used as Python dict-key lookups only, not passed to eval/exec/subprocess. Zero code execution path from user-controlled input.
+
+**eval / exec on user input: PASS**
+
+Grep of added lines in the iter-4 seed script diff for eval or exec keywords returns zero matches.
+
+**Passwords / D-14 compliance: PASS**
+
+E2E passwords are unchanged from T-7 (D-14 locked). T-17 adds no new credential strings. Stdout echo of passwords at lines 453-455 is W4 carry-forward, acceptable per D-14.
+
+**Idempotency: PASS**
+
+All 8 call-sites route through json_get / json_has_key with identical semantics to direct jq calls. SUMMARY.md documents 10/10 unit tests and 2 integration runs (both exit 0).
+
+**T-17 Python-fallback security verdict: PASS. No injection vector, no new secrets, idempotency intact.**
+
+---
+
+### Action 4 - T-16 security implication
+
+vitest.config.ts exclude config only. Zero security surface. Pass trivially.
+
+---
+
+### Action 5 - Pipeline (iter 4 delta)
+
+**Semgrep (manual scope):** 5 iter-4 files in scope. No new credential patterns. Rules covering no-hardcoded-credentials, no-shell-injection, token-storage: 0 findings. Verdict: 0 ERROR, 0 WARNING.
+
+**Gitleaks (manual regex):** Only credential-adjacent strings are E2E dev fixture passwords -- D-14, pre-existing since T-7. Verdict: 0 new findings.
+
+**Multi-tenant (D-5): trivially intact** -- zero backend src/ files changed.
+
+**Keycloak hardening: pass** -- realm JSONs untouched. Both realms: bruteForceProtected=true, failureFactor=5, ssoSessionIdleTimeout=1800, sslRequired=external.
+
+**Dependabot: unchanged** -- no new npm or NuGet dependencies. 0 HIGH/CRITICAL.
+
+**Trivy FS / image: skipped** -- no new packages, no Dockerfile changes.
+
+---
+
+### Action 6 - D-12 storage gate re-check
+
+sessionStorage.setItem -- zero hits in frontend/ production or test source.
+
+localStorage.setItem -- one hit: frontend/client/src/tests/theme-provider.test.tsx:55 writing theme (UI preference, pre-existing, not a token key).
+
+The tsr-scroll-restoration-v1_3 key in sessionStorage is a TanStack Router UI scroll-position preference. The T-14 fix replaced sessionStorage.length===0 with a token-pattern filter covering token, jwt, access, refresh, authorization, and credential substrings. D-12 invariant is no tokens in browser storage. TanStack Router scroll keys do not match. D-12 intact.
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+- **W-SEC-IT4-1** -- frontend/backoffice/auth-server.ts:268-270 -- logout URL omits id_token_hint. Keycloak 26 shows an interactive confirmation page. D-15 item 6 met (SPA cookies cleared before KC redirect; /auth/me returns 401). UX friction only. Recommend T-18 in a hardening phase: capture id_token at callback, store server-side, forward as id_token_hint at logout.
+
+- **W-SEC-IT4-2** -- scripts/seed-test-users.sh:453-455 -- E2E passwords printed to stdout (carry-forward W4 iter 1). Dev-only per D-14. CI log masking recommended.
+
+All iter-1 through iter-3 warnings carry forward: W2, W3, W4, W5 from iter 1; W-BE-1; W-FE-2.
+
+---
+
+### id_token_hint classification
+
+**WARNING** -- not BLOCKER.
+
+D-15 item 6 requires end_session_endpoint with client_id. That gate is met. /auth/me 401 post-logout is the operative security invariant and it passes (Scenario 4 confirmed). The KC confirmation page is UX regression, not a session leak. The user cannot silently re-authenticate via SPA cookies after /auth/logout fires. id_token_hint is RECOMMENDED by the OIDC RP-Initiated Logout spec but client_id is the spec-endorsed alternative when id_token is not available. Neither SPA stores id_token; the fix has structural scope. No exploitable logout bypass exists.
+
+---
+
+### Pipeline artifacts
+
+- Semgrep (iter 4): manual scan -- 0 ERROR, 0 WARNING
+- Gitleaks (iter 4): manual scan -- 0 new findings
+- Trivy FS: skipped -- no new packages
+- Trivy image: skipped -- no Dockerfile changes
+
+
 
 <!-- ITER4_FRONTEND_HERE -->
 
@@ -850,3 +966,15 @@ None. Wave 5 adds zero new production source files. D-2 gate does not apply.
 - Backoffice api-proxy: 3/3 PASS (127.0.0.1:5174)
 - Backoffice auth-flow: 3/4 PASS + 1 FAIL (Scenario 5 pre-existing spec defect) -- up from 1/4 in iter 3
 - Screenshots: .jdi/cache/ (playwright auto-capture on S5 failure: admin-auth-flow-Scenario-5-fdb10-allback-and-admin-companies-backoffice-auth/test-failed-1.png)
+---
+
+## Backend C# (iter 4)
+
+Verdict: APPROVED_WITH_WARNINGS
+
+### Gates
+
+  - Onboarding.Domain.Tests: 378 passed / 0 failed / 0 skipped (299 ms)
+  - Onboarding.Application.Tests: 89 passed / 0 failed / 0 skipped (162 ms)
+  - Onboarding.API.Tests: 244 passed / 0 failed / 4 skipped (TracePropagationTests x2 + AdminCompanyDetailsTests x2) (1m 56s)
+  - Onboarding.Integration.Tests: 20 passed / 0 failed / 0 skipped (2m 57s)

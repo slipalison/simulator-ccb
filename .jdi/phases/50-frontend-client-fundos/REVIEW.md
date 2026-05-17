@@ -720,3 +720,83 @@ None.
 - Backoffice api-proxy Playwright: 3/3 PASS
 - Client MCP: loads, ACF+PKCE redirect confirmed, zero app errors
 - Backoffice MCP: loads /admin/login, 401 on /auth/me (expected), zero app errors
+
+## Frontend review iter 5
+
+Run: 2026-05-17
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Commit reviewed: bc1b823 (TanStack Router getRouteApi migration — 7 route API instances + 7 page components + 7 test files)
+
+### Verdict: APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+**[G5 Typecheck + Lint] PASS**
+- pnpm --filter frontend-client typecheck (tsc --noEmit): exit 0.
+- pnpm --filter frontend-client lint --max-warnings 0: exit 0.
+
+**[G7 Coverage new files] PASS** (carry-forward from iter 3/4 — unchanged)
+- vitest run: 643 pass / 15 fail. All 15 failures in pre-D-2 files (profile-page*, registration-form*) — same baseline as iters 3/4, no regression.
+- perFile thresholds on 36 D-2 files: all axes >= 80% confirmed in iter 3; no coverage-affecting source changed in iter 5 (migration only changes how hooks are called, not what is tested).
+
+**[G4 Build] PASS**
+- pnpm --filter frontend-client build exits 0.
+- Main bundle: 766.48 KB raw / 221.73 KB gzip — below 300 KB gate. Negligible delta from iter 4 (bc1b823 adds zero new runtime deps).
+
+**[G8 Playwright — Client SPA (5173)] PASS — runtime invariant blocker resolved**
+- `/fundos` → renders correctly: heading "Fundos", search input, status filter, empty state "Nenhum fundo encontrado." Zero Invariant failed errors.
+- `/cedentes` → renders correctly: heading "Cedentes", search input, empty state "Nenhum cedente encontrado."
+- `/tipos-ativos` → renders correctly (search box + empty state visible, no invariant).
+- `/consultorias-fundo` → renders correctly.
+- `/custodiantes` → renders correctly.
+- `/fundos/test-id-123` → detail page renders "Fundo não encontrado." (graceful 404 from API, no invariant error).
+- `/cedentes/test-ced-123` → detail page renders "Cedente não encontrado." (graceful 404, no invariant error).
+- Console errors: only API 403/404 (expected — unauthenticated dev session) and Vite HMR WebSocket (expected — not running via native dev server). Zero "Invariant failed" or TanStack Router unhandled errors.
+
+**[G9 Playwright — Backoffice SPA (5174)] PASS**
+- Backoffice loads at /admin/login (title "Onboarding — Backoffice"). "Entrar" button visible. 401 on /auth/me expected (unauthenticated). Vite HMR WS errors acceptable. Zero application errors. No client-app code referenced.
+
+**Router inspection — getRouteApi migration correctness] PASS**
+- router.tsx exports exactly 7 RouteApi instances, all using `/authenticated/<path>` prefix: tiposAtivoRouteApi, consultoriasFundoRouteApi, custodiantesRouteApi, cedentesRouteApi, cedenteDetailRouteApi, fundosRouteApi, fundoDetailRouteApi.
+- Comment in router.tsx correctly explains why the /authenticated/ prefix is required (pathless parent layout route id).
+- Grep for dangling literal `from:` strings in pages/: zero matches. Migration is complete across all 7 page components.
+
+**[G1 Security frontend] PASS** — carry-forward. No security-surface changes in iter 5.
+**[G2 Telemetry] BLOCKED (pre-existing carry-forward)** — Phase 53 mandate. No new regression.
+**[G3 Perf + bundle] PASS** — 221.73 KB gzip. Chunk-size warning carry-forward.
+**[G6 Code-design + Frontend rules] PASS** — D-4 cross-imports: zero. All drift warnings from iter 1/2 remain resolved.
+**[G10 Accessibility] ADVISORY** — No new violations. Carry-forward.
+**[G11 Vinext migration debt] PASS** — Zero from 'vinxi' imports.
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+1. G2 Telemetry pre-existing carry-forward: OTel JS + W3C absent from both SPAs. Phase 53 mandate.
+2. G3 Bundle: raw 766 KB. Dynamic import() code-splitting on fundos routes needed before Phase 52.
+3. G8 auth-flow + fundos E2E specs remain env-blocked (viewer-creds.json absent, pre-existing).
+
+---
+
+### Notes
+
+- Root cause of iter 4 runtime invariant blocker correctly identified: pathless parent layout route `id: "authenticated"` causes child route IDs to be `/authenticated/<path>`, not `/<path>`. `useSearch({ from: "/fundos" })` did not resolve. Fix is canonical: `getRouteApi("/authenticated/fundos")` pattern.
+- 15 pre-existing Vitest failures (profile-page*, registration-form*) unchanged — not a regression.
+- No new source files introduced in iter 5 (migration only). D-2 coverage gate scope unchanged.
+
+---
+
+### Regression captures
+
+- Client MCP: all 7 fundos routes verified — zero invariant errors, graceful API 404/403 handling
+- Backoffice MCP: /admin/login renders, zero app errors
+- Vitest: 643 pass / 15 pre-existing fail (identical baseline)
+- Build: exits 0, 221.73 KB gzip

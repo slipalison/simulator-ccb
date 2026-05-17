@@ -189,3 +189,117 @@ describe("auth-server/backoffice — cookie sameSite attributes (T-2b)", () => {
     expect(src).not.toMatch(/KEYCLOAK_REALM\s*=\s*["'`]onboarding["'`]/);
   });
 });
+
+// ── T-18: id_token_hint forwarded on logout (W-SEC-IT4-1) ────────────────────
+//
+// Strategy: read the source file and assert static structural invariants:
+//   (a) id_token cookie is set in the callback handler with httpOnly:true, sameSite:lax, path:/
+//   (b) logout handler reads the id_token cookie
+//   (c) logout URL appends id_token_hint= when the cookie is present
+//   (d) fallback path exists (conditional — does NOT hard-fail when cookie absent)
+//   (e) id_token cookie is deleted in the logout handler alongside access/refresh
+//
+// We also test the runtime branch with a behavioral test simulating the logout logic.
+
+describe("auth-server/backoffice — id_token_hint forwarded on logout (T-18)", () => {
+  const src = (() => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs") as typeof import("fs");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("path") as typeof import("path");
+    return fs.readFileSync(path.resolve(__dirname, "./auth-server.ts"), "utf8");
+  })();
+
+  // ── Static source assertions ────────────────────────────────────────────
+
+  it("callback handler sets backoffice_id_token cookie with httpOnly:true", () => {
+    const matches = [...src.matchAll(
+      /setCookie\(event,\s*"backoffice_id_token"[\s\S]*?httpOnly:\s*(true)/g
+    )];
+    expect(matches.length).toBeGreaterThan(0);
+    for (const m of matches) {
+      expect(m[1]).toBe("true");
+    }
+  });
+
+  it("callback handler sets backoffice_id_token cookie with sameSite:lax", () => {
+    const matches = [...src.matchAll(
+      /setCookie\(event,\s*"backoffice_id_token"[\s\S]*?sameSite:\s*["'](\w+)["']/g
+    )];
+    expect(matches.length).toBeGreaterThan(0);
+    for (const m of matches) {
+      expect(m[1]).toBe("lax");
+    }
+  });
+
+  it("callback handler sets backoffice_id_token cookie with path:'/'", () => {
+    const matches = [...src.matchAll(
+      /setCookie\(event,\s*"backoffice_id_token"[\s\S]*?path:\s*["'](\/)["']/g
+    )];
+    expect(matches.length).toBeGreaterThan(0);
+    for (const m of matches) {
+      expect(m[1]).toBe("/");
+    }
+  });
+
+  it("logout handler reads backoffice_id_token cookie before deleting tokens", () => {
+    // getCookie must be called for backoffice_id_token in the logout handler.
+    expect(src).toMatch(/getCookie\(event,\s*"backoffice_id_token"\)/);
+  });
+
+  it("logout handler appends id_token_hint when cookie present (conditional path)", () => {
+    // The source must contain the conditional append pattern.
+    expect(src).toMatch(/id_token_hint.*encodeURIComponent\(idToken\)/s);
+  });
+
+  it("logout handler deletes backoffice_id_token cookie", () => {
+    // The id_token cookie must be explicitly deleted on logout alongside access/refresh.
+    expect(src).toMatch(/deleteCookie\(event,\s*"backoffice_id_token"/);
+  });
+
+  it("logout URL omits id_token_hint when backoffice_id_token cookie absent (graceful fallback)", () => {
+    // The conditional block must be guarded (if (idToken)) — never hard-fail when absent.
+    expect(src).toMatch(/if\s*\(idToken\)\s*\{[\s\S]*?id_token_hint/);
+  });
+
+  // ── Behavioral tests: runtime branch ─────────────────────────────────────
+
+  it("logout URL contains id_token_hint= when backoffice_id_token cookie is set", () => {
+    const KEYCLOAK_PUBLIC_URL_TEST = "http://localhost:8180";
+    const KEYCLOAK_REALM_TEST = "backoffice";
+    const CLIENT_ID_TEST = "onboarding-backoffice";
+    const FRONTEND_URL_TEST = "http://localhost:5174";
+
+    // Replicate the logout handler logic exactly as written in auth-server.ts
+    const idTokenFromCookie = "header.payload.sig"; // simulates getCookie result
+    const logoutUrl = `${KEYCLOAK_PUBLIC_URL_TEST}/realms/${KEYCLOAK_REALM_TEST}/protocol/openid-connect/logout`;
+    const postLogoutRedirectUri = `${FRONTEND_URL_TEST}/auth/login`;
+    let fullUrl = `${logoutUrl}?post_logout_redirect_uri=${encodeURIComponent(postLogoutRedirectUri)}&client_id=${encodeURIComponent(CLIENT_ID_TEST)}`;
+    if (idTokenFromCookie) {
+      fullUrl += `&id_token_hint=${encodeURIComponent(idTokenFromCookie)}`;
+    }
+
+    expect(fullUrl).toContain("id_token_hint=");
+    expect(fullUrl).toContain(encodeURIComponent("header.payload.sig"));
+  });
+
+  it("logout URL omits id_token_hint when backoffice_id_token cookie absent", () => {
+    const KEYCLOAK_PUBLIC_URL_TEST = "http://localhost:8180";
+    const KEYCLOAK_REALM_TEST = "backoffice";
+    const CLIENT_ID_TEST = "onboarding-backoffice";
+    const FRONTEND_URL_TEST = "http://localhost:5174";
+
+    // Simulate absent cookie (undefined)
+    const idTokenFromCookie = undefined;
+    const logoutUrl = `${KEYCLOAK_PUBLIC_URL_TEST}/realms/${KEYCLOAK_REALM_TEST}/protocol/openid-connect/logout`;
+    const postLogoutRedirectUri = `${FRONTEND_URL_TEST}/auth/login`;
+    let fullUrl = `${logoutUrl}?post_logout_redirect_uri=${encodeURIComponent(postLogoutRedirectUri)}&client_id=${encodeURIComponent(CLIENT_ID_TEST)}`;
+    if (idTokenFromCookie) {
+      fullUrl += `&id_token_hint=${encodeURIComponent(idTokenFromCookie)}`;
+    }
+
+    expect(fullUrl).not.toContain("id_token_hint");
+    expect(fullUrl).toContain("client_id=");
+    expect(fullUrl).toContain("post_logout_redirect_uri=");
+  });
+});

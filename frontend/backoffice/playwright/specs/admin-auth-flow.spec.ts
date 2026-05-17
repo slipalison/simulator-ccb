@@ -150,27 +150,29 @@ test('Scenario 4 — backoffice logout: clears session, /auth/me returns 401', a
   // Trigger logout via the server-side route.
   // Logout chain: /auth/logout (server, clears SPA cookies) → 302 → Keycloak end_session_endpoint.
   //
-  // Keycloak end_session_endpoint behavior depends on whether id_token_hint is present:
-  //   - With id_token_hint: KC auto-redirects to post_logout_redirect_uri → /auth/login → Keycloak /auth.
-  //   - Without id_token_hint (current backoffice implementation): KC shows a logout confirmation
-  //     page at /realms/{realm}/protocol/openid-connect/logout and waits for user confirmation.
+  // With id_token_hint (T-18 active): KC auto-redirects to post_logout_redirect_uri (/auth/login)
+  //   → 302 → Keycloak authorize URL (/auth). Fast multi-hop chain; Playwright may raise ERR_ABORTED.
+  // Without id_token_hint (fallback/older session): KC shows confirmation page at /logout.
   //
-  // The SPA server cookies are cleared BEFORE the Keycloak redirect (lines above).
-  // The browser therefore dwells on the Keycloak /logout confirmation page, not /auth.
-  // (NF-1 fix — T-14)
-  await page.goto(`${BASE_URL}/auth/logout`, { waitUntil: 'commit' });
+  // The SPA server cookies are cleared BEFORE the Keycloak redirect either way.
+  // (NF-1 fix — T-14, T-18 strengthened)
+  try {
+    await page.goto(`${BASE_URL}/auth/logout`, { waitUntil: 'commit' });
+  } catch {
+    // ERR_ABORTED expected: fast 302-chain (id_token_hint path) aborts the initial
+    // navigation commit before Playwright can observe it. The redirect chain completes
+    // normally in the browser. waitForURL below confirms the final resting URL.
+  }
 
-  // Wait for the Keycloak endpoint — either the logout confirmation page (/logout) or the
-  // authorize page (/auth) if KC completes the chain automatically. The /logout page is the
-  // actual resting URL for the backoffice because no id_token_hint is passed.
+  // Wait for the Keycloak endpoint — with T-18 the /auth page is the expected resting URL.
+  // The regex still covers both /logout (confirmation page, fallback) and /auth (direct redirect)
+  // for robustness against older sessions that predate T-18.
   await page.waitForURL(
     /\/realms\/.*\/protocol\/openid-connect\/(logout|auth)/,
     { timeout: 30000 },
   );
 
-  // If Keycloak shows the "Do you want to log out?" confirmation page, we land on /logout.
-  // If Keycloak auto-redirected (e.g. future id_token_hint addition), we land on /auth.
-  // Either way, a form or button is visible — use a non-strict single-element assertion.
+  // A form or button is visible on both the KC login page and the confirmation page.
   await expect(page.locator('form, button').first()).toBeVisible({ timeout: 15000 });
 
   // Assert /auth/me returns 401 immediately after logout (strong invariant — D-15)

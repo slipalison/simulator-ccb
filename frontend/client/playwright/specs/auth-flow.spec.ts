@@ -103,11 +103,19 @@ test('Scenario 2 — client logout: clears session, /auth/me returns 401', async
 
   // Trigger logout via the server-side route.
   // Logout chain: /auth/logout (server, clears cookies) → 302 → Keycloak end_session_endpoint
-  // → 302 → post_logout_redirect_uri (http://localhost:5173/auth/login) → 302 → Keycloak
-  // authorize URL (because /auth/login is a server-side h3 route that immediately redirects
-  // to Keycloak). The browser ultimately lands on the Keycloak login page, NOT on
-  // localhost:5173/auth/login which is a transient 302 hop. (NF-1 fix — T-14)
-  await page.goto(`${BASE_URL}/auth/logout`, { waitUntil: 'commit' });
+  // With id_token_hint (T-18): KC auto-redirects → post_logout_redirect_uri (/auth/login)
+  //   → 302 → Keycloak authorize URL. Fast multi-hop chain; Playwright may raise ERR_ABORTED.
+  // Without id_token_hint (fallback): KC shows confirmation page at /realms/.../logout.
+  // SPA cookies are cleared by auth-server.ts before any KC redirect either way.
+  // The browser ultimately lands on the Keycloak login page (or confirmation page) — NOT on
+  // localhost:5173/auth/login which is a transient 302 hop. (NF-1 fix — T-14, T-18)
+  try {
+    await page.goto(`${BASE_URL}/auth/logout`, { waitUntil: 'commit' });
+  } catch {
+    // ERR_ABORTED expected: fast 302-chain (id_token_hint path) aborts the initial
+    // navigation commit before Playwright can observe it. The redirect chain completes
+    // normally in the browser. waitForURL below confirms the final resting URL.
+  }
 
   // Wait for the Keycloak login page (the final resting URL after the full logout chain).
   // The SPA's /auth/login is not the final URL — it is a server-side route that immediately

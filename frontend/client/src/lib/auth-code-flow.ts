@@ -50,7 +50,7 @@ export async function exchangeCodeForTokens(params: {
   code: string;
   codeVerifier: string;
   redirectUri: string;
-}): Promise<{ accessToken: string; refreshToken: string; expiresIn: number }> {
+}): Promise<{ accessToken: string; refreshToken: string; idToken: string | null; expiresIn: number }> {
   const { keycloakUrl, realm, clientId, clientSecret, code, codeVerifier, redirectUri } = params;
   const tokenUrl = `${keycloakUrl}/realms/${realm}/protocol/openid-connect/token`;
 
@@ -73,9 +73,16 @@ export async function exchangeCodeForTokens(params: {
   }
 
   const data = (await response.json()) as Record<string, unknown>;
+  // id_token is present when scope includes "openid" (T-18 / W-SEC-IT4-1 fix).
+  // Captured here so auth-server.ts can store it server-side (HttpOnly cookie)
+  // and forward it as id_token_hint on logout, enabling KC to skip the
+  // confirmation page and redirect directly to post_logout_redirect_uri.
+  // Never written to browser storage (D-12).
+  const idToken = typeof data.id_token === "string" ? data.id_token : null;
   return {
     accessToken: data.access_token as string,
     refreshToken: data.refresh_token as string,
+    idToken,
     expiresIn: data.expires_in as number,
   };
 }

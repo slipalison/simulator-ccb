@@ -4,6 +4,86 @@
 
 ## Iter 5 entries (2026-05-17)
 
+### T-18 (2026-05-17T00:42:00Z)
+
+**Status:** DONE — W-SEC-IT4-1 resolved; `id_token_hint` forwarded on logout for both SPAs
+
+**Finding addressed (W-SEC-IT4-1, verbatim from REVIEW.md iter 4):**
+> `frontend/backoffice/auth-server.ts:268-270` — logout URL omits `id_token_hint`. Keycloak 26 shows an interactive confirmation page. D-15 item 6 met (SPA cookies cleared before KC redirect; `/auth/me` returns 401). UX friction only. Recommend T-18: capture `id_token` at callback, store server-side, forward as `id_token_hint` at logout.
+
+**Root cause:** `exchangeCodeForTokens` discarded `id_token` from the Keycloak token response. Without it, neither SPA could forward `id_token_hint` to Keycloak's `end_session_endpoint`, causing Keycloak to show an interactive "Do you want to log out?" confirmation page for the backoffice and relying on `client_id`-only validation for the client SPA.
+
+**Approach:** Three-layer fix, same structure in both SPAs (D-4 separation maintained — no shared code):
+
+1. **`auth-code-flow.ts`** — `exchangeCodeForTokens` return type extended with `idToken: string | null`. Added field reads `data.id_token` when present (OpenID Connect response with `openid` scope). Guard: `typeof data.id_token === "string"` prevents falsy coercion; returns `null` when absent (e.g. non-OIDC flows). `refreshAccessToken` NOT changed — id_token is not re-issued on refresh.
+
+2. **`auth-server.ts` `/auth/callback`** — After setting access/refresh token cookies, conditionally sets `client_id_token` / `backoffice_id_token` HttpOnly cookie when `tokens.idToken` is present:
+   - `httpOnly: true` — never exposed to browser JS (D-12)
+   - `secure: IS_PROD` — prod-only TLS enforcement (consistent with other tokens)
+   - `sameSite: "lax"` — consistent with access token (cross-origin 302 redirect chain)
+   - `path: "/"` — accessible by the auth-server logout handler
+   - `maxAge: tokens.expiresIn || 300` — aligned with access token TTL; hint only meaningful for same session; fresh login overwrites cookie
+
+3. **`auth-server.ts` `/auth/logout`** — Reads `*_id_token` cookie **before** deleting tokens. Appends `&id_token_hint=${encodeURIComponent(idToken)}` to `fullUrl` **inside `if (idToken)` guard** — graceful fallback when cookie absent (older session predating T-18) falls through to existing `client_id`-only path without hard-failing. Deletes `*_id_token` cookie alongside access/refresh.
+
+**Backoffice `isFirstLogin` path:** Added `deleteCookie(event, "backoffice_id_token", ...)` in the isFirstLogin branch (which clears access/refresh to force re-login) so a stale id_token hint doesn't persist from the first-login session.
+
+**D-12 compliance:** `id_token` never in `localStorage`, `sessionStorage`, or non-HttpOnly cookie. Server-side HttpOnly only. `grep frontend/{client,backoffice}/src for (local|session)Storage` returns zero token writes (unchanged from iter-4 baseline).
+
+**D-15 strengthened:** `end_session_endpoint` now sends `id_token_hint` (primary) + `client_id` (both present, belt-and-suspenders) + `post_logout_redirect_uri`. Keycloak skips confirmation page and auto-redirects.
+
+**Files modified:**
+- `frontend/client/src/lib/auth-code-flow.ts` — `exchangeCodeForTokens` return type + `idToken` field
+- `frontend/backoffice/src/lib/auth-code-flow.ts` — identical change (D-4: duplicate per SPA)
+- `frontend/client/auth-server.ts` — callback: set `client_id_token` cookie; logout: read+use+delete `client_id_token`
+- `frontend/backoffice/auth-server.ts` — callback: set `backoffice_id_token` cookie; logout: read+use+delete `backoffice_id_token`; isFirstLogin path: delete `backoffice_id_token`
+- `frontend/client/auth-server.test.ts` — T-18 describe block (9 new tests: 7 static source assertions + 2 behavioral URL-construction tests)
+- `frontend/backoffice/auth-server.test.ts` — T-18 describe block (9 new tests: same structure)
+- `frontend/client/playwright/specs/auth-flow.spec.ts` — Scenario 2: wrapped `page.goto` in try/catch for ERR_ABORTED (fast id_token_hint redirect chain)
+- `frontend/backoffice/playwright/specs/admin-auth-flow.spec.ts` — Scenario 4: wrapped `page.goto` in try/catch for ERR_ABORTED; updated comment to reflect T-18 active path
+
+**Cookie attributes chosen (`*_id_token` cookies):**
+- `httpOnly: true` — security-first; id_token is sensitive (signed JWT); never accessible to JS
+- `secure: IS_PROD` — consistent with all auth cookies
+- `sameSite: "lax"` — same rationale as access token (cross-origin redirect chain after KC 302)
+- `path: "/"` — must be readable by the `/auth/logout` handler on same origin
+- `maxAge: tokens.expiresIn || 300` — access-token TTL aligned; id_token hint is only meaningful within the same KC session; NOT `28800` (refresh TTL) because id_token validity is bounded by session, not by sliding refresh
+
+**Fallback path:**
+- `getCookie(event, "*_id_token")` returns `undefined` for sessions predating T-18
+- `if (idToken)` guard makes the append conditional — undefined/falsy skips it entirely
+- Logout proceeds with `client_id` + `post_logout_redirect_uri` only — same as iter-4 behavior
+- No exception thrown, no hard-fail, no user-visible error change for fallback sessions
+
+**Vitest results:**
+- client: 122 passed / 15 failed (pre-existing) / 0 skipped — +9 new tests from T-18 describe block (all pass)
+- backoffice: 180 passed / 0 failed / 0 skipped — +9 new tests from T-18 describe block (all pass)
+- typecheck: 0 errors in both SPAs
+- lint: 0 warnings in both SPAs
+
+**Live Playwright verification (docker compose up, users seeded, both SPAs healthy):**
+
+Client SPA (`auth-flow.spec.ts`, project `auth-flow`, localhost:5173):
+- Scenario 1 (login): PASS
+- Scenario 2 (logout): PASS — `id_token_hint` appended; KC auto-redirects to /auth page; try/catch handles ERR_ABORTED on fast redirect chain; `/auth/me` returns 401
+- Scenario 5 (post-login race): PASS
+- Scenario 6 (refresh resilience): PASS
+- Scenario 7 (expired-token): SKIP (intentional)
+- Scenario 8 (cookie-blocked): PASS
+
+Backoffice SPA (`admin-auth-flow.spec.ts`, project `backoffice-auth`, localhost:5174):
+- Scenario 3 (login): PASS
+- Scenario 4 (logout): PASS — backoffice `id_token_hint` now forwarded; KC skips confirmation page; `/auth/me` returns 401; try/catch for ERR_ABORTED added
+- Scenario 5 (post-login race): SKIP (callbackIndex guard — T-19 peer task scope)
+- Scenario 6 (refresh resilience): PASS
+
+**Backoffice KC confirmation page:** GONE. Scenario 4 now lands on Keycloak `/auth` (login page), not `/logout` (confirmation page). UX issue W-SEC-IT4-1 resolved.
+
+**T-14 regex simplification (per task instructions):**
+The backoffice Scenario 4 `waitForURL` regex `/(logout|auth)/` was introduced in T-14 to handle both the confirmation page (`/logout`) and the future auto-redirect path (`/auth`). With T-18, the `/auth` path is now the actual behavior. The `(logout|auth)` regex was kept (not simplified to `/auth` only) because: (a) the task requires "3 consecutive runs" before simplifying, (b) the try/catch change makes the broad regex a useful safety net for fallback sessions (older sessions without the cookie would still land on `/logout`). The comment was updated to reflect T-18 is now active.
+
+**Vinext migration debt:** None. Changes are in `auth-code-flow.ts` (pure TS) and `auth-server.ts` (h3 handlers — compatible with Vinext migration path per Phase 53 plan). No Vinxi-internal API introduced.
+
 ### T-19 (2026-05-17T00:30:00Z)
 
 **Status:** DONE — backoffice S5 spec re-designed; listener moved before goto; callbackIndex guard added

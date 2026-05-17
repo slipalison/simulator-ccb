@@ -142,6 +142,20 @@ router.get(
         path: "/",
         maxAge: 28800,
       });
+      // id_token stored server-side only (T-18 / W-SEC-IT4-1). Used exclusively as
+      // id_token_hint on logout so Keycloak can skip the confirmation page. Never exposed
+      // to browser JS. D-12: id_token never in localStorage / sessionStorage / JS-readable
+      // cookie. maxAge aligned with access token TTL — the hint is only meaningful for the
+      // same session; a fresh login will overwrite this cookie.
+      if (tokens.idToken) {
+        setCookie(event, "client_id_token", tokens.idToken, {
+          httpOnly: true,
+          secure: IS_PROD,
+          sameSite: "lax",
+          path: "/",
+          maxAge: tokens.expiresIn || 300,
+        });
+      }
 
       // Clean up PKCE cookies
       deleteCookie(event, "pkce_code_verifier", { path: "/auth" });
@@ -163,8 +177,17 @@ router.get(
 router.get(
   "/logout",
   defineEventHandler(async (event) => {
+    // Read id_token BEFORE deleting cookies (T-18 / W-SEC-IT4-1).
+    // id_token_hint allows Keycloak to skip the "Do you want to log out?"
+    // confirmation page and redirect straight to post_logout_redirect_uri.
+    // If absent (e.g. older session predating T-18), we fall back gracefully
+    // to the client_id-only path — D-15 invariant is met in both cases.
+    const idToken = getCookie(event, "client_id_token");
+
     deleteCookie(event, "client_access_token", { path: "/" });
     deleteCookie(event, "client_refresh_token", { path: "/" });
+    // Delete id_token cookie alongside access/refresh (D-12: no token persists post-logout).
+    deleteCookie(event, "client_id_token", { path: "/" });
 
     const logoutUrl = `${KEYCLOAK_PUBLIC_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/logout`;
     const postLogoutRedirectUri = `${FRONTEND_URL}/auth/login`;
@@ -173,7 +196,12 @@ router.get(
     // list (set in T-1 client-realm.json). Without client_id Keycloak falls back to a
     // global check and the SSO session is NOT terminated on KC 26 when id_token_hint is
     // absent. Backoffice (auth-server.ts:270) already includes client_id correctly.
-    const fullUrl = `${logoutUrl}?post_logout_redirect_uri=${encodeURIComponent(postLogoutRedirectUri)}&client_id=${encodeURIComponent(CLIENT_ID)}`;
+    let fullUrl = `${logoutUrl}?post_logout_redirect_uri=${encodeURIComponent(postLogoutRedirectUri)}&client_id=${encodeURIComponent(CLIENT_ID)}`;
+    // T-18: append id_token_hint when available so KC skips confirmation page (D-15 strengthened).
+    // Graceful fallback: omit parameter entirely when cookie absent — do NOT hard-fail.
+    if (idToken) {
+      fullUrl += `&id_token_hint=${encodeURIComponent(idToken)}`;
+    }
 
     return sendRedirect(event, fullUrl, 302);
   })

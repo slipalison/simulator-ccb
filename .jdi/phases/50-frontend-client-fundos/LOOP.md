@@ -3,16 +3,15 @@ phase_slug: frontend-client-fundos
 phase_position: 51
 iter: 4
 total_resets: 0
-status: converged
+status: running
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-17T00:00:00Z
 prior_converged_at: 2026-05-17T00:00:00Z
 prior_verdict: APPROVED_WITH_WARNINGS
 reopened_at: 2026-05-17T00:00:00Z
-reopened_reason: User requested iter 2 to address G7 coverage BLOCKER (internal) + drift items (apiFetch DRY, auth.permissions any-cast, fundosLocale extract) + W1 backend lint
-converged_at: 2026-05-17T00:00:00Z
-verdict: APPROVED_WITH_WARNINGS
+reopened_reason: User reported runtime BLOCKER on /fundos — "Invariant failed: Could not find an active match from /fundos". useSearch({ from: '/fundos' }) and analogs in 5 list pages break route resolution. Doer never ran dev server to verify (violated CLAUDE.md "use feature in browser before reporting done").
+second_reopen_at: 2026-05-17T00:00:00Z
 ---
 
 ## History
@@ -95,4 +94,13 @@ verdict: APPROVED_WITH_WARNINGS
 
 ### iter=4 — converged
 - iter 4: APPROVED_WITH_WARNINGS, hash=b314fd74adbc, commit=7c87cc1, ts=2026-05-17T00:00:00Z
+
+--- REOPENED 2026-05-17 — runtime BLOCKER reported by user on /fundos page; status=running, iter advances to 5 ---
+
+### iter=5 — start (2026-05-17) — runtime route resolution bug
+- User reports: navigating to /fundos throws "Invariant failed: Could not find an active match from /fundos"
+- Investigation (main thread): grep found `useSearch({ from: "/fundos" as any })` + `useNavigate({ from: "/fundos" })` in FundosListPage; analog `from` clauses in CedentesListPage (/cedentes), TiposAtivoListPage (/tipos-ativos), ConsultoriasFundoListPage (/consultorias-fundo), CustodiantesListPage (/custodiantes), FundoDetailPage (/fundos/$fundoId), CedenteDetailPage (/cedentes/$cedenteId)
+- Hypothesis: TanStack Router v1 `from` expects full route ID (parent layout `id: "authenticated"` makes child IDs hierarchical) or runtime tree resolution fails for the literal path keys.
+- Coverage of regression: existing Vitest tests for these pages mock the router → didn't surface; mandatory Playwright regression env-blocked (viewer-creds.json absent) → never exercised the real flow. Coverage gate passed mechanically but did NOT prove the feature works.
+- Frontend doer dispatched: investigate, fix all 7 occurrences, RUN dev server + Playwright + manual MCP verify each Fundos route loads without error before commit.
 

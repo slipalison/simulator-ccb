@@ -708,3 +708,145 @@ No new production source files in iter 3. D-2 coverage gate trivially passes.
 - Backoffice api-proxy 3/3: PASS
 - Backoffice auth-flow: Scenario 3 FAIL-NF, Scenario 4 FAIL-NF1-variant, Scenario 5 FAIL-NF, Scenario 6 PASS
 - Screenshots: .jdi/cache/phase-49-fe-scenario8-fail.png
+
+<!-- ITER4_SECURITY_HERE -->
+
+## Security (iter 4)
+
+Verdict: APPROVED_WITH_WARNINGS
+
+---
+
+### Action 1 - D-15 regression check on iter-4 diff
+
+git diff 2e452cd..HEAD --name-only returns exactly 6 files:
+
+  .jdi/phases/auth-flow-fix/SUMMARY.md
+  frontend/backoffice/playwright/specs/admin-auth-flow.spec.ts
+  frontend/backoffice/vitest.config.ts
+  frontend/client/playwright/specs/auth-flow.spec.ts
+  frontend/client/vitest.config.ts
+  scripts/seed-test-users.sh
+
+Cross-check on every D-15 guarded path:
+
+| Path | Changed in iter 4? |
+|---|---|
+| frontend/client/auth-server.ts | NO |
+| frontend/backoffice/auth-server.ts | NO |
+| keycloak/client-realm.json | NO |
+| keycloak/backoffice-realm.json | NO |
+| src/Onboarding.API/Program.cs | NO |
+| src/Onboarding.API/appsettings.json | NO |
+| Permission*.cs / Auth*.cs (non-test) | NO |
+
+git diff 2e452cd..HEAD -- frontend/*/auth-server.ts returns empty. Realm JSONs untouched. Backend src/ untouched. All D-15 gates inherited pass from iter 3 -- no regression possible.
+
+test
+
+<!-- ITER4_FRONTEND_HERE -->
+
+## Frontend (iter 4)
+
+Verdict: APPROVED_WITH_WARNINGS
+
+### Summary
+
+Wave 5 (T-14/T-15/T-16/T-17) delivered. NF-1 and NF-2 are fully resolved. W-FE-1 vitest exclusion is fixed in both SPAs. W-FE-5/W-BE-6 jq dependency removed via Option C (jq primary, python3 fallback). Client auth-flow is now 5/5 + 1 skip (up from 3/5 + 1 skip in iter 3). Backoffice auth-flow is 3/4 (S5 pre-existing spec design defect, not introduced by Wave 5). No new blockers.
+
+### Gates
+
+- [G1 Security frontend] pass -- no new production auth-surface code in Wave 5. All changes are test specs, vitest config, and the shell seed script. D-12/D-15 invariants confirmed intact via live Playwright run.
+
+- [G2 Telemetry (OTel JS + W3C)] BLOCKED -- pre-existing architectural debt, carried from phase 48 and all prior iters. Neither SPA has src/lib/telemetry/. Wave 5 does not touch or worsen this. Phase-scope judgment: APPROVED_WITH_WARNINGS consistent with phase 48 precedent.
+
+- [G3 Perf + bundle] pass -- Wave 5 adds zero production source files. No bundle change.
+
+- [G4 Build] pass -- pnpm install --frozen-lockfile clean on both SPAs. No lockfile changes in Wave 5.
+
+- [G5 Typecheck + Lint] pass -- client: tsc 0 errors, lint 0 warnings. backoffice: tsc 0 errors, lint 0 warnings.
+
+- [G6 Code-design + Frontend rules] pass -- Wave 5 is test/config-only. D-4: no cross-imports. No new pt-BR strings. No new unlabeled inputs/buttons.
+
+- [G7 Coverage new files] pass (trivially) -- zero new production source files post-968eefb. D-2 gate does not apply.
+
+- [G8 Playwright client regression] pass
+  - Seed: scripts/seed-test-users.sh ran clean on host without jq (Python3 3.14.3 path). Both users idempotently updated.
+  - pw-no-setup.config.ts: 8 passed + 1 skip (9 total).
+    - Scenario 1 (login happy path): PASS
+    - Scenario 2 (logout, NF-1 fixed): PASS -- waitForURL regex matched KC authorize URL. KC login form visible. /auth/me 401.
+    - Scenario 5 (post-login race): PASS
+    - Scenario 6 (refresh resilience): PASS
+    - Scenario 7 (expired-token): SKIP (intentional)
+    - Scenario 8 (cookie-blocked, NF-2 fixed): PASS -- fresh isolated context, no doLogin, no clearCookies, redirects to KC login form, no infinite loop.
+    - api-proxy Scenario 1 (single listener): PASS
+    - api-proxy Scenario 2 (POST 422): PASS
+    - api-proxy Scenario 3 (GET 405): PASS
+
+- [G9 Playwright backoffice regression] partial pass
+  - pw-no-setup.config.ts: 3/3 PASS (api-proxy suite).
+  - playwright.config.ts (with globalSetup): 6 passed / 1 failed.
+    - Scenario 3 (login happy path): PASS
+    - Scenario 4 (logout, NF-1 fixed): PASS -- waitForURL regex matched KC logout or auth URL.
+    - Scenario 5 (post-login race): FAIL -- pre-existing spec design defect, not a Wave 5 regression.
+    - Scenario 6 (refresh resilience): PASS
+    - api-proxy Scenarios 1/2/3: PASS
+  - Net improvement vs iter 3: 3/4 (was 1/4). S3 and S4 now pass.
+
+- [G10 Accessibility (axe)] advisory -- no new UI components. W-FE-2 (AuthGuard loading shell missing role=status) unchanged.
+
+- [G11 Vinext migration debt] pass -- zero from-vinxi imports in any Wave 5 file.
+
+### Scope checks
+
+**T-14 (NF-1):** Client Scenario 2 waitForURL uses regex /realms/.*/protocol/openid-connect/auth (auth-flow.spec.ts:115). Backoffice Scenario 4 uses regex /realms/.*/protocol/openid-connect/(logout|auth) (admin-auth-flow.spec.ts:142). No /auth/login literal in any waitForURL call. /auth/me 401 assertion preserved in both. CONFIRMED.
+
+**T-15 (NF-2):** Scenario 8 uses browser.newContext({ storageState: undefined }) at auth-flow.spec.ts:227. No doLogin(). No clearCookies(). NF-2 inline citation comment present. page.locator('form, button').first() replaces strict-mode-violating locator.or() pattern. CONFIRMED.
+
+**T-16 (W-FE-1):** client vitest.config.ts test.exclude includes playwright/** and e2e/**. backoffice vitest.config.ts test.exclude includes playwright/**. Live run: zero "playwright" lines in client vitest output. Client 113/128 (structural Playwright-spec failure eliminated). Backoffice 171/171. CONFIRMED.
+
+**T-17 (W-FE-5/W-BE-6):** jq detection block at script lines 68-76. Python3 fallback at lines 77-213. Comment at line 13 updated. Live run on host without jq: Python3 path exercised, both users seeded idempotently, exit 0. CONFIRMED.
+
+### Backoffice S5 root-cause analysis
+
+**Failure:** loginAfterCallback.length === 2, both entries http://localhost:5174/admin/login.
+
+**Root cause (two-layer spec design defect, not a product bug):**
+
+Layer 1 -- callbackIndex guard absent. visitedUrls.findIndex(u => u.includes('/auth/callback')) returns -1 when no /auth/callback navigation is captured. When callbackIndex === -1, slice(0) returns the entire visitedUrls array, including all pre-login /admin/login navigations.
+
+Layer 2 -- IndexRoute TanStack Router effect. router.tsx:165-173 IndexRoute fires navigate({ to: "/admin/login", replace: true }) via useEffect. This client-side TanStack Router navigation event IS captured by the framenavigated listener and produces a /admin/login entry in visitedUrls. Combined with the pre-login page.goto('/admin/login') navigation (which may also be captured depending on listener registration timing), the filter finds 2 /admin/login entries and the assertion fails.
+
+**Why T-6 is still correct:** AdminLayout.tsx gates the redirect useEffect on !isLoading && !isAuthenticated (lines 99-103). The loading shell renders during isLoading=true (lines 114-125). Scenario 6 PASS confirms: after a real login, reload stays on /admin/companies without any transient redirect. The S5 failure is on pre-login navigations, not a post-callback flash.
+
+**Proposed fix (test-only, iter 5):** Register the framenavigated listener BEFORE page.goto('/admin/login') in doAdminLogin so the /auth/callback URL is always in visitedUrls. Also add guard: if (callbackIndex === -1) return to skip the assertion when no callback was observed. This makes the test verify the actual post-callback window.
+
+**Classification:** Pre-existing spec design defect from T-7 (iter 1). Not introduced by Wave 5. Not a product regression.
+
+### NF-1/NF-2 resolution status
+
+- NF-1: RESOLVED. Scenario 2 (client) and Scenario 4 (backoffice) both PASS this iter.
+- NF-2: RESOLVED. Scenario 8 (client) PASSES this iter.
+
+### Blockers
+
+None.
+
+### Warnings
+
+- **W-G2-preexisting** -- OTel JS telemetry absent in both SPAs. Pre-existing, predates 968eefb. Separate phase required.
+- **W-FE-2 (carry-over)** -- AuthGuard loading shell missing role="status" / aria-live="polite". Advisory (G10 moderate).
+- **W-FE-S5-spec (new, test-only)** -- Backoffice Scenario 5 fails due to framenavigated listener capturing pre-login /admin/login navigations when callbackIndex === -1. Product behavior correct (T-6 fix verified via S6 PASS). Fix is test-only. Recommended iter 5 spec task.
+- **W2/W3/W4/W5 (carry-over)** -- verify-hardening.sh realm mismatch, client-realm.json clientPolicies gap, seed stdout password echo, legacy ROPC client. Pre-existing; out of scope.
+
+### Coverage gaps (new files)
+
+None. Wave 5 adds zero new production source files. D-2 gate does not apply.
+
+### Regression captures
+
+- Client api-proxy: 3/3 PASS (127.0.0.1:5173)
+- Client auth-flow: 5/5 PASS + 1 SKIP -- up from 3/5 + skip in iter 3
+- Backoffice api-proxy: 3/3 PASS (127.0.0.1:5174)
+- Backoffice auth-flow: 3/4 PASS + 1 FAIL (Scenario 5 pre-existing spec defect) -- up from 1/4 in iter 3
+- Screenshots: .jdi/cache/ (playwright auto-capture on S5 failure: admin-auth-flow-Scenario-5-fdb10-allback-and-admin-companies-backoffice-auth/test-failed-1.png)

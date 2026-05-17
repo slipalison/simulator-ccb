@@ -113,8 +113,12 @@ test('Scenario 2 — client logout: clears session, /auth/me returns 401', async
   // The SPA's /auth/login is not the final URL — it is a server-side route that immediately
   // 302s to Keycloak's authorize endpoint. We assert on the Keycloak URL instead.
   await page.waitForURL(/\/realms\/.*\/protocol\/openid-connect\/auth/, { timeout: 30000 });
-  // Confirm the Keycloak login form is visible — the user is on the KC login page
-  await expect(page.locator('#kc-login, form[id="kc-form-login"]')).toBeVisible({ timeout: 15000 });
+  // Confirm the Keycloak login form is visible — the user is on the KC login page.
+  // Use .first() because the CSS selector can match both the <form> and the <button id="kc-login">
+  // simultaneously in strict mode — .first() pins to the form element deterministically.
+  await expect(page.locator('#kc-login, form[id="kc-form-login"]').first()).toBeVisible({
+    timeout: 15000,
+  });
 
   // Assert /auth/me returns 401 immediately after logout (strong invariant — D-15)
   const meResp = await page.request.get(`${BASE_URL}/auth/me`);
@@ -223,7 +227,11 @@ test('Scenario 8 — client cookie-blocked: no cookies from start, visit protect
   const context = await browser.newContext({ storageState: undefined });
   const page = await context.newPage();
 
-  // Verify storage is empty from the start (D-12 gate)
+  // Verify storage is empty on the SPA origin (D-12 gate).
+  // Navigate to the SPA root first — about:blank does not have a security origin that
+  // allows localStorage access. Checking storage on the SPA origin (localhost:5173)
+  // before triggering the protected-route redirect is the reliable pattern.
+  await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded', timeout: 15000 });
   const storage = await page.evaluate(() => ({
     ls: localStorage.length,
     ss: sessionStorage.length,
@@ -250,10 +258,12 @@ test('Scenario 8 — client cookie-blocked: no cookies from start, visit protect
     /\/(auth\/)?login|\/realms\/.*\/protocol\/openid-connect\/auth/,
   );
 
-  // Assert the page is not a blank screen — either the KC login form or a SPA button is visible
-  const kcLoginOrButton = page
-    .locator('#kc-login, form[id="kc-form-login"]')
-    .or(page.locator('button'));
+  // Assert the page is not a blank screen — either the KC login form or a SPA button is visible.
+  // Use .first() on the KC locator to avoid strict-mode violation (both the <form> and
+  // <button id="kc-login"> match the combined selector simultaneously).
+  const kcFormFirst = page.locator('#kc-login, form[id="kc-form-login"]').first();
+  const anyButton = page.locator('button').first();
+  const kcLoginOrButton = kcFormFirst.or(anyButton);
   await expect(kcLoginOrButton).toBeVisible({ timeout: 10000 });
 
   await context.close();

@@ -123,8 +123,12 @@ test('Scenario 4 — backoffice logout: clears session, /auth/me returns 401', a
   // The SPA's /auth/login is not the final URL — it is a server-side route that immediately
   // 302s to Keycloak's authorize endpoint. We assert on the Keycloak URL instead.
   await page.waitForURL(/\/realms\/.*\/protocol\/openid-connect\/auth/, { timeout: 30000 });
-  // Confirm the Keycloak login form is visible — the user is on the KC login page
-  await expect(page.locator('#kc-login, form[id="kc-form-login"]')).toBeVisible({ timeout: 15000 });
+  // Confirm the Keycloak login form is visible — the user is on the KC login page.
+  // Use .first() because the CSS selector can match both the <form> and the <button id="kc-login">
+  // simultaneously in strict mode — .first() pins to the form element deterministically.
+  await expect(page.locator('#kc-login, form[id="kc-form-login"]').first()).toBeVisible({
+    timeout: 15000,
+  });
 
   // Assert /auth/me returns 401 immediately after logout (strong invariant — D-15)
   const meResp = await page.request.get(`${BASE_URL}/auth/me`);

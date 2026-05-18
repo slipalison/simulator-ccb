@@ -876,3 +876,85 @@ Commit reviewed: 26f745e (backend — expose permissions[] in GET /api/auth/me)
 - Vitest: 643 pass / 15 pre-existing fail (no regression)
 - dotnet test: 995 pass / 4 skip / 0 fail (no regression)
 - Screenshots: .jdi/cache/phase-50-r2i1-sidebar-no-fundos.png, .jdi/cache/phase-50-r2i1-client-profile.png
+
+---
+
+## Round 2 review iter 2 (total iter 7)
+
+### Verdict: APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+- **[G1 Security frontend]** PASS — no token in localStorage/sessionStorage confirmed via browser_evaluate. HttpOnly cookies confirmed (D-12 compliant). No dangerouslySetInnerHTML, no secret literals.
+
+- **[G2 Telemetry (OTel JS + W3C)]** WARN (pre-existing carry-forward) — OTel JS + W3C absent from both SPAs. Phase 53 mandate. Not in scope for this phase.
+
+- **[G3 Perf + bundle]** WARN — Build succeeded. Main JS chunk: 766.48 KB raw / 221.73 KB gzip (under the 300 KB gz gate). Vite warns on 500 KB pre-min — dynamic import() code-splitting on fundos routes recommended before Phase 52.
+
+- **[G4 Build]** PASS — `pnpm --filter frontend-client build` exits 0. Nitro server built successfully.
+
+- **[G5 Typecheck + Lint]** PASS — `pnpm --filter frontend-client typecheck` exits 0. `pnpm --filter frontend-client lint --max-warnings 0` exits 0.
+
+- **[G6 Code-design + Frontend rules]** PASS for phase scope. Architectural debt flagged below (W-debt).
+
+- **[G7 Coverage new files]** PASS — 643 pass / 15 pre-existing fail (no regression). File-level thresholds ≥80% on D-2 files hold per doer report.
+
+- **[G8 Playwright client regression]** PASS
+  - Logged in as e2e-client@example.com (admin-empresa group) via ACF+PKCE full redirect chain — Keycloak custom theme rendered correctly.
+  - Sidebar: Fundos NavGroup present with 5 links: Fundos (/fundos), Cedentes (/cedentes), Consultorias (/consultorias-fundo), Custodiantes (/custodiantes), Tipos de Ativo (/tipos-ativos).
+  - /auth/me response: `permissions: [employees:read, employees:write, employees:delete, audit:read, dashboard:access, access-groups:manage, funds:read, funds:write, funds:delete, funds:manage]` — matches hardcoded map for admin-empresa.
+  - /fundos navigates without invariant errors, page renders with search/filter controls and empty state.
+  - GET /api/fundos?page=1&pageSize=20 → 200 OK.
+  - Dashboard-only user (e2e-dashboard@example.com): /auth/me → `permissions: [dashboard:access]` only — Fundos group absent from sidebar (correct).
+  - Network: no 5xx, no CORS errors.
+  - Console: zero React invariant/app errors. HMR WebSocket errors are benign (docker, no local dev server).
+  - React setState-in-render error observed in initial session (dashboard user, Transitioner/RootRoute) — intermittent, not reproducible in admin session; pre-existing issue.
+  - D-12: no token in localStorage or sessionStorage.
+
+- **[G9 Playwright backoffice regression]** PASS — http://localhost:5174 loads /admin/login, 401 on /auth/me expected (unauthenticated), zero app errors.
+
+- **[G10 Accessibility (axe)]** Advisory — not run this iteration; no new form/input components added by this phase.
+
+- **[G11 Vinext migration debt]** Carry-forward from prior iters — Vinxi imports pre-existing.
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+1. **W-arch (CRITICAL DEBT)** — Permissions hardcoded in `auth-server.ts` (lines 373-383): the map `accessGroup → permissions[]` duplicates the domain's `AccessGroup.CreateDefaultGroups` logic in the backend. Three concrete risks:
+   - If an admin creates a custom AccessGroup with non-default permissions, the BFF will never return those permissions — the user sees wrong UI gates.
+   - The backend `/api/auth/me` permission resolver (commit 26f745e, `ResolvePermissionsFromAccessTokenAsync`) is **dead code at runtime**: the BFF never calls it because the backend reads a `refreshToken` cookie while the BFF sets `client_refresh_token`. The entire backend unit-test suite for this resolver tests unreachable production logic.
+   - Recommended fix paths (in priority order): (a) BFF calls `GET /api/auth/me` with `Cookie: refreshToken=<value>` adapter mapping `client_refresh_token` → `refreshToken` header — minimal change, unblocks backend resolver; (b) backend exposes a Bearer-only `GET /api/auth/permissions` endpoint the BFF calls with the access_token; (c) Vinext migration (Phase 53) removes BFF entirely and consolidates auth. Flag as W-debt targeting Phase 52 at latest.
+
+2. **W-perf** — Bundle 221.73 KB gz. Not blocked but approaching 300 KB limit. Fundos routes are candidates for `React.lazy()` / dynamic import before Phase 52 adds more routes.
+
+3. **W-telemetry** — OTel JS + W3C absent. Phase 53 mandate (pre-existing, carry-forward).
+
+4. **W-react** — Intermittent `Cannot update a component while rendering a different component` (Transitioner/RootRoute) observed in dashboard-only user session. Pre-existing, not introduced by this phase. Should be investigated in Phase 52.
+
+---
+
+### Notes
+
+- The `permissions` field spot-check in `auth-server.ts` confirms the hardcoded map matches `PermissionPolicyConstants` (funds:read, funds:write, funds:delete, funds:manage all present for admin-empresa).
+- The BFF comment at line 369 already tracks `GET /api/auth/permissions` as Phase 53 migration debt — appropriate acknowledgment, but Phase 52 should not ship new permission-gated features without resolving the custom-AccessGroup gap.
+- Both SPAs confirmed running and healthy in docker compose stack.
+
+---
+
+### Regression captures
+
+- Client MCP: admin-empresa sidebar with Fundos (5 links) confirmed PASS
+- Client MCP: dashboard-only user Fundos hidden confirmed PASS
+- /auth/me admin-empresa: 10 permissions including all funds:* confirmed
+- Network: GET /api/fundos → 200, no 5xx
+- Backoffice: /admin/login loads, zero app errors
+- Screenshot: .jdi/cache/phase-50-r2i2-fundos-admin.png

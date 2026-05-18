@@ -800,3 +800,79 @@ None.
 - Backoffice MCP: /admin/login renders, zero app errors
 - Vitest: 643 pass / 15 pre-existing fail (identical baseline)
 - Build: exits 0, 221.73 KB gzip
+
+## Round 2 review iter 1 (total iter 6)
+
+Run: 2026-05-18
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Commit reviewed: 26f745e (backend — expose permissions[] in GET /api/auth/me)
+
+### Verdict: BLOCKED
+
+---
+
+### Gates
+
+**[Dotnet tests] PASS**
+- 342 API tests pass (includes 7 new AuthControllerGetMeTests).
+- Domain.Tests 474/0/0, Application.Tests 138/0/0, API.Tests 342/0/4skip, Integration.Tests 41/0/0.
+- Total: 995 passed, 4 skipped (pre-existing), 0 failed. No regression.
+
+**[G5 Typecheck + Lint — frontend-client] PASS**
+- pnpm --filter frontend-client typecheck: exit 0. No frontend code changed in 26f745e.
+
+**[Vitest — frontend-client] PASS**
+- 643 pass / 15 fail (all 15 pre-existing: profile-page*, registration-form* — identical baseline to iter 5).
+
+**[G8 Playwright — Client SPA (5173)] BLOCKED — CRITICAL ASSERT FAILED**
+- Docker stack: all services healthy (api, keycloak, app_db, frontend-client, frontend-backoffice).
+- Seed: e2e-client@example.com / E2EClient@123! confirmed in admin-empresa group. DB updated: keycloak_user_id = 3cf13230-fd3a-427f-af7c-d2214dd6e9d2 to link e2e-client to the company record.
+- Login: ACF+PKCE flow completed (S256). Redirect to /profile. Session authenticated. User shows as "Admin Empresa" in header.
+- /auth/me BFF response (actual): `{ isAuthenticated: true, userName: "E2E Client", email: "e2e-client@example.com", sub: "3cf13230-...", accessGroup: "admin-empresa", companyId: "a6549453-..." }`
+- CRITICAL ASSERT FAILED: The `/auth/me` BFF response does NOT contain a `permissions` field. `data.permissions ?? []` in auth-context.tsx:95 always evaluates to `[]`. `showFundosGroup = permissions.includes("funds:read")` = false. Sidebar renders: Dashboard, Funcionários, Grupos de Acesso, Perfil Empresa — NO "Fundos" section heading, NO Fundos links.
+- Screenshot: .jdi/cache/phase-50-r2i1-sidebar-no-fundos.png
+- Screenshot: .jdi/cache/phase-50-r2i1-client-profile.png
+
+**Root cause:** The backend doer added `permissions: string[]` to `GET /api/auth/me` (ASP.NET Core endpoint at port 8080). However, the frontend SPA never calls `/api/auth/me` directly. It calls `/auth/me` — the Vinxi/h3 BFF server route implemented in `auth-server.ts` (GET /me handler, lines 211-375). That BFF handler decodes the JWT locally, fetches groups from Keycloak Admin API, and returns: `{ isAuthenticated, userName, email, sub, accessGroup, companyId }`. It does NOT call the backend `/api/auth/me`, does NOT include `permissions`, and was NOT updated in commit 26f745e. The backend fix is therefore unreachable from the frontend permission gating path.
+
+**[G9 Playwright — Backoffice SPA (5174)] PASS**
+- http://localhost:5174/admin/login: loads correctly (title "Onboarding — Backoffice"). "Entrar" button triggers ACF+PKCE redirect to http://localhost:8180/realms/backoffice with code_challenge_method=S256. Console: 401 on /auth/me (expected — unauthenticated), favicon 404 (benign), Vite HMR WS (expected in Docker). Zero application errors. No client-app code referenced in backoffice.
+
+**[G1 Security — localStorage regression] PASS**
+- grep over frontend/client/src for localStorage.setItem with token/jwt/access/refresh: zero hits in non-test files. D-12 compliant.
+
+**[DTO casing — /api/auth/me] PASS**
+- MeResponse.cs uses `record(string AccessToken, int ExpiresIn, string TokenType, string Scope, IReadOnlyList<string> Permissions)`. ASP.NET Core JsonSerializerDefaults.Web serializes record properties to camelCase: `permissions`. Confirmed by test assertions and ASP.NET Core default behavior. NOT a blocker — casing is correct — but moot because the frontend never reaches this endpoint in practice.
+
+---
+
+### Blockers
+
+1. **G8 CRITICAL — Sidebar Fundos NavGroup never renders.** The fix in 26f745e targeted the wrong layer. The frontend permission chain is: `auth-server.ts:/auth/me BFF route` → `auth-context.tsx:setPermissions(data.permissions ?? [])` → `Sidebar.tsx:permissions.includes("funds:read")`. The BFF route (`auth-server.ts` GET /me, lines 362-369) returns `{ isAuthenticated, userName, email, sub, accessGroup, companyId }` — NO `permissions` field. The backend `GET /api/auth/me` (AuthController, port 8080) is never called by the frontend. Fix required: update `auth-server.ts` GET /me handler to resolve and return `permissions: string[]` — either by (a) calling backend `GET /api/auth/me` and forwarding its `permissions` array, or (b) implementing the same Company/Employee/AccessGroup DB lookup via an internal API call using the access token.
+
+---
+
+### Warnings
+
+1. G2 Telemetry pre-existing carry-forward: OTel JS + W3C absent from both SPAs. Phase 53 mandate.
+2. G3 Bundle: raw 766 KB. Dynamic import() code-splitting on fundos routes needed before Phase 52.
+3. G8 auth-flow + fundos E2E specs remain env-blocked (viewer-creds.json absent, pre-existing).
+
+---
+
+### Notes
+
+- The backend work (MeResponse DTO, ResolvePermissionsFromAccessTokenAsync, 7 unit tests) is correct and passes all 342 API tests. The DB lookup chain (Company owner → Permissions.All, Employee → AccessGroup.Permissions, else empty) is sound logic. The implementation is simply not reachable from the permission-gating path in the frontend.
+- The BFF `/auth/me` already proxies to `/api/companies/me` (lines 345-360 of auth-server.ts) to resolve companyId. The same pattern should be used to call `/api/auth/me` for the `permissions` array, or the BFF should do the Company/Employee lookup itself via the existing internal API.
+- Fix scope: auth-server.ts GET /me handler only. No frontend React code changes needed (auth-context.tsx already reads `data.permissions ?? []` correctly).
+
+---
+
+### Regression captures
+
+- Client MCP: authenticated as e2e-client@example.com (admin-empresa group), sidebar verified — Fundos group ABSENT (blocker confirmed)
+- /auth/me BFF response: no `permissions` field
+- Backoffice MCP: /admin/login + ACF+PKCE redirect to backoffice realm, zero app errors (PASS)
+- Vitest: 643 pass / 15 pre-existing fail (no regression)
+- dotnet test: 995 pass / 4 skip / 0 fail (no regression)
+- Screenshots: .jdi/cache/phase-50-r2i1-sidebar-no-fundos.png, .jdi/cache/phase-50-r2i1-client-profile.png

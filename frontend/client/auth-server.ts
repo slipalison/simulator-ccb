@@ -359,6 +359,29 @@ router.get(
         }
       }
 
+      // Resolve permissions from accessGroup (mirrors AccessGroup.CreateDefaultGroups in the domain).
+      //
+      // Architecture note: Backend /api/auth/me was added for this purpose but reads a
+      // "refreshToken" cookie set by the backend's own /api/auth/login — incompatible with
+      // the BFF pattern where the BFF owns session cookies ("client_refresh_token").
+      // Resolution: derive permissions from the already-resolved accessGroup claim.
+      // Covers default groups (admin-empresa / viewer / dashboard). Custom access groups
+      // with non-default permissions require a Bearer-based backend endpoint:
+      //   GET /api/auth/permissions — tracked as Vinext migration debt (Phase 53).
+      let permissions: string[] = [];
+
+      if (accessGroup === "admin-empresa") {
+        permissions = [
+          "employees:read", "employees:write", "employees:delete",
+          "audit:read", "dashboard:access", "access-groups:manage",
+          "funds:read", "funds:write", "funds:delete", "funds:manage",
+        ];
+      } else if (accessGroup === "viewer") {
+        permissions = ["employees:read", "audit:read", "funds:read"];
+      } else if (accessGroup === "dashboard") {
+        permissions = ["dashboard:access"];
+      }
+
       return {
         isAuthenticated: true,
         userName: name,
@@ -366,6 +389,7 @@ router.get(
         sub,
         accessGroup,
         companyId,
+        permissions,
       };
     } catch {
       event.node.res.statusCode = 401;

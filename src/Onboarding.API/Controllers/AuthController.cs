@@ -1,9 +1,12 @@
+using System.IdentityModel.Tokens.Jwt;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Onboarding.Application.Auth.Commands;
 using Onboarding.Application.Auth.DTOs;
 using Onboarding.Application.Common;
+using Onboarding.Domain.Aggregates.EmployeeAggregate;
 using Onboarding.Domain.Exceptions;
+using Onboarding.Domain.Repositories;
 using Onboarding.Infrastructure.Keycloak;
 
 namespace Onboarding.API.Controllers;
@@ -12,6 +15,7 @@ namespace Onboarding.API.Controllers;
 /// Authentication endpoints — public (no [Authorize]).
 /// POST /api/auth/login — D-01: ROPC token exchange via IKeycloakTokenService
 /// POST /api/auth/refresh — D-02: token refresh via IKeycloakTokenService
+/// GET  /api/auth/me     — session validation + resolved permissions (frontend-client-fundos)
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -22,19 +26,65 @@ public sealed class AuthController : ControllerBase
     private readonly IValidator<LoginCommand> _loginValidator;
     private readonly IValidator<RefreshTokenCommand> _refreshValidator;
     private readonly ILogger<AuthController> _logger;
+    private readonly ICompanyRepository _companyRepository;
+    private readonly IEmployeeRepository _employeeRepository;
+    private readonly IAccessGroupRepository _accessGroupRepository;
+
+    // Handler reads JWT without signature validation — token was issued moments ago by Keycloak
+    // via the refresh flow and is not user-supplied. This is intentional (no extra round-trip to JWKS).
+    private static readonly JwtSecurityTokenHandler _jwtHandler = new();
 
     public AuthController(
         ICommandHandler<LoginCommand, TokenResponse> loginHandler,
         ICommandHandler<RefreshTokenCommand, TokenResponse> refreshHandler,
         IValidator<LoginCommand> loginValidator,
         IValidator<RefreshTokenCommand> refreshValidator,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        ICompanyRepository companyRepository,
+        IEmployeeRepository employeeRepository,
+        IAccessGroupRepository accessGroupRepository)
     {
         _loginHandler = loginHandler;
         _refreshHandler = refreshHandler;
         _loginValidator = loginValidator;
         _refreshValidator = refreshValidator;
         _logger = logger;
+        _companyRepository = companyRepository;
+        _employeeRepository = employeeRepository;
+        _accessGroupRepository = accessGroupRepository;
+    }
+
+    /// <summary>
+    /// Resolves the flat permissions list for a Keycloak subject by mirroring the
+    /// ClientClaimsMiddleware lookup: Company owner → all permissions; Employee → AccessGroup permissions.
+    /// Token is decoded without signature validation because it was just issued by Keycloak.
+    /// </summary>
+    private async Task<IReadOnlyList<string>> ResolvePermissionsFromAccessTokenAsync(
+        string accessToken, CancellationToken ct)
+    {
+        if (!_jwtHandler.CanReadToken(accessToken))
+            return Array.Empty<string>();
+
+        var jwt = _jwtHandler.ReadJwtToken(accessToken);
+        var sub = jwt.Subject;
+
+        if (string.IsNullOrEmpty(sub))
+            return Array.Empty<string>();
+
+        // Mirror ClientClaimsMiddleware: Company owner → all permissions
+        var company = await _companyRepository.GetByKeycloakSubAsync(sub, ct).ConfigureAwait(false);
+        if (company != null)
+            return Permissions.All;
+
+        // Employee → AccessGroup permissions
+        var employee = await _employeeRepository.GetByKeycloakSubAsync(sub, ct).ConfigureAwait(false);
+        if (employee != null)
+        {
+            var accessGroup = await _accessGroupRepository.GetByIdAsync(employee.AccessGroupId, ct).ConfigureAwait(false);
+            return accessGroup?.Permissions.ToArray() ?? Array.Empty<string>();
+        }
+
+        return Array.Empty<string>();
     }
 
     /// <summary>POST /api/auth/login — AUTH-02: exchange credentials for JWT token pair.</summary>
@@ -172,9 +222,16 @@ public sealed class AuthController : ControllerBase
         return NoContent();
     }
 
-    /// <summary>GET /api/auth/me — validate session and return user info.</summary>
+    /// <summary>GET /api/auth/me — validate session, return user info + resolved permissions.</summary>
+    /// <remarks>
+    /// Explicit allow-anonymous: this endpoint validates the session via the httpOnly
+    /// refresh token cookie — there is no Authorization header to authenticate against.
+    /// Permissions are resolved from the freshly issued access token (sub → DB lookup),
+    /// mirroring the ClientClaimsMiddleware logic. Frontend uses the flat permissions[]
+    /// array to gate menu items such as the Fundos NavGroup (frontend-client-fundos, iter 6).
+    /// </remarks>
     [HttpGet("me")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(MeResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMe(
         CancellationToken ct)
@@ -206,14 +263,15 @@ public sealed class AuthController : ControllerBase
                 Path = "/api"
             });
 
-            // Return user info (decoded from access token)
-            return Ok(new
-            {
+            // Resolve permissions from the freshly issued access token (sub → DB lookup)
+            var permissions = await ResolvePermissionsFromAccessTokenAsync(tokens.AccessToken, ct);
+
+            return Ok(new MeResponse(
                 tokens.AccessToken,
                 tokens.ExpiresIn,
                 tokens.TokenType,
-                tokens.Scope
-            });
+                tokens.Scope,
+                permissions));
         }
         catch (KeycloakAuthException)
         {

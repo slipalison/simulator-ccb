@@ -2,10 +2,10 @@
 phase_slug: frontend-client-fundos
 phase_position: 51
 iter: 5
-total_resets: 0
-status: converged
-final_converged_at: 2026-05-17T00:00:00Z
-final_verdict: APPROVED_WITH_WARNINGS
+total_resets: 1
+status: running
+third_reopen_at: 2026-05-17T00:00:00Z
+third_reopen_reason: User reports Sidebar Fundos menu missing — investigation shows backend GET /api/auth/me returns only { AccessToken, ExpiresIn, TokenType, Scope } with no permissions claim. Frontend AuthContext reads data.permissions ?? [] → empty array → Sidebar permissions.includes('funds:read') → false. Routes work via direct URL but no navigation entry point.
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-17T00:00:00Z
@@ -118,4 +118,13 @@ second_reopen_at: 2026-05-17T00:00:00Z
 
 ### iter=5 — converged
 - iter 5: APPROVED_WITH_WARNINGS, hash=ac683c587774, commit=dba8bda, ts=2026-05-17T00:00:00Z
+
+--- RESET 1 at 2026-05-17 — user reports Sidebar Fundos group missing; iter resets to 0, total_resets=1 ---
+
+### iter=6 (round 2 iter 1) — start (2026-05-17) — Sidebar permission gating fails because backend /auth/me has no permissions claim
+- Investigation (main thread): src/Onboarding.API/Controllers/AuthController.cs:210-216 — /api/auth/me returns ONLY `{ AccessToken, ExpiresIn, TokenType, Scope }`. NO permissions field.
+- frontend/client/src/lib/auth-context.tsx line 95 reads `data.permissions ?? []` → always empty.
+- Sidebar.tsx line 120: `permissions.includes("funds:read")` → false → Fundos NavGroup hidden.
+- Routes work via direct URL because authenticatedRoute renders regardless; only sidebar menu hidden.
+- Backend doer dispatched: extract roles/permissions from Keycloak JWT access_token claim and include in /auth/me response.
 

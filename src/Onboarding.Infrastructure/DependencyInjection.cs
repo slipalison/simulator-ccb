@@ -121,6 +121,17 @@ public static class InfrastructureServiceExtensions
         services.AddScoped<IQueryHandler<ListAdminCedenteQuery, PaginatedResult<AdminCedenteDto>>,
             ListAdminCedenteQueryHandler>();
 
+        // Phase 51 — admin GET-by-id query handlers (D-8, D-12). Cross-company, IgnoreQueryFilters.
+        // SECURITY: Only consumed by AdminFundosController (BearerBackoffice + CrossCompanyAccess).
+        services.AddScoped<IQueryHandler<GetAdminFundoByIdQuery, AdminFundoDto?>,
+            GetAdminFundoByIdQueryHandler>();
+        services.AddScoped<IQueryHandler<GetAdminConsultoriaFundoByIdQuery, AdminConsultoriaFundoDto?>,
+            GetAdminConsultoriaFundoByIdQueryHandler>();
+        services.AddScoped<IQueryHandler<GetAdminCustodianteByIdQuery, AdminCustodianteDto?>,
+            GetAdminCustodianteByIdQueryHandler>();
+        services.AddScoped<IQueryHandler<GetAdminCedenteByIdQuery, AdminCedenteDto?>,
+            GetAdminCedenteByIdQueryHandler>();
+
         // Phase 50 — relationship aggregate admin query handlers (D-8, D-21)
         services.AddScoped<IQueryHandler<ListAdminFundoCedenteQuery, PaginatedResult<AdminRelFundoCedenteDto>>,
             ListAdminFundoCedenteQueryHandler>();

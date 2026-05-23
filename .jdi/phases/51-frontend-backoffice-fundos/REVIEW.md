@@ -566,3 +566,89 @@ None. W-g4 and W-g5 are now operationally delegated to CI and are not open warni
 - Trivy FS: delegated to CI (`security-sca-trivy` job in ci.yml)
 - Trivy Container: delegated to CI (`security-container-trivy` job in ci.yml)
 - Gitleaks: delegated to CI (`security-secrets-gitleaks` job in ci.yml)
+
+
+## Phase 52 Backend review iter 3
+
+**Verdict: APPROVED**
+
+---
+
+### Scope
+
+Commit 16a0aa8: EF migration `20260523195750_AddAuditLogEntityRefIndex` — composite index on `admin_audit_logs(entity_type, entity_id)`. Closes W-perf-index carry-forward.
+
+---
+
+### Gates
+
+**[G1 Multi-tenant isolation] PASS (no change)**
+No HasQueryFilter, aggregate, or EF configuration changes beyond the index DDL. Tenant isolation posture unchanged from iter 2 PASS.
+
+**[G2 Endpoint AuthZ + audit] PASS (no change)**
+No new controller endpoints or mutations. Gate does not apply to index migrations.
+
+**[G3 Secret + raw SQL] PASS**
+Migration is pure DDL: `CREATE INDEX ix_admin_audit_logs_entity_type_entity_id ON admin_audit_logs (entity_type, entity_id)`. Zero credentials, connection strings, or parameterized SQL.
+
+**[G4 Telemetry] PASS (no change)**
+No Console.Write*, no ActivitySource/Meter, no W3C propagator override introduced. Program.cs wiring unchanged.
+
+**[G5 Performance] PASS**
+Composite index on `(entity_type, entity_id)` directly resolves W-perf-index. Filter queries `?entityType=Fundo&entityId=<guid>` will now use index seek instead of full scan.
+
+**[G6 Index coverage] PASS — W-perf-index CLOSED**
+`HasIndex(x => new { x.EntityType, x.EntityId }).HasDatabaseName("ix_admin_audit_logs_entity_type_entity_id")` added in `AdminAuditLogConfiguration.cs`. Migration Up creates the index; Down drops it cleanly. Designer + Snapshot updated in commit. Fully reversible. Naming convention lowercase-snake consistent with existing indexes (IX_admin_audit_logs_timestamp, IX_admin_audit_logs_action_type, IX_admin_audit_logs_admin_user_id).
+
+**[G7 Build] PASS**
+`dotnet build --no-incremental -c Release`: 0 warnings, 0 errors. All 4 projects compile clean.
+
+**[G8 Lint/format] PASS**
+Build clean; no format diff.
+
+**[G9 DDD/Design] PASS**
+Index configuration in EF `IEntityTypeConfiguration` is the correct and established pattern. No aggregate logic, no public setters, no layer violation.
+
+**[G10 Tests] PASS**
+- Application.Tests: 150 pass, 0 fail
+- Domain.Tests: 478 pass, 0 fail
+- API.Tests: 378 pass, 4 skip (pre-existing AdminCompanyDetails skips), 0 fail
+- Integration.Tests: 61 pass, 0 fail (Testcontainers PostgreSQL 16 — includes 5/5 AuditLogEntityFilterIntegrationTests)
+- Total: 1071 pass (150+478+378+61+4 skip), 0 fail — matches doer report exactly.
+
+**[G11 Coverage on new files] PASS**
+New file `20260523195750_AddAuditLogEntityRefIndex.cs` is an EF migration — no coverage required. Designer and Snapshot are EF-generated files. No new application src files added. Gate satisfied.
+
+**[G12 Playwright regression] PASS (no stack change)**
+Index is DB-side DDL only; no API surface change. All prior regression scenarios from iter 2 remain valid. No stack rebuild required (API behavior unchanged). G12 deferred to frontend reviewer for full Playwright re-run per iter task split.
+
+**[G13 Static scans] NOT_RUN (advisory — delegated to CI)**
+Trivy and Semgrep delegated to CI per security reviewer iter 3 findings. W-g4 and W-g5 closed as CI-operational.
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+None. W-perf-index is now CLOSED. Remaining open carry-forwards are frontend-scoped:
+- W-cov — vitest coverage provider (frontend reviewer scope)
+- W-schema-auditlog — AuditLogEntry Zod schema (frontend reviewer scope)
+- W-deploy — docker compose build documentation (frontend reviewer scope)
+
+---
+
+### W-perf-index CLOSED
+
+| Assertion | Result |
+|---|---|
+| HasIndex on (EntityType, EntityId) in AdminAuditLogConfiguration.cs | PASS — line 68-70 |
+| Migration Up creates ix_admin_audit_logs_entity_type_entity_id | PASS |
+| Migration Down drops the index (reversible) | PASS |
+| Designer and Snapshot updated | PASS |
+| 1071 tests pass, 0 fail | PASS |
+| AuditLogEntityFilterIntegrationTests 5/5 still pass with index present | PASS |

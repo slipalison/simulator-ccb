@@ -82,6 +82,7 @@ try
         .WithMetrics(metrics => metrics
             .AddAspNetCoreInstrumentation()                             // D-11: HTTP server metrics
             .AddRuntimeInstrumentation()                                // D-11: GC, threads, memory
+            .AddMeter("Onboarding.API.Middleware")                      // W-data: ClientClaimsMiddleware no-match counter
             .AddOtlpExporter());                                        // D-12: reads OTEL_EXPORTER_OTLP_ENDPOINT
 
     // Health checks — split live/ready (OBS-05, D-22 through D-26)

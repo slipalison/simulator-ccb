@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Onboarding.Application.Common;
@@ -30,6 +31,27 @@ namespace Onboarding.API.Middleware;
 ///    - If found: look up AccessGroup → set permissions from AccessGroup.Permissions
 /// 7. If nothing found: CompanyId = Guid.Empty → HasQueryFilter returns empty → 403
 /// </summary>
+/// <summary>
+/// OTel metrics for ClientClaimsMiddleware (W-data fix, frontend-client-fundos round 4).
+/// Counter increments when a JWT sub has no matching Company or Employee in the DB,
+/// enabling dashboards to detect misconfigured seeding or stale Keycloak users.
+/// </summary>
+internal static class ClientClaimsMetrics
+{
+    // Singleton meter — one per assembly lifetime (JIT-friendly, no per-request alloc).
+    internal static readonly Meter Meter = new("Onboarding.API.Middleware", "1.0.0");
+
+    /// <summary>
+    /// Incremented on each request where the JWT sub does not match any Company or Employee.
+    /// Tag sub_prefix carries the first 8 chars of sub for cardinality control (no PII).
+    /// </summary>
+    internal static readonly Counter<long> NoMatchCounter =
+        Meter.CreateCounter<long>(
+            name: "clientclaims.no_match",
+            unit: "{request}",
+            description: "Number of authenticated requests where JWT sub matched no Company or Employee.");
+}
+
 public static class ClientClaimsMiddleware
 {
     public static IApplicationBuilder UseClientClaims(this IApplicationBuilder app)
@@ -126,6 +148,12 @@ public static class ClientClaimsMiddleware
             // No company or employee found → CompanyId remains Guid.Empty → HasQueryFilter returns empty → 403
             logger.LogWarning(
                 "ClientClaimsMiddleware: no Company or Employee found for sub={Sub} — access denied", sub);
+
+            // W-data metric: count no-match occurrences. Tag with first 8 chars of sub
+            // for cardinality control — enough to correlate in dashboards without exposing PII.
+            var subPrefix = sub.Length >= 8 ? sub[..8] : sub;
+            ClientClaimsMetrics.NoMatchCounter.Add(1,
+                new KeyValuePair<string, object?>("sub_prefix", subPrefix));
 
             await next();
         });

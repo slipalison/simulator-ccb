@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
@@ -253,5 +254,136 @@ public class ClientClaimsMiddlewareTests
             Guid.NewGuid());
         employee.SetKeycloakUserId(keycloakUserId);
         return employee;
+    }
+}
+
+/// <summary>
+/// Tests for the W-data OTel metric emitted by ClientClaimsMiddleware on no-match path.
+/// Verifies that clientclaims.no_match counter increments when JWT sub does not resolve
+/// to any Company or Employee (frontend-client-fundos round 4, W-data fix).
+/// </summary>
+public sealed class ClientClaimsMiddlewareMetricTests
+{
+    private readonly ICompanyRepository _companyRepository;
+    private readonly IEmployeeRepository _employeeRepository;
+    private readonly IAccessGroupRepository _accessGroupRepository;
+    private readonly CurrentCompanyService _companyService;
+    private readonly CurrentCompanyPermissionsService _permissionsService;
+
+    public ClientClaimsMiddlewareMetricTests()
+    {
+        _companyRepository = Substitute.For<ICompanyRepository>();
+        _employeeRepository = Substitute.For<IEmployeeRepository>();
+        _accessGroupRepository = Substitute.For<IAccessGroupRepository>();
+        _companyService = new CurrentCompanyService();
+        _permissionsService = new CurrentCompanyPermissionsService();
+    }
+
+    private HttpContext CreateHttpContext(string sub, string path = "/api/clients/me")
+    {
+        var context = new DefaultHttpContext();
+        context.Request.Path = path;
+        context.Request.Method = "GET";
+
+        var services = new ServiceCollection();
+        services.AddSingleton(LoggerFactory.Create(b => b.AddDebug()));
+        services.AddSingleton<ICurrentCompanyService>(_companyService);
+        services.AddSingleton<ICurrentCompanyPermissionsService>(_permissionsService);
+        services.AddSingleton(_companyRepository);
+        services.AddSingleton(_employeeRepository);
+        services.AddSingleton(_accessGroupRepository);
+        context.RequestServices = services.BuildServiceProvider();
+
+        var identity = new System.Security.Claims.ClaimsIdentity("BearerClient", "name", "role");
+        identity.AddClaim(new System.Security.Claims.Claim("sub", sub));
+        context.User = new System.Security.Claims.ClaimsPrincipal(identity);
+        return context;
+    }
+
+    private async Task RunMiddlewareAsync(HttpContext context)
+    {
+        var appBuilder = new ApplicationBuilder(context.RequestServices);
+        appBuilder.UseClientClaims();
+        appBuilder.Run(_ => Task.CompletedTask);
+        await appBuilder.Build()(context);
+    }
+
+    [Fact]
+    public async Task NoMatch_IncrementsNoMatchCounter()
+    {
+        // Arrange — sub does not match any Company or Employee
+        var sub = "no-match-sub-12345";
+        _companyRepository.GetByKeycloakSubAsync(sub, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<Company?>(null));
+        _employeeRepository.GetByKeycloakSubAsync(sub, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<Employee?>(null));
+
+        var context = CreateHttpContext(sub);
+
+        long measurementValue = 0;
+        string? capturedSubPrefix = null;
+
+        // Use MeterListener to capture the counter measurement
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, ml) =>
+        {
+            if (instrument.Meter.Name == "Onboarding.API.Middleware"
+                && instrument.Name == "clientclaims.no_match")
+                ml.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, _) =>
+        {
+            measurementValue += measurement;
+            foreach (var tag in tags)
+            {
+                if (tag.Key == "sub_prefix")
+                    capturedSubPrefix = tag.Value?.ToString();
+            }
+        });
+        listener.Start();
+
+        // Act
+        await RunMiddlewareAsync(context);
+
+        // Assert — counter incremented exactly once
+        measurementValue.ShouldBe(1);
+
+        // sub_prefix = first 8 chars (cardinality control)
+        capturedSubPrefix.ShouldNotBeNull();
+        capturedSubPrefix.ShouldBe(sub[..8]);
+    }
+
+    [Fact]
+    public async Task CompanyOwner_DoesNotIncrementNoMatchCounter()
+    {
+        // Arrange — PJ owner matched → counter must NOT increment
+        var sub = "owner-sub-abc";
+        var company = Company.Register(
+            "Test Corp", "11222333000181", "owner@corp.com", "11999999999",
+            TermsAcceptance.Create("1.0", "127.0.0.1"));
+        company.SetKeycloakUserId(sub);
+
+        _companyRepository.GetByKeycloakSubAsync(sub, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<Company?>(company));
+
+        var context = CreateHttpContext(sub);
+
+        long measurementValue = 0;
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, ml) =>
+        {
+            if (instrument.Meter.Name == "Onboarding.API.Middleware"
+                && instrument.Name == "clientclaims.no_match")
+                ml.EnableMeasurementEvents(instrument);
+        };
+        listener.SetMeasurementEventCallback<long>((_, measurement, _, _) =>
+            measurementValue += measurement);
+        listener.Start();
+
+        // Act
+        await RunMiddlewareAsync(context);
+
+        // Assert — no increment on happy path
+        measurementValue.ShouldBe(0);
     }
 }

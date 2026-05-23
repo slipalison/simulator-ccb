@@ -1,9 +1,11 @@
 ---
 phase_slug: frontend-backoffice-fundos
 phase_position: 52
-iter: 2
+iter: 3
 total_resets: 1
-status: running
+status: converged
+final_converged_at: 2026-05-23T00:00:00Z
+final_verdict: APPROVED
 round1_converged_at: 2026-05-23T00:00:00Z
 round1_verdict: APPROVED_WITH_WARNINGS
 round2_reopened_at: 2026-05-23T00:00:00Z
@@ -66,4 +68,20 @@ dod_enforced: true
 - Backend: W-perf-index — EF migration composite index admin_audit_logs(entity_type, entity_id) reversible additive.
 - Backoffice frontend: W-cov — install @vitest/coverage-v8 + vitest.config.ts perFile thresholds D-2 (mirror client Phase 51 iter 3 pattern). W-schema-auditlog — Zod AuditLogEntry include entityType+entityId optional. W-deploy — docs/dev-setup.md document `docker compose build` after pnpm changes.
 - W-g4/g5 — Semgrep/Trivy delegated to CI workflows; document in REVIEW.md if tools not locally available.
+
+### iter=3 — doer commits
+- Backend `16a0aa8` — W-perf-index CLOSED: migration AddAuditLogEntityRefIndex composite (entity_type, entity_id); HasIndex with HasDatabaseName; reversible Up/Down. 1071 tests + 5/5 integration with index.
+- Frontend `7f21c6c` — W-cov CLOSED: @vitest/coverage-v8 + perFile 80% all axes + explicit D-2 include list (21 files) + .gitignore lib/ negation patch. 387/0 tests. Overall 94.46/90.30/93.10/95.77.
+- Frontend `a7c399f` — W-schema-auditlog CLOSED: Zod AuditLogEntry +entityType?+entityId? optional. AuditEventRow renders entity caption.
+- Frontend `105220d` — W-deploy CLOSED: docs/dev-setup.md +section "After pnpm changes — rebuild container".
+
+### iter=3 — reviewer aggregate (all 3 APPROVED)
+- Backend `5e870ed` — **APPROVED** (W-perf-index CLOSED; 1071/0/4 tests; build clean)
+- Security `aac65b8` — **APPROVED** (W-g4/g5 DELEGATED TO CI workflows confirmed `.github/workflows/ci.yml` semgrep+codeql+trivy-fs+trivy-image jobs present, W-g4/g5 CLOSED; @vitest/coverage-v8 MIT confirmed; entity caption privacy OK)
+- Frontend (committed) — **APPROVED** (3 warnings closed; Playwright regression both SPAs; bundle 205 KB gz; only remaining carry-forwards W-telemetry + W-gitignore are pre-existing not phase 52)
+- Hash: 5ef29de769de (vs iter2 b644412698e1 — different, no oscillation)
+- Aggregate verdict (worst-case): **APPROVED**
+
+### iter=3 — converged (all 5 phase 52 warnings RESOLVED — clean APPROVED)
+- iter 3: APPROVED, hash=5ef29de769de, commits=5e870ed+aac65b8+frontend, ts=2026-05-23T00:00:00Z
 

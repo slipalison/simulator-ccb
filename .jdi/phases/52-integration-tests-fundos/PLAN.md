@@ -154,7 +154,7 @@ Dupla missão: (1) Integration tests end-to-end Testcontainers PG cobrindo 5 ent
   - All integration tests (Wave 2) still pass (no regression from collector container startup).
 - **Dependencies:** T-5, T-6, T-7
 - **Test:** Playwright MCP + collector log inspection + Jaeger UI screenshot
-- **Status:** pending
+- **Status:** completed
 
 ## Execution
 

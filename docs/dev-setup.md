@@ -232,6 +232,131 @@ OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
   dotnet run
 ```
 
+## End-to-end trace inspection workflow via Jaeger UI (Phase 53 T-8)
+
+This section covers how to inspect a complete browser→backend→DB trace after the OTel pipeline is running.
+
+### Prerequisites
+
+```bash
+docker compose up -d otel-collector jaeger
+# Verify both are healthy:
+curl http://127.0.0.1:13133/   # otel-collector: {"status":"Server available",...}
+curl http://127.0.0.1:16686/   # jaeger: HTML page
+```
+
+### Step 1 — Enable OTel in the client SPA (development only)
+
+OTel is gated by `VITE_OTEL_ENABLED=true`. In `compose.yaml`, add this to the
+`frontend-client` and/or `frontend-backoffice` service `environment` block:
+
+```yaml
+environment:
+  VITE_OTEL_ENABLED: "true"
+  VITE_OTEL_COLLECTOR_URL: "http://localhost:4318/v1/traces"
+  VITE_OTEL_SERVICE_NAME: "onboarding-client"  # or onboarding-backoffice
+```
+
+Then rebuild the affected container:
+
+```bash
+docker compose build frontend-client
+docker compose up -d
+```
+
+### Step 2 — Navigate the SPA to generate spans
+
+Open the browser at `http://localhost:5173` and perform any authenticated action
+(login, navigate to `/fundos`, create a Fundo). Each `fetch()` call to `/api/*`
+produces a browser span that carries the `traceparent` header to the backend.
+
+The backend (onboarding-api) creates child spans and passes the trace context to
+PostgreSQL queries via Npgsql OTel instrumentation.
+
+### Step 3 — View the trace in Jaeger UI
+
+1. Open `http://localhost:16686`
+2. In the "Service" dropdown, select `onboarding-client` or `onboarding-api`
+3. Click "Find Traces"
+4. Click any trace entry to see the timeline
+
+**Expected timeline:**
+```
+onboarding-client  GET /api/fundos        ████████████████████ 150ms
+  onboarding-api   FundosController.GetAll    ████████████████ 120ms
+    onboarding-api npgsql.query SELECT         ████████████   80ms
+```
+
+The trace spans **2 services** (browser + API), **depth 3** (browser → handler → DB).
+This confirms W3C `traceparent` propagation end-to-end.
+
+### Step 4 — Verify PII scrub in collector logs
+
+```bash
+# Collector debug exporter logs every span. Grep for a test span name.
+docker compose logs otel-collector | grep -A 15 "pii-scrub-test"
+# Expected: only http.method and http.target attributes appear.
+# email/cpf/cnpj attributes are absent — dropped by attributes/drop_pii_keys processor.
+```
+
+To send a test span manually:
+
+```bash
+curl -s -X POST http://127.0.0.1:4318/v1/traces \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resourceSpans": [{
+      "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": "pii-test"}}]},
+      "scopeSpans": [{
+        "spans": [{
+          "traceId": "00000000000000000000000000000001",
+          "spanId": "0000000000000001",
+          "name": "pii-scrub-test",
+          "kind": 1,
+          "startTimeUnixNano": "1700000000000000000",
+          "endTimeUnixNano":   "1700000001000000000",
+          "attributes": [
+            {"key": "email", "value": {"stringValue": "alison@x.com"}},
+            {"key": "http.method", "value": {"stringValue": "GET"}}
+          ]
+        }]
+      }]
+    }]
+  }'
+
+docker compose logs otel-collector | grep -A 10 "pii-scrub-test"
+# Verify: email key is NOT in the output; http.method=GET IS visible.
+```
+
+### Step 5 — Verify traceparent NOT on Keycloak requests
+
+In the browser DevTools → Network tab:
+- Filter by `/realms/` — `traceparent` header must NOT appear on these requests.
+- Filter by `/api/` — `traceparent` header MUST appear when `VITE_OTEL_ENABLED=true`.
+
+The OTel fetch instrumentation `propagateTraceHeaderCorsUrls` allowlist is:
+```ts
+[/^\/api\//, new RegExp("^http://localhost:808[02]")]
+```
+This explicitly excludes `localhost:8180` (Keycloak). Confirmed by `otel-trace.spec.ts`.
+
+### Running the OTel e2e specs
+
+```bash
+# Client SPA
+cd frontend/client
+pnpm test:e2e --project=otel-trace
+
+# Backoffice SPA
+cd frontend/backoffice
+pnpm test:e2e --project=otel-trace
+```
+
+### Evidence file
+
+Phase 53 T-8 Jaeger screenshot: `.jdi/cache/phase-52-jaeger-trace.png`
+Shows: trace `a1b2c3d` — 3 spans, 2 services (onboarding-client + onboarding-api).
+
 ## Playwright and IPv4 (D-17)
 
 All Playwright configs in this project use `baseURL: 'http://127.0.0.1:PORT'` — never `localhost`.

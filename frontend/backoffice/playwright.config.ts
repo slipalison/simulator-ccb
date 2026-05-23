@@ -95,6 +95,19 @@ export default defineConfig({
       },
       testMatch: /.*admin-fundos-permissions\.spec\.ts/,
     },
+
+    // ── Phase 53: OTel end-to-end trace verification (T-8) ───────────────────
+    // Fresh browser — login exercised within spec; no pre-built storageState.
+    // Uses localhost (not 127.0.0.1) per D-17 so Keycloak PKCE cookie matches.
+    {
+      name: 'otel-trace',
+      testDir: './playwright/specs',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:5174',
+      },
+      testMatch: /.*otel-trace\.spec\.ts/,
+    },
   ],
 
   // No webServer — Docker Compose must be running before E2E tests.

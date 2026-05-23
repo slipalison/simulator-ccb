@@ -52,6 +52,49 @@ export default defineConfig({
       },
       testMatch: /api-proxy\.spec\.ts/,
     },
+
+    // ── Phase 52: Fundos section E2E (T-8) ────────────────────────────────────
+    // Auth-based tests use localhost per D-17 (Keycloak PKCE callback origin match).
+
+    // Fundos list pages — search, filter, URL params, D-12 token check
+    {
+      name: 'admin-fundos-list',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:5174',
+      },
+      testMatch: /.*admin-fundos-list\.spec\.ts/,
+    },
+
+    // Fundos detail pages — 404 graceful, audit history
+    {
+      name: 'admin-fundos-detail',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:5174',
+      },
+      testMatch: /.*admin-fundos-detail\.spec\.ts/,
+    },
+
+    // Fundos association list pages (FundoCedente, FundoTipoAtivo, CedenteTipoAtivo)
+    {
+      name: 'admin-fundos-associations',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:5174',
+      },
+      testMatch: /.*admin-fundos-associations\.spec\.ts/,
+    },
+
+    // Permission gating — unauthenticated redirect, admin access, D-12 token gate
+    {
+      name: 'admin-fundos-permissions',
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: 'http://localhost:5174',
+      },
+      testMatch: /.*admin-fundos-permissions\.spec\.ts/,
+    },
   ],
 
   // No webServer — Docker Compose must be running before E2E tests.

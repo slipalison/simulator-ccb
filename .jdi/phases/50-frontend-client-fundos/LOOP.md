@@ -2,12 +2,12 @@
 phase_slug: frontend-client-fundos
 phase_position: 51
 iter: 7
-total_resets: 1
-status: converged
+total_resets: 2
+status: running
 third_reopen_at: 2026-05-17T00:00:00Z
 third_reopen_reason: User reports Sidebar Fundos menu missing — investigation shows backend GET /api/auth/me returns only { AccessToken, ExpiresIn, TokenType, Scope } with no permissions claim. Frontend AuthContext reads data.permissions ?? [] → empty array → Sidebar permissions.includes('funds:read') → false. Routes work via direct URL but no navigation entry point.
-final_converged_at: 2026-05-17T00:00:00Z
-final_verdict: APPROVED_WITH_WARNINGS
+fourth_reopen_at: 2026-05-17T00:00:00Z
+fourth_reopen_reason: User reports POST /api/fundos/consultorias (and other create endpoints) fails. JWT shows admin-empresa group but BFF /auth/me hardcoded map shows Fundos menu while backend ClientClaimsMiddleware (real perms gate per request) requires sub in Company.KeycloakSubId or Employee.KeycloakSubId table. Need to capture HTTP response + backend log to confirm root.
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-17T00:00:00Z
@@ -155,4 +155,18 @@ second_reopen_at: 2026-05-17T00:00:00Z
 
 ### iter=7 — converged (round 2)
 - iter 7: APPROVED_WITH_WARNINGS, hash=2c726bb2a027, commit=2667ae9, ts=2026-05-17T00:00:00Z
+
+--- RESET 2 at 2026-05-17 — user reports POST create endpoints fail; total_resets=2 ---
+
+### iter=8 (round 3 iter 1) — start — POST create endpoints return non-2xx
+- User curl: POST /api/fundos/consultorias body {razaoSocial,cnpj,nomeFantasia,email:"",telefone:""}
+- JWT user: sub=c749b6bb-ca29-4af5-b07a-7ced7657ff30, groups=[admin-empresa], azp=onboarding-client-acf
+- Investigation (main thread):
+  - Body shape matches RegisterConsultoriaFundoRequest. Validator: CNPJ 65467872000100 has check digits 00 (computed mod-11) — VALID. Empty email/telefone bypass via IsNullOrWhiteSpace skip.
+  - URL routing: server.ts BFF proxy /api/* → http://api:8080/api/* with Authorization Bearer client_access_token cookie injected. Correct.
+  - Backend Authorize(BearerClient + Policy=FundWrite). FundWrite policy = PermissionRequirement(funds:write) handled by PermissionAuthorizationHandler reading ICurrentCompanyPermissionsService set by ClientClaimsMiddleware.
+  - ClientClaimsMiddleware (Middleware/ClientClaimsMiddleware.cs:88-128): DB lookup by JWT sub → Company OR Employee → AccessGroup.Permissions. If neither found → permissions empty → 403.
+  - Hypothesis: user's sub not seeded as Company.KeycloakSubId or Employee.KeycloakSubId in DB → ClientClaimsMiddleware logs "no Company or Employee found" → empty permissions → 403 Forbidden.
+- Note: BFF /auth/me hardcoded perms map (commit 2667ae9) made Sidebar show Fundos visually but actual backend permission gate is separate flow per request. This is the dual source of truth problem flagged as W-arch in iter 7.
+- Diagnostic dispatched: MCP capture POST status + body + backend container logs.
 

@@ -1111,3 +1111,61 @@ Do NOT revert `JsonStringEnumConverter`. It is the correct fix for TipoAtivo POS
 Commit 4c352bf solved W-tipoativo-enum correctly. The doer did not grep for `.GetInt32()` on `status` fields in existing tests before shipping the serializer change. The B1 NRE fix (f9f1c2b), the 7 W-tests (a594851), and the 2 new integration tests (86896d4) are all correct and pass. Only the 6 pre-existing test assertion sites need updating.
 
 Recovery path: fix 6 `.GetInt32()` → `.GetString()` assertion sites in Integration.Tests. Optionally fix request payload if needed. dotnet test must return 0 failures.
+
+---
+
+## Round 3 review iter 3 (total iter 10) — frontend
+
+### Verdict: APPROVED_WITH_WARNINGS
+
+---
+
+### Gate results
+
+**G4 — Build:** PASS. Build succeeded. Bundle: 221.73 KB gz (under 300 KB threshold, carry-forward W-perf).
+
+**G5 — Typecheck + Lint:** PASS. `pnpm typecheck` exit 0. `pnpm lint --max-warnings 0` exit 0.
+
+**G7 — Tests:** PASS (scoped). 643 pass / 15 pre-existing fail — matches expected baseline from iter 5. No new failures introduced.
+
+**G5b — Enum compatibility audit (JsonStringEnumConverter blast radius):**
+- All Zod schemas in `fundos-schemas.ts` use string-based `z.enum([...])` — `CedenteStatusEnum`, `FundoStatusEnum`, `RelationshipStatusEnum`, `TipoAtivoCategoriaEnum`, etc. All fully compatible with string serialization.
+- Employee status uses `boolean` (isActive), not an enum integer. No blast radius.
+- No numeric enum expectation found anywhere in `frontend/client/src`.
+- PASS.
+
+**G8 — Playwright client regression:** PASS.
+
+Golden path POST statuses:
+- GET `/api/fundos/consultorias` → 200
+- POST `/api/fundos/consultorias` → **201 Created** (list refresh → 200)
+- GET `/api/fundos/cedentes` → 200 (CPF/CNPJ column populated — B1 fix verified)
+- POST `/api/fundos/cedentes/pf` → **201 Created** (list refresh → 200)
+- GET `/api/fundos/tipos-ativo` → 200
+- POST `/api/fundos/tipos-ativo` (categoria=RendaFixa) → **201 Created** (list refresh → 200)
+
+Employee/dashboard regression check:
+- `/employees` renders without "Invariant failed" or unhandled errors. Renders "Nenhum funcionário encontrado" empty state correctly.
+- Sidebar shows Fundos group with all 5 items (Fundos, Cedentes, Consultorias, Custodiantes, Tipos de Ativo).
+
+Console errors (classified):
+- `WebSocket ERR_CONNECTION_REFUSED` — pre-existing HMR artifact of containerized deployment. Non-blocking.
+- `React setState-in-render` on Transitioner — pre-existing carry-forward.
+- `401 on /auth/me` — expected session init behavior.
+- Zero "Invariant failed". Zero application-level unhandled errors.
+
+**D-4 cross-import:** PASS. No `frontend/client` importing from `frontend/backoffice` or vice versa.
+
+**D-12 (carry-forward):** BFF permission hardcoding unchanged since iter 5. Phase 52 target — confirmed carry-forward.
+
+---
+
+### Blockers
+None.
+
+### Warnings (carry-forward)
+- W-arch — BFF permission hardcoding (carry-forward, Phase 52 target).
+- W-data — companies.keycloak_user_id seed not automated (carry-forward).
+- W-fundo-nullable — ClasseAnbima/Segmento empty string not normalized (carry-forward, partially addressed by backend 1b712f8).
+- W-perf — Bundle 221 KB gz (carry-forward; under gate threshold, monitor in Phase 52).
+- W-react-setstate — React setState-in-render on Transitioner (pre-existing, Vinxi/TanStack Router interop, non-blocking).

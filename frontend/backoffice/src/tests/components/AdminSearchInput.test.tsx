@@ -40,4 +40,24 @@ describe("AdminSearchInput", () => {
     const input = screen.getByRole("searchbox");
     expect(input).toBeInTheDocument();
   });
+
+  it("updates local value when typing in input", () => {
+    render(<AdminSearchInput value="" onChange={vi.fn()} />);
+    const input = screen.getByRole("searchbox") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "abc" } });
+    expect(input.value).toBe("abc");
+  });
+
+  it("syncs external value change via useEffect", () => {
+    const { rerender } = render(<AdminSearchInput value="initial" onChange={vi.fn()} />);
+    const input = screen.getByRole("searchbox") as HTMLInputElement;
+    expect(input.value).toBe("initial");
+    rerender(<AdminSearchInput value="updated" onChange={vi.fn()} />);
+    expect(input.value).toBe("updated");
+  });
+
+  it("uses custom placeholder when provided", () => {
+    render(<AdminSearchInput value="" onChange={vi.fn()} placeholder="Pesquisar fundos" />);
+    expect(screen.getByPlaceholderText("Pesquisar fundos")).toBeInTheDocument();
+  });
 });

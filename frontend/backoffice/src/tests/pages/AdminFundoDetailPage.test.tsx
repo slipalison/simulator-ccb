@@ -149,4 +149,15 @@ describe("AdminFundoDetailPage", () => {
     fireEvent.click(screen.getByRole("button"));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/admin/fundos" });
   });
+
+  it("back button in entity header navigates to /admin/fundos when fundo loaded", async () => {
+    vi.mocked(api.getAdminFundo).mockResolvedValue(mockFundo);
+    const Wrapper = makeWrapper();
+    render(<AdminFundoDetailPage />, { wrapper: Wrapper });
+
+    await waitFor(() => screen.getByTestId("fundo-detail-page"));
+
+    fireEvent.click(screen.getByTestId("entity-back-button"));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/admin/fundos" });
+  });
 });

@@ -69,6 +69,8 @@ describe("AuditHistorySection", () => {
           targetUserName: null,
           details: "RASCUNHO -> ATIVO",
           ipAddress: "127.0.0.1",
+          entityType: null,
+          entityId: null,
         },
       ],
       totalCount: 1,

@@ -119,4 +119,14 @@ describe("AdminConsultoriaFundoDetailPage", () => {
     fireEvent.click(screen.getByRole("button"));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/admin/consultorias-fundo" });
   });
+
+  it("entity header back button navigates to /admin/consultorias-fundo when loaded", async () => {
+    vi.mocked(api.getAdminConsultoriaFundo).mockResolvedValue(mockConsultoria);
+    const Wrapper = makeWrapper();
+    render(<AdminConsultoriaFundoDetailPage />, { wrapper: Wrapper });
+
+    await waitFor(() => screen.getByTestId("consultoria-detail-page"));
+    fireEvent.click(screen.getByTestId("entity-back-button"));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/admin/consultorias-fundo" });
+  });
 });

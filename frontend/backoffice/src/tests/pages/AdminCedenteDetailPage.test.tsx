@@ -120,4 +120,23 @@ describe("AdminCedenteDetailPage", () => {
     fireEvent.click(screen.getByRole("button"));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/admin/cedentes" });
   });
+
+  it("entity header back button navigates to /admin/cedentes when loaded", async () => {
+    vi.mocked(api.getAdminCedente).mockResolvedValue(mockCedente);
+    const Wrapper = makeWrapper();
+    render(<AdminCedenteDetailPage />, { wrapper: Wrapper });
+
+    await waitFor(() => screen.getByTestId("cedente-detail-page"));
+    fireEvent.click(screen.getByTestId("entity-back-button"));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/admin/cedentes" });
+  });
+
+  it("renders PJ label when cedenteTipo is 1", async () => {
+    vi.mocked(api.getAdminCedente).mockResolvedValue({ ...mockCedente, cedenteTipo: 1 });
+    const Wrapper = makeWrapper();
+    render(<AdminCedenteDetailPage />, { wrapper: Wrapper });
+
+    await waitFor(() => screen.getByTestId("cedente-detail-page"));
+    expect(screen.getByTestId("cedente-tipo")).toHaveTextContent("Pessoa Jurídica");
+  });
 });

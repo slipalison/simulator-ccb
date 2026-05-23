@@ -120,4 +120,14 @@ describe("AdminCustodianteDetailPage", () => {
     fireEvent.click(screen.getByRole("button"));
     expect(mockNavigate).toHaveBeenCalledWith({ to: "/admin/custodiantes" });
   });
+
+  it("entity header back button navigates to /admin/custodiantes when loaded", async () => {
+    vi.mocked(api.getAdminCustodiante).mockResolvedValue(mockCustodiante);
+    const Wrapper = makeWrapper();
+    render(<AdminCustodianteDetailPage />, { wrapper: Wrapper });
+
+    await waitFor(() => screen.getByTestId("custodiante-detail-page"));
+    fireEvent.click(screen.getByTestId("entity-back-button"));
+    expect(mockNavigate).toHaveBeenCalledWith({ to: "/admin/custodiantes" });
+  });
 });

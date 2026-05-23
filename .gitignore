@@ -94,6 +94,9 @@ eggs/
 .eggs/
 lib/
 lib64/
+# Un-ignore frontend test lib directories (overrides Python lib/ rule above)
+!frontend/backoffice/src/tests/lib/
+!frontend/client/src/tests/lib/
 parts/
 sdist/
 var/

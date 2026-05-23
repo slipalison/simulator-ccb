@@ -61,4 +61,28 @@ describe("AdminEntityHeader", () => {
     const badge = screen.getByTestId("entity-header-status");
     expect(badge.className).toContain("bg-red-500");
   });
+
+  it("uses fallback bg-gray-500 for unknown status", () => {
+    render(
+      <AdminEntityHeader title="T" nome="N" empresaNome="E" status="UNKNOWN_STATUS" />
+    );
+    const badge = screen.getByTestId("entity-header-status");
+    expect(badge.className).toContain("bg-gray-500");
+    // getStatusLabel falls back to raw status string
+    expect(badge).toHaveTextContent("UNKNOWN_STATUS");
+  });
+
+  it("renders correct label for SUSPENSO status", () => {
+    render(
+      <AdminEntityHeader title="T" nome="N" empresaNome="E" status="SUSPENSO" />
+    );
+    expect(screen.getByTestId("entity-header-status")).toHaveTextContent("Suspenso");
+  });
+
+  it("renders correct label for INATIVO status", () => {
+    render(
+      <AdminEntityHeader title="T" nome="N" empresaNome="E" status="INATIVO" />
+    );
+    expect(screen.getByTestId("entity-header-status")).toHaveTextContent("Inativo");
+  });
 });

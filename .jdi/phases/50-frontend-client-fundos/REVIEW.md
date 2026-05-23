@@ -1514,3 +1514,120 @@ None.
 - UAT run-uat.mjs: 9 pass / 13 fail / 2 cascade / 8 ignored (identical baseline -- no regression)
 - MCP probe: GET /api/auth/permissions -> 401 without Bearer (AuthZ confirmed)
 - API container: healthy at review time
+
+
+## Round 4 review iter 1 (total iter 12) -- frontend
+
+Run: 2026-05-23
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Commits reviewed: 6704a0e (GET /api/auth/permissions), 9b65dd6 (clientclaims.no_match metric), 4abbfbe (BFF hardcoded map removed), c587ebb (seed sync + dev-setup docs), 696fa64 (auth-server.ts BFF backend call)
+
+### Verdict: APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+**[G1 Security frontend] PASS**
+- Zero localStorage/sessionStorage token keys in browser (verified via browser_evaluate).
+- D-12: credentials: include on all BFF fetch calls; Authorization: Bearer ${accessToken} is BFF server-side only (auth-server.ts line 372).
+- No dangerouslySetInnerHTML, no target=_blank without rel, no hardcoded secrets in diff.
+- PermissionsController returns permissions[] (enum strings only) -- no PII in response. D-5 safe.
+
+**[G2 Telemetry (OTel JS + W3C)] BLOCKED (pre-existing carry-forward)**
+- src/lib/telemetry/ absent from both SPAs. Pre-D-2 boundary gap. Phase 53 mandate.
+- Backend: clientclaims.no_match OTel metric added (System.Diagnostics.Metrics.Counter<long>). Confirmed in API logs on no-match path. Sub_prefix tag (first 8 chars) for cardinality control -- no PII.
+
+**[G3 Perf + bundle] PASS**
+- pnpm --filter frontend-client build exits 0.
+- Main bundle: 766.48 KB raw / 221.73 KB gzip -- below 300 KB gate. Identical to iter 5 baseline.
+- Vite chunk-size warning (>500 KB raw) persists -- carry-forward.
+
+**[G4 Build] PASS**
+- pnpm --filter frontend-client build exits 0. All 3 Vinxi routers compile cleanly.
+- Note: API Docker image was stale at review start (built 15:55 UTC, 6704a0e committed 16:06 UTC). GET /api/auth/permissions returned 404. Rebuilt with docker compose build api + docker compose up -d api. Image now contains PermissionsController.
+
+**[G5 Typecheck + Lint] PASS**
+- pnpm --filter frontend-client typecheck: exit 0.
+- pnpm --filter frontend-client lint --max-warnings 0: exit 0.
+
+**[G6 Code-design + Frontend rules] PASS**
+- D-4: zero cross-imports.
+- Hardcoded accessGroup->permissions map fully removed from auth-server.ts. Backend is now single source of truth.
+- Fallback on catch/non-2xx: permissions=[]. Sidebar hides gated entries gracefully; backend gates every request independently.
+- API_INTERNAL_URL read from process.env (server-side BFF only -- not in browser bundle).
+- D-12: Authorization: Bearer header constructed server-side inside h3 route handler.
+
+**[G7 Coverage new files] PASS (carry-forward from iter 3/4)**
+- No new source files in round 4. Coverage gate unchanged.
+- Vitest: 643 pass / 15 pre-existing fail -- identical to iter 5 baseline.
+
+**[G8 Playwright -- Client SPA (5173)] PASS -- W-arch criterion CLEARED**
+
+Scenario A (admin-empresa PJ owner):
+- Logged in as e2e-client@example.com (sub 14a6d3f4, admin-empresa group).
+- /auth/me response: permissions [10 items including funds:read, funds:write, funds:delete, funds:manage], companyId resolved.
+- Sidebar: Fundos NavGroup visible with 5 links (Fundos, Cedentes, Consultorias, Custodiantes, Tipos de Ativo). PASS.
+- GET /api/fundos -> 200. No 5xx, no CORS errors.
+
+Scenario B (custom AccessGroup -- db-verified, PKCE prevents live login):
+- DB confirmed: employee e2e-funds-readonly@example.com -> AccessGroup custom-funds-readonly (permissions: funds:read only).
+- Backend unit tests (AuthControllerPermissionsTests, 9 tests) cover custom subset path.
+- W-arch: no hardcoded map remains; BFF forwards backend array verbatim.
+
+Scenario C (dashboard-only -- db-verified):
+- DB confirmed: employee e2e-dashboard@example.com -> AccessGroup dashboard (permissions: dashboard:access only).
+
+Scenario D (no-match path):
+- Service account sub (91e0c143) not in companies/employees -> GET /api/auth/permissions -> {permissions:[], companyId:null} 200 OK.
+- API log: ClientClaimsMiddleware: no Company or Employee found -- access denied.
+- clientclaims.no_match OTel counter increments (unit tests verified).
+- BFF receives [] -> Sidebar hides all gated items. Graceful degradation CONFIRMED.
+
+D-5 multi-tenant: permissions are user-scoped (sub->company binding). No cross-tenant data in response. PASS.
+D-12: zero token keys in browser storage (browser_evaluate confirmed). PASS.
+
+Pre-existing console errors (classified, none new):
+- WebSocket/Vite HMR: benign (containerized env).
+- 401 on /auth/me: expected unauthenticated initial load.
+- React setState-in-render (Transitioner/RootRoute): pre-existing carry-forward.
+
+**[G9 Playwright -- Backoffice SPA (5174)] PASS**
+- http://localhost:5174 loads /admin/login. Entrar triggers ACF+PKCE to keycloak:8180/realms/backoffice with code_challenge_method=S256. No client-app code in backoffice. No regression.
+
+**[G10 Accessibility] ADVISORY** -- No new violations. Carry-forward.
+
+**[G11 Vinext migration debt] PASS** -- Zero from vinxi imports in round 4 changes.
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+1. W2 Telemetry (pre-existing) -- OTel JS + W3C absent from both SPAs. Phase 53 mandate.
+2. W3 Bundle -- raw 766 KB. Dynamic import() code-splitting on fundos routes recommended before Phase 52.
+3. W-seed -- seed-test-users.sh UPDATE=0 on fresh envs if company was registered with a different email. Manual UPDATE companies SET keycloak_user_id = sub required. Documented in docs/dev-setup.md. Recommend CI setup registers company via POST /api/companies/registration before seeding.
+4. W-react-setstate -- React setState-in-render on Transitioner/RootRoute. Pre-existing, not in round 4 scope.
+
+---
+
+### W-arch closure
+
+W-arch is CLEARED. Hardcoded accessGroup->permissions map removed from auth-server.ts. BFF delegates to GET /api/auth/permissions (Bearer-only) and forwards the exact backend array. Custom AccessGroups with non-default permissions are respected at the Sidebar UI level. Backend authorization gates are unaffected.
+
+---
+
+### Regression captures
+
+- Client /auth/me (admin-empresa, after DB sync + API rebuild): 10 permissions -- PASS
+- Client Sidebar Fundos NavGroup (5 links): visible -- PASS
+- GET /api/fundos -> 200 -- PASS
+- D-12 browser storage token keys: 0 -- PASS
+- Backoffice /admin/login + ACF+PKCE S256 redirect: PASS
+- clientclaims.no_match log: confirmed on no-match sub -- PASS
+- Screenshots: .jdi/cache/phase-50-r4i1-fundos-admin-empresa.png, .jdi/cache/phase-50-r4i1-fundos-sidebar-verified.png, .jdi/cache/phase-50-r4i1-backoffice-pkce.png

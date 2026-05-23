@@ -13,7 +13,9 @@ public sealed record GetAuditLogQuery(
     DateTimeOffset? StartDate = null,
     DateTimeOffset? EndDate = null,
     ActionType? ActionType = null,
-    string? AdminUserName = null);
+    string? AdminUserName = null,
+    string? EntityType = null,
+    Guid? EntityId = null);
 
 /// <summary>
 /// DTO representing a single audit log entry in API responses.
@@ -27,7 +29,9 @@ public sealed record AdminAuditLogDto(
     Guid? TargetUserId,
     string? TargetUserName,
     string? Details,
-    string? IpAddress);
+    string? IpAddress,
+    string? EntityType,
+    Guid? EntityId);
 
 public sealed class GetAuditLogQueryHandler : IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>>
 {
@@ -47,6 +51,8 @@ public sealed class GetAuditLogQueryHandler : IQueryHandler<GetAuditLogQuery, Pa
             query.EndDate,
             query.ActionType,
             query.AdminUserName,
+            query.EntityType,
+            query.EntityId,
             ct);
 
         var dtos = items.Select(a => new AdminAuditLogDto(
@@ -58,7 +64,9 @@ public sealed class GetAuditLogQueryHandler : IQueryHandler<GetAuditLogQuery, Pa
             a.TargetUserId,
             a.TargetUserName,
             a.Details,
-            a.IpAddress)).ToList();
+            a.IpAddress,
+            a.EntityType,
+            a.EntityId)).ToList();
 
         return new PaginatedResult<AdminAuditLogDto>(dtos, totalCount, query.Page, query.PageSize);
     }

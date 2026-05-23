@@ -19,6 +19,18 @@ public sealed class AdminAuditLog : Entity<Guid>
     public string? IpAddress { get; private set; }
 
     /// <summary>
+    /// Aggregate entity type (e.g. "Fundo", "FundoCedente", "FundoTipoAtivo", "CedenteTipoAtivo").
+    /// Nullable — legacy rows (before Phase 52) have no entity scope.
+    /// </summary>
+    public string? EntityType { get; private set; }
+
+    /// <summary>
+    /// Aggregate root ID for the entity referenced in EntityType.
+    /// Nullable — legacy rows (before Phase 52) have no entity scope.
+    /// </summary>
+    public Guid? EntityId { get; private set; }
+
+    /// <summary>
     /// Private parameterless constructor for EF Core materialization.
     /// CS0628: protected constructor in sealed class — intentional EF Core convention pattern.
     /// </summary>
@@ -36,7 +48,9 @@ public sealed class AdminAuditLog : Entity<Guid>
         Guid? targetUserId = null,
         string? targetUserName = null,
         string? details = null,
-        string? ipAddress = null)
+        string? ipAddress = null,
+        string? entityType = null,
+        Guid? entityId = null)
     {
         if (string.IsNullOrWhiteSpace(adminUserName))
             throw new ArgumentException("Admin user name cannot be empty.", nameof(adminUserName));
@@ -44,6 +58,8 @@ public sealed class AdminAuditLog : Entity<Guid>
             details = null;
         if (string.IsNullOrWhiteSpace(ipAddress))
             ipAddress = null;
+        if (string.IsNullOrWhiteSpace(entityType))
+            entityType = null;
 
         return new AdminAuditLog
         {
@@ -56,6 +72,8 @@ public sealed class AdminAuditLog : Entity<Guid>
             TargetUserName = targetUserName,
             Details = details,
             IpAddress = ipAddress,
+            EntityType = entityType,
+            EntityId = entityId,
         };
     }
 }

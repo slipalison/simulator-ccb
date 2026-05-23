@@ -1,4 +1,4 @@
-using FluentValidation;
+﻿using FluentValidation;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Onboarding.Application.Common;
@@ -216,7 +216,7 @@ public class FundoTipoAtivoHandlerTests
             Arg.Any<string>(), Arg.Any<string>(),
             ActionType.RelFundoTipoAtivoStatusChanged,
             Arg.Any<Guid?>(), Arg.Any<string?>(), Arg.Any<string?>(),
-            Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-using NSubstitute;
+﻿using NSubstitute;
 using Onboarding.Application.Admin.Commands;
 using Onboarding.Application.Common;
 using Onboarding.Domain.Aggregates.Audit;
@@ -40,7 +40,7 @@ public class ForcePasswordChangeCommandHandlerTests
             Arg.Any<string>(),
             Arg.Any<string>(),
             "127.0.0.1",
-            Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -58,6 +58,6 @@ public class ForcePasswordChangeCommandHandlerTests
             Arg.Any<string>(),
             "{\"action\": \"password_changed\"}",
             null,
-            Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 }

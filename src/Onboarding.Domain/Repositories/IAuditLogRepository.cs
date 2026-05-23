@@ -15,6 +15,8 @@ public interface IAdminAuditLogRepository
         DateTimeOffset? endDate = null,
         ActionType? actionType = null,
         string? adminUserName = null,
+        string? entityType = null,
+        Guid? entityId = null,
         CancellationToken ct = default);
     Task SaveChangesAsync(CancellationToken ct = default);
 }

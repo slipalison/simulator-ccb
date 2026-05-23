@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Onboarding.Application.Common;
 using Onboarding.Application.Fundos.Commands;
@@ -229,6 +229,6 @@ public class TransitionFundoStatusCommandHandlerTests
             fundo.Nome,
             Arg.Is<string>(d => d.Contains("RASCUNHO") && d.Contains("ATIVO")),
             Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 }

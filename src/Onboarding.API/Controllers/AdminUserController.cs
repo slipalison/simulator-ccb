@@ -486,13 +486,15 @@ public sealed class AdminUserController : ControllerBase
         [FromQuery] DateTimeOffset? endDate = null,
         [FromQuery] string? actionType = null,
         [FromQuery] string? adminUserName = null,
+        [FromQuery] string? entityType = null,
+        [FromQuery] Guid? entityId = null,
         CancellationToken ct = default)
     {
         ActionType? parsedActionType = null;
         if (!string.IsNullOrWhiteSpace(actionType) && Enum.TryParse<ActionType>(actionType, out var parsed))
             parsedActionType = parsed;
 
-        var query = new GetAuditLogQuery(page, pageSize, startDate, endDate, parsedActionType, adminUserName);
+        var query = new GetAuditLogQuery(page, pageSize, startDate, endDate, parsedActionType, adminUserName, entityType, entityId);
         var result = await _auditLogQueryHandler.HandleAsync(query, ct);
         return Ok(result);
     }

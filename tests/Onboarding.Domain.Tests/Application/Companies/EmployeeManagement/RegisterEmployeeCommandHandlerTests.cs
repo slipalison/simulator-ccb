@@ -87,7 +87,7 @@ public class RegisterEmployeeCommandHandlerTests
             ActionType.EmployeeCreated,
             Arg.Any<Guid?>(), command.Nome,
             Arg.Is<string>(d => d.Contains(companyId.ToString())),
-            command.IpAddress, Arg.Any<CancellationToken>());
+            command.IpAddress, Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

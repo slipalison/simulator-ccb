@@ -53,6 +53,8 @@ public sealed class TransitionFundoTipoAtivoStatusHandler
             ActionType.RelFundoTipoAtivoStatusChanged,
             association.Id, $"Fundo={association.FundoId}/TipoAtivo={association.TipoAtivoId}",
             $"Status changed from {previousStatus} to {command.NewStatus}",
+            entityType: "FundoTipoAtivo",
+            entityId: association.Id,
             ct: ct).ConfigureAwait(false);
 
         return CreateFundoTipoAtivoHandler.ToDto(association);

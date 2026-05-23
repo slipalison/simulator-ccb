@@ -62,6 +62,8 @@ public sealed class TransitionFundoCedenteStatusHandler
             targetUserId: association.Id,
             targetUserName: $"Fundo={association.FundoId}/Cedente={association.CedenteId}",
             details: $"Status changed from {previousStatus} to {command.NewStatus}",
+            entityType: "FundoCedente",
+            entityId: association.Id,
             ct: ct).ConfigureAwait(false);
 
         return CreateFundoCedenteHandler.ToDto(association);

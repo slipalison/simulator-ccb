@@ -76,6 +76,8 @@ public class RegisterCompanyCommandHandlerTests
             command.RazaoSocial,
             Arg.Is<string>(d => d.Contains(command.Cnpj)),
             Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
     }
 
@@ -208,6 +210,8 @@ public class RegisterCompanyCommandHandlerTests
             command.RazaoSocial,
             Arg.Is<string>(d => d.Contains(command.Cnpj)),
             Arg.Any<string?>(),
+            Arg.Any<string?>(),
+            Arg.Any<Guid?>(),
             Arg.Any<CancellationToken>());
     }
 }

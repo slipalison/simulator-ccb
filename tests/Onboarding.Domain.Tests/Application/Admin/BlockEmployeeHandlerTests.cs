@@ -1,4 +1,4 @@
-using NSubstitute;
+﻿using NSubstitute;
 using Onboarding.Application.Admin.Commands;
 using Onboarding.Application.Common;
 using Onboarding.Domain.Aggregates.Audit;
@@ -53,7 +53,7 @@ public class BlockEmployeeHandlerTests
             employee.Nome,
             Arg.Any<string>(),
             Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -115,7 +115,7 @@ public class UnblockEmployeeHandlerTests
             employee.Nome,
             Arg.Any<string>(),
             Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -29,6 +29,8 @@ public sealed class AdminAuditLogRepository : IAdminAuditLogRepository
         DateTimeOffset? endDate = null,
         ActionType? actionType = null,
         string? adminUserName = null,
+        string? entityType = null,
+        Guid? entityId = null,
         CancellationToken ct = default)
     {
         var query = _db.AdminAuditLogs.AsNoTracking();
@@ -44,6 +46,12 @@ public sealed class AdminAuditLogRepository : IAdminAuditLogRepository
 
         if (!string.IsNullOrWhiteSpace(adminUserName))
             query = query.Where(a => a.AdminUserName.Contains(adminUserName));
+
+        if (!string.IsNullOrWhiteSpace(entityType))
+            query = query.Where(a => a.EntityType == entityType);
+
+        if (entityId.HasValue)
+            query = query.Where(a => a.EntityId == entityId.Value);
 
         var totalCount = await query.CountAsync(ct);
 

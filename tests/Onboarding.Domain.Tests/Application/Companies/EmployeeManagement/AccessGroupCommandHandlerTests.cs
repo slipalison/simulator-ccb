@@ -68,7 +68,7 @@ public class AccessGroupCommandHandlerTests
         await _auditService.Received(1).RecordAsync(
             "sub", "admin@empresa.com",
             ActionType.AccessGroupCreated, Arg.Any<Guid>(), Arg.Any<string>(),
-            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

@@ -48,7 +48,7 @@ public class ToggleEmployeeStatusHandlerTests
         // Assert
         await _keycloakUserService.Received(1).BlockUserAsync("client", "keycloak-user-id-123", Arg.Any<CancellationToken>());
         await _keycloakUserService.Received(1).LogoutAllSessionsAsync("client", "keycloak-user-id-123", Arg.Any<CancellationToken>());
-        await _auditService.Received(1).RecordAsync("sub", "admin@empresa.com", ActionType.EmployeeBlocked, employee.Id, employee.Nome, Arg.Any<string>(), "1.1.1.1", Arg.Any<CancellationToken>());
+        await _auditService.Received(1).RecordAsync("sub", "admin@empresa.com", ActionType.EmployeeBlocked, employee.Id, employee.Nome, Arg.Any<string>(), "1.1.1.1", Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class ToggleEmployeeStatusHandlerTests
 
         // Assert
         await _keycloakUserService.Received(1).UnblockUserAsync("client", "keycloak-user-id-123", Arg.Any<CancellationToken>());
-        await _auditService.Received(1).RecordAsync("sub", "admin@empresa.com", ActionType.EmployeeUnblocked, employee.Id, employee.Nome, Arg.Any<string>(), "1.1.1.1", Arg.Any<CancellationToken>());
+        await _auditService.Received(1).RecordAsync("sub", "admin@empresa.com", ActionType.EmployeeUnblocked, employee.Id, employee.Nome, Arg.Any<string>(), "1.1.1.1", Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -136,7 +136,7 @@ public class ResetEmployeePasswordHandlerTests
         result.TemporaryPassword.ShouldNotBeNullOrEmpty();
         result.TemporaryPassword.Length.ShouldBeGreaterThanOrEqualTo(16);
         await _keycloakUserService.Received(1).ResetPasswordAsTemporaryAsync("client", "keycloak-user-id-456", Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await _auditService.Received(1).RecordAsync("sub", "admin@empresa.com", ActionType.EmployeePasswordReset, employee.Id, employee.Nome, Arg.Any<string>(), "1.1.1.1", Arg.Any<CancellationToken>());
+        await _auditService.Received(1).RecordAsync("sub", "admin@empresa.com", ActionType.EmployeePasswordReset, employee.Id, employee.Nome, Arg.Any<string>(), "1.1.1.1", Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -187,7 +187,7 @@ public class UpdateEmployeeHandlerTests
         // Assert
         await _employeeRepository.Received(1).SaveAsync(employee, Arg.Any<CancellationToken>());
         await _keycloakUserService.Received(1).UpdateAdminUserAsync("client", "keycloak-user-id-789", "João Updated", "joao.updated@empresa.com", Arg.Any<CancellationToken>());
-        await _auditService.Received(1).RecordAsync("sub", "admin@empresa.com", ActionType.EmployeeEdited, employee.Id, "João Updated", Arg.Any<string>(), "1.1.1.1", Arg.Any<CancellationToken>());
+        await _auditService.Received(1).RecordAsync("sub", "admin@empresa.com", ActionType.EmployeeEdited, employee.Id, "João Updated", Arg.Any<string>(), "1.1.1.1", Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -238,7 +238,7 @@ public class DeleteEmployeeHandlerTests
         employee.Nome.ShouldBe("Usuário Excluído");
         await _employeeRepository.Received(1).SaveAsync(employee, Arg.Any<CancellationToken>());
         await _keycloakUserService.Received(1).DeleteUserByEmailAsync("client", originalEmail, Arg.Any<CancellationToken>());
-        await _auditService.Received(1).RecordAsync("sub", "admin@empresa.com", ActionType.EmployeeDeleted, employee.Id, Arg.Any<string>(), Arg.Any<string>(), "1.1.1.1", Arg.Any<CancellationToken>());
+        await _auditService.Received(1).RecordAsync("sub", "admin@empresa.com", ActionType.EmployeeDeleted, employee.Id, Arg.Any<string>(), Arg.Any<string>(), "1.1.1.1", Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -326,7 +326,7 @@ public class ChangeEmployeeAccessGroupHandlerTests
         // Assert
         employee.AccessGroupId.ShouldBe(newGroupId);
         await _employeeRepository.Received(1).SaveAsync(employee, Arg.Any<CancellationToken>());
-        await _auditService.Received(1).RecordAsync("sub", "admin@empresa.com", ActionType.AccessGroupChanged, employee.Id, employee.Nome, Arg.Any<string>(), "1.1.1.1", Arg.Any<CancellationToken>());
+        await _auditService.Received(1).RecordAsync("sub", "admin@empresa.com", ActionType.AccessGroupChanged, employee.Id, employee.Nome, Arg.Any<string>(), "1.1.1.1", Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

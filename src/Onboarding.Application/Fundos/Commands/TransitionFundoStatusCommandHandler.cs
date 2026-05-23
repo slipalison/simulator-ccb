@@ -52,6 +52,8 @@ public sealed class TransitionFundoStatusCommandHandler
             targetUserId: fundo.Id,
             targetUserName: fundo.Nome,
             details: $"Fundo status changed from {previousStatus} to {command.NewStatus}",
+            entityType: "Fundo",
+            entityId: fundo.Id,
             ct: ct);
 
         return new FundoDto(

@@ -50,6 +50,17 @@ public sealed class AdminAuditLogConfiguration : IEntityTypeConfiguration<AdminA
             .HasColumnName("ip_address")
             .HasMaxLength(45);
 
+        // Phase 52 — additive columns for entity-scoped audit filtering (D-30).
+        // Nullable — legacy rows pre-Phase 52 have NULL here (acceptable).
+        builder.Property(a => a.EntityType)
+            .HasColumnName("entity_type")
+            .HasMaxLength(100)
+            .IsRequired(false);
+
+        builder.Property(a => a.EntityId)
+            .HasColumnName("entity_id")
+            .IsRequired(false);
+
         // Indexes for efficient filtering
         builder.HasIndex(a => a.Timestamp).HasDatabaseName("IX_admin_audit_logs_timestamp");
         builder.HasIndex(a => a.ActionType).HasDatabaseName("IX_admin_audit_logs_action_type");

@@ -53,6 +53,8 @@ public sealed class TransitionCedenteTipoAtivoStatusHandler
             ActionType.RelCedenteTipoAtivoStatusChanged,
             association.Id, $"Cedente={association.CedenteId}/TipoAtivo={association.TipoAtivoId}",
             $"Status changed from {previousStatus} to {command.NewStatus}",
+            entityType: "CedenteTipoAtivo",
+            entityId: association.Id,
             ct: ct).ConfigureAwait(false);
 
         return CreateCedenteTipoAtivoHandler.ToDto(association);

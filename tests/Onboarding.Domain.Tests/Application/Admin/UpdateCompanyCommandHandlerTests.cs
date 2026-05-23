@@ -53,7 +53,7 @@ public class UpdateCompanyCommandHandlerTests
             "client", "keycloak-user-123", "Empresa Atualizada", "nova@teste.com", Arg.Any<CancellationToken>());
         await _auditService.Received(1).RecordAsync(
             Arg.Any<string>(), Arg.Any<string>(), ActionType.CompanyUpdated,
-            command.CompanyId, "Empresa Atualizada", Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+            command.CompanyId, "Empresa Atualizada", Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 
     [Fact]

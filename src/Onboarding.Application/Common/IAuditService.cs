@@ -16,6 +16,8 @@ public interface IAuditService
         string? targetUserName = null,
         string? details = null,
         string? ipAddress = null,
+        string? entityType = null,
+        Guid? entityId = null,
         CancellationToken ct = default);
 }
 

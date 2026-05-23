@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Onboarding.Application.Common;
 using Onboarding.Application.Fundos.Commands;
@@ -109,6 +109,6 @@ public class UpdateConsultoriaFundoCommandHandlerTests
             command.RazaoSocial,
             Arg.Any<string?>(),
             Arg.Any<string?>(),
-            Arg.Any<CancellationToken>());
+            Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>());
     }
 }

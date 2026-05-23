@@ -107,6 +107,7 @@ export const adminFundosLocale = {
   auditAdmin: "Administrador",
   auditAction: "Ação",
   auditDetails: "Detalhes",
+  auditEntidade: "Entidade",
 
   // Back button
   backToList: "Voltar para lista",

@@ -209,6 +209,9 @@ export const auditLogEntrySchema = z.object({
   targetUserName: z.string().nullable(),
   details: z.string().nullable(),
   ipAddress: z.string().nullable(),
+  // T-1 Phase 52: entity-scoped filter fields (backend emits these; previously silently dropped)
+  entityType: z.string().nullable().optional(),
+  entityId: z.string().uuid().nullable().optional(),
 });
 
 export type AuditLogEntry = z.infer<typeof auditLogEntrySchema>;

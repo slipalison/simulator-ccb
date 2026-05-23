@@ -38,6 +38,15 @@ export function AuditEventRow({ entry }: AuditEventRowProps) {
         {entry.details && (
           <p className="text-muted-foreground text-xs mt-0.5 truncate">{entry.details}</p>
         )}
+        {entry.entityType && (
+          <p
+            className="text-muted-foreground text-xs mt-0.5"
+            data-testid="audit-entity-caption"
+          >
+            {L.auditEntidade}: {entry.entityType}
+            {entry.entityId ? ` (${entry.entityId})` : ""}
+          </p>
+        )}
       </div>
       <span className="text-muted-foreground shrink-0 text-xs">
         {entry.adminUserName}

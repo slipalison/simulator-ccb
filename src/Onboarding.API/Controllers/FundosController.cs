@@ -206,9 +206,9 @@ public sealed class FundosController : ControllerBase
         var command = new RegisterConsultoriaFundoCommand(
             RazaoSocial: request.RazaoSocial ?? string.Empty,
             Cnpj: request.Cnpj ?? string.Empty,
-            NomeFantasia: request.NomeFantasia,
-            Email: request.Email,
-            Telefone: request.Telefone,
+            NomeFantasia: string.IsNullOrWhiteSpace(request.NomeFantasia) ? null : request.NomeFantasia,
+            Email: string.IsNullOrWhiteSpace(request.Email) ? null : request.Email,
+            Telefone: string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone,
             ActorSub: actorSub,
             ActorEmail: actorEmail);
 
@@ -296,9 +296,9 @@ public sealed class FundosController : ControllerBase
         var command = new UpdateConsultoriaFundoCommand(
             Id: id,
             RazaoSocial: request.RazaoSocial ?? string.Empty,
-            NomeFantasia: request.NomeFantasia,
-            Email: request.Email,
-            Telefone: request.Telefone,
+            NomeFantasia: string.IsNullOrWhiteSpace(request.NomeFantasia) ? null : request.NomeFantasia,
+            Email: string.IsNullOrWhiteSpace(request.Email) ? null : request.Email,
+            Telefone: string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone,
             Status: request.Status,
             ActorSub: actorSub,
             ActorEmail: actorEmail);
@@ -347,9 +347,9 @@ public sealed class FundosController : ControllerBase
         var command = new RegisterCustodianteCommand(
             RazaoSocial: request.RazaoSocial ?? string.Empty,
             Cnpj: request.Cnpj ?? string.Empty,
-            CodigoInterno: request.CodigoInterno,
-            Email: request.Email,
-            Telefone: request.Telefone,
+            CodigoInterno: string.IsNullOrWhiteSpace(request.CodigoInterno) ? null : request.CodigoInterno,
+            Email: string.IsNullOrWhiteSpace(request.Email) ? null : request.Email,
+            Telefone: string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone,
             ActorSub: actorSub,
             ActorEmail: actorEmail);
 
@@ -437,9 +437,9 @@ public sealed class FundosController : ControllerBase
         var command = new UpdateCustodianteCommand(
             Id: id,
             RazaoSocial: request.RazaoSocial ?? string.Empty,
-            CodigoInterno: request.CodigoInterno,
-            Email: request.Email,
-            Telefone: request.Telefone,
+            CodigoInterno: string.IsNullOrWhiteSpace(request.CodigoInterno) ? null : request.CodigoInterno,
+            Email: string.IsNullOrWhiteSpace(request.Email) ? null : request.Email,
+            Telefone: string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone,
             Status: request.Status,
             ActorSub: actorSub,
             ActorEmail: actorEmail);
@@ -832,8 +832,8 @@ public sealed class FundosController : ControllerBase
         var command = new RegisterCedentePfCommand(
             Cpf: request.Cpf ?? string.Empty,
             Nome: request.Nome ?? string.Empty,
-            Email: request.Email,
-            Telefone: request.Telefone,
+            Email: string.IsNullOrWhiteSpace(request.Email) ? null : request.Email,
+            Telefone: string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone,
             Endereco: request.Endereco,
             ActorSub: actorSub,
             ActorEmail: actorEmail);
@@ -874,8 +874,8 @@ public sealed class FundosController : ControllerBase
         var command = new RegisterCedentePjCommand(
             Cnpj: request.Cnpj ?? string.Empty,
             RazaoSocial: request.RazaoSocial ?? string.Empty,
-            Email: request.Email,
-            Telefone: request.Telefone,
+            Email: string.IsNullOrWhiteSpace(request.Email) ? null : request.Email,
+            Telefone: string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone,
             Endereco: request.Endereco,
             ActorSub: actorSub,
             ActorEmail: actorEmail);
@@ -962,8 +962,8 @@ public sealed class FundosController : ControllerBase
         var command = new UpdateCedenteCommand(
             Id: id,
             Nome: request.Nome ?? string.Empty,
-            Email: request.Email,
-            Telefone: request.Telefone,
+            Email: string.IsNullOrWhiteSpace(request.Email) ? null : request.Email,
+            Telefone: string.IsNullOrWhiteSpace(request.Telefone) ? null : request.Telefone,
             Endereco: request.Endereco,
             Status: request.Status,
             ActorSub: actorSub,

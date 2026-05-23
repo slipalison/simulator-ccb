@@ -68,7 +68,7 @@ Dupla missão: (1) Integration tests end-to-end Testcontainers PG cobrindo 5 ent
   - Console MCP: zero `[OTel]` error logs.
 - **Dependencies:** none (parallel with backend)
 - **Test:** Vitest + Playwright MCP (network filter)
-- **Status:** pending
+- **Status:** completed
 
 #### T-7: Frontend backoffice OTel JS instrumentation
 - **Specialist:** jdi-doer-onboarding-keycloak-frontend-vinext

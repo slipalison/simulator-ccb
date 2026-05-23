@@ -36,6 +36,7 @@ export default defineConfig({
         'src/lib/fundos-schemas.ts',
         'src/lib/query-client.ts',
         'src/lib/use-allowed-transitions.ts',
+        'src/lib/telemetry.ts',
         'src/locales/pt-BR/fundos.ts',
         'src/components/atoms/CedenteTipoToggle.tsx',
         'src/components/guards/AuthGuard.tsx',

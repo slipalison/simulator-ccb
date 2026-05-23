@@ -174,6 +174,66 @@ export async function listAdminCedenteTiposAtivos(
 }
 
 // ---------------------------------------------------------------------------
+// GET /api/admin/fundos/{id} — single Fundo by id (D-8 resolved in iter 2)
+// ---------------------------------------------------------------------------
+
+export async function getAdminFundo(id: string): Promise<AdminFundoDto> {
+  const response = await adminFetch(`/api/admin/fundos/${id}`, { method: "GET" });
+  if (response.status === 404) {
+    throw new AdminApiError(`Fundo não encontrado: ${id}`, 404);
+  }
+  if (!response.ok) {
+    throw new AdminApiError(`Falha ao carregar fundo: ${id}`, response.status);
+  }
+  return response.json() as Promise<AdminFundoDto>;
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/fundos/cedentes/{id} — single Cedente by id (D-8 resolved in iter 2)
+// ---------------------------------------------------------------------------
+
+export async function getAdminCedente(id: string): Promise<AdminCedenteDto> {
+  const response = await adminFetch(`/api/admin/fundos/cedentes/${id}`, { method: "GET" });
+  if (response.status === 404) {
+    throw new AdminApiError(`Cedente não encontrado: ${id}`, 404);
+  }
+  if (!response.ok) {
+    throw new AdminApiError(`Falha ao carregar cedente: ${id}`, response.status);
+  }
+  return response.json() as Promise<AdminCedenteDto>;
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/fundos/consultorias/{id} — single ConsultoriaFundo by id (D-8 resolved in iter 2)
+// ---------------------------------------------------------------------------
+
+export async function getAdminConsultoriaFundo(id: string): Promise<AdminConsultoriaFundoDto> {
+  const response = await adminFetch(`/api/admin/fundos/consultorias/${id}`, { method: "GET" });
+  if (response.status === 404) {
+    throw new AdminApiError(`Consultoria não encontrada: ${id}`, 404);
+  }
+  if (!response.ok) {
+    throw new AdminApiError(`Falha ao carregar consultoria: ${id}`, response.status);
+  }
+  return response.json() as Promise<AdminConsultoriaFundoDto>;
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/admin/fundos/custodiantes/{id} — single Custodiante by id (D-8 resolved in iter 2)
+// ---------------------------------------------------------------------------
+
+export async function getAdminCustodiante(id: string): Promise<AdminCustodianteDto> {
+  const response = await adminFetch(`/api/admin/fundos/custodiantes/${id}`, { method: "GET" });
+  if (response.status === 404) {
+    throw new AdminApiError(`Custodiante não encontrado: ${id}`, 404);
+  }
+  if (!response.ok) {
+    throw new AdminApiError(`Falha ao carregar custodiante: ${id}`, response.status);
+  }
+  return response.json() as Promise<AdminCustodianteDto>;
+}
+
+// ---------------------------------------------------------------------------
 // GET /api/admin/audit-log?entityType=X&entityId=Y — filtered audit history (D-30)
 // T-1 backend adds entityType + entityId filter. Until T-1 ships, returns all
 // entries (backward-compatible — additive params ignored by old endpoint).

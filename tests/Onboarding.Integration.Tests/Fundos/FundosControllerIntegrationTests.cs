@@ -843,12 +843,12 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         match.ValueKind.ShouldNotBe(JsonValueKind.Undefined,
             "Created cedente must appear in list response.");
 
-        // documentoNumero = the Cpf/Cnpj value (first positional property in CedenteDto)
-        var documentoNumero = match.GetProperty("documentoNumero").GetString();
-        documentoNumero.ShouldNotBeNull(
-            "documentoNumero must be non-null — B1: Documento.Match() was throwing NRE on detached entity.");
-        documentoNumero.ShouldBe(testCpf,
-            "documentoNumero must contain the CPF stored via shadow property.");
+        // documento = the Cpf/Cnpj value serialized as plain string from CedenteDto.Documento
+        var documento = match.GetProperty("documento").GetString();
+        documento.ShouldNotBeNull(
+            "documento must be non-null — B1: Documento.Match() was throwing NRE on detached entity.");
+        documento.ShouldBe(testCpf,
+            "documento must contain the CPF stored via shadow property.");
     }
 
     [Fact]

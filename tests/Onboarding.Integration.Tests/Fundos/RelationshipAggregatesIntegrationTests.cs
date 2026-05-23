@@ -270,10 +270,9 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
             $"/api/fundos/{_fundoAId}/cedentes", payload);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
-        // Status is serialized as integer (no JsonStringEnumConverter configured — D-3 / no change to API).
-        // RelationshipStatus.ATIVO = 1
+        // Status is serialized as string via JsonStringEnumConverter (commit 4c352bf).
         var dto = await response.Content.ReadFromJsonAsync<JsonElement>();
-        dto.GetProperty("status").GetInt32().ShouldBe(1, "Created association must have ATIVO status (= 1).");
+        dto.GetProperty("status").GetString().ShouldBe("ATIVO", "Created association must have ATIVO status.");
     }
 
     [Fact]
@@ -367,7 +366,7 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
 
         transitionResp.StatusCode.ShouldBe(HttpStatusCode.OK);
         var transitionDto = await transitionResp.Content.ReadFromJsonAsync<JsonElement>();
-        transitionDto.GetProperty("status").GetInt32().ShouldBe(2, "Status must be INATIVO (= 2) after transition.");
+        transitionDto.GetProperty("status").GetString().ShouldBe("INATIVO", "Status must be INATIVO after transition.");
     }
 
     [Fact]
@@ -442,7 +441,7 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
         var ctaDto = await response.Content.ReadFromJsonAsync<JsonElement>();
-        ctaDto.GetProperty("status").GetInt32().ShouldBe(1, "Created association must have ATIVO status (= 1).");
+        ctaDto.GetProperty("status").GetString().ShouldBe("ATIVO", "Created association must have ATIVO status.");
     }
 
     [Fact]
@@ -546,7 +545,7 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
 
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
         var ftaDto = await response.Content.ReadFromJsonAsync<JsonElement>();
-        ftaDto.GetProperty("status").GetInt32().ShouldBe(1, "Created association must have ATIVO status (= 1).");
+        ftaDto.GetProperty("status").GetString().ShouldBe("ATIVO", "Created association must have ATIVO status.");
     }
 
     [Fact]

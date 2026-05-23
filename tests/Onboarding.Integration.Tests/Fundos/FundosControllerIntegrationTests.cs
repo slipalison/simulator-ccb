@@ -720,7 +720,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         fundoResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var fundoBody = await fundoResp.Content.ReadFromJsonAsync<JsonElement>();
         var fundoId = fundoBody.GetProperty("id").GetGuid();
-        fundoBody.GetProperty("status").GetInt32().ShouldBe((int)FundoStatus.RASCUNHO);
+        fundoBody.GetProperty("status").GetString().ShouldBe("RASCUNHO");
 
         // Step 4: Transition RASCUNHO → ATIVO (valid state machine transition)
         var transitionPayload = new { newStatus = (int)FundoStatus.ATIVO };
@@ -728,7 +728,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
 
         transitionResp.StatusCode.ShouldBe(HttpStatusCode.OK);
         var transitionBody = await transitionResp.Content.ReadFromJsonAsync<JsonElement>();
-        transitionBody.GetProperty("status").GetInt32().ShouldBe((int)FundoStatus.ATIVO);
+        transitionBody.GetProperty("status").GetString().ShouldBe("ATIVO");
     }
 
     // =========================================================================

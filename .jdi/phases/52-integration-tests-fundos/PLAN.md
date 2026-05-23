@@ -78,6 +78,7 @@ Dupla missão: (1) Integration tests end-to-end Testcontainers PG cobrindo 5 ent
   - `frontend/backoffice/src/main.tsx` (init telemetry pre-render)
   - `frontend/backoffice/vitest.config.ts` (mock OTel in tests if needed)
   - `frontend/backoffice/src/tests/lib/admin-telemetry.test.ts`
+  - `frontend/backoffice/src/vite-env.d.ts` (new — ImportMetaEnv augmentation for VITE_OTEL_* vars)
 - **Acceptance (DoD G0):**
   - Bundle ≤300 KB gz post-OTel.
   - MCP `/admin/login` → Network MCP filter `traceparent` on `/api/admin/*` requests, NOT on Keycloak realm requests.
@@ -85,7 +86,7 @@ Dupla missão: (1) Integration tests end-to-end Testcontainers PG cobrindo 5 ent
   - Zero token leak (regression D-12) — verify `browser_evaluate` for storage.
 - **Dependencies:** none (parallel — symmetric with T-6)
 - **Test:** Vitest + Playwright MCP
-- **Status:** pending
+- **Status:** completed
 
 ### Wave 2 (parallel-eligible — depends on T-1)
 

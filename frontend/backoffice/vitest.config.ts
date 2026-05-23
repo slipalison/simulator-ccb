@@ -14,6 +14,12 @@ export default defineConfig({
       '.git/**',
       'playwright/**',
     ],
+    // OTel SDK packages use browser-specific globals and ESM internals that
+    // do not execute cleanly under jsdom without transformation.  We mock
+    // the entire @opentelemetry/* namespace in the test file itself via
+    // vi.mock(), so the real SDK never loads in the test process.
+    // No additional server.deps config is needed — vi.mock stubs are resolved
+    // before the module graph is evaluated.
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
@@ -31,6 +37,8 @@ export default defineConfig({
         'src/lib/admin-fundos-api.ts',
         'src/lib/admin-companies-api.ts',
         'src/lib/query-client.ts',
+        // Phase 53 — T-7: OTel backoffice telemetry
+        'src/lib/admin-telemetry.ts',
         // Atoms
         'src/components/atoms/AuditEventRow.tsx',
         // Molecules — Phase 52 new

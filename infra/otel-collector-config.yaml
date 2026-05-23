@@ -1,0 +1,145 @@
+# OTel Collector Contrib configuration — first-party PII scrub pipeline
+# D-36: receives OTLP gRPC+HTTP from API + both SPAs, scrubs PII, forwards to Alloy.
+# Security spec: any span attribute matching PII keys is DROPPED before telemetry
+# leaves this collector. This is the authoritative gate — Alloy/Tempo/Grafana
+# never receive raw PII.
+
+extensions:
+  health_check:
+    endpoint: "0.0.0.0:13133"
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:4317"
+      http:
+        endpoint: "0.0.0.0:4318"
+        # Allow CORS so browser SPAs can send spans directly (D-36)
+        cors:
+          allowed_origins:
+            - "http://localhost:5173"
+            - "http://localhost:5174"
+          allowed_headers:
+            - "Content-Type"
+            - "traceparent"
+            - "tracestate"
+
+processors:
+  # --- PII key drop (D-36) ---------------------------------------------------
+  # Drop sensitive attribute keys unconditionally — these should never appear
+  # in traces, logs, or metrics reaching the backend storage.
+  attributes/drop_pii_keys:
+    actions:
+      # Identity / auth tokens
+      - key: email
+        action: delete
+      - key: user.email
+        action: delete
+      - key: enduser.email
+        action: delete
+      - key: cpf
+        action: delete
+      - key: cnpj
+        action: delete
+      - key: sub
+        action: delete
+      - key: refresh_token
+        action: delete
+      - key: access_token
+        action: delete
+      # HTTP headers that may carry credentials
+      - key: authorization
+        action: delete
+      - key: set-cookie
+        action: delete
+      - key: http.request.header.authorization
+        action: delete
+      - key: http.response.header.set-cookie
+        action: delete
+      # Regex-based drop: any key matching *token*, *secret*, *password*, *credential*
+      - pattern: "(?i).*(token|secret|password|credential|passwd|pwd).*"
+        action: delete
+
+  # --- PII value redaction (D-36) --------------------------------------------
+  # For attributes that are allowed to pass (e.g. http.url, http.target),
+  # redact values matching PII patterns (email addresses, CPF, CNPJ).
+  redaction/pii_values:
+    allow_all_keys: true
+    blocked_values:
+      # Email addresses
+      - "[a-zA-Z0-9._%+\\-]+@[a-zA-Z0-9.\\-]+\\.[a-zA-Z]{2,}"
+      # Brazilian CPF: 000.000.000-00 or 00000000000
+      - "\\b\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}\\b"
+      - "\\b\\d{11}\\b"
+      # Brazilian CNPJ: 00.000.000/0000-00 or 00000000000000
+      - "\\b\\d{2}\\.\\d{3}\\.\\d{3}/\\d{4}-\\d{2}\\b"
+      - "\\b\\d{14}\\b"
+      # Bearer tokens in URL query params or span names
+      - "(?i)bearer\\s+[a-zA-Z0-9._\\-]+"
+    summary: info
+
+  # --- Memory safety (D-36) --------------------------------------------------
+  # Prevent OOM if a burst of telemetry arrives; collector sheds load gracefully.
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+    spike_limit_mib: 64
+
+  # --- Batch (throughput) ---------------------------------------------------
+  batch:
+    send_batch_size: 1024
+    timeout: 5s
+
+exporters:
+  # Debug exporter: writes sanitized telemetry to collector stdout.
+  # Used for local dev verification of PII scrub (D-36 acceptance test).
+  debug:
+    verbosity: detailed
+    sampling_initial: 5
+    sampling_thereafter: 10
+
+  # Forward sanitised spans to Grafana Alloy, which routes to Tempo.
+  # Alloy listens on 4317 gRPC internally (compose service name).
+  otlp/alloy:
+    endpoint: "alloy:4317"
+    tls:
+      insecure: true
+
+  # Optional Jaeger exporter for dev UI (service `jaeger` in compose.yaml).
+  # Retry config ensures the collector starts even when Jaeger is not running —
+  # spans will be queued and delivered once Jaeger becomes available.
+  otlp/jaeger:
+    endpoint: "jaeger:4317"
+    tls:
+      insecure: true
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+    sending_queue:
+      enabled: true
+      num_consumers: 2
+      queue_size: 512
+
+service:
+  extensions: [health_check]
+
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/drop_pii_keys, redaction/pii_values, batch]
+      # Export to both debug (PII verification) and Alloy (storage).
+      # Also export to Jaeger for dev UI — safe because PII is already scrubbed.
+      exporters: [debug, otlp/alloy, otlp/jaeger]
+
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/drop_pii_keys, batch]
+      exporters: [otlp/alloy]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/drop_pii_keys, redaction/pii_values, batch]
+      exporters: [debug, otlp/alloy]

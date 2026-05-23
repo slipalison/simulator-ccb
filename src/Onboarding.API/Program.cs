@@ -54,9 +54,11 @@ try
         .WriteTo.Console(new CompactJsonFormatter())                    // D-02
         .WriteTo.OpenTelemetry(options =>                               // OTLP log export
         {
+            // D-36 (T-5): telemetry routes through PII-scrubbing otel-collector first.
+            // Default points to the collector HTTP endpoint; override via env var for CI/prod.
             options.Endpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"]
-                ?? "http://localhost:4317";
-            options.Protocol = Serilog.Sinks.OpenTelemetry.OtlpProtocol.Grpc;
+                ?? "http://otel-collector:4318";
+            options.Protocol = Serilog.Sinks.OpenTelemetry.OtlpProtocol.HttpProtobuf;
             options.ResourceAttributes = new Dictionary<string, object>
             {
                 ["service.name"] = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME")

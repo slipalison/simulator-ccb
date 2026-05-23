@@ -79,7 +79,10 @@ services:
       Keycloak__ClientRealmUrl: http://keycloak:8080/realms/client
       Keycloak__ValidIssuer: http://localhost:8180/realms/backoffice
       Frontend__BaseUrl: ${FRONTEND_BASE_URL:-http://localhost:5173}
-      OTEL_EXPORTER_OTLP_ENDPOINT: http://alloy:4317
+      # D-36: route telemetry through the PII-scrubbing collector first (T-5)
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      # HTTP/protobuf matches the 4318 endpoint; gRPC would need 4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
       OTEL_SERVICE_NAME: onboarding-api
     ports:
       - "127.0.0.1:8080:8080"
@@ -88,7 +91,7 @@ services:
         condition: service_healthy
       keycloak:
         condition: service_healthy
-      alloy:
+      otel-collector:
         condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/healthz/live || exit 1"]
@@ -149,6 +152,51 @@ services:
       api:
         condition: service_healthy
 
+  # ── PII-scrubbing OTel Collector (D-36, Phase 53 T-5) ────────────────────
+  # First-party collector with attributes/redact processors. All API + SPA telemetry
+  # passes through here before reaching Alloy/Tempo/Grafana. PII is dropped/masked
+  # at this layer so no sensitive data reaches backend storage.
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    volumes:
+      - ./infra/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    ports:
+      - "127.0.0.1:4317:4317"     # OTLP gRPC (backend / internal use)
+      - "127.0.0.1:4318:4318"     # OTLP HTTP (SPAs send spans from browser)
+      - "127.0.0.1:13133:13133"   # Health check endpoint
+    depends_on:
+      alloy:
+        condition: service_started
+    # Note: jaeger is NOT a hard dependency — collector starts and exports debug+alloy
+    # even when Jaeger is not running. Jaeger exporter will reconnect when available.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:13133/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Jaeger all-in-one (optional dev trace UI) ─────────────────────────────
+  # Receives OTLP from otel-collector (after PII scrub) and provides a UI at
+  # http://localhost:16686 to inspect end-to-end traces during development.
+  # D-36: Jaeger only sees already-sanitised spans.
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "127.0.0.1:16686:16686"   # Jaeger UI
+      - "127.0.0.1:14317:4317"    # OTLP gRPC (internal — collector→jaeger, offset to avoid clash)
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:16686/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   # ── Observability Stack (Phase 4) ─────────────────────────────────────────
 
   alloy:
@@ -158,8 +206,8 @@ services:
     command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "/etc/alloy/config.alloy"]
     ports:
       - "127.0.0.1:12345:12345"   # Alloy UI (optional, useful for debugging)
-      - "127.0.0.1:4317:4317"     # OTLP gRPC (exposed for direct testing outside compose)
-      - "127.0.0.1:4318:4318"     # OTLP HTTP
+      # 4317/4318 host bindings removed — otel-collector now owns these ports (D-36).
+      # Alloy remains reachable internally at alloy:4317 via the compose network.
     depends_on:
       loki:
         condition: service_started

@@ -51,7 +51,7 @@ Dupla missão: (1) Integration tests end-to-end Testcontainers PG cobrindo 5 ent
   - Jaeger UI (se habilitado) acessível em http://localhost:16686.
 - **Dependencies:** none
 - **Test:** docker-compose smoke + curl OTLP test span
-- **Status:** pending
+- **Status:** completed
 
 #### T-6: Frontend client OTel JS instrumentation
 - **Specialist:** jdi-doer-onboarding-keycloak-frontend-vinext

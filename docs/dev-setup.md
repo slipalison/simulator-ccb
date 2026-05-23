@@ -144,6 +144,94 @@ ALLOW_HOST_DEV=1 pnpm dev
 
 Accepted values: `1`, `true`, `yes`. You are responsible for ensuring no port conflict exists.
 
+## OTel telemetry — collector + Jaeger UI (D-36, Phase 53 T-5)
+
+The stack includes a first-party OTel Collector Contrib that applies PII scrub processors
+before any telemetry reaches backend storage (Alloy → Loki / Tempo / Mimir / Grafana).
+
+### Architecture
+
+```
+Browser SPA (port 4318 HTTP)  ──┐
+                                 ├──► otel-collector (PII scrub) ──► Alloy ──► Tempo / Loki / Mimir
+API container (port 4318 HTTP) ──┘                              └──► Jaeger UI (port 16686)
+```
+
+PII-dropped attribute keys: `email`, `cpf`, `cnpj`, `sub`, `refresh_token`, `access_token`,
+`authorization`, `set-cookie`, `http.request.header.authorization`,
+`http.response.header.set-cookie`, and any key matching `*token*`, `*secret*`, `*password*`,
+`*credential*`.
+
+PII-redacted values (attributes that pass key filter): email addresses, Brazilian CPF/CNPJ
+patterns, and Bearer token strings are replaced with `****`.
+
+### Starting the collector
+
+```bash
+# Start only the collector (and its dependency chain):
+docker compose up -d otel-collector
+
+# Verify it is ready — look for "Everything is ready. Begin running and processing data."
+docker compose logs otel-collector
+
+# Health check (HTTP):
+curl http://127.0.0.1:13133/
+```
+
+### Starting Jaeger dev UI
+
+```bash
+docker compose up -d jaeger otel-collector
+
+# Open Jaeger UI in browser:
+# http://localhost:16686
+```
+
+Jaeger only receives spans that have already been PII-scrubbed by `otel-collector`.
+
+### Testing PII scrub manually
+
+Send a test span with an `email` attribute via OTLP HTTP and verify the collector drops it:
+
+```bash
+curl -s -X POST http://127.0.0.1:4318/v1/traces \
+  -H "Content-Type: application/json" \
+  -d '{
+    "resourceSpans": [{
+      "resource": {"attributes": [{"key": "service.name", "value": {"stringValue": "pii-test"}}]},
+      "scopeSpans": [{
+        "spans": [{
+          "traceId": "00000000000000000000000000000001",
+          "spanId": "0000000000000001",
+          "name": "pii-scrub-test",
+          "kind": 1,
+          "startTimeUnixNano": "1700000000000000000",
+          "endTimeUnixNano":   "1700000001000000000",
+          "attributes": [
+            {"key": "email", "value": {"stringValue": "alison@x.com"}},
+            {"key": "http.method", "value": {"stringValue": "GET"}}
+          ]
+        }]
+      }]
+    }]
+  }'
+
+# Inspect collector logs — "email" attribute must NOT appear:
+docker compose logs otel-collector | grep -i "pii-scrub-test"
+# Expected: span logged with http.method=GET; no email field present.
+```
+
+### OTLP endpoint env var
+
+The API reads `OTEL_EXPORTER_OTLP_ENDPOINT` (defaults to `http://otel-collector:4318` in compose).
+Override for CI or production:
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=http://my-collector:4318 \
+OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
+  dotnet run
+```
+
 ## Playwright and IPv4 (D-17)
 
 All Playwright configs in this project use `baseURL: 'http://127.0.0.1:PORT'` — never `localhost`.

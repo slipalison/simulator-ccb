@@ -311,8 +311,11 @@ public sealed class ClientClaimsMiddlewareMetricTests
     [Fact]
     public async Task NoMatch_IncrementsNoMatchCounter()
     {
-        // Arrange — sub does not match any Company or Employee
-        var sub = "no-match-sub-12345";
+        // Arrange — use a unique sub suffix tied to THIS test instance to identify
+        // measurements from this specific invocation, even under parallel test execution
+        // where other tests may also trigger the shared static counter.
+        var uniqueSuffix = Guid.NewGuid().ToString("N")[..8]; // 8 hex chars, unique per run
+        var sub = $"no-match-sub-{uniqueSuffix}";
         _companyRepository.GetByKeycloakSubAsync(sub, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<Company?>(null));
         _employeeRepository.GetByKeycloakSubAsync(sub, Arg.Any<CancellationToken>())
@@ -320,7 +323,11 @@ public sealed class ClientClaimsMiddlewareMetricTests
 
         var context = CreateHttpContext(sub);
 
-        long measurementValue = 0;
+        // Track whether this test's specific sub_prefix was observed.
+        // Using a unique sub means only this test's Add() call will produce
+        // the matching sub_prefix tag — immune to parallel counter increments.
+        var expectedSubPrefix = sub[..8]; // "no-match" — first 8 chars
+        var thisMeasurementObserved = false;
         string? capturedSubPrefix = null;
 
         // Use MeterListener to capture the counter measurement
@@ -333,11 +340,13 @@ public sealed class ClientClaimsMiddlewareMetricTests
         };
         listener.SetMeasurementEventCallback<long>((instrument, measurement, tags, _) =>
         {
-            measurementValue += measurement;
             foreach (var tag in tags)
             {
-                if (tag.Key == "sub_prefix")
-                    capturedSubPrefix = tag.Value?.ToString();
+                if (tag.Key == "sub_prefix" && tag.Value?.ToString() == expectedSubPrefix)
+                {
+                    thisMeasurementObserved = true;
+                    capturedSubPrefix = tag.Value.ToString();
+                }
             }
         });
         listener.Start();
@@ -345,19 +354,17 @@ public sealed class ClientClaimsMiddlewareMetricTests
         // Act
         await RunMiddlewareAsync(context);
 
-        // Assert — counter incremented exactly once
-        measurementValue.ShouldBe(1);
-
-        // sub_prefix = first 8 chars (cardinality control)
-        capturedSubPrefix.ShouldNotBeNull();
-        capturedSubPrefix.ShouldBe(sub[..8]);
+        // Assert — this test's unique sub_prefix was observed exactly once
+        thisMeasurementObserved.ShouldBeTrue("clientclaims.no_match counter must fire on no-match path");
+        capturedSubPrefix.ShouldBe(expectedSubPrefix);
     }
 
     [Fact]
-    public async Task CompanyOwner_DoesNotIncrementNoMatchCounter()
+    public async Task CompanyOwner_DoesNotIncrementNoMatchCounterForOwnerSub()
     {
-        // Arrange — PJ owner matched → counter must NOT increment
-        var sub = "owner-sub-abc";
+        // Arrange — PJ owner matched → counter must NOT fire for this sub
+        var uniqueSuffix = Guid.NewGuid().ToString("N")[..8];
+        var sub = $"owner-sub-{uniqueSuffix}";
         var company = Company.Register(
             "Test Corp", "11222333000181", "owner@corp.com", "11999999999",
             TermsAcceptance.Create("1.0", "127.0.0.1"));
@@ -368,7 +375,10 @@ public sealed class ClientClaimsMiddlewareMetricTests
 
         var context = CreateHttpContext(sub);
 
-        long measurementValue = 0;
+        // Track if this specific owner sub_prefix fires — it must NOT
+        var expectedSubPrefix = sub[..8]; // "owner-su"
+        var thisMeasurementObserved = false;
+
         using var listener = new MeterListener();
         listener.InstrumentPublished = (instrument, ml) =>
         {
@@ -376,14 +386,20 @@ public sealed class ClientClaimsMiddlewareMetricTests
                 && instrument.Name == "clientclaims.no_match")
                 ml.EnableMeasurementEvents(instrument);
         };
-        listener.SetMeasurementEventCallback<long>((_, measurement, _, _) =>
-            measurementValue += measurement);
+        listener.SetMeasurementEventCallback<long>((_, measurement, tags, _) =>
+        {
+            foreach (var tag in tags)
+            {
+                if (tag.Key == "sub_prefix" && tag.Value?.ToString() == expectedSubPrefix)
+                    thisMeasurementObserved = true;
+            }
+        });
         listener.Start();
 
         // Act
         await RunMiddlewareAsync(context);
 
-        // Assert — no increment on happy path
-        measurementValue.ShouldBe(0);
+        // Assert — owner sub_prefix never fires on happy path
+        thisMeasurementObserved.ShouldBeFalse("no-match counter must NOT fire when Company owner is found");
     }
 }

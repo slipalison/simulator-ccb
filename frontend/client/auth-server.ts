@@ -359,27 +359,25 @@ router.get(
         }
       }
 
-      // Resolve permissions from accessGroup (mirrors AccessGroup.CreateDefaultGroups in the domain).
-      //
-      // Architecture note: Backend /api/auth/me was added for this purpose but reads a
-      // "refreshToken" cookie set by the backend's own /api/auth/login — incompatible with
-      // the BFF pattern where the BFF owns session cookies ("client_refresh_token").
-      // Resolution: derive permissions from the already-resolved accessGroup claim.
-      // Covers default groups (admin-empresa / viewer / dashboard). Custom access groups
-      // with non-default permissions require a Bearer-based backend endpoint:
-      //   GET /api/auth/permissions — tracked as Vinext migration debt (Phase 53).
+      // Resolve permissions from backend GET /api/auth/permissions (Bearer-only).
+      // The backend is the authoritative source — it reads the user's AccessGroup entity
+      // and returns the exact permission set, including custom groups.
+      // Fallback is empty array; BFF sidebar hides gated entries, backend gates are definitive.
       let permissions: string[] = [];
 
-      if (accessGroup === "admin-empresa") {
-        permissions = [
-          "employees:read", "employees:write", "employees:delete",
-          "audit:read", "dashboard:access", "access-groups:manage",
-          "funds:read", "funds:write", "funds:delete", "funds:manage",
-        ];
-      } else if (accessGroup === "viewer") {
-        permissions = ["employees:read", "audit:read", "funds:read"];
-      } else if (accessGroup === "dashboard") {
-        permissions = ["dashboard:access"];
+      if (accessToken) {
+        try {
+          const API_URL = process.env.API_INTERNAL_URL || "http://api:8080";
+          const permRes = await fetch(`${API_URL}/api/auth/permissions`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          if (permRes.ok) {
+            const permData = (await permRes.json()) as { permissions?: string[] };
+            permissions = permData.permissions ?? [];
+          }
+        } catch {
+          // Permissions fetch failed — fall back to empty; Sidebar hides gated entries; backend gate still definitive on each request
+        }
       }
 
       return {

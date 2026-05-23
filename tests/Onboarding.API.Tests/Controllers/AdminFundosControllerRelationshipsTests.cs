@@ -53,6 +53,10 @@ public class AdminFundosControllerRelationshipsTests
             Substitute.For<IQueryHandler<ListAdminConsultoriaQuery, PaginatedResult<AdminConsultoriaFundoDto>>>(),
             Substitute.For<IQueryHandler<ListAdminCustodianteQuery, PaginatedResult<AdminCustodianteDto>>>(),
             Substitute.For<IQueryHandler<ListAdminCedenteQuery, PaginatedResult<AdminCedenteDto>>>(),
+            Substitute.For<IQueryHandler<GetAdminFundoByIdQuery, AdminFundoDto?>>(),
+            Substitute.For<IQueryHandler<GetAdminConsultoriaFundoByIdQuery, AdminConsultoriaFundoDto?>>(),
+            Substitute.For<IQueryHandler<GetAdminCustodianteByIdQuery, AdminCustodianteDto?>>(),
+            Substitute.For<IQueryHandler<GetAdminCedenteByIdQuery, AdminCedenteDto?>>(),
             _fundoCedenteHandler,
             _fundoTipoAtivoHandler,
             _cedenteTipoAtivoHandler);

@@ -47,6 +47,16 @@ public class AdminFundosControllerTests
     private readonly IQueryHandler<ListAdminCedenteQuery, PaginatedResult<AdminCedenteDto>> _listCedenteHandler =
         Substitute.For<IQueryHandler<ListAdminCedenteQuery, PaginatedResult<AdminCedenteDto>>>();
 
+    // Phase 51 — admin GET-by-id handlers (stub mocks — not under test in this file)
+    private readonly IQueryHandler<GetAdminFundoByIdQuery, AdminFundoDto?> _getFundoByIdHandler =
+        Substitute.For<IQueryHandler<GetAdminFundoByIdQuery, AdminFundoDto?>>();
+    private readonly IQueryHandler<GetAdminConsultoriaFundoByIdQuery, AdminConsultoriaFundoDto?> _getConsultoriaByIdHandler =
+        Substitute.For<IQueryHandler<GetAdminConsultoriaFundoByIdQuery, AdminConsultoriaFundoDto?>>();
+    private readonly IQueryHandler<GetAdminCustodianteByIdQuery, AdminCustodianteDto?> _getCustodianteByIdHandler =
+        Substitute.For<IQueryHandler<GetAdminCustodianteByIdQuery, AdminCustodianteDto?>>();
+    private readonly IQueryHandler<GetAdminCedenteByIdQuery, AdminCedenteDto?> _getCedenteByIdHandler =
+        Substitute.For<IQueryHandler<GetAdminCedenteByIdQuery, AdminCedenteDto?>>();
+
     // Phase 50 — relationship aggregate admin query handlers
     private readonly IQueryHandler<ListAdminFundoCedenteQuery, PaginatedResult<AdminRelFundoCedenteDto>> _listFundoCedenteHandler =
         Substitute.For<IQueryHandler<ListAdminFundoCedenteQuery, PaginatedResult<AdminRelFundoCedenteDto>>>();
@@ -110,6 +120,10 @@ public class AdminFundosControllerTests
             _listConsultoriaHandler,
             _listCustodianteHandler,
             _listCedenteHandler,
+            _getFundoByIdHandler,
+            _getConsultoriaByIdHandler,
+            _getCustodianteByIdHandler,
+            _getCedenteByIdHandler,
             _listFundoCedenteHandler,
             _listFundoTipoAtivoHandler,
             _listCedenteTipoAtivoHandler);

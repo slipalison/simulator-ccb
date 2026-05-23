@@ -76,6 +76,69 @@ Existing tests: xUnit 4 projetos, cobertura 80% enforced via coverlet+CI
 - **Frontend separation:** `frontend/client` e `frontend/backoffice` totalmente independentes — sem shared code, sem cross-imports
 - Prioridade quando conflita: Seguranca > Performance > Boas praticas
 
+## Definition of Done (DoD) — MANDATORY policy
+
+Esta secao eh **POLICY GLOBAL**, aplica a TODAS as phases JDI deste projeto. Estabelecida apos Phase 51 onde gates mecanicos (typecheck, lint, coverage) passaram mas o feature nao funcionava no browser (POST 4xx, Sidebar oculta por hardcoded map errado, route invariant errors). Reviewer DEVE bloquear ship se DoD nao for cumprido — NAO eh suficiente passar build + tests.
+
+### Princıpio
+**Cada task entrega algo integrado e funcional end-to-end.** Nao basta "codigo compila" ou "test verde" — o feature precisa funcionar no browser/cliente real contra o stack real (`docker compose up`).
+
+### Criterios DoD por categoria
+
+**Feature de cadastro/CRUD (create/update/delete):**
+1. Frontend renderiza form sem erros de runtime (zero console errors, zero invariant failed).
+2. Submit do form via UI dispara POST/PUT/DELETE real contra backend rodando em `docker compose up`.
+3. Response HTTP 2xx confirmada via Playwright `browser_network_request` ou MCP equivalente (screenshot + status code logado em REVIEW.md).
+4. Lista (refetch ou navegacao) mostra a nova/atualizada/removida entidade — proof de round-trip completo.
+5. Caso de erro tipado (Duplicate*, InvalidStatus*, FluentValidation 422) reflete inline no form OU toast destrutivo conforme D-26 — UI nao engole erro silenciosamente.
+6. Permission gate verificado: usuario sem permissao recebe 401/403 e UI degrada graciosamente (esconde botao OU mostra toast).
+
+**Feature de busca/listagem (read):**
+1. Frontend renderiza tabela/lista sem erros runtime.
+2. GET real ao backend retorna 200 + paginacao funciona (next/prev/page jump).
+3. Search input dispara fetch debounced com termo, response filtra resultados — verificado MCP.
+4. Filtros (status, empresa, categoria etc) funcionais — dropdown change dispara refetch com query param novo.
+5. URL search params estado bookmarkable — abrir URL com `?page=N&search=Q` carrega no estado correto.
+6. Loading skeleton em fetch inicial; spinner em refetch — sem flash de empty state durante load.
+
+**Feature de detalhe (drill-down):**
+1. Click em row navega para `/<entity>/$id` sem invariant errors.
+2. Detail page carrega dados completos via GET — verificado MCP screenshot.
+3. Caso 404 (id invalido) renderiza empty state gracioso, NAO crash.
+4. Audit/history inline (se aplicavel D-30) carrega via endpoint separado e renderiza eventos.
+
+**Feature backend (endpoint novo):**
+1. Endpoint responde 2xx para happy path autenticado — verificado via curl OU integration test rodando.
+2. Auth scheme correto (BearerClient/BearerBackoffice) + Policy aplicada.
+3. Multi-tenant guard (D-5) ativo — request com sub de outra empresa retorna 404, NAO leak.
+4. Validation error retorna 422 ProblemDetails com `errors[]` field-mapped.
+5. Domain exception tipada (DuplicateActiveAssociationException etc) traduzida para HTTP code correto via GlobalExceptionHandler.
+
+**Migration de codigo (refactor sem feature):**
+1. Suite de testes anterior + nova ambas verdes.
+2. Caso a refactor tocou route/component visivel ao usuario: MCP smoke test confirma render sem regression.
+
+### Gate de reviewer
+
+Reviewer DEVE rejeitar verdict `APPROVED` ou `APPROVED_WITH_WARNINGS` se qualquer DoD acima nao for cumprido para o escopo do PLAN.md daquela phase. Verdict correto nesse caso eh **BLOCKED** com a DoD nao cumprida listada explicitamente.
+
+`APPROVED_WITH_WARNINGS` eh aceitavel APENAS para warnings que NAO afetam runtime do feature da phase — exemplo: bundle size advisory, lint cosmetico em arquivo legado, telemetria operacional. Warnings que mascaram runtime gaps (POST nao testado live, Sidebar nao verificada, route nao acessada) sao **BLOCKERS disfarcados** e devem ser BLOCKED.
+
+### Gate de /jdi-ship
+
+`/jdi-ship` exige verdict APPROVED ou APPROVED_WITH_WARNINGS COM DoD cumprido. Se REVIEW.md tem warning categoria "runtime not verified" / "MCP not run" / "endpoint not exercised" — /jdi-ship aborta e exige nova iteracao do loop.
+
+### Evidencia obrigatoria em REVIEW.md
+
+Reviewer documenta no REVIEW.md, secao por categoria DoD aplicavel:
+- HTTP status + body snippet (verbatim) para cada endpoint exercitado
+- Screenshot path `.jdi/cache/phase-NN-<scenario>.png` para cada cenario UI verificado
+- Console MCP filter output (assertion zero invariant errors)
+- Network MCP request list (proof de round-trip)
+- Comando exato usado pra disparar o test (reproduzivel)
+
+Sem evidencia, gate nao cumprido.
+
 ## Research notes
 - Repo possui sistema paralelo `.planning/` (legado). JDI nao toca nele — segue adiante.
 - Phase 48 (.planning) atualmente em planning: API + Permissions for Fundos module — vira phase 1 do JDI roadmap.

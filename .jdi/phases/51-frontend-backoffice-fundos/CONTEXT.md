@@ -53,3 +53,55 @@ SPA Backoffice admin (`frontend/backoffice`, porta 5174, auth ACF+PKCE com tema 
 - **W-seed carry-forward (Phase 51):** seed-test-users.sh já sincroniza companies.keycloak_user_id. Phase 52 testa que admin user (backoffice realm) consegue ver Fundos cross-company. Adicionar admin test user no seed se ausente.
 - **Specialist routing:** `frontend/backoffice/**` → `jdi-doer-onboarding-keycloak-frontend-vinext` (mesmo specialist, escopo D-4 isolado por glob path).
 - **Coverage 80%:** D-2 boundary apenas em arquivos novos.
+
+## Definition of Done (Phase 52 specific — derived from PROJECT.md DoD policy)
+
+Reviewer DEVE confirmar TODOS os itens abaixo antes de stamp APPROVED ou APPROVED_WITH_WARNINGS. Caso contrario, verdict eh BLOCKED.
+
+### Per entity (Fundo, ConsultoriaFundo, Custodiante, Cedente)
+
+**Listagem cross-company (4 itens):**
+- [ ] MCP login admin backoffice → navigate `/admin/<entity>` → tabela renderiza com colunas (Nome, Empresa, Status, ...) — screenshot evidencia.
+- [ ] Coluna "Empresa" mostra razao social — dados reais de >=2 empresas diferentes visiveis na mesma pagina.
+- [ ] Dropdown filtro empresa → change dispara GET com `?empresaId=<UUID>` (verificado via Network MCP); tabela refiltra.
+- [ ] Search input → debounced 300ms → GET com `?search=<term>`; tabela refiltra.
+- [ ] Paginator → click next → GET com `?page=2`; URL atualiza com search params persistidos.
+- [ ] Estado bookmarkable — abrir URL `?page=N&empresaId=X&search=Q` em nova aba carrega no estado correto.
+
+**Detail page (4 itens):**
+- [ ] Click row → navigate `/admin/<entity>/$id` sem invariant errors (Console MCP zero erros).
+- [ ] Campos da entidade renderizam (id, nome, status, datas, etc) — proof via screenshot.
+- [ ] Section "Histórico" carrega via GET `/api/admin/audit-log?entityType=<type>&entityId=<id>` (Network MCP verificado); eventos renderizam em ordem cronologica.
+- [ ] Detail page de id invalido → empty state gracioso (sem crash, sem invariant).
+
+### Per association (FundoCedente, CedenteTipoAtivo, FundoTipoAtivo)
+
+- [ ] Listagem cross-company com colunas Empresa + entidades pai (FundoNome/CedenteNome etc) + Status + janela datas + limites.
+- [ ] Paginator + search + URL params per D-31.
+- [ ] Detail (se aplicavel ao plan) com audit history inline.
+
+### Backend (se Phase 52 introduzir endpoints novos, ex: audit log filter)
+
+- [ ] Endpoint responde 2xx para happy path com Bearer admin valido (curl ou integration test).
+- [ ] Cross-company guard ativo — admin scheme `BearerBackoffice` + Policy `CrossCompanyAccess`. Token client SPA recusado → 401/403.
+- [ ] Tests integration boot real container.
+
+### Sidebar
+
+- [ ] AdminLayout sidebar mostra group "Fundos" para admin authenticated.
+- [ ] Cada item navegavel sem erro.
+
+### Cross-cutting
+
+- [ ] Console MCP — zero "Invariant failed" ou erros nao tratados durante toda navegacao.
+- [ ] Network MCP request list — todas chamadas `/api/admin/*` retornam 2xx (exceto deliberate negative test).
+- [ ] Bundle main chunk ≤300 KB gz APOS code-split D-32 (Vinxi build report).
+- [ ] No token em `localStorage`/`sessionStorage` (D-12). Verificado via `browser_evaluate`.
+- [ ] D-4 — backoffice nao importa nada de `frontend/client/`. Grep zero matches.
+
+### Evidencia obrigatoria em REVIEW.md
+
+- HTTP status verbatim para cada endpoint exercitado (admin fundos, audit log filter, etc).
+- Screenshot path em `.jdi/cache/phase-51-<scenario>.png` para cada cenario UI.
+- Bundle gzip size (Vinxi build report output).
+- Multi-tenant cross-probe evidence (Network filter showing 404 para tenant errado se aplicavel).

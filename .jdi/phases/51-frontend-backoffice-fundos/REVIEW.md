@@ -159,3 +159,104 @@ No coverage report generated (no provider). New files without test coverage:
 - All API calls to /api/admin/fundos, /api/admin/companies, /api/admin/audit-log returned 200.
 - Zero 5xx, zero CORS errors across both SPAs.
 - HMR WebSocket errors on both SPAs: expected (Docker container serving, no host dev process per D-16).
+
+---
+
+## Phase 52 Backend review iter 1
+
+**Verdict: APPROVED_WITH_WARNINGS**
+
+---
+
+### Gates
+
+**[G1 Multi-tenant isolation] PASS**
+AdminAuditLog aggregate has no ClientId — correctly admin-global. HasQueryFilter unchanged on all company-scoped aggregates. No new aggregate introduced without correct posture. AdminFundosController inherits class-level `BearerBackoffice + CrossCompanyAccess` on every list endpoint — IgnoreQueryFilters() is admin-scoped by auth scheme as required.
+
+**[G2 Endpoint AuthZ + audit] PASS**
+AdminUserController GET /api/admin/audit-log inherits class-level `[Authorize(AuthenticationSchemes = "BearerBackoffice", Policy = PermissionPolicies.CrossCompanyAccess)]`. No naked HttpGet introduced. All 4 mutation emit sites pass real ActorSub + ActorEmail from command params. entityType/entityId wired correctly at all sites: "Fundo", "FundoCedente", "FundoTipoAtivo", "CedenteTipoAtivo" (exact case-sensitive string literals confirmed by reading TransitionFundoStatusCommandHandler).
+
+**[G3 Secret + raw SQL] PASS**
+Manual diff inspection (9163e68): no hardcoded credentials, no FromSqlRaw with concatenation or interpolation. All filter predicates are EF LINQ expressions generating parameterized SQL.
+
+**[G4 Telemetry] PASS (no drift)**
+No Console.Write* introduced. No new ActivitySource/Meter outside central Telemetry/. No W3C propagator override. Program.cs telemetry wiring unchanged by this commit.
+
+**[G5 Performance] PASS**
+No new list endpoint without pagination. AdminAuditLogRepository filter clauses use nullable conditional `.Where()` chaining — no N+1 path introduced. Repository read methods retain AsNoTracking posture consistent with the rest of the codebase.
+
+**[G6 Index coverage] PASS**
+Migration `20260523184108_AddAuditLogEntityRef` adds two nullable columns to `admin_audit_logs` (entity_id UUID, entity_type VARCHAR(100)). No new table created, so index gate does not apply. The columns are query-filter targets; absence of an index on (entity_type, entity_id) is a soft performance concern documented below.
+
+**[G7 Build] PASS**
+`dotnet build` exits 0 warnings, 0 errors.
+
+**[G8 Lint/format] PASS (implied)**
+Build clean + no format diff flagged by prior runs.
+
+**[G9 DDD/Design] PASS**
+AdminAuditLog.Create() factory uses private setters; EntityType and EntityId carry `private set` — no public setters introduced. Factory validates entityType normalisation (empty → null). Aggregate remains append-only. No MediatR. Manual CQRS via ICommandHandler/IQueryHandler per D-3. No cross-aggregate ref by entity.
+
+**[G10 Tests] PASS**
+- Domain: 478 pass, 0 fail
+- Application: 138 pass, 0 fail
+- API: 366 pass, 4 skipped (pre-existing AdminCompanyDetails skips), 0 fail
+- Integration: 48 pass, 0 fail (Testcontainers PostgreSQL 16)
+- Total: 1030 pass, 0 fail, 4 skip
+
+**[G11 Coverage on new files] PASS (integration confirms G0)**
+5 new integration tests in `AuditLogEntityFilterIntegrationTests` cover: entityType+entityId filter (matched row only), entityType-only filter (all matching types), no-filter backward-compat (all rows), empty result on unknown entityId, 401 without BearerBackoffice token. All 5/5 pass against real PostgreSQL 16. G0 backend slice confirmed.
+
+**[G12 Playwright regression] PASS**
+Stack running (docker ps confirmed all services healthy or up). MCP Playwright executed against live stack:
+- GET /api/admin/audit-log?entityType=Fundo&entityId=<guid> via BFF proxy → 200, items array (backward-compat rows returned).
+- GET /api/admin/audit-log without auth → 401 (fetch with credentials:omit confirmed).
+- /admin/fundos → table renders, GET /api/admin/fundos?page=1&pageSize=20 → 200.
+- /admin/cedentes → table renders, GET /api/admin/fundos/cedentes?page=1&pageSize=20 → 200.
+- /admin/fundo-cedentes → renders, GET /api/admin/fundos/fundo-cedentes?page=1&pageSize=20 → 200.
+- /admin/fundos/00000000-0000-0000-0000-000000000001 → graceful not-found state, no crash, no React invariant errors.
+- Vite HMR WebSocket errors: benign (Docker container, no dev server process — pre-existing per D-16).
+
+**[G13 Static scans] NOT_RUN (advisory)**
+Trivy/Semgrep not installed. Manual inspection clean.
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+**W-perf-index** — `admin_audit_logs(entity_type, entity_id)` has no composite index. Filter queries `?entityType=Fundo&entityId=<guid>` will full-scan the table as audit log grows. Recommend adding `HasIndex(x => new { x.EntityType, x.EntityId })` in a follow-up migration. Non-blocking now (table is small), but mandatory before production load.
+
+**W-arch-detail-endpoint (PATH A recommended)** — Four frontend detail pages (AdminFundoDetailPage, AdminCedenteDetailPage, AdminConsultoriaFundoDetailPage, AdminCustodianteDetailPage) use `pageSize=200` + client-side `.find()` instead of `GET /api/admin/fundos/{id}` (and analogs) because those endpoints do not exist in AdminFundosController. This is a runtime scalability defect: any tenant with >200 entities of one type will produce a broken detail page (item not found). Path A (add GET /api/admin/fundos/{id}, /cedentes/{id}, /consultorias/{id}, /custodiantes/{id} — auth BearerBackoffice + CrossCompanyAccess) is the correct fix. Effort is small: one query handler per entity reusing existing repo.GetByIdAsync + IgnoreQueryFilters pattern already in place for admin list queries. Phase 52 ships with this defect accepted as W-arch per CONTEXT.md (dev DB has 0 entities, no runtime breakage today). Must be resolved before production or Phase 53 gate.
+
+**W-schema-auditlog** — AdminAuditLogDto and AuditLogEntry Zod schema in frontend do not include `entityType`/`entityId` fields. Backend emits them; frontend silently drops them during Zod parse. Audit history inline view cannot surface these fields. Non-blocking display omission.
+
+---
+
+### Coverage gaps (new backend files)
+
+New C# files after boundary `968eefb`:
+| File | Notes |
+|---|---|
+| `20260523184108_AddAuditLogEntityRef.cs` | Migration — no coverage required |
+| `AuditLogEntityFilterIntegrationTests.cs` | Test file itself |
+
+All other modified files (AdminAuditLog, IAuditService, AuditService, GetAuditLogQueryHandler, AdminAuditLogRepository, AdminUserController) are pre-existing. G11 scoped to new files only per D-2. Integration tests provide G0 evidence for T-1 slice.
+
+---
+
+### Regression captures
+
+- GET /api/admin/audit-log?entityType=Fundo (no auth): 401
+- GET /api/admin/fundos?page=1&pageSize=20 (admin session): 200
+- GET /api/admin/fundos/cedentes?page=1&pageSize=20: 200
+- GET /api/admin/fundos/fundo-cedentes?page=1&pageSize=20: 200
+- /admin/fundos/00000000-0000-0000-0000-000000000001 → "Registro não encontrado." no React error
+- Console errors: Vite HMR WebSocket only (3 errors, pre-existing, benign)
+- 5xx: zero
+- CORS errors: zero

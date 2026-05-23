@@ -958,3 +958,70 @@ None.
 - Network: GET /api/fundos → 200, no 5xx
 - Backoffice: /admin/login loads, zero app errors
 - Screenshot: .jdi/cache/phase-50-r2i2-fundos-admin.png
+
+---
+
+## Round 3 review iter 1 (total iter 8)
+
+Run: 2026-05-23
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Commit reviewed: 1b712f8 (fix: normalize empty-string optional fields to null in FundosController)
+
+### Verdict
+BLOCKED
+
+---
+
+### Gates
+
+- [G7 Build] PASS — dotnet build: 0 errors, 0 warnings (2.73s).
+
+- [G10 Tests] PASS — 995 passed (138+474+342+41), 0 failed, 4 skipped (pre-existing). Count +7 over round 2 iter 2 baseline — new Cedente PF/PJ tests added in previous iterations.
+
+- [G12 Playwright regression] BLOCKED — REGRESSION DETECTED.
+  - POST /api/fundos/consultorias (empty email/telefone/nomeFantasia) → 201 PASS (fix verified).
+  - POST /api/fundos/custodiantes (empty codigoInterno/email/telefone) → 201 PASS (fix verified).
+  - POST /api/fundos/cedentes/pf (empty email/telefone) → 201 PASS (fix verified).
+  - GET /api/fundos/cedentes → 500 Internal Server Error FAIL (regression unmasked by first PF creation).
+  - POST /api/fundos/tipos-ativo → 400 Bad Request (pre-existing frontend enum serialization bug, not introduced by 1b712f8 — frontend sends "RendaFixa" string, API expects integer).
+
+- [All other gates G1–G6, G8–G9, G11, G13] CARRY-FORWARD from round 2 — no src/ changes other than FundosController.cs empty-string normalization. Gates unchanged.
+
+---
+
+### Blockers
+
+**B1 — REGRESSION: GET /api/fundos/cedentes → 500 NRE (CedenteRepository + AsNoTracking + shadow properties)**
+
+File: `src/Onboarding.Application/Fundos/Queries/ListCedenteQueryHandler.cs:32`
+Root cause: `CedenteRepository.GetPagedByCompanyAsync` uses `AsNoTracking()`. After EF materializes entities without tracking, `_db.Entry(cedente)` in `ReconstructDocumento` cannot access shadow properties (`DocumentoTipo`, `CpfValue`, `CnpjCedenteValue`) because the entry is detached. `cedente.Documento` remains null. `ListCedenteQueryHandler` then calls `c.Documento.Match(...)` → NullReferenceException.
+
+The bug was latent because no Cedente rows existed in the dev DB prior to this session. Creating the first Cedente PF via POST /cedentes/pf unmasked it immediately on the subsequent GET.
+
+Fix options (in order of preference):
+1. Use `AsTracking()` in `GetPagedByCompanyAsync` and call `_db.ChangeTracker.Clear()` after reconstruction — preserves shadow property access.
+2. Use raw SQL / `FromSqlRaw` projection that reads shadow columns directly — avoids EF tracking entirely but requires raw SQL care (G3 gate: must use parameters, no interpolation).
+3. Use owned entity or TPH inheritance instead of shadow properties for `CedenteDocumento` — eliminates need for `ReconstructDocumento` entirely (preferred long-term DDD solution, but larger scope).
+4. Short-term: remove `AsNoTracking()` from `GetPagedByCompanyAsync` only, since `ReconstructDocumento` requires tracked entries.
+
+---
+
+### Warnings
+
+- **W-test** — Commit 1b712f8 does NOT add any unit tests for the empty-string → null normalization. The 7 command-building sites in FundosController are now covered only by Playwright MCP exercise. A controller unit test (or integration test) sending `{"razaoSocial":"X","cnpj":"...","email":"","telefone":""}` and asserting 201 (not 500) should lock this regression permanently.
+
+- **W-fundo-nullable** — `RegisterFundoCommand` and `UpdateFundoCommand` pass `request.ClasseAnbima` and `request.Segmento` directly (`string?`) without `IsNullOrWhiteSpace` normalization. These are `string?` fields in the domain (no value-object factory for them), so empty string `""` is stored as-is rather than null. Not a 500-risk (no domain factory called), but inconsistent with the normalization pattern applied to Email/Telefone/NomeFantasia/CodigoInterno. Low priority.
+
+- **W-data** — Dev DB `companies.keycloak_user_id` manually updated to `c749b6bb-...` by doer (no migration, no seed update). `scripts/seed-test-users.sh` does NOT sync `companies.keycloak_user_id` with the seeded Keycloak user's `sub`. Next dev or CI run on a fresh DB+Keycloak will hit the same 403 until another manual UPDATE is applied. Recommend one of: (a) extend `seed-test-users.sh` to `UPDATE companies SET keycloak_user_id = '<sub>' WHERE email = '<email>'` after user creation, (b) add a dev-only startup check that resolves the mismatch at boot, (c) document the manual UPDATE step in `docs/dev-setup.md`.
+
+- **W-tipoativo-enum** — POST /api/fundos/tipos-ativo → 400 because frontend sends `"RendaFixa"` (string) but API `CreateTipoAtivoRequest.Categoria` expects integer enum. Pre-existing frontend/API contract mismatch, not introduced by 1b712f8. Needs `[JsonConverter(typeof(JsonStringEnumConverter))]` on the controller or DTO, or frontend sending integer.
+
+---
+
+### Regression captures
+
+- POST /consultorias (empty optional fields) → 201 PASS
+- POST /custodiantes (empty optional fields) → 201 PASS
+- POST /cedentes/pf (empty email/telefone) → 201 PASS
+- GET /cedentes → 500 NRE FAIL (B1 blocker)
+- POST /tipos-ativo → 400 enum mismatch (pre-existing, W-tipoativo-enum)

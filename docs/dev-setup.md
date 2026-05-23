@@ -59,6 +59,31 @@ docker compose exec db psql -U postgres -d onboarding \
   -c "UPDATE companies SET keycloak_user_id = '$SUB' WHERE email = 'e2e-client@example.com'"
 ```
 
+## After pnpm changes — rebuild container
+
+When `package.json` changes (new deps, version bumps, removed packages), the running container
+still uses the **stale `node_modules`** baked into the previous image. The change is NOT picked
+up automatically by a bind-mount restart.
+
+Rebuild the affected container to apply the new dependency graph:
+
+```bash
+# Rebuild only the affected container (faster than full compose rebuild)
+docker compose build frontend-client    # or frontend-backoffice or api
+
+# Bring it back up
+docker compose up -d
+```
+
+Scope guide:
+- Changed `frontend/client/package.json`       → `docker compose build frontend-client`
+- Changed `frontend/backoffice/package.json`    → `docker compose build frontend-backoffice`
+- Changed `Onboarding.Api/Onboarding.Api.csproj` → `docker compose build api`
+- Changed root `compose.yaml` base image        → `docker compose build <service>`
+
+`docker compose restart <service>` is **NOT sufficient** — it only restarts the existing container
+from the existing image without rebaking `node_modules`.
+
 ## Why `pnpm dev` on the host is PROHIBITED (D-16)
 
 Running `pnpm dev` in `frontend/client/` or `frontend/backoffice/` on a Windows host creates a

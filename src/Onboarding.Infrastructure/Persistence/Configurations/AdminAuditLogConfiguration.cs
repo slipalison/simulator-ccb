@@ -65,5 +65,10 @@ public sealed class AdminAuditLogConfiguration : IEntityTypeConfiguration<AdminA
         builder.HasIndex(a => a.Timestamp).HasDatabaseName("IX_admin_audit_logs_timestamp");
         builder.HasIndex(a => a.ActionType).HasDatabaseName("IX_admin_audit_logs_action_type");
         builder.HasIndex(a => a.AdminUserId).HasDatabaseName("IX_admin_audit_logs_admin_user_id");
+
+        // Composite index for entity-scoped audit filtering (W-perf-index fix — Phase 52).
+        // Supports WHERE entity_type = ? AND entity_id = ? queries efficiently.
+        builder.HasIndex(x => new { x.EntityType, x.EntityId })
+            .HasDatabaseName("ix_admin_audit_logs_entity_type_entity_id");
     }
 }

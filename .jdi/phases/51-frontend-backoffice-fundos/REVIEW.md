@@ -652,3 +652,110 @@ None. W-perf-index is now CLOSED. Remaining open carry-forwards are frontend-sco
 | Designer and Snapshot updated | PASS |
 | 1071 tests pass, 0 fail | PASS |
 | AuditLogEntityFilterIntegrationTests 5/5 still pass with index present | PASS |
+
+
+## Phase 52 Frontend review iter 3
+
+**Verdict: APPROVED**
+
+---
+
+### Scope
+
+Three commits resolving the three carry-forward warnings from round 2 iter 2:
+- `7f21c6c` W-cov: @vitest/coverage-v8 + perFile 80% thresholds, 28 new test files, 21-file D-2 include list
+- `a7c399f` W-schema-auditlog: Zod AuditLogEntry + entityType/entityId, AuditEventRow caption
+- `105220d` W-deploy: docs/dev-setup.md "After pnpm changes — rebuild container" section
+
+---
+
+### Gates
+
+**[G1 Security frontend] PASS (no change)**
+No token storage, no dangerouslySetInnerHTML, no hardcoded secrets. D-4 cross-import: zero. entityType/entityId in AuditEventRow render as React text nodes (no injection surface). UUID-format enforcement via z.string().uuid() in Zod schema prevents arbitrary string passthrough.
+
+**[G2 Telemetry] carry-forward pre-existing — not addressed in iter 3**
+Neither SPA has src/lib/telemetry/. Blocked in prior phases. Phase 52 did not worsen this.
+
+**[G3 Perf + bundle] PASS**
+Build confirmed: backoffice main chunk index-BhINQShA.js = 205.34 KB gz. Under 300 KB gate. No change from iter 2 (205.31 KB). @vitest/coverage-v8 is devDependency-only, not in production bundle.
+
+**[G4 Build] PASS**
+pnpm --filter frontend-backoffice build: exit 0, built in 4.26s. docker compose build frontend-backoffice: rebuilt cleanly (image baked with new @vitest/coverage-v8 in devDeps — not production surface).
+
+**[G5 Typecheck+Lint] PASS**
+pnpm --filter frontend-backoffice typecheck: exit 0 (tsc --noEmit).
+pnpm --filter frontend-backoffice lint --max-warnings 0: exit 0 (eslint clean, coverage/ added to ignores).
+
+**[G6 Code-design + Frontend rules] PASS**
+- D-4 separation: zero cross-imports confirmed.
+- No pt-BR hardcoded in JSX. L.auditEntidade key used from locale file.
+- AuditEventRow entity caption: conditional render only when entityType present — no unnecessary render.
+- EntityId rendered inline with parentheses — simple string interpolation, no new component.
+- vitest.config.ts include list explicitly scoped to 21 D-2 files — correct D-2 discipline.
+- .gitignore negation pattern for lib test files added cleanly.
+
+**[G7 Coverage new files] PASS — W-cov CLOSED**
+44 test files, 387 tests pass, 0 fail.
+Coverage provider: v8. perFile: true. All four thresholds enforced at 80%:
+- Lines: 95.77%, Branches: 90.30%, Funcs: 93.10%, Stmts: 94.46%.
+No threshold violation output (clean exit). D-2 include list covers all 21 Phase-52 new files.
+W-cov CLOSED.
+
+**[G8 Playwright regression — Client SPA] PASS**
+http://localhost:5173 → ACF+PKCE redirect to Keycloak (no console errors, clean redirect). No regressions from Phase 52 frontend changes.
+
+**[G9 Playwright regression — Backoffice SPA] PASS**
+Container rebuilt (docker compose build frontend-backoffice + docker compose up -d) per W-deploy workflow.
+- /admin/login → Keycloak ACF+PKCE chain with custom theme renders.
+- /admin/fundos: table renders, sidebar Fundos group with 7 sub-links.
+- /admin/fundos/00000000-0000-0000-0000-000000000001: "Registro não encontrado." graceful state (404 from backend, no React crash).
+- /admin/audit-log: renders with filters (entityType filter confirmed in prior iter). Empty state displayed (no seed audit events).
+- Console errors: 404 for non-existent test UUID (expected), Vite HMR WebSocket (pre-existing benign per D-16). Zero React invariant errors, zero 5xx, zero CORS errors.
+- Screenshot: .jdi/cache/phase-52-backoffice-dashboard.png, .jdi/cache/phase-52-backoffice-auditlog.png
+
+**[G10 Accessibility] Not run (advisory)**
+
+**[G11 Vinext migration debt] CLEAN**
+Zero from vinxi imports in iter 3 commits.
+
+---
+
+### Warning Closures
+
+| Warning | Status | Evidence |
+|---|---|---|
+| W-cov | CLOSED | @vitest/coverage-v8 installed, vitest.config.ts perFile:true thresholds at 80%, 387/387 tests pass, overall 94.46/90.30/93.10/95.77% |
+| W-schema-auditlog | CLOSED | z.string().nullable().optional() + z.string().uuid().nullable().optional() in auditLogEntrySchema; AuditEventRow renders data-testid="audit-entity-caption" when entityType present |
+| W-deploy | CLOSED | docs/dev-setup.md section "After pnpm changes — rebuild container" documents docker compose build <service> + docker compose up -d; scope guide for all three services; explicit note that docker compose restart is NOT sufficient |
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+**W-telemetry (carry-forward, pre-existing)** — src/lib/telemetry/ missing in both SPAs. G2 gate technically blocked; Phase 52 did not introduce or worsen this gap. Carry-forward from prior phases.
+
+**W-gitignore (carry-forward)** — src/lib/ pattern in .gitignore required .gitignore negation patch in 7f21c6c. Root-level .gitignore cleanup recommended in a dedicated phase.
+
+---
+
+### Coverage summary (new D-2 files)
+
+21 files explicitly included in coverage.include (vitest.config.ts). All meet 80% perFile threshold. Overall: Stmts 94.46% / Branch 90.30% / Funcs 93.10% / Lines 95.77%.
+
+---
+
+### Regression captures
+
+- Screenshots: .jdi/cache/phase-52-backoffice-dashboard.png, .jdi/cache/phase-52-backoffice-auditlog.png
+- /admin/fundos list: 200
+- /admin/fundos/<non-existent-id>: 404 from API, graceful "Registro não encontrado." state
+- /admin/audit-log: 200, empty state rendered correctly
+- Client SPA http://localhost:5173: ACF+PKCE redirect clean, zero errors
+- Zero 5xx, zero CORS errors, zero React invariant errors

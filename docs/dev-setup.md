@@ -19,6 +19,46 @@ curl http://127.0.0.1:5173/api/healthz/live
 docker compose logs -f frontend-client
 ```
 
+## Seeding e2e test users (required for Keycloak → DB sync)
+
+After `docker compose up -d`, run the seed script to create the two e2e test users in Keycloak
+**and** sync their Keycloak `id` (sub) into the `companies` table. The sync is required because
+`ClientClaimsMiddleware` resolves `JWT sub → companies.keycloak_user_id` to determine permissions.
+Without it the user hits the no-match path and receives 0 permissions.
+
+```bash
+KC_ADMIN_CLIENT_SECRET=dev-admin-secret bash scripts/seed-test-users.sh
+```
+
+The script is **idempotent** — safe to re-run after `docker compose down -v && docker compose up -d`.
+
+### What the seed script does
+
+1. Acquires a `client_credentials` token from each Keycloak realm.
+2. Upserts `e2e-client@example.com` in the `client` realm (group: `admin-empresa`).
+3. Upserts `e2e-admin@example.com` in the `backoffice` realm (role: `admin`).
+4. **Syncs the Keycloak `id` (sub) for `e2e-client@example.com` into `companies.keycloak_user_id`**
+   via `docker compose exec db psql ...`. The DB container name defaults to `db`; override with
+   `DB_CONTAINER=<name>` if your compose service has a different name.
+
+### Manual sync (if DB container is unavailable)
+
+If the DB container is not running when you seed, run the SQL manually:
+
+```bash
+# Get the Keycloak sub first:
+TOKEN=$(curl -s -X POST http://localhost:8180/realms/client/protocol/openid-connect/token \
+  -d grant_type=client_credentials -d client_id=onboarding-api-admin \
+  -d client_secret=dev-admin-secret | jq -r .access_token)
+
+SUB=$(curl -s "http://localhost:8180/admin/realms/client/users?email=e2e-client@example.com&exact=true" \
+  -H "Authorization: Bearer $TOKEN" | jq -r '.[0].id')
+
+# Then update the DB:
+docker compose exec db psql -U postgres -d onboarding \
+  -c "UPDATE companies SET keycloak_user_id = '$SUB' WHERE email = 'e2e-client@example.com'"
+```
+
 ## Why `pnpm dev` on the host is PROHIBITED (D-16)
 
 Running `pnpm dev` in `frontend/client/` or `frontend/backoffice/` on a Windows host creates a

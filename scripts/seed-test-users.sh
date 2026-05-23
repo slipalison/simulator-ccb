@@ -426,6 +426,40 @@ fi
 reset_password "${CLIENT_REALM}" "${CLIENT_TOKEN}" "${CLIENT_USER_ID}" "${E2E_CLIENT_PASSWORD}"
 ensure_group_membership "${CLIENT_REALM}" "${CLIENT_TOKEN}" "${CLIENT_USER_ID}" "${E2E_CLIENT_GROUP}"
 
+# ── W-data fix: sync Keycloak sub → companies.keycloak_user_id ───────────────
+#
+# ClientClaimsMiddleware resolves sub → Company.KeycloakUserId to grant permissions.
+# If the companies row has a stale or missing keycloak_user_id, the middleware hits
+# the no-match path and the user gets 0 permissions even with a valid JWT.
+#
+# This step queries Keycloak for the authoritative sub (CLIENT_USER_ID above) and
+# UPSERTs it into the companies table by matching on email.
+#
+# Precondition: docker compose is running with a Postgres container named "db"
+# that exposes the onboarding DB as user "postgres" / database "onboarding".
+# The DB_CONTAINER, DB_USER, and DB_NAME variables below can be overridden.
+#
+# Idempotent: re-running sets the same value; no-op if company row absent.
+
+DB_CONTAINER="${DB_CONTAINER:-db}"
+DB_USER="${DB_USER:-postgres}"
+DB_NAME="${DB_NAME:-onboarding}"
+
+echo "  [${CLIENT_REALM}] Syncing Keycloak sub to companies table..." >&2
+
+# Escape single quotes in email and sub for safe SQL embedding
+safe_email=$(printf '%s' "${E2E_CLIENT_EMAIL}" | sed "s/'/''/g")
+safe_sub=$(printf '%s' "${CLIENT_USER_ID}" | sed "s/'/''/g")
+
+if docker compose exec -T "${DB_CONTAINER}" psql -U "${DB_USER}" -d "${DB_NAME}" \
+    -c "UPDATE companies SET keycloak_user_id = '${safe_sub}' WHERE email = '${safe_email}';" \
+    2>/dev/null; then
+  echo "  [${CLIENT_REALM}] companies.keycloak_user_id synced for ${E2E_CLIENT_EMAIL} → ${CLIENT_USER_ID}" >&2
+else
+  echo "  [${CLIENT_REALM}] WARNING: could not sync keycloak_user_id — DB container '${DB_CONTAINER}' may not be running. Manual sync required." >&2
+  echo "    Run: docker compose exec ${DB_CONTAINER} psql -U ${DB_USER} -d ${DB_NAME} -c \"UPDATE companies SET keycloak_user_id = '${CLIENT_USER_ID}' WHERE email = '${E2E_CLIENT_EMAIL}'\"" >&2
+fi
+
 echo "  [${CLIENT_REALM}] ${E2E_CLIENT_EMAIL} ready (id=${CLIENT_USER_ID})"
 
 # ── Backoffice realm: e2e-admin@example.com ───────────────────────────────

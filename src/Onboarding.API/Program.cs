@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.Json.Serialization;
 using Keycloak.AuthServices.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -267,7 +268,9 @@ try
     // Cookie settings — environment-configured Secure flag
     builder.Services.Configure<CookieSettings>(builder.Configuration.GetSection(nameof(CookieSettings)));
 
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(o =>
+            o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
     var app = builder.Build();
 

@@ -9,8 +9,8 @@ specialists:
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
 current_phase: frontend-client-fundos
 current_phase_slug: frontend-client-fundos
-phase_status: running
-phase_verdict: in_progress
+phase_status: verified
+phase_verdict: APPROVED_WITH_WARNINGS
 prior_phase_slug: fundo-cedente-relationships
 prior_phase_verdict: APPROVED_WITH_WARNINGS
-next_step: /jdi-loop frontend-client-fundos (round 3 iter 1 — diagnose POST 4xx)
+next_step: /jdi-ship frontend-client-fundos

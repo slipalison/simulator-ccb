@@ -1,9 +1,11 @@
 ---
 phase_slug: frontend-client-fundos
 phase_position: 51
-iter: 7
+iter: 11
 total_resets: 2
-status: running
+status: converged
+round3_converged_at: 2026-05-17T00:00:00Z
+round3_verdict: APPROVED_WITH_WARNINGS
 third_reopen_at: 2026-05-17T00:00:00Z
 third_reopen_reason: User reports Sidebar Fundos menu missing — investigation shows backend GET /api/auth/me returns only { AccessToken, ExpiresIn, TokenType, Scope } with no permissions claim. Frontend AuthContext reads data.permissions ?? [] → empty array → Sidebar permissions.includes('funds:read') → false. Routes work via direct URL but no navigation entry point.
 fourth_reopen_at: 2026-05-17T00:00:00Z
@@ -157,6 +159,45 @@ second_reopen_at: 2026-05-17T00:00:00Z
 - iter 7: APPROVED_WITH_WARNINGS, hash=2c726bb2a027, commit=2667ae9, ts=2026-05-17T00:00:00Z
 
 --- RESET 2 at 2026-05-17 — user reports POST create endpoints fail; total_resets=2 ---
+
+### iter=9 (round 3 iter 2) — start — fix B1 Cedente list NRE + W-tipoativo-enum + W-test
+- B1: src/Onboarding.Application/Fundos/Queries/ListCedenteQueryHandler.cs:32 (via CedenteRepository.GetPagedByCompanyAsync) AsNoTracking + ReconstructDocumento shadow read → detached entity → Documento null → NRE → 500 on GET /api/fundos/cedentes. Fix: remove AsNoTracking + ChangeTracker.Clear() after, OR project shadow cols directly.
+- W-tipoativo-enum: frontend sends string ("RendaFixa"), API expects int → 400. Align.
+- W-test: add unit tests locking empty-string normalization in commit 1b712f8.
+
+### iter=8 (round 3 iter 1) — doer commit (2026-05-17)
+- Backend `1b712f8` — FundosController: normalize empty strings to null at 7 command-build sites + DB fix `companies.keycloak_user_id` for real user (manual UPDATE — W-data)
+- MCP-verified: consultorias 201, custodiantes 201, tipos-ativo 201
+
+### iter=9 (round 3 iter 2) — doer commits (2026-05-17)
+- Backend `f9f1c2b` — B1 fix: CedenteRepository.GetPagedByCompanyAsync remove AsNoTracking + ChangeTracker.Clear after ReconstructDocumento
+- Backend `a594851` — 7 W-tests locking empty-string normalization
+- Backend `86896d4` — 2 Cedente list integration tests (B1 lock + multi-tenant isolation)
+- Backend `4c352bf` — Program.cs: register JsonStringEnumConverter globally (fixes TipoAtivo enum serialization)
+
+### iter=9 — reviewer
+- Backend `9bfbc4c` — BLOCKED: 6 stale int-enum assertions in integration tests broke after JsonStringEnumConverter
+- Frontend (CRASHED socket closed — re-run iter 10)
+
+### iter=10 (round 3 iter 3) — doer commit
+- Backend `921d2a9` — fix 6 stale assertions: .GetInt32().ShouldBe(N) → .GetString().ShouldBe("NAME") in RelationshipAggregates+FundosController integration tests. Request payloads kept as int (allowIntegerValues=true default).
+
+### iter=10 — reviewers
+- Frontend MCP (commit pending) — APPROVED_WITH_WARNINGS (golden path POSTs 201, GET 200, B1 CPF populated, enum compat clean, /employees no regression)
+- Backend — BLOCKED: 1 line FundosControllerIntegrationTests.cs:847 uses wrong JSON key `documentoNumero` (actual: `documento`). Latent — integration tests not run iter 8/9 without Docker.
+
+### iter=11 (round 3 iter 4) — doer commit
+- Backend `4b37c5e` — 1-line key fix `documentoNumero` → `documento`; var renamed + comment updated. Multi-tenant test inspected — no GetProperty issue.
+
+### iter=11 — reviewer aggregate
+- Backend `ddb4dd8` — APPROVED_WITH_WARNINGS (1004/0/4 inc. Integration 43/0; 5 carry-forward warnings)
+- Security `bb7e32b` — APPROVED_WITH_WARNINGS (D-5 multi-tenant PASS confirmed: WHERE ClienteId + IgnoreQueryFilters preserved post-AsNoTracking removal; multi-tenant integration test substantive; 3 carry-forward warnings: W-data sync gap, W-arch BFF hardcode, W-audit-format from JsonStringEnumConverter)
+- Frontend (re-uses iter 10 verdict — no frontend code change iter 11) — APPROVED_WITH_WARNINGS
+- Hash: 33ce91219ef6 (vs iter5 ac683c, iter7 2c726b — different, no oscillation)
+- Aggregate verdict (worst-case): **APPROVED_WITH_WARNINGS**
+
+### iter=11 — converged (round 3)
+- iter 11: APPROVED_WITH_WARNINGS, hash=33ce91219ef6, commit=ddb4dd8, ts=2026-05-17T00:00:00Z
 
 ### iter=8 (round 3 iter 1) — start — POST create endpoints return non-2xx
 - User curl: POST /api/fundos/consultorias body {razaoSocial,cnpj,nomeFantasia,email:"",telefone:""}

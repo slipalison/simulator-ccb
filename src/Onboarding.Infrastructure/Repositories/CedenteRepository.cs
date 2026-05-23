@@ -76,10 +76,13 @@ public sealed class CedenteRepository : ICedenteRepository
     public async Task<(IReadOnlyList<Cedente> Items, int TotalCount)> GetPagedByCompanyAsync(
         Guid companyId, int page, int pageSize, string? search, CancellationToken ct = default)
     {
+        // NOTE: AsNoTracking() intentionally omitted here.
+        // ReconstructDocumento reads shadow properties via _db.Entry(cedente), which requires
+        // the entity to be tracked. After reconstruction we call ChangeTracker.Clear() so no
+        // accidental writes escape from this read-only path (equivalent to AsNoTracking perf).
         var query = _db.Cedentes
             .IgnoreQueryFilters()
-            .Where(c => c.ClienteId == companyId)
-            .AsNoTracking();
+            .Where(c => c.ClienteId == companyId);
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -102,9 +105,14 @@ public sealed class CedenteRepository : ICedenteRepository
             .Take(pageSize)
             .ToListAsync(ct);
 
-        // CR-03: Reconstruct Documento from shadow properties after materialization
+        // CR-03: Reconstruct Documento from shadow properties after materialization.
+        // Entities must be tracked for _db.Entry() to access shadow property values.
         foreach (var cedente in items)
             ReconstructDocumento(cedente);
+
+        // Detach all tracked entities — prevents accidental SaveChanges writes on this
+        // read-only path while preserving the benefit of tracking during shadow-property read.
+        _db.ChangeTracker.Clear();
 
         return (items.AsReadOnly(), totalCount);
     }

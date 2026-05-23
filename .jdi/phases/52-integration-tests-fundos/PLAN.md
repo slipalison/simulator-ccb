@@ -134,7 +134,7 @@ Dupla missão: (1) Integration tests end-to-end Testcontainers PG cobrindo 5 ent
   - Janela de datas D-20 + LimiteExposicaoPercentual/Valor D-18 invariants tested.
 - **Dependencies:** T-1
 - **Test:** xUnit Integration
-- **Status:** pending
+- **Status:** completed
 
 ### Wave 3 (sequential — depends on T-5, T-6, T-7)
 

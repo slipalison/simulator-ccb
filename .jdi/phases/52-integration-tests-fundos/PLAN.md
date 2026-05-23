@@ -117,7 +117,7 @@ Dupla missão: (1) Integration tests end-to-end Testcontainers PG cobrindo 5 ent
   - TipoAtivo: global catalog, no tenant filter. Duplicate codigo → 409.
 - **Dependencies:** T-1
 - **Test:** xUnit Integration
-- **Status:** pending
+- **Status:** completed
 
 #### T-4: Integration tests — 3 N-N associations + REL-09
 - **Specialist:** jdi-doer-onboarding-keycloak-backend-csharp

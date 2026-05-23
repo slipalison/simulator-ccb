@@ -1,22 +1,12 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Infrastructure.Persistence;
+using Onboarding.Integration.Tests.Fixtures;
 using Shouldly;
-using Testcontainers.PostgreSql;
 
 namespace Onboarding.Integration.Tests.Admin;
 
@@ -37,15 +27,8 @@ namespace Onboarding.Integration.Tests.Admin;
 /// 9. GET with BearerClient (non-admin) → 401 (wrong scheme)
 /// </summary>
 [Trait("Category", "Integration")]
-public sealed class AdminFundosByIdIntegrationTests : IAsyncLifetime
+public sealed class AdminFundosByIdIntegrationTests : PostgreSqlIntegrationTestBase, IClassFixture<PostgreSqlFixture>
 {
-    // =========================================================================
-    // Testcontainers + WebApplicationFactory
-    // =========================================================================
-
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine").Build();
-    private WebApplicationFactory<Program>? _factory;
-
     private Guid _companyAId;
     private Guid _companyBId;
 
@@ -56,104 +39,40 @@ public sealed class AdminFundosByIdIntegrationTests : IAsyncLifetime
     private const string CnpjA = "11444777000161";
     private const string CnpjB = "62232889000190";
 
+    public AdminFundosByIdIntegrationTests(PostgreSqlFixture fixture) : base(fixture) { }
+
     // =========================================================================
-    // IAsyncLifetime
+    // IAsyncLifetime — per-class seed (guarded against re-seeding per test)
+    //
+    // xUnit creates one test-class instance per test method, so InitializeAsync is called
+    // once per test. Fixture.EnsureSeedAsync ensures the DB seed runs only once per class.
+    // After seed, IDs are re-read from DB so each test instance has them populated.
     // =========================================================================
 
-    public async Task InitializeAsync()
+    public override async Task InitializeAsync()
     {
-        await _postgres.StartAsync();
+        await base.InitializeAsync();
 
-        _factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(ConfigureWebHost);
-
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
-
-        await SeedCompaniesAsync(db);
-    }
-
-    public async Task DisposeAsync()
-    {
-        if (_factory is not null) await _factory.DisposeAsync();
-        await _postgres.DisposeAsync();
-    }
-
-    // =========================================================================
-    // WebHostBuilder — replaces JWT validation + health checks
-    // =========================================================================
-
-    private void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        builder.UseEnvironment("Testing");
-        builder.UseSetting("ConnectionStrings:AppDb", _postgres.GetConnectionString());
-        builder.UseSetting("Keycloak:BackofficeRealmUrl", "http://localhost:8180/realms/backoffice");
-        builder.UseSetting("Keycloak:ClientRealmUrl", "http://localhost:8180/realms/client");
-        builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180/");
-        builder.UseSetting("Keycloak:AdminClientId", "onboarding-api-admin");
-        builder.UseSetting("Keycloak:AdminClientSecret", "test-secret");
-        builder.UseSetting("Keycloak:Realm", "client");
-        builder.UseSetting("Keycloak:PublicClientId", "onboarding-app");
-        builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/client");
-
-        builder.ConfigureTestServices(services =>
+        await Fixture.EnsureSeedAsync(async () =>
         {
-            // Remove health checks that require real Keycloak/PostgreSQL probes
-            var configureOptionsType = typeof(IConfigureOptions<HealthCheckServiceOptions>);
-            var toRemove = services.Where(d => d.ServiceType == configureOptionsType).ToList();
-            foreach (var d in toRemove) services.Remove(d);
-            services.AddHealthChecks()
-                .AddCheck("stub-healthy", () => HealthCheckResult.Healthy("stub-ok"), ["ready"]);
-
-            // Override BearerClient — HMAC symmetric key, no OIDC discovery
-            services.PostConfigure<JwtBearerOptions>("BearerClient", options =>
-            {
-                options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
-                {
-                    Issuer = "http://localhost:8180/realms/client",
-                };
-                options.TokenValidationParameters.ValidateIssuer = false;
-                options.TokenValidationParameters.ValidateAudience = false;
-                options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep
-                options.TokenValidationParameters.IssuerSigningKey = AdminByIdFakeJwtHelper.SecurityKey;
-                options.TokenValidationParameters.ValidateIssuerSigningKey = true;
-            });
-
-            // Override BearerBackoffice — HMAC symmetric key + role claim mapping
-            services.PostConfigure<JwtBearerOptions>("BearerBackoffice", options =>
-            {
-                options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
-                {
-                    Issuer = "http://localhost:8180/realms/backoffice",
-                };
-                options.TokenValidationParameters.ValidateIssuer = false;
-                options.TokenValidationParameters.ValidateAudience = false;
-                options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep
-                options.TokenValidationParameters.IssuerSigningKey = AdminByIdFakeJwtHelper.SecurityKey;
-                options.TokenValidationParameters.ValidateIssuerSigningKey = true;
-
-                options.Events = new JwtBearerEvents
-                {
-                    OnTokenValidated = context =>
-                    {
-                        if (context.Principal?.Identity is ClaimsIdentity identity)
-                        {
-                            foreach (var claim in context.Principal.FindAll("role").ToList())
-                                identity.AddClaim(new Claim(ClaimTypes.Role, claim.Value));
-                        }
-                        return Task.CompletedTask;
-                    }
-                };
-            });
+            using var scope = CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await SeedCompaniesAsync(db);
         });
+
+        // Re-read IDs on every test instance — seed is idempotent, rows are stable.
+        // IgnoreQueryFilters() bypasses HasQueryFilter for direct DB reads outside HTTP context.
+        using var readScope = CreateScope();
+        var readDb = readScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        _companyAId = readDb.Companies.IgnoreQueryFilters().Where(c => c.KeycloakUserId == SubPjA).Select(c => c.Id).First();
+        _companyBId = readDb.Companies.IgnoreQueryFilters().Where(c => c.KeycloakUserId == SubPjB).Select(c => c.Id).First();
     }
 
     // =========================================================================
     // Seed helpers
     // =========================================================================
 
-    private async Task SeedCompaniesAsync(AppDbContext db)
+    private static async Task SeedCompaniesAsync(AppDbContext db)
     {
         var companyA = Company.Register(
             "Empresa Alpha Admin ById Ltda",
@@ -173,30 +92,14 @@ public sealed class AdminFundosByIdIntegrationTests : IAsyncLifetime
 
         await db.Companies.AddRangeAsync(companyA, companyB);
         await db.SaveChangesAsync();
-
-        _companyAId = companyA.Id;
-        _companyBId = companyB.Id;
     }
 
     // =========================================================================
     // HTTP client helpers
     // =========================================================================
 
-    private HttpClient CreateClientFor(string sub, string scheme)
-    {
-        var client = _factory!.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var token = scheme == "BearerBackoffice"
-            ? AdminByIdFakeJwtHelper.GenerateAdminJwt(sub: sub)
-            : AdminByIdFakeJwtHelper.GenerateClientJwt(sub: sub);
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return client;
-    }
-
-    private HttpClient CreateUnauthenticatedClient()
-        => _factory!.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-
-    private HttpClient ClientAdmin() => CreateClientFor("admin-byid-backoffice", "BearerBackoffice");
-    private HttpClient ClientPjA() => CreateClientFor(SubPjA, "BearerClient");
+    private HttpClient ClientAdmin() => CreateAdminJwt("admin-byid-backoffice");
+    private HttpClient ClientPjA() => CreateClientJwt(SubPjA);
 
     // =========================================================================
     // SCENARIO 1: Admin GET /api/admin/fundos/consultorias/{id} returns 200 + correct companyName
@@ -205,10 +108,10 @@ public sealed class AdminFundosByIdIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task AdminGetConsultoriaById_ExistingEntity_Returns200WithCompanyName()
     {
-        // Arrange — PJ-A creates a consultoria
+        // Arrange — PJ-A creates a consultoria; TestCnpj is unique per test instance
         using var clientA = ClientPjA();
         var createResp = await clientA.PostAsJsonAsync("/api/fundos/consultorias",
-            new { razaoSocial = "Consultoria ById Alpha", cnpj = CnpjA });
+            new { razaoSocial = "Consultoria ById Alpha", cnpj = TestCnpj });
         createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var consultoriaId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
@@ -233,7 +136,7 @@ public sealed class AdminFundosByIdIntegrationTests : IAsyncLifetime
     {
         using var clientA = ClientPjA();
         var createResp = await clientA.PostAsJsonAsync("/api/fundos/custodiantes",
-            new { razaoSocial = "Custodiante ById Alpha", cnpj = CnpjA });
+            new { razaoSocial = "Custodiante ById Alpha", cnpj = TestCnpj });
         createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var id = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
@@ -281,13 +184,13 @@ public sealed class AdminFundosByIdIntegrationTests : IAsyncLifetime
         using var clientA = ClientPjA();
 
         var consultoriaResp = await clientA.PostAsJsonAsync("/api/fundos/consultorias",
-            new { razaoSocial = "Consultoria FK ById", cnpj = CnpjA });
+            new { razaoSocial = "Consultoria FK ById", cnpj = TestCnpj });
         consultoriaResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var consultoriaId = (await consultoriaResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
 
         var custodianteResp = await clientA.PostAsJsonAsync("/api/fundos/custodiantes",
-            new { razaoSocial = "Custodiante FK ById", cnpj = CnpjA });
+            new { razaoSocial = "Custodiante FK ById", cnpj = TestCnpj });
         custodianteResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var custodianteId = (await custodianteResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
@@ -296,7 +199,7 @@ public sealed class AdminFundosByIdIntegrationTests : IAsyncLifetime
             new
             {
                 nome = "Fundo ById Alpha",
-                cnpj = CnpjA,
+                cnpj = TestCnpj,
                 consultoriaFundoId = consultoriaId,
                 custodianteId,
                 tipoFundo = 1
@@ -398,55 +301,5 @@ public sealed class AdminFundosByIdIntegrationTests : IAsyncLifetime
         using var client = ClientPjA();
         var resp = await client.GetAsync($"/api/admin/fundos/{Guid.NewGuid()}");
         ((int)resp.StatusCode).ShouldBeOneOf(401, 403);
-    }
-}
-
-/// <summary>
-/// File-scoped JWT helper for AdminFundosByIdIntegrationTests.
-/// Mirrors FakeJwtHelper in FundosControllerIntegrationTests — kept separate
-/// to avoid cross-file static coupling within the Integration.Tests project.
-/// </summary>
-file static class AdminByIdFakeJwtHelper
-{
-    private const string TestSigningKey =
-        "this-is-a-test-signing-key-for-integration-tests-only-min-32-bytes!";
-
-    public static readonly SymmetricSecurityKey SecurityKey =
-        new(Encoding.UTF8.GetBytes(TestSigningKey));
-
-    private static readonly SigningCredentials Credentials =
-        new(SecurityKey, SecurityAlgorithms.HmacSha256);
-
-    public static string GenerateClientJwt(string email = "test@integration.test", string? sub = null)
-    {
-        var claims = new List<Claim>
-        {
-            new("email", email),
-            new("sub", sub ?? Guid.NewGuid().ToString())
-        };
-        var token = new JwtSecurityToken(
-            issuer: "http://localhost:8180/realms/client",
-            audience: "onboarding-app",
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(1),
-            signingCredentials: Credentials);
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    public static string GenerateAdminJwt(string email = "admin@backoffice.integration.test", string? sub = null)
-    {
-        var claims = new List<Claim>
-        {
-            new("email", email),
-            new("sub", sub ?? Guid.NewGuid().ToString()),
-            new("role", "admin")
-        };
-        var token = new JwtSecurityToken(
-            issuer: "http://localhost:8180/realms/backoffice",
-            audience: "http://localhost:8180/realms/backoffice",
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(1),
-            signingCredentials: Credentials);
-        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

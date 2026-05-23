@@ -1,23 +1,13 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Domain.Aggregates.FundoAggregate;
 using Onboarding.Infrastructure.Persistence;
+using Onboarding.Integration.Tests.Fixtures;
 using Shouldly;
-using Testcontainers.PostgreSql;
 
 namespace Onboarding.Integration.Tests.Fundos;
 
@@ -42,17 +32,8 @@ namespace Onboarding.Integration.Tests.Fundos;
 /// - Admin IgnoreQueryFilters allows cross-company reads scoped to BearerBackoffice + CrossCompanyAccess
 /// </summary>
 [Trait("Category", "Integration")]
-public class FundosControllerIntegrationTests : IAsyncLifetime
+public class FundosControllerIntegrationTests : PostgreSqlIntegrationTestBase, IClassFixture<PostgreSqlFixture>
 {
-    // =========================================================================
-    // Test infrastructure — Testcontainers + WebApplicationFactory
-    // =========================================================================
-
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
-        .Build();
-
-    private WebApplicationFactory<Program>? _factory;
-
     // Seeded company IDs — set during InitializeAsync, used in tests
     private Guid _companyAId;
     private Guid _companyBId;
@@ -62,126 +43,48 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
     private const string SubPjB = "integration-pjb-sub-002";
     private const string SubNoCompany = "integration-noperm-sub-003";
 
-    // Verified valid CNPJ (confirmed by integration test run).
-    // CNPJ uniqueness is per (ClientId, CNPJ) within each entity table: consultoria_fundos,
-    // custodiantes, and fundos are separate tables, so the same CNPJ value can be used for
-    // all entity types in a single test without triggering any DB unique constraint.
-    // Company seed CNPJs (companies table) are also independent of the entity tables.
-    private const string ValidCnpj = "11222333000181"; // verified valid in integration test run
+    // Each test uses TestCnpj (inherited from PostgreSqlIntegrationTestBase) which provides a
+    // per-test-instance unique valid CNPJ generated via GenerateCnpj(Fixture.NextCnpjSlot()).
+    // This prevents (ClientId, Cnpj) uniqueness violations when multiple tests share the container.
+    //
+    // Note: within a SINGLE test, the same TestCnpj can be reused for different entity types
+    // (ConsultoriaFundo, Custodiante, Fundo) because those are separate tables with separate
+    // (ClientId, Cnpj) unique indexes — no cross-table collision occurs.
+
+    public FundosControllerIntegrationTests(PostgreSqlFixture fixture) : base(fixture) { }
 
     // =========================================================================
-    // IAsyncLifetime
+    // IAsyncLifetime — per-class seed (guarded against re-seeding per test)
+    //
+    // xUnit creates one test-class instance per test method, so InitializeAsync is called
+    // once per test. Fixture.EnsureSeedAsync ensures the DB seed runs only once per class.
+    // After seed, IDs are re-read from DB so each test instance has them populated.
     // =========================================================================
 
-    public async Task InitializeAsync()
+    public override async Task InitializeAsync()
     {
-        await _postgres.StartAsync();
+        await base.InitializeAsync();
 
-        _factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(ConfigureWebHost);
-
-        // Run EF Core schema creation against the real Testcontainers PostgreSQL
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
-
-        // Seed two companies — bypass HTTP stack, write directly via EF Core
-        await SeedCompaniesAsync(db);
-    }
-
-    public async Task DisposeAsync()
-    {
-        if (_factory is not null) await _factory.DisposeAsync();
-        await _postgres.DisposeAsync();
-    }
-
-    // =========================================================================
-    // WebHostBuilder configuration — replaces real JWT validation with fake-key HMAC
-    // =========================================================================
-
-    private void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        builder.UseEnvironment("Testing");
-
-        // Point at Testcontainers PostgreSQL
-        builder.UseSetting("ConnectionStrings:AppDb", _postgres.GetConnectionString());
-
-        // Keycloak config — never contacted in tests (JWT validation overridden below)
-        builder.UseSetting("Keycloak:BackofficeRealmUrl", "http://localhost:8180/realms/backoffice");
-        builder.UseSetting("Keycloak:ClientRealmUrl", "http://localhost:8180/realms/client");
-        builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180/");
-        builder.UseSetting("Keycloak:AdminClientId", "onboarding-api-admin");
-        builder.UseSetting("Keycloak:AdminClientSecret", "test-secret");
-        builder.UseSetting("Keycloak:Realm", "client");
-        builder.UseSetting("Keycloak:PublicClientId", "onboarding-app");
-        builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/client");
-
-        builder.ConfigureTestServices(services =>
+        await Fixture.EnsureSeedAsync(async () =>
         {
-            // Remove health checks that require real external infrastructure
-            var configureOptionsType = typeof(IConfigureOptions<HealthCheckServiceOptions>);
-            var toRemove = services
-                .Where(d => d.ServiceType == configureOptionsType)
-                .ToList();
-            foreach (var d in toRemove)
-                services.Remove(d);
-            services.AddHealthChecks()
-                .AddCheck("stub-healthy", () => HealthCheckResult.Healthy("stub-ok"), ["ready"]);
-
-            // Override BearerClient JWT validation — use HMAC symmetric key, no OIDC discovery
-            services.PostConfigure<JwtBearerOptions>("BearerClient", options =>
-            {
-                options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
-                {
-                    Issuer = "http://localhost:8180/realms/client",
-                };
-                options.TokenValidationParameters.ValidateIssuer = false;
-                options.TokenValidationParameters.ValidateAudience = false;
-                options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep
-                options.TokenValidationParameters.IssuerSigningKey = FakeJwtHelper.SecurityKey;
-                options.TokenValidationParameters.ValidateIssuerSigningKey = true;
-            });
-
-            // Override BearerBackoffice JWT validation — use HMAC symmetric key, no OIDC discovery.
-            // Override OnTokenValidated to map flat "role" claim → ClaimTypes.Role so that
-            // RequireRole("admin") in CrossCompanyAccess policy works without real Keycloak realm_access.
-            services.PostConfigure<JwtBearerOptions>("BearerBackoffice", options =>
-            {
-                options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
-                {
-                    Issuer = "http://localhost:8180/realms/backoffice",
-                };
-                options.TokenValidationParameters.ValidateIssuer = false;
-                options.TokenValidationParameters.ValidateAudience = false;
-                options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep
-                options.TokenValidationParameters.IssuerSigningKey = FakeJwtHelper.SecurityKey;
-                options.TokenValidationParameters.ValidateIssuerSigningKey = true;
-
-                // Map flat "role" claim to ClaimTypes.Role for RequireRole("admin") to work
-                options.Events = new JwtBearerEvents
-                {
-                    OnTokenValidated = context =>
-                    {
-                        if (context.Principal?.Identity is ClaimsIdentity identity)
-                        {
-                            // Promote flat "role" claims to ClaimTypes.Role so RequireRole("admin") works
-                            var roleClaims = context.Principal.FindAll("role").ToList();
-                            foreach (var claim in roleClaims)
-                                identity.AddClaim(new Claim(ClaimTypes.Role, claim.Value));
-                        }
-
-                        return Task.CompletedTask;
-                    }
-                };
-            });
+            using var scope = CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await SeedCompaniesAsync(db);
         });
+
+        // Re-read IDs on every test instance — seed is idempotent, rows are stable.
+        // IgnoreQueryFilters() required: Companies has no tenant filter, but explicit for safety.
+        using var readScope = CreateScope();
+        var readDb = readScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        _companyAId = readDb.Companies.IgnoreQueryFilters().Where(c => c.KeycloakUserId == SubPjA).Select(c => c.Id).First();
+        _companyBId = readDb.Companies.IgnoreQueryFilters().Where(c => c.KeycloakUserId == SubPjB).Select(c => c.Id).First();
     }
 
     // =========================================================================
     // Seed helpers
     // =========================================================================
 
-    private async Task SeedCompaniesAsync(AppDbContext db)
+    private static async Task SeedCompaniesAsync(AppDbContext db)
     {
         // Company PJ-A — mapped to SubPjA
         var companyA = Company.Register(
@@ -203,54 +106,32 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
 
         await db.Companies.AddRangeAsync(companyA, companyB);
         await db.SaveChangesAsync();
-
-        _companyAId = companyA.Id;
-        _companyBId = companyB.Id;
     }
 
     // =========================================================================
     // HTTP client helpers — inject fake JWT for specific user
     // =========================================================================
 
-    private HttpClient CreateClientFor(string sub, string scheme = "BearerClient")
-    {
-        var client = _factory!.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            AllowAutoRedirect = false
-        });
-        var token = scheme == "BearerBackoffice"
-            ? FakeJwtHelper.GenerateAdminJwt(sub: sub)
-            : FakeJwtHelper.GenerateClientJwt(sub: sub);
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return client;
-    }
-
-    private HttpClient CreateUnauthenticatedClient()
-        => _factory!.CreateClient(new WebApplicationFactoryClientOptions
-        {
-            AllowAutoRedirect = false
-        });
-
     /// <summary>
     /// Creates a PJ-A client whose sub is seeded in the DB — ClientClaimsMiddleware will resolve
     /// CompanyId=_companyAId + Permissions.All (owner) for this user.
     /// </summary>
-    private HttpClient ClientPjA() => CreateClientFor(SubPjA, "BearerClient");
+    private HttpClient ClientPjA() => CreateClientJwt(SubPjA);
 
     /// <summary>Creates a PJ-B client — ClientClaimsMiddleware resolves CompanyId=_companyBId.</summary>
-    private HttpClient ClientPjB() => CreateClientFor(SubPjB, "BearerClient");
+    private HttpClient ClientPjB() => CreateClientJwt(SubPjB);
 
     /// <summary>
     /// Creates a client with a sub that has NO Company/Employee in DB — gets Guid.Empty CompanyId +
     /// empty permissions → 403 on any permission-gated endpoint.
     /// </summary>
-    private HttpClient ClientNoPermissions() => CreateClientFor(SubNoCompany, "BearerClient");
+    private HttpClient ClientNoPermissions() => CreateClientJwt(SubNoCompany);
 
     /// <summary>
     /// Admin client with BearerBackoffice scheme + role=admin claim.
     /// CrossCompanyAccess policy (RequireRole("admin")) will succeed.
     /// </summary>
-    private HttpClient ClientAdmin() => CreateClientFor("admin-sub-backoffice", "BearerBackoffice");
+    private HttpClient ClientAdmin() => CreateAdminJwt("admin-sub-backoffice");
 
     // =========================================================================
     // SCENARIO 1: PJ-A with funds:write can POST /api/fundos/consultorias → 201
@@ -263,7 +144,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         var payload = new
         {
             razaoSocial = "Consultoria Alpha Integration",
-            cnpj = ValidCnpj
+            cnpj = TestCnpj
         };
 
         var response = await client.PostAsJsonAsync("/api/fundos/consultorias", payload);
@@ -282,11 +163,11 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
     {
         using var client = ClientPjA();
 
-        // Create a consultoria for PJ-A (fresh DB per test instance — no CNPJ collision risk)
+        // Create a consultoria for PJ-A — TestCnpj is unique per test instance, no collision risk
         var createPayload = new
         {
             razaoSocial = "Consultoria Alpha Read Test",
-            cnpj = ValidCnpj
+            cnpj = TestCnpj
         };
         var createResponse = await client.PostAsJsonAsync("/api/fundos/consultorias", createPayload);
         createResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
@@ -311,7 +192,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         var createPayload = new
         {
             razaoSocial = "Consultoria Alpha Isolation Test",
-            cnpj = ValidCnpj
+            cnpj = TestCnpj
         };
         var createResponse = await clientA.PostAsJsonAsync("/api/fundos/consultorias", createPayload);
         createResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
@@ -324,7 +205,6 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         var listBody = await listResponse.Content.ReadAsStringAsync();
 
         // Assert — PJ-B must NOT see PJ-A's row (multi-tenant isolation via HasQueryFilter)
-        // Shouldly: ShouldNotContain for string
         listBody.ShouldNotContain("Consultoria Alpha Isolation Test");
     }
 
@@ -352,7 +232,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
     public async Task PostConsultoria_NoPermissions_Returns403()
     {
         using var client = ClientNoPermissions();
-        var payload = new { razaoSocial = "Should Be Rejected", cnpj = ValidCnpj };
+        var payload = new { razaoSocial = "Should Be Rejected", cnpj = TestCnpj };
         var response = await client.PostAsJsonAsync("/api/fundos/consultorias", payload);
 
         var statusCode = (int)response.StatusCode;
@@ -377,7 +257,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
     public async Task PostConsultoria_NoAuth_Returns401()
     {
         using var client = CreateUnauthenticatedClient();
-        var payload = new { razaoSocial = "No Auth Test", cnpj = ValidCnpj };
+        var payload = new { razaoSocial = "No Auth Test", cnpj = TestCnpj };
         var response = await client.PostAsJsonAsync("/api/fundos/consultorias", payload);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -395,19 +275,19 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         var payloadA = new
         {
             razaoSocial = "Consultoria Admin View Alpha",
-            cnpj = ValidCnpj // PJ-A creates with ValidCnpj
+            cnpj = TestCnpj // PJ-A creates with TestCnpj
         };
         var responseA = await clientA.PostAsJsonAsync("/api/fundos/consultorias", payloadA);
         responseA.StatusCode.ShouldBe(HttpStatusCode.Created);
 
         // Arrange — PJ-B creates a consultoria
-        // ValidCnpj can be reused because the uniqueness constraint is (ClientId, Cnpj) —
+        // TestCnpj can be reused because the uniqueness constraint is (ClientId, Cnpj) —
         // PJ-B has a different ClientId so no constraint violation.
         using var clientB = ClientPjB();
         var payloadB = new
         {
             razaoSocial = "Consultoria Admin View Beta",
-            cnpj = ValidCnpj // same CNPJ is OK — different company (different ClientId)
+            cnpj = TestCnpj // same CNPJ is OK — different company (different ClientId)
         };
         var responseB = await clientB.PostAsJsonAsync("/api/fundos/consultorias", payloadB);
         responseB.StatusCode.ShouldBe(HttpStatusCode.Created);
@@ -437,7 +317,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
     {
         // Arrange — PJ-A creates a consultoria
         using var clientA = ClientPjA();
-        var payload = new { razaoSocial = "Consultoria Cross Tenant A", cnpj = ValidCnpj };
+        var payload = new { razaoSocial = "Consultoria Cross Tenant A", cnpj = TestCnpj };
         var createResp = await clientA.PostAsJsonAsync("/api/fundos/consultorias", payload);
         createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var consultoriaId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
@@ -457,7 +337,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
     {
         // Arrange — PJ-A creates a custodiante
         using var clientA = ClientPjA();
-        var payload = new { razaoSocial = "Custodiante Cross Tenant A", cnpj = ValidCnpj };
+        var payload = new { razaoSocial = "Custodiante Cross Tenant A", cnpj = TestCnpj };
         var createResp = await clientA.PostAsJsonAsync("/api/fundos/custodiantes", payload);
         createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var custodianteId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
@@ -479,13 +359,13 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         using var clientA = ClientPjA();
 
         var consultoriaResp = await clientA.PostAsJsonAsync("/api/fundos/consultorias",
-            new { razaoSocial = "Consultoria FK For Fundo CrossTenant", cnpj = ValidCnpj });
+            new { razaoSocial = "Consultoria FK For Fundo CrossTenant", cnpj = TestCnpj });
         consultoriaResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var consultoriaId = (await consultoriaResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
 
         var custodianteResp = await clientA.PostAsJsonAsync("/api/fundos/custodiantes",
-            new { razaoSocial = "Custodiante FK For Fundo CrossTenant", cnpj = ValidCnpj });
+            new { razaoSocial = "Custodiante FK For Fundo CrossTenant", cnpj = TestCnpj });
         custodianteResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var custodianteId = (await custodianteResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
@@ -494,7 +374,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
             new
             {
                 nome = "Fundo Cross Tenant A",
-                cnpj = ValidCnpj,
+                cnpj = TestCnpj,
                 consultoriaFundoId = consultoriaId,
                 custodianteId,
                 tipoFundo = 1
@@ -517,7 +397,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
     {
         // Arrange — PJ-A creates a cedente PF
         using var clientA = ClientPjA();
-        var payload = new { cpf = "52998224725", nome = "Cedente Cross Tenant A" };
+        var payload = new { cpf = TestCpf, nome = "Cedente Cross Tenant A" };
         var createResp = await clientA.PostAsJsonAsync("/api/fundos/cedentes/pf", payload);
         createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var cedenteId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
@@ -548,7 +428,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         // Arrange — PJ-A creates a consultoria
         using var clientA = ClientPjA();
         var createResp = await clientA.PostAsJsonAsync("/api/fundos/consultorias",
-            new { razaoSocial = "Consultoria PUT Cross Tenant A", cnpj = ValidCnpj });
+            new { razaoSocial = "Consultoria PUT Cross Tenant A", cnpj = TestCnpj });
         createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var consultoriaId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
@@ -576,7 +456,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         // Arrange — PJ-A creates a custodiante
         using var clientA = ClientPjA();
         var createResp = await clientA.PostAsJsonAsync("/api/fundos/custodiantes",
-            new { razaoSocial = "Custodiante PUT Cross Tenant A", cnpj = ValidCnpj });
+            new { razaoSocial = "Custodiante PUT Cross Tenant A", cnpj = TestCnpj });
         createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var custodianteId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
@@ -605,13 +485,13 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         using var clientA = ClientPjA();
 
         var consultoriaResp = await clientA.PostAsJsonAsync("/api/fundos/consultorias",
-            new { razaoSocial = "Consultoria FK For PUT CrossTenant", cnpj = ValidCnpj });
+            new { razaoSocial = "Consultoria FK For PUT CrossTenant", cnpj = TestCnpj });
         consultoriaResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var consultoriaId = (await consultoriaResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
 
         var custodianteResp = await clientA.PostAsJsonAsync("/api/fundos/custodiantes",
-            new { razaoSocial = "Custodiante FK For PUT CrossTenant", cnpj = ValidCnpj });
+            new { razaoSocial = "Custodiante FK For PUT CrossTenant", cnpj = TestCnpj });
         custodianteResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var custodianteId = (await custodianteResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
@@ -620,7 +500,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
             new
             {
                 nome = "Fundo PUT Cross Tenant A",
-                cnpj = ValidCnpj,
+                cnpj = TestCnpj,
                 consultoriaFundoId = consultoriaId,
                 custodianteId,
                 tipoFundo = 1
@@ -651,7 +531,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         // Arrange — PJ-A creates a cedente PF
         using var clientA = ClientPjA();
         var createResp = await clientA.PostAsJsonAsync("/api/fundos/cedentes/pf",
-            new { cpf = "52998224725", nome = "Cedente PUT Cross Tenant A" });
+            new { cpf = TestCpf, nome = "Cedente PUT Cross Tenant A" });
         createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var cedenteId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
@@ -683,11 +563,11 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         using var client = ClientPjA();
 
         // Step 1: Create a ConsultoriaFundo (required FK for Fundo)
-        // Fresh DB per test instance — ValidCnpj is unique within this test
+        // Fresh DB per test instance — TestCnpj is unique within this test
         var consultoriaPayload = new
         {
             razaoSocial = "Consultoria For Fundo StateMachine Test",
-            cnpj = ValidCnpj
+            cnpj = TestCnpj
         };
         var consultoriaResp = await client.PostAsJsonAsync("/api/fundos/consultorias", consultoriaPayload);
         consultoriaResp.StatusCode.ShouldBe(HttpStatusCode.Created);
@@ -695,11 +575,10 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         var consultoriaId = consultoriaBody.GetProperty("id").GetGuid();
 
         // Step 2: Create a Custodiante (required FK for Fundo)
-        // ValidCnpj is distinct from ValidCnpj — no conflict within the same company
         var custodiantePayload = new
         {
             razaoSocial = "Custodiante For Fundo StateMachine Test",
-            cnpj = ValidCnpj
+            cnpj = TestCnpj
         };
         var custodianteResp = await client.PostAsJsonAsync("/api/fundos/custodiantes", custodiantePayload);
         custodianteResp.StatusCode.ShouldBe(HttpStatusCode.Created);
@@ -707,11 +586,10 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         var custodianteId = custodianteBody.GetProperty("id").GetGuid();
 
         // Step 3: Create a Fundo (starts as RASCUNHO per domain invariant)
-        // ValidCnpj is distinct from the consultoria and custodiante CNPJs
         var fundoPayload = new
         {
             nome = "Fundo State Machine Alpha",
-            cnpj = ValidCnpj,
+            cnpj = TestCnpj,
             consultoriaFundoId = consultoriaId,
             custodianteId,
             tipoFundo = 1 // TipoFundo.RendaFixa = 1
@@ -743,33 +621,33 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         // Build a Fundo and walk it to ENCERRADO state via the API:
         // RASCUNHO → ATIVO → EM_LIQUIDACAO → ENCERRADO
 
-        // 1. ConsultoriaFundo — fresh DB per test, ValidCnpj is available
+        // 1. ConsultoriaFundo — TestCnpj is unique per test instance, no CNPJ collision
         var consultoriaPayload = new
         {
             razaoSocial = "Consultoria For Encerrado Test",
-            cnpj = ValidCnpj
+            cnpj = TestCnpj
         };
         var consultoriaResp = await client.PostAsJsonAsync("/api/fundos/consultorias", consultoriaPayload);
         consultoriaResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var consultoriaId = (await consultoriaResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
 
-        // 2. Custodiante — ValidCnpj is distinct from ConsultoriaFundo CNPJ
+        // 2. Custodiante
         var custodiantePayload = new
         {
             razaoSocial = "Custodiante For Encerrado Test",
-            cnpj = ValidCnpj
+            cnpj = TestCnpj
         };
         var custodianteResp = await client.PostAsJsonAsync("/api/fundos/custodiantes", custodiantePayload);
         custodianteResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var custodianteId = (await custodianteResp.Content.ReadFromJsonAsync<JsonElement>())
             .GetProperty("id").GetGuid();
 
-        // 3. Create Fundo (RASCUNHO) — ValidCnpj is distinct from consultoria and custodiante
+        // 3. Create Fundo (RASCUNHO)
         var fundoPayload = new
         {
             nome = "Fundo Encerrado Test",
-            cnpj = ValidCnpj,
+            cnpj = TestCnpj,
             consultoriaFundoId = consultoriaId,
             custodianteId,
             tipoFundo = 1 // TipoFundo.RendaFixa = 1
@@ -816,7 +694,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
     {
         // Arrange — PJ-A creates a CedentePf via the API (persists shadow properties via repo)
         using var client = ClientPjA();
-        const string testCpf = "52998224725";
+        var testCpf = TestCpf; // unique per test instance — prevents (ClientId, Cpf) collisions in shared container
         var createResp = await client.PostAsJsonAsync("/api/fundos/cedentes/pf",
             new { cpf = testCpf, nome = "Cedente B1 Regression PF" });
         createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
@@ -857,7 +735,7 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         // Arrange — PJ-A creates a cedente
         using var clientA = ClientPjA();
         await clientA.PostAsJsonAsync("/api/fundos/cedentes/pf",
-            new { cpf = "52998224725", nome = "Cedente Isolation PjA" });
+            new { cpf = TestCpf, nome = "Cedente Isolation PjA" });
 
         // Act — PJ-B lists its own cedentes
         using var clientB = ClientPjB();
@@ -868,69 +746,5 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
 
         // Assert — PJ-B must NOT see PJ-A's cedente (WHERE ClienteId = PjB's companyId via HasQueryFilter)
         body.ShouldNotContain("Cedente Isolation PjA");
-    }
-}
-
-/// <summary>
-/// Generates HMAC-signed JWT tokens for integration tests without real Keycloak.
-/// Uses the same signing key approach as AuthTestApiFactory in the API.Tests project,
-/// but defined here as a file-scoped class to avoid cross-project test dependencies.
-/// </summary>
-file static class FakeJwtHelper
-{
-    private const string TestSigningKey =
-        "this-is-a-test-signing-key-for-integration-tests-only-min-32-bytes!";
-
-    public static readonly SymmetricSecurityKey SecurityKey =
-        new(Encoding.UTF8.GetBytes(TestSigningKey));
-
-    private static readonly SigningCredentials Credentials =
-        new(SecurityKey, SecurityAlgorithms.HmacSha256);
-
-    /// <summary>
-    /// Generates a BearerClient JWT for a PJ owner user.
-    /// ClientClaimsMiddleware resolves company from DB by this sub value.
-    /// </summary>
-    public static string GenerateClientJwt(string email = "test@integration.test", string? sub = null)
-    {
-        var claims = new List<Claim>
-        {
-            new("email", email),
-            new("sub", sub ?? Guid.NewGuid().ToString())
-        };
-
-        var token = new JwtSecurityToken(
-            issuer: "http://localhost:8180/realms/client",
-            audience: "onboarding-app",
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(1),
-            signingCredentials: Credentials);
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    /// <summary>
-    /// Generates a BearerBackoffice JWT with role=admin claim.
-    /// PostConfigure on BearerBackoffice maps "role" claim → ClaimTypes.Role so RequireRole("admin") works.
-    /// </summary>
-    public static string GenerateAdminJwt(
-        string email = "admin@backoffice.integration.test",
-        string? sub = null)
-    {
-        var claims = new List<Claim>
-        {
-            new("email", email),
-            new("sub", sub ?? Guid.NewGuid().ToString()),
-            new("role", "admin") // mapped to ClaimTypes.Role in PostConfigure<BearerBackoffice>
-        };
-
-        var token = new JwtSecurityToken(
-            issuer: "http://localhost:8180/realms/backoffice",
-            audience: "http://localhost:8180/realms/backoffice",
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(1),
-            signingCredentials: Credentials);
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

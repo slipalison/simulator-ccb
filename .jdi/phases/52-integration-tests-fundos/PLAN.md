@@ -33,7 +33,7 @@ Dupla missão: (1) Integration tests end-to-end Testcontainers PG cobrindo 5 ent
   - Code reduction ~30% per class (extracted fixture + setup).
 - **Dependencies:** none
 - **Test:** xUnit (Integration) — re-run existing 61 tests
-- **Status:** pending
+- **Status:** completed
 
 #### T-5: OTel collector container + config + PII scrub
 - **Specialist:** jdi-doer-onboarding-keycloak-security (cross-cutting infra)

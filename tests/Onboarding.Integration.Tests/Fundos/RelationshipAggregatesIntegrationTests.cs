@@ -1,18 +1,8 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text;
 using System.Text.Json;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
 using Onboarding.Domain.Aggregates.CedenteAggregate;
 using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate;
@@ -22,8 +12,8 @@ using Onboarding.Domain.Aggregates.TipoAtivoAggregate;
 using Onboarding.Domain.Repositories;
 using Onboarding.Domain.ValueObjects;
 using Onboarding.Infrastructure.Persistence;
+using Onboarding.Integration.Tests.Fixtures;
 using Shouldly;
-using Testcontainers.PostgreSql;
 
 namespace Onboarding.Integration.Tests.Fundos;
 
@@ -48,127 +38,112 @@ namespace Onboarding.Integration.Tests.Fundos;
 ///
 /// Admin cross-company (T-6 bonus):
 ///   - GET /api/admin/fundos/fundo-cedentes sees both companies
+///
+/// Isolation strategy (D-37):
+///   Each test that creates an ATIVO FundoCedente association uses a DEDICATED cedente
+///   from a pre-seeded pool (_fcCedenteIds[]), dispensed via a static atomic counter
+///   (_fcSlot). This prevents REL-09 partial-unique-index violations when multiple
+///   tests share the same PostgreSQL container via IClassFixture.
+///
+///   CedenteTipoAtivo and FundoTipoAtivo tests use analogous TipoAtivo pools
+///   (_ctaIds[], _ftaIds[]) dispensed via _ctaSlot / _ftaSlot counters.
 /// </summary>
 [Trait("Category", "Integration")]
-public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
+public class RelationshipAggregatesIntegrationTests : PostgreSqlIntegrationTestBase, IClassFixture<PostgreSqlFixture>
 {
-    // =========================================================================
-    // Test infrastructure
-    // =========================================================================
-
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16-alpine")
-        .Build();
-
-    private WebApplicationFactory<Program>? _factory;
-
     // Seeded IDs — set in InitializeAsync
     private Guid _companyAId;
     private Guid _companyBId;
     private Guid _fundoAId;              // Fundo belonging to CompanyA
     private Guid _fundoBId;              // Fundo belonging to CompanyB
-    private Guid _cedenteAId;            // Cedente belonging to CompanyA (CPF 52998224725)
-    private Guid _cedenteConcurrentId;   // Second cedente for CompanyA — used in race condition test only
-    private Guid _tipoAtivoId;           // Global TipoAtivo
+    private Guid _cedenteAId;            // Cedente for cross-tenant tests (never used in ATIVO-creating tests)
+    private Guid _cedenteConcurrentId;   // Dedicated to ConcurrentCreate test only
+
+    // FundoCedente isolation pool: 7 cedentes, one per FC test that creates an ATIVO association.
+    // Slot 0..6 are dispensed in test-creation order via _fcSlot static counter.
+    private Guid[] _fcCedenteIds = Array.Empty<Guid>();
+    private static int _fcSlot = -1;
+    private Guid NextFcCedenteId() => _fcCedenteIds[Interlocked.Increment(ref _fcSlot) % _fcCedenteIds.Length];
+
+    // CedenteTipoAtivo isolation pool: 4 TipoAtivos, one per CTA test that creates an ATIVO association.
+    private Guid[] _ctaIds = Array.Empty<Guid>();
+    private static int _ctaSlot = -1;
+    private Guid NextCtaTipoAtivoId() => _ctaIds[Interlocked.Increment(ref _ctaSlot) % _ctaIds.Length];
+
+    // FundoTipoAtivo isolation pool: 4 TipoAtivos, one per FTA test that creates an ATIVO association.
+    private Guid[] _ftaIds = Array.Empty<Guid>();
+    private static int _ftaSlot = -1;
+    private Guid NextFtaTipoAtivoId() => _ftaIds[Interlocked.Increment(ref _ftaSlot) % _ftaIds.Length];
 
     private const string SubPjA = "rel-integration-pja-001";
     private const string SubPjB = "rel-integration-pjb-002";
-    private const string ValidCnpj = "11222333000181";
+
+    // FC pool size: 7 tests × 1 ATIVO association each + 1 extra buffer
+    private const int FcPoolSize = 8;
+    // CTA pool size: 4 tests × 1 ATIVO association each
+    private const int CtaPoolSize = 4;
+    // FTA pool size: 4 tests × 1 ATIVO association each
+    private const int FtaPoolSize = 4;
+
+    public RelationshipAggregatesIntegrationTests(PostgreSqlFixture fixture) : base(fixture) { }
 
     // =========================================================================
-    // IAsyncLifetime
+    // IAsyncLifetime — per-class seed (guarded against re-seeding per test)
+    //
+    // xUnit creates one test-class instance per test method, so InitializeAsync is called
+    // once per test. Fixture.EnsureSeedAsync ensures the DB seed runs only once per class.
+    // After seed, IDs are re-read from DB so each test instance has them populated.
     // =========================================================================
 
-    public async Task InitializeAsync()
+    public override async Task InitializeAsync()
     {
-        await _postgres.StartAsync();
+        await base.InitializeAsync();
 
-        _factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(ConfigureWebHost);
-
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        await db.Database.EnsureCreatedAsync();
-
-        await SeedAsync(db, scope.ServiceProvider);
-    }
-
-    public async Task DisposeAsync()
-    {
-        if (_factory is not null) await _factory.DisposeAsync();
-        await _postgres.DisposeAsync();
-    }
-
-    private void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        builder.UseEnvironment("Testing");
-        builder.UseSetting("ConnectionStrings:AppDb", _postgres.GetConnectionString());
-        builder.UseSetting("Keycloak:BackofficeRealmUrl", "http://localhost:8180/realms/backoffice");
-        builder.UseSetting("Keycloak:ClientRealmUrl", "http://localhost:8180/realms/client");
-        builder.UseSetting("Keycloak:AuthServerUrl", "http://localhost:8180/");
-        builder.UseSetting("Keycloak:AdminClientId", "onboarding-api-admin");
-        builder.UseSetting("Keycloak:AdminClientSecret", "test-secret");
-        builder.UseSetting("Keycloak:Realm", "client");
-        builder.UseSetting("Keycloak:PublicClientId", "onboarding-app");
-        builder.UseSetting("Keycloak:ValidIssuer", "http://localhost:8180/realms/client");
-
-        builder.ConfigureTestServices(services =>
+        await Fixture.EnsureSeedAsync(async () =>
         {
-            var configureOptionsType = typeof(IConfigureOptions<HealthCheckServiceOptions>);
-            var toRemove = services
-                .Where(d => d.ServiceType == configureOptionsType)
-                .ToList();
-            foreach (var d in toRemove)
-                services.Remove(d);
-            services.AddHealthChecks()
-                .AddCheck("stub-healthy", () => HealthCheckResult.Healthy("stub-ok"), ["ready"]);
-
-            services.PostConfigure<JwtBearerOptions>("BearerClient", options =>
-            {
-                options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
-                {
-                    Issuer = "http://localhost:8180/realms/client",
-                };
-                options.TokenValidationParameters.ValidateIssuer = false;
-                options.TokenValidationParameters.ValidateAudience = false;
-                options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep
-                options.TokenValidationParameters.IssuerSigningKey = RelJwtHelper.SecurityKey;
-                options.TokenValidationParameters.ValidateIssuerSigningKey = true;
-            });
-
-            services.PostConfigure<JwtBearerOptions>("BearerBackoffice", options =>
-            {
-                options.Configuration = new Microsoft.IdentityModel.Protocols.OpenIdConnect.OpenIdConnectConfiguration
-                {
-                    Issuer = "http://localhost:8180/realms/backoffice",
-                };
-                options.TokenValidationParameters.ValidateIssuer = false;
-                options.TokenValidationParameters.ValidateAudience = false;
-                options.TokenValidationParameters.ValidateLifetime = false; // nosemgrep
-                options.TokenValidationParameters.IssuerSigningKey = RelJwtHelper.SecurityKey;
-                options.TokenValidationParameters.ValidateIssuerSigningKey = true;
-
-                options.Events = new JwtBearerEvents
-                {
-                    OnTokenValidated = context =>
-                    {
-                        if (context.Principal?.Identity is ClaimsIdentity identity)
-                        {
-                            var roleClaims = context.Principal.FindAll("role").ToList();
-                            foreach (var claim in roleClaims)
-                                identity.AddClaim(new Claim(ClaimTypes.Role, claim.Value));
-                        }
-                        return Task.CompletedTask;
-                    }
-                };
-            });
+            using var scope = CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await SeedAsync(db, scope.ServiceProvider);
         });
+
+        // Re-read IDs on every test instance — seed is idempotent, rows are stable.
+        // IgnoreQueryFilters() bypasses HasQueryFilter (tenant isolation) needed for direct DB reads
+        // outside an HTTP request context where CompanyId would be Guid.Empty.
+        using var readScope = CreateScope();
+        var readDb = readScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        _companyAId = readDb.Companies.IgnoreQueryFilters().Where(c => c.KeycloakUserId == SubPjA).Select(c => c.Id).First();
+        _companyBId = readDb.Companies.IgnoreQueryFilters().Where(c => c.KeycloakUserId == SubPjB).Select(c => c.Id).First();
+        _fundoAId = readDb.Fundos.IgnoreQueryFilters().Where(f => f.Nome == "Fundo Rel Alpha").Select(f => f.Id).First();
+        _fundoBId = readDb.Fundos.IgnoreQueryFilters().Where(f => f.Nome == "Fundo Rel Beta").Select(f => f.Id).First();
+        _cedenteAId = readDb.Cedentes.IgnoreQueryFilters().Where(c => c.Nome == "Cedente Alpha PF").Select(c => c.Id).First();
+        _cedenteConcurrentId = readDb.Cedentes.IgnoreQueryFilters().Where(c => c.Nome == "Cedente Alpha PF Concurrent").Select(c => c.Id).First();
+
+        // Load FC cedente pool (sorted by name for deterministic ordering across test instances)
+        _fcCedenteIds = readDb.Cedentes.IgnoreQueryFilters()
+            .Where(c => c.Nome.StartsWith("Cedente FC "))
+            .OrderBy(c => c.Nome)
+            .Select(c => c.Id)
+            .ToArray();
+
+        // Load CTA and FTA TipoAtivo pools
+        _ctaIds = readDb.TiposAtivo
+            .Where(t => t.Codigo.StartsWith("CDB-CTA-"))
+            .OrderBy(t => t.Codigo)
+            .Select(t => t.Id)
+            .ToArray();
+
+        _ftaIds = readDb.TiposAtivo
+            .Where(t => t.Codigo.StartsWith("CDB-FTA-"))
+            .OrderBy(t => t.Codigo)
+            .Select(t => t.Id)
+            .ToArray();
     }
 
     // =========================================================================
     // Seed
     // =========================================================================
 
-    private async Task SeedAsync(AppDbContext db, IServiceProvider services)
+    private static async Task SeedAsync(AppDbContext db, IServiceProvider services)
     {
         // Company A + B
         var companyA = Company.Register(
@@ -186,70 +161,65 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
         await db.Companies.AddRangeAsync(companyA, companyB);
         await db.SaveChangesAsync();
 
-        _companyAId = companyA.Id;
-        _companyBId = companyB.Id;
-
         // Prerequisite entities — bypass API to avoid circular dependency on endpoint-under-test
-        var consultoriaA = ConsultoriaFundo.Register("Consultoria Rel Alpha", ValidCnpj, _companyAId);
-        var custodianteA = Custodiante.Register("Custodiante Rel Alpha", ValidCnpj, _companyAId);
-        var fundoA = Fundo.Register("Fundo Rel Alpha", ValidCnpj, _companyAId,
+        // All share the same CNPJ per company since they are in separate tables with separate unique indexes
+        var companyACnpj = "11444777000161";
+        var companyBCnpj = "62232889000190";
+
+        var consultoriaA = ConsultoriaFundo.Register("Consultoria Rel Alpha", companyACnpj, companyA.Id);
+        var custodianteA = Custodiante.Register("Custodiante Rel Alpha", companyACnpj, companyA.Id);
+        var fundoA = Fundo.Register("Fundo Rel Alpha", companyACnpj, companyA.Id,
             consultoriaA.Id, custodianteA.Id, TipoFundo.RendaFixa);
 
-        var consultoriaB = ConsultoriaFundo.Register("Consultoria Rel Beta", "62232889000190", _companyBId);
-        var custodianteB = Custodiante.Register("Custodiante Rel Beta", "62232889000190", _companyBId);
-        var fundoB = Fundo.Register("Fundo Rel Beta", "62232889000190", _companyBId,
+        var consultoriaB = ConsultoriaFundo.Register("Consultoria Rel Beta", companyBCnpj, companyB.Id);
+        var custodianteB = Custodiante.Register("Custodiante Rel Beta", companyBCnpj, companyB.Id);
+        var fundoB = Fundo.Register("Fundo Rel Beta", companyBCnpj, companyB.Id,
             consultoriaB.Id, custodianteB.Id, TipoFundo.Multimercado);
-
-        var tipoAtivo = TipoAtivo.Register("CDB-INT", "CDB Integration Test", TipoAtivoCategoria.RendaFixa);
 
         await db.ConsultoriasFundo.AddRangeAsync(consultoriaA, consultoriaB);
         await db.Custodiantes.AddRangeAsync(custodianteA, custodianteB);
         await db.Fundos.AddRangeAsync(fundoA, fundoB);
-        await db.TiposAtivo.AddAsync(tipoAtivo);
-        await db.SaveChangesAsync();
 
-        _fundoAId = fundoA.Id;
-        _fundoBId = fundoB.Id;
-        _tipoAtivoId = tipoAtivo.Id;
+        // TipoAtivo pools for CedenteTipoAtivo (CTA) and FundoTipoAtivo (FTA) isolation
+        for (var i = 0; i < CtaPoolSize; i++)
+            await db.TiposAtivo.AddAsync(TipoAtivo.Register($"CDB-CTA-{i}", $"CDB CTA Pool {i}", TipoAtivoCategoria.RendaFixa));
+
+        for (var i = 0; i < FtaPoolSize; i++)
+            await db.TiposAtivo.AddAsync(TipoAtivo.Register($"CDB-FTA-{i}", $"CDB FTA Pool {i}", TipoAtivoCategoria.RendaFixa));
+
+        await db.SaveChangesAsync();
 
         // Cedente requires ICedenteRepository to set shadow properties (DocumentoTipo, CpfValue) per D-09
         var cedenteRepo = services.GetRequiredService<ICedenteRepository>();
-        var cedenteA = Cedente.RegisterPf("52998224725", "Cedente Alpha PF", _companyAId);
+
+        // Cross-tenant cedente for tenant isolation tests (never involved in ATIVO-creating tests)
+        var cedenteA = Cedente.RegisterPf("52998224725", "Cedente Alpha PF", companyA.Id);
         await cedenteRepo.AddAsync(cedenteA);
 
-        // Second cedente for CompanyA — dedicated to the race condition test (CPF 40484604805, valid)
-        var cedenteB = Cedente.RegisterPf("40484604805", "Cedente Alpha PF Concurrent", _companyAId);
-        await cedenteRepo.AddAsync(cedenteB);
+        // Concurrent test cedente — isolated, used only by FundoCedente_ConcurrentCreate_OnlyOneSucceeds
+        var cedenteConcurrent = Cedente.RegisterPf("40484604805", "Cedente Alpha PF Concurrent", companyA.Id);
+        await cedenteRepo.AddAsync(cedenteConcurrent);
+
+        // FundoCedente isolation pool: FcPoolSize cedentes with unique CPFs generated via GenerateCpf.
+        // Name prefix "Cedente FC " used for pool lookup in InitializeAsync.
+        // CPF counter starts at 1000 to avoid collisions with manually seeded CPFs above.
+        for (var i = 0; i < FcPoolSize; i++)
+        {
+            var cpf = GenerateCpf(1000 + i);
+            var cedente = Cedente.RegisterPf(cpf, $"Cedente FC {i:D2}", companyA.Id);
+            await cedenteRepo.AddAsync(cedente);
+        }
 
         await db.SaveChangesAsync();
-
-        _cedenteAId = cedenteA.Id;
-        _cedenteConcurrentId = cedenteB.Id;
     }
 
     // =========================================================================
     // HTTP helpers
     // =========================================================================
 
-    private HttpClient ClientPjA() => CreateClient(SubPjA, "BearerClient");
-    private HttpClient ClientPjB() => CreateClient(SubPjB, "BearerClient");
-    private HttpClient ClientAdmin() => CreateAdminClient("admin-rel-sub");
-
-    private HttpClient CreateClient(string sub, string scheme)
-    {
-        var client = _factory!.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var token = RelJwtHelper.GenerateClientJwt(sub: sub);
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return client;
-    }
-
-    private HttpClient CreateAdminClient(string sub)
-    {
-        var client = _factory!.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
-        var token = RelJwtHelper.GenerateAdminJwt(sub: sub);
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return client;
-    }
+    private HttpClient ClientPjA() => CreateClientJwt(SubPjA);
+    private HttpClient ClientPjB() => CreateClientJwt(SubPjB);
+    private HttpClient ClientAdmin() => CreateAdminJwt("admin-rel-sub");
 
     // =========================================================================
     // FundoCedente — 6 scenarios
@@ -261,7 +231,7 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
         using var client = ClientPjA();
         var payload = new
         {
-            cedenteId = _cedenteAId,
+            cedenteId = NextFcCedenteId(),
             limitePercentual = 50m,
             dataInicio = DateTimeOffset.UtcNow
         };
@@ -279,9 +249,10 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
     public async Task FundoCedente_CreateDuplicate_Returns409()
     {
         using var client = ClientPjA();
+        var dedicatedCedente = NextFcCedenteId();
         var payload = new
         {
-            cedenteId = _cedenteAId,
+            cedenteId = dedicatedCedente,
             limitePercentual = 30m,
             dataInicio = DateTimeOffset.UtcNow
         };
@@ -320,10 +291,10 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
     {
         using var client = ClientPjA();
 
-        // Create association first
+        // Create association first — dedicated cedente to avoid REL-09 conflict with other tests
         var createPayload = new
         {
-            cedenteId = _cedenteAId,
+            cedenteId = NextFcCedenteId(),
             limiteValor = 50_000m,
             dataInicio = DateTimeOffset.UtcNow
         };
@@ -347,10 +318,10 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
     {
         using var client = ClientPjA();
 
-        // Create
+        // Create — dedicated cedente
         var createPayload = new
         {
-            cedenteId = _cedenteAId,
+            cedenteId = NextFcCedenteId(),
             limitePercentual = 25m,
             dataInicio = DateTimeOffset.UtcNow
         };
@@ -374,10 +345,10 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
     {
         using var client = ClientPjA();
 
-        // Create
+        // Create — dedicated cedente
         var createPayload = new
         {
-            cedenteId = _cedenteAId,
+            cedenteId = NextFcCedenteId(),
             limitePercentual = 20m,
             dataInicio = DateTimeOffset.UtcNow
         };
@@ -406,10 +377,10 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
         using var clientA = ClientPjA();
         using var clientB = ClientPjB();
 
-        // PJ-A creates an association
+        // PJ-A creates an association — dedicated cedente
         var createPayload = new
         {
-            cedenteId = _cedenteAId,
+            cedenteId = NextFcCedenteId(),
             limitePercentual = 10m,
             dataInicio = DateTimeOffset.UtcNow
         };
@@ -431,7 +402,7 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
         using var client = ClientPjA();
         var payload = new
         {
-            tipoAtivoId = _tipoAtivoId,
+            tipoAtivoId = NextCtaTipoAtivoId(),
             limitePercentual = 30m,
             dataInicio = DateTimeOffset.UtcNow
         };
@@ -448,9 +419,10 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
     public async Task CedenteTipoAtivo_CreateDuplicate_Returns409()
     {
         using var client = ClientPjA();
+        var dedicatedTipoAtivo = NextCtaTipoAtivoId();
         var payload = new
         {
-            tipoAtivoId = _tipoAtivoId,
+            tipoAtivoId = dedicatedTipoAtivo,
             limitePercentual = 25m,
             dataInicio = DateTimeOffset.UtcNow
         };
@@ -466,9 +438,11 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
     public async Task CedenteTipoAtivo_CrossTenantCreate_Returns404()
     {
         using var client = ClientPjB();
+        // Uses _ctaIds[0] directly — no slot consumed since no ATIVO creation expected
+        // (404 is returned before any DB write)
         var payload = new
         {
-            tipoAtivoId = _tipoAtivoId,
+            tipoAtivoId = _ctaIds.Length > 0 ? _ctaIds[0] : Guid.NewGuid(),
             limitePercentual = 20m,
             dataInicio = DateTimeOffset.UtcNow
         };
@@ -484,7 +458,7 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
     {
         using var client = ClientPjA();
 
-        var createPayload = new { tipoAtivoId = _tipoAtivoId, limiteValor = 80_000m, dataInicio = DateTimeOffset.UtcNow };
+        var createPayload = new { tipoAtivoId = NextCtaTipoAtivoId(), limiteValor = 80_000m, dataInicio = DateTimeOffset.UtcNow };
         var createResp = await client.PostAsJsonAsync($"/api/cedentes/{_cedenteAId}/tipos-ativos", createPayload);
         createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var assocId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
@@ -502,7 +476,7 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
     {
         using var client = ClientPjA();
 
-        var createPayload = new { tipoAtivoId = _tipoAtivoId, limitePercentual = 15m, dataInicio = DateTimeOffset.UtcNow };
+        var createPayload = new { tipoAtivoId = NextCtaTipoAtivoId(), limitePercentual = 15m, dataInicio = DateTimeOffset.UtcNow };
         var createResp = await client.PostAsJsonAsync($"/api/cedentes/{_cedenteAId}/tipos-ativos", createPayload);
         createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var assocId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
@@ -535,7 +509,7 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
         using var client = ClientPjA();
         var payload = new
         {
-            tipoAtivoId = _tipoAtivoId,
+            tipoAtivoId = NextFtaTipoAtivoId(),
             limitePercentual = 40m,
             dataInicio = DateTimeOffset.UtcNow
         };
@@ -552,7 +526,8 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
     public async Task FundoTipoAtivo_CreateDuplicate_Returns409()
     {
         using var client = ClientPjA();
-        var payload = new { tipoAtivoId = _tipoAtivoId, limitePercentual = 35m, dataInicio = DateTimeOffset.UtcNow };
+        var dedicatedTipoAtivo = NextFtaTipoAtivoId();
+        var payload = new { tipoAtivoId = dedicatedTipoAtivo, limitePercentual = 35m, dataInicio = DateTimeOffset.UtcNow };
 
         var first = await client.PostAsJsonAsync($"/api/fundos/{_fundoAId}/tipos-ativos", payload);
         first.StatusCode.ShouldBe(HttpStatusCode.Created);
@@ -565,7 +540,7 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
     public async Task FundoTipoAtivo_CrossTenantCreate_Returns404()
     {
         using var client = ClientPjB();
-        var payload = new { tipoAtivoId = _tipoAtivoId, limitePercentual = 10m, dataInicio = DateTimeOffset.UtcNow };
+        var payload = new { tipoAtivoId = _ftaIds.Length > 0 ? _ftaIds[0] : Guid.NewGuid(), limitePercentual = 10m, dataInicio = DateTimeOffset.UtcNow };
 
         var response = await client.PostAsJsonAsync($"/api/fundos/{_fundoAId}/tipos-ativos", payload);
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
@@ -576,7 +551,7 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
     {
         using var client = ClientPjA();
 
-        var createPayload = new { tipoAtivoId = _tipoAtivoId, limiteValor = 60_000m, dataInicio = DateTimeOffset.UtcNow };
+        var createPayload = new { tipoAtivoId = NextFtaTipoAtivoId(), limiteValor = 60_000m, dataInicio = DateTimeOffset.UtcNow };
         var createResp = await client.PostAsJsonAsync($"/api/fundos/{_fundoAId}/tipos-ativos", createPayload);
         createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var assocId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
@@ -594,7 +569,7 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
     {
         using var client = ClientPjA();
 
-        var createPayload = new { tipoAtivoId = _tipoAtivoId, limitePercentual = 45m, dataInicio = DateTimeOffset.UtcNow };
+        var createPayload = new { tipoAtivoId = NextFtaTipoAtivoId(), limitePercentual = 45m, dataInicio = DateTimeOffset.UtcNow };
         var createResp = await client.PostAsJsonAsync($"/api/fundos/{_fundoAId}/tipos-ativos", createPayload);
         createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
         var assocId = (await createResp.Content.ReadFromJsonAsync<JsonElement>())
@@ -670,9 +645,9 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
     [Fact]
     public async Task AdminFundoCedentes_CrossCompany_ReturnsBothCompanies()
     {
-        // Create a FundoCedente in PJ-A
+        // Create a FundoCedente in PJ-A — dedicated cedente slot
         using var clientA = ClientPjA();
-        var createPayload = new { cedenteId = _cedenteAId, limitePercentual = 5m, dataInicio = DateTimeOffset.UtcNow };
+        var createPayload = new { cedenteId = NextFcCedenteId(), limitePercentual = 5m, dataInicio = DateTimeOffset.UtcNow };
         var createResp = await clientA.PostAsJsonAsync($"/api/fundos/{_fundoAId}/cedentes", createPayload);
         createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
 
@@ -683,60 +658,5 @@ public class RelationshipAggregatesIntegrationTests : IAsyncLifetime
 
         var body = await adminResp.Content.ReadAsStringAsync();
         body.ShouldContain(_fundoAId.ToString());
-    }
-}
-
-/// <summary>
-/// Generates HMAC-signed JWT tokens for relationship aggregate integration tests.
-/// Separate from the file-scoped FakeJwtHelper in FundosControllerIntegrationTests.cs.
-/// </summary>
-file static class RelJwtHelper
-{
-    private const string TestSigningKey =
-        "this-is-a-test-signing-key-for-integration-tests-only-min-32-bytes!";
-
-    public static readonly SymmetricSecurityKey SecurityKey =
-        new(Encoding.UTF8.GetBytes(TestSigningKey));
-
-    private static readonly SigningCredentials Credentials =
-        new(SecurityKey, SecurityAlgorithms.HmacSha256);
-
-    public static string GenerateClientJwt(string email = "test@integration.test", string? sub = null)
-    {
-        var claims = new List<Claim>
-        {
-            new("email", email),
-            new("sub", sub ?? Guid.NewGuid().ToString())
-        };
-
-        var token = new JwtSecurityToken(
-            issuer: "http://localhost:8180/realms/client",
-            audience: "onboarding-app",
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(1),
-            signingCredentials: Credentials);
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-
-    public static string GenerateAdminJwt(
-        string email = "admin@backoffice.integration.test",
-        string? sub = null)
-    {
-        var claims = new List<Claim>
-        {
-            new("email", email),
-            new("sub", sub ?? Guid.NewGuid().ToString()),
-            new("role", "admin")
-        };
-
-        var token = new JwtSecurityToken(
-            issuer: "http://localhost:8180/realms/backoffice",
-            audience: "http://localhost:8180/realms/backoffice",
-            claims: claims,
-            expires: DateTime.UtcNow.AddHours(1),
-            signingCredentials: Credentials);
-
-        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }

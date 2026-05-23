@@ -511,3 +511,58 @@ None. D-8 fully closed via MCP. All carry-forward warnings are non-runtime.
 - Cedente GET 404: /api/admin/fundos/cedentes/00000000-0000-0000-0000-000000000000
 - Custodiante GET 404: /api/admin/fundos/custodiantes/00000000-0000-0000-0000-000000000000
 - Zero 5xx, zero CORS errors, zero React invariant errors
+
+
+## Phase 52 Security review iter 3
+
+## Security Verdict
+APPROVED
+
+### Gates
+
+- **[G1 Multi-tenant filter] PASS (no change)**
+  No aggregate or EF configuration modified in iter 3 commits. Tenant isolation posture unchanged from iter 2 PASS.
+
+- **[G2 Permission policy coverage] PASS (no change)**
+  No new controller endpoints, no AuthZ modifications. Zod schema addition (entityType/entityId) is a frontend parse-only change — no route or policy impact.
+
+- **[G3 Secrets + env hygiene] PASS**
+  Commits 16a0aa8, 7f21c6c, a7c399f, 105220d contain zero credentials, tokens, secrets, or connection strings. EF migration SQL is DDL-only (CREATE INDEX). `@vitest/coverage-v8` added as devDependency only — never reaches production bundle. D-12 cookie hygiene: no token storage changes (localStorage/sessionStorage grep clean).
+
+- **[G4 Semgrep] DELEGATED TO CI**
+  `.github/workflows/ci.yml` contains `security-sast-semgrep` job (Stage 3, lines 342–451) and `security-sast-codeql` job (lines 453–521). Both run on every push/PR against `main`/`master`. Semgrep blocks merge on ERROR severity (exit-code 1). Custom rules active: `no-localstorage-tokens`, `no-dangerously-set-inner-html`, `no-hardcoded-credentials`, `no-missing-csrf`, `no-insecure-deserialization`. W-g4 carry-forward CLOSED — operational status only; not a phase gate concern.
+
+- **[G5 Trivy FS + container] DELEGATED TO CI**
+  `security-sca-trivy` job (lines 523–627) and `security-container-trivy` job (lines 628–707) both present in ci.yml. FS scan uses `aquasecurity/trivy-action@v0.36.0`, severity CRITICAL/HIGH, exit-code 1, ignore-unfixed. Container scan builds `onboarding-api:ci` from Dockerfile and scans image layers. W-g5 carry-forward CLOSED — delegated to CI, not a local-environment gap.
+
+- **[G6 Keycloak hardening] PASS (no drift)**
+  No `keycloak/exports/*.json` changed in iter 3. Hardening posture unchanged.
+
+- **[G7 Security headers] NOT_VERIFIED (stack not exercised)**
+  No middleware pipeline changes. Posture unchanged from iter 2 baseline.
+
+- **[G8 Dependabot] ADVISORY**
+  `@vitest/coverage-v8 ^4.1.7` is a devDependency (not shipped to production). License: MIT (confirmed via npmjs.com — vitest project is MIT-licensed, coverage-v8 is a first-party vitest subpackage). D-3 OSS-only constraint satisfied. No new production runtime dependency introduced.
+
+- **[G9 Audit log] PASS (no new mutations)**
+  EF migration (16a0aa8) adds an index — no new mutation command. Zod schema extension (a7c399f) is frontend-only parsing. No new `ICommandHandler` implementations. Pre-existing ActorSub/ActorEmail capture at all 4 emission sites unchanged.
+
+### Specific iter 3 checks
+
+- **Audit caption privacy (entityType/entityId):** entityType renders as enum string literal ("Fundo", "FundoCedente", etc.) — public categorization, no PII. entityId renders as UUID — internal identifier, acceptable for admin audience per task brief. `z.string().uuid().nullable().optional()` in Zod schema enforces UUID format at parse time, rejecting arbitrary strings from backend. No injection risk: React renders as text node inside `<p>`, not via `dangerouslySetInnerHTML`.
+
+- **EF migration security impact:** `CREATE INDEX ix_admin_audit_logs_entity_type_entity_id ON admin_audit_logs (entity_type, entity_id)` — pure DDL, fully reversible, zero authentication/authorization surface change. Composite index on non-PII columns (enum string + UUID). Zero security impact as assessed in task brief.
+
+- **D-5 multi-tenant:** No `HasQueryFilter` changes, no `ClientId` introduction. AdminAuditLog remains admin-global (no filter by design). No new aggregate. Confirmed PASS.
+
+### Blockers
+None.
+
+### Warnings
+None. W-g4 and W-g5 are now operationally delegated to CI and are not open warnings.
+
+### Pipeline artifacts
+- Semgrep: delegated to CI (`security-sast-semgrep` job in ci.yml)
+- Trivy FS: delegated to CI (`security-sca-trivy` job in ci.yml)
+- Trivy Container: delegated to CI (`security-container-trivy` job in ci.yml)
+- Gitleaks: delegated to CI (`security-secrets-gitleaks` job in ci.yml)

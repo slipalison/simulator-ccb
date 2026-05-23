@@ -1323,3 +1323,102 @@ None.
 - Trivy FS: not re-run (no new deps)
 - Semgrep: not re-run (no new code paths)
 - Gitleaks: not run locally — CI fallback required
+
+---
+
+## Round 4 review iter 1 (total iter 12) — security
+
+### Verdict: APPROVED_WITH_WARNINGS
+
+---
+
+### G1 — Multi-tenant isolation (D-5)
+
+**PASS**
+
+`PermissionsController` uses `ICurrentCompanyPermissionsService` which is populated by `ClientClaimsMiddleware` via sub→Company/Employee lookup. Sub-to-company binding is enforced in the middleware before the action executes. No cross-tenant path: if sub resolves to CompanyA, only CompanyA's permissions are returned. No `IgnoreQueryFilters()` in new code.
+
+---
+
+### G2 — Permission policy coverage
+
+**PASS**
+
+`PermissionsController.GetPermissions` carries `[Authorize(AuthenticationSchemes = "BearerClient")]` at line 41. No `[AllowAnonymous]`. Cookie-based schemes are explicitly excluded by the `AuthenticationSchemes` constraint — admin tokens cannot reach this endpoint.
+
+No new permission constants introduced in this round. Endpoint is a read-only projection of already-resolved claims; no policy addition required.
+
+---
+
+### G3 — Secrets + env hygiene
+
+**PASS**
+
+Diff grep for hardcoded secrets: no matches. Seed script credentials (`E2EClient@123!`, `E2EAdmin@123!`, `dev-admin-secret`) are development fixtures, consistent with prior iterations and within the D-14 test-credential boundary. `CLIENT_SECRET` in `auth-server.ts` reads from `process.env.KEYCLOAK_CLIENT_ACF_CLIENT_SECRET` — no hardcoded production secret introduced.
+
+---
+
+### G4 — Semgrep
+
+Not re-run (no new code paths outside previously analyzed patterns). Carry-forward from iter 9.
+
+---
+
+### G5 — Trivy FS + container
+
+Not re-run (no new dependencies). Carry-forward from iter 9.
+
+---
+
+### G6 — Keycloak hardening drift
+
+No `keycloak/exports/` changes in this round. No drift.
+
+---
+
+### G7 — Security headers
+
+No middleware changes. Carry-forward from prior iters.
+
+---
+
+### G8 — Dependabot
+
+No new dependencies. Carry-forward.
+
+---
+
+### G9 — Audit log
+
+No new mutation commands in this round. `PermissionsController` is read-only (GET). No `ActorSub`/`ActorEmail` requirement applies.
+
+---
+
+### Specific findings (scope from brief)
+
+**D-5 multi-tenant — PASS.** `PermissionsController` is decorated with `[Authorize(AuthenticationSchemes = "BearerClient")]`. `ClientClaimsMiddleware` resolves sub→Company or sub→Employee before the action executes, scoping permissions to the authenticated user's company. No PII or tokens in the response (enum string names only).
+
+**D-12 cookies — PASS.** `auth-server.ts /me` reads `client_access_token` via `getCookie()` (server-side httpOnly) and forwards it as `Authorization: Bearer` to the backend. Grep of round 4 diff confirms zero `localStorage` / `sessionStorage` writes. Token never reaches browser JS context.
+
+**Privilege escalation surface — PASS (W-arch CLOSED).** Sidebar permissions now originate from `GET /api/auth/permissions` backed by the DB AccessGroup entity. Eliminates both prior mismatches (restrictive group showing excess UI; permissive group showing deficit UI). Backend gate remains authoritative; UI fidelity now matches.
+
+**W-metric-privacy — ADVISORY (sub_prefix tag).** `ClientClaimsMiddleware.cs:150` logs the full `sub` to `LogWarning` on the no-match path (`sub={Sub}`). The OTel counter at line 154-156 tags only the 8-char prefix. The log entry is structurally equivalent to the full sub — cardinality control applies only to the metric, not the log. On an internal metrics scrape this is acceptable (sub is a public Keycloak UUID, not a credential). However, combined with server logs, the full sub is already present making the prefix redundant as a privacy control. Flagged advisory; not a blocker.
+
+**W-script-injection — PASS.** `seed-test-users.sh:451-452` applies `sed "s/'/''/g"` to both `E2E_CLIENT_EMAIL` and `CLIENT_USER_ID` before SQL embedding. `CLIENT_USER_ID` is a Keycloak UUID (format `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`) — contains no single quotes by construction. `E2E_CLIENT_EMAIL` is a hardcoded fixture constant with no special characters. Escaping is present and correct. No injection risk for current values; the defensive escaping is sound for the general case.
+
+---
+
+### Blockers
+
+None.
+
+### Warnings
+
+- W-metric-privacy (advisory) — `ClientClaimsMiddleware.cs:150`: full `sub` already in `LogWarning`; 8-char prefix in OTel tag adds no privacy protection relative to logs. Acceptable for internal metrics. No action required before ship.
+- W-audit-format (carry-forward) — `JsonStringEnumConverter` still active from `4c352bf`. Dashboards keying on integer enum values in logs require update.
+
+### Pipeline artifacts
+
+- Trivy FS: not re-run (no new deps)
+- Semgrep: not re-run (no new code paths)
+- Gitleaks: not run locally — CI fallback required

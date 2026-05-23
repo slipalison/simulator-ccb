@@ -1255,3 +1255,37 @@ var documentoNumero = match.GetProperty("documentoNumero").GetString();
 var documentoNumero = match.GetProperty("documento").GetString();
 ```
 Also update line 850 comment if it references `documentoNumero`. Then re-run `dotnet test` — expect 43/43 integration pass, 932/932 unit pass.
+
+---
+
+## Round 3 review iter 4 (total iter 11) — backend
+
+### Verdict: APPROVED_WITH_WARNINGS
+
+### Commit inspected: `4b37c5e`
+
+**Diff matches description exactly.** 6 lines changed in `FundosControllerIntegrationTests.cs` only:
+- Line 847: `match.GetProperty("documentoNumero")` → `match.GetProperty("documento")`
+- Local var renamed `documentoNumero` → `documento` (3 occurrences)
+- Inline comment updated to reflect `CedenteDto.Documento` serialization
+
+No other files touched. No JSON key drift introduced elsewhere — full `GetProperty` audit of the integration test file confirms only `"id"`, `"status"`, `"nome"`, `"items"`, and now correctly `"documento"` are accessed.
+
+### Gate results (small verify)
+
+- [G7 Build] PASS — 0 errors, 0 warnings (`dotnet build`)
+- [G10 Tests] PASS — 1004 passed, 0 failed, 4 skipped (pre-existing OTel skips)
+  - Application.Tests: 138/0/0
+  - Domain.Tests: 474/0/0
+  - API.Tests: 349/0/4 (pre-existing skips)
+  - Integration.Tests: 43/0/0
+
+### Carry-forward warnings (unchanged)
+
+- W-arch — BFF permission hardcoding (Phase 52 target)
+- W-data — companies.keycloak_user_id seed not automated
+- W-fundo-nullable — ClasseAnbima/Segmento empty string not normalized
+- W-perf — Bundle 221 KB gz
+- W-otel — OTel/Serilog telemetry gates (program-level, not re-checked this iter)
+
+All blockers from previous iters resolved. No new issues introduced.

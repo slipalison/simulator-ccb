@@ -1,13 +1,15 @@
 ---
 phase_slug: frontend-client-fundos
 phase_position: 51
-iter: 11
+iter: 12
 total_resets: 3
-status: running
+status: converged
 round3_converged_at: 2026-05-17T00:00:00Z
 round3_verdict: APPROVED_WITH_WARNINGS
 round4_reopened_at: 2026-05-17T00:00:00Z
 round4_reopened_reason: User refused ship — wants W-data + W-arch fixed before /jdi-ship. Plan: new backend Bearer-only GET /api/auth/permissions endpoint + BFF removes hardcoded map and calls it + ClientClaimsMiddleware emits metric on no-match + seed script sync. Last reset (3 of 3, absolute cap 15 iter).
+round4_converged_at: 2026-05-17T00:00:00Z
+round4_verdict: APPROVED_WITH_WARNINGS
 third_reopen_at: 2026-05-17T00:00:00Z
 third_reopen_reason: User reports Sidebar Fundos menu missing — investigation shows backend GET /api/auth/me returns only { AccessToken, ExpiresIn, TokenType, Scope } with no permissions claim. Frontend AuthContext reads data.permissions ?? [] → empty array → Sidebar permissions.includes('funds:read') → false. Routes work via direct URL but no navigation entry point.
 fourth_reopen_at: 2026-05-17T00:00:00Z
@@ -202,6 +204,22 @@ second_reopen_at: 2026-05-17T00:00:00Z
 - iter 11: APPROVED_WITH_WARNINGS, hash=33ce91219ef6, commit=ddb4dd8, ts=2026-05-17T00:00:00Z
 
 --- RESET 3 at 2026-05-17 — user refused ship, demands W-data + W-arch fixed before close; total_resets=3 (last available) ---
+
+### iter=12 — doer commits (2026-05-17)
+- Backend `6704a0e` — W-arch fix: new PermissionsController.cs GET /api/auth/permissions Bearer-only. Reads ICurrentCompanyPermissionsService.Permissions directly (populated by ClientClaimsMiddleware). 7 unit + 2 integration tests.
+- Backend `9b65dd6` + `4abbfbe` — W-data metric: ClientClaimsMetrics static class with Counter clientclaims.no_match + sub_prefix tag. 2 metric tests.
+- Backend `c587ebb` — Seed sync: scripts/seed-test-users.sh UPDATE companies.keycloak_user_id post-Keycloak. Idempotent. docs/dev-setup.md updated.
+- Frontend `696fa64` — BFF auth-server.ts /me removes hardcoded accessGroup→permissions map; calls /api/auth/permissions with Bearer. Forwards permissions verbatim.
+
+### iter=12 — reviewer aggregate
+- Backend `3b738e0` — APPROVED_WITH_WARNINGS (W-arch + W-data RESOLVED; 1015/0/4 tests; new minor warnings W-G4.4 Meter placement Phase 53 + W-G2 justification comment)
+- Frontend `8febf9a` — APPROVED_WITH_WARNINGS (W-arch CLEARED via MCP scenarios A/B/C/D + no-match metric increment; critical mid-review finding: stale API container needed rebuild before endpoint reachable; W-seed flagged — seed email mismatch with dev DB company email)
+- Security `256928b` — APPROVED_WITH_WARNINGS (W-arch CLOSED, W-script-injection PASS via sed escape, W-metric-privacy advisory only)
+- Hash: ce02f4e82f19 (vs iter11 33ce91 — different, no oscillation)
+- Aggregate verdict (worst-case): **APPROVED_WITH_WARNINGS**
+
+### iter=12 — converged (round 4)
+- iter 12: APPROVED_WITH_WARNINGS, hash=ce02f4e82f19, commits=3b738e0+8febf9a+256928b, ts=2026-05-17T00:00:00Z
 
 ### iter=12 (round 4 iter 1) — start — fix W-arch (BFF hardcode) + W-data (sync gap)
 - Plan:

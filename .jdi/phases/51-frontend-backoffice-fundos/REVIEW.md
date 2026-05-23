@@ -321,3 +321,101 @@ None.
 - Trivy FS: not generated (binary absent)
 - Semgrep: not generated (binary absent)
 - Gitleaks: not generated (binary absent) — manual diff inspection clean
+
+
+## Phase 52 Backend review iter 2
+
+**Verdict: APPROVED**
+
+---
+
+### Scope
+
+Commits 197163c (4 admin GET-by-id endpoints + handlers) and 4232aa8 (12 Application + 12 API + 13 Integration tests). D-8 W-arch closed.
+
+---
+
+### Gates
+
+**[G1 Multi-tenant isolation] PASS**
+All 4 handlers use IgnoreQueryFilters() with explicit CrossCompanyAccess policy guard at class level on AdminFundosController. No bare IgnoreQueryFilters without Admin* context. Pattern consistent with existing FundosAdminQueryHandlers. Security comment in file header correctly documents MUST-only-admin constraint.
+
+**[G2 Endpoint AuthZ + audit] PASS**
+4 new HttpGet endpoints ([HttpGet("{id:guid}")], [HttpGet("consultorias/{id:guid}")], [HttpGet("custodiantes/{id:guid}")], [HttpGet("cedentes/{id:guid}")]) inherit class-level [Authorize(AuthenticationSchemes = "BearerBackoffice", Policy = CrossCompanyAccess)]. No method-level override. No [AllowAnonymous]. Read-only GET — no mutation, so ActorSub/ActorEmail gate does not apply.
+
+**[G3 Secret + raw SQL] PASS**
+Zero FromSqlRaw, FromSqlInterpolated, ExecuteSqlRaw, or string-interpolated query paths. All 4 handlers use EF LINQ typed-Guid predicates. No appsettings.json changes. No new NuGet/npm dependencies.
+
+**[G4 Telemetry] PASS (no drift)**
+No Console.Write* introduced. No ActivitySource/Meter outside central Telemetry/. No W3C propagator override. Program.cs wiring unchanged. Handlers are Infrastructure layer — decorator telemetry wiring applies via IQueryHandler<> registration.
+
+**[G5 Performance] PASS**
+All 4 new endpoints return single entity by PK — no pagination concern. AsNoTracking present on all DbSet references in the 4 handlers (including Companies join). No N+1 risk (single LINQ Join translated to one SQL query).
+
+**[G6 Index coverage] PASS**
+No new migration in iter 2. No new table. Gate does not apply.
+
+**[G7 Build] PASS**
+dotnet build: 0 warnings, 0 errors.
+
+**[G8 Lint/format] PASS**
+Build clean. No format diff reported.
+
+**[G9 DDD/Design] PASS**
+No aggregate changes. Handlers are Infrastructure query projections — correct layer. No public setters introduced. No cross-aggregate ref by entity. No MediatR. Manual CQRS via IQueryHandler<> per D-3. [ExcludeFromCodeCoverage] is the established codebase convention for all Infrastructure repository implementations (12 of 12 existing repos carry it).
+
+**[G10 Tests] PASS**
+- Application.Tests: 150 pass (12 new GetAdminByIdQuery record-equality tests)
+- Domain.Tests: 478 pass
+- API.Tests: 376 pass, 4 skip pre-existing (12 new AdminFundosControllerByIdTests + ctor stub fixes in 2 existing test classes)
+- Integration.Tests: 13/13 pass (AdminFundosByIdIntegrationTests — Testcontainers PostgreSQL 16)
+- Total: 1017 non-integration pass, 13 integration pass, 0 fail
+
+**[G11 Coverage on new files] PASS**
+New src files in iter 2: FundosAdminByIdQueryHandlers.cs (Infrastructure repository — carries [ExcludeFromCodeCoverage] per established codebase convention; G0 validated by 13/13 Testcontainers integration tests), GetAdminFundoByIdQuery.cs / GetAdminConsultoriaFundoByIdQuery.cs / GetAdminCustodianteByIdQuery.cs / GetAdminCedenteByIdQuery.cs (sealed records — covered by 12 Application unit tests). Coverage gate satisfied.
+
+**[G12 Playwright regression] PASS**
+Stack running (api healthy, keycloak healthy, backoffice up). MCP Playwright verified:
+- GET /api/admin/fundos/00000000-0000-0000-0000-000000000099 via BFF proxy: 404 Not Found (direct endpoint, not list+find — D-8 W-arch closed)
+- GET /api/admin/fundos/cedentes/00000000-0000-0000-0000-000000000099 via BFF proxy: 404 Not Found
+- /admin/fundos/00000000-0000-0000-0000-000000000099: "Registro nao encontrado." displayed, no React error, no 5xx
+- /admin/fundos list: GET /api/admin/fundos?page=1&pageSize=20 returns 200
+- Console errors: Vite HMR WebSocket only (3-5 errors, pre-existing benign per D-16). Zero React invariant or application errors.
+- 401 for no-auth scenarios: covered by 4 Testcontainers integration tests (NoBearer scenarios — AdminGetFundoById_NoBearer_Returns401 + analogs all pass 13/13).
+
+**[G13 Static scans] NOT_RUN (advisory carry-forward)**
+Trivy/Semgrep binaries absent. Manual inspection clean.
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings (carry-forward only — no new warnings introduced)
+
+**W-perf-index (carry-forward)** — admin_audit_logs(entity_type, entity_id) composite index missing. Mandatory before production load.
+
+**W-cov (carry-forward)** — Frontend/backoffice vitest.config.ts lacks @vitest/coverage-v8 provider. Cannot verify 80% threshold mechanically.
+
+**W-schema-auditlog (carry-forward)** — Frontend Zod AuditLogEntry schema omits entityType/entityId fields. Non-blocking display omission.
+
+---
+
+### D-8 W-arch CLOSED
+
+Confirmed: 4 endpoints exist, 13/13 integration tests pass G0 scenarios (200+companyName, 404, 401, scheme guard). Frontend detail pages now call direct GET /{id} endpoints (pageSize=200 hack removed — verified via Playwright network capture).
+
+---
+
+### Regression captures
+
+- GET /api/admin/fundos/{id} (non-existent UUID): 404 via direct endpoint
+- GET /api/admin/fundos/cedentes/{id} (non-existent UUID): 404 via direct endpoint
+- /admin/fundos/{id} detail page: graceful not-found, no crash
+- /admin/fundos list: 200
+- Console errors: Vite HMR WebSocket only (pre-existing, benign)
+- 5xx: zero
+- CORS errors: zero

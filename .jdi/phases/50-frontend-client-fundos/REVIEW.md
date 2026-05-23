@@ -1169,3 +1169,89 @@ None.
 - W-fundo-nullable — ClasseAnbima/Segmento empty string not normalized (carry-forward, partially addressed by backend 1b712f8).
 - W-perf — Bundle 221 KB gz (carry-forward; under gate threshold, monitor in Phase 52).
 - W-react-setstate — React setState-in-render on Transitioner (pre-existing, Vinxi/TanStack Router interop, non-blocking).
+
+---
+
+## Round 3 review iter 3 (total iter 10) — backend
+
+### Verdict: BLOCKED
+
+---
+
+### Scope of iter 10
+
+Commit `921d2a9` — 6 int-enum assertion fixes in integration tests (`.GetInt32().ShouldBe(N)` → `.GetString().ShouldBe("NAME")`).
+
+---
+
+### G7 — Build
+
+PASS. `dotnet build` — 0 errors, 0 warnings.
+
+---
+
+### G10 — Tests
+
+BLOCKED.
+
+Non-integration: 932 pass, 0 fail (474 Domain + 138 Application + 320 API, 2 skip).
+
+Integration (Docker stack running): **1 FAIL**, 42 pass.
+
+Failing test: `FundosControllerIntegrationTests.ListCedentes_AfterPfCreate_ReturnsCpfPopulated`
+
+Stack trace:
+```
+System.Collections.Generic.KeyNotFoundException: The given key was not present in the dictionary.
+  at System.Text.Json.JsonElement.GetProperty(String propertyName)
+  at FundosControllerIntegrationTests.cs:line 847
+```
+
+Root cause: test calls `match.GetProperty("documentoNumero")` but `CedenteDto` serializes the field as `documento` (camelCase from property name `Documento`). The wrong property name `documentoNumero` was introduced in commit `86896d4` (the B1 regression lock commit). Commit `921d2a9` did not touch this test — the defect was pre-existing and not caught in prior iter because integration tests were not run (Docker unavailable or skipped). Running with Docker available now surfaces it.
+
+Fix required: `FundosControllerIntegrationTests.cs:847` — change `match.GetProperty("documentoNumero")` to `match.GetProperty("documento")`.
+
+---
+
+### Commit diff review — `921d2a9`
+
+PASS. Exactly 6 lines changed across 2 files. Each change is semantically correct:
+- `GetInt32().ShouldBe(N)` → `GetString().ShouldBe("ENUMNAME")` where ENUMNAME matches enum member spelling.
+- Request payloads (integer `newStatus`) untouched — correct: `JsonStringEnumConverter()` default ctor sets `allowIntegerValues = true` (confirmed via MS docs: "Initializes an instance of the JsonStringEnumConverter class with the default naming policy **that allows integer values**").
+
+No other `GetInt32().ShouldBe()` on status fields found in tests (grep clean).
+
+---
+
+### G12 — Playwright regression
+
+Not re-run — blocked at G10. Integration test failure must be resolved first.
+
+---
+
+### Blockers
+
+- `tests/Onboarding.Integration.Tests/Fundos/FundosControllerIntegrationTests.cs:847` — `GetProperty("documentoNumero")` → key not found. CedenteDto property is `Documento` → JSON key `documento`. Fix: replace `"documentoNumero"` with `"documento"`.
+
+---
+
+### Carry-forward warnings (unchanged)
+
+- W-arch — BFF permission hardcoding (Phase 52 target).
+- W-data — companies.keycloak_user_id seed not automated.
+- W-fundo-nullable — ClasseAnbima/Segmento empty string not normalized.
+- W-perf — Bundle 221 KB gz.
+- W-otel — OTel/Serilog telemetry gates (program-level, not re-checked this iter).
+
+---
+
+### Recovery path
+
+Single-line fix in `FundosControllerIntegrationTests.cs:847`:
+```csharp
+// before
+var documentoNumero = match.GetProperty("documentoNumero").GetString();
+// after
+var documentoNumero = match.GetProperty("documento").GetString();
+```
+Also update line 850 comment if it references `documentoNumero`. Then re-run `dotnet test` — expect 43/43 integration pass, 932/932 unit pass.

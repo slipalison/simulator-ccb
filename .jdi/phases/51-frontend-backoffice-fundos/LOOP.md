@@ -2,10 +2,12 @@
 phase_slug: frontend-backoffice-fundos
 phase_position: 52
 iter: 2
-total_resets: 0
-status: converged
-converged_at: 2026-05-23T00:00:00Z
-verdict: APPROVED_WITH_WARNINGS
+total_resets: 1
+status: running
+round1_converged_at: 2026-05-23T00:00:00Z
+round1_verdict: APPROVED_WITH_WARNINGS
+round2_reopened_at: 2026-05-23T00:00:00Z
+round2_reopened_reason: User refused ship-with-warnings (DoD strict policy). Fix remaining 5 warnings: W-cov (vitest provider), W-perf-index (composite index), W-schema-auditlog (Zod entity fields), W-deploy (docs), W-g4/g5 (CI scan delegation/documentation).
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-23T00:00:00Z
@@ -57,4 +59,11 @@ dod_enforced: true
 
 ### iter=2 — converged (D-8 W-arch hack RESOLVED — runtime gap closed)
 - iter 2: APPROVED_WITH_WARNINGS, hash=b644412698e1, commit=08671a3, ts=2026-05-23T00:00:00Z
+
+--- RESET 1 at 2026-05-23 — user demanded warnings fixed before ship; total_resets=1 ---
+
+### iter=3 (round 2 iter 1) — start — fix 5 carry-forward warnings
+- Backend: W-perf-index — EF migration composite index admin_audit_logs(entity_type, entity_id) reversible additive.
+- Backoffice frontend: W-cov — install @vitest/coverage-v8 + vitest.config.ts perFile thresholds D-2 (mirror client Phase 51 iter 3 pattern). W-schema-auditlog — Zod AuditLogEntry include entityType+entityId optional. W-deploy — docs/dev-setup.md document `docker compose build` after pnpm changes.
+- W-g4/g5 — Semgrep/Trivy delegated to CI workflows; document in REVIEW.md if tools not locally available.
 

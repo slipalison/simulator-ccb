@@ -9,8 +9,8 @@ specialists:
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
 current_phase: frontend-backoffice-fundos
 current_phase_slug: frontend-backoffice-fundos
-phase_status: planned
-phase_verdict: pending
+phase_status: verified
+phase_verdict: APPROVED_WITH_WARNINGS
 prior_phase_slug: frontend-client-fundos
 prior_phase_verdict: APPROVED_WITH_WARNINGS
-next_step: /jdi-do frontend-backoffice-fundos
+next_step: /jdi-ship frontend-backoffice-fundos

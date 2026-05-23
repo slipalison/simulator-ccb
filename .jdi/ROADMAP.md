@@ -2,7 +2,7 @@
 
 ## Status
 adopted: true
-current_phase: 51
+current_phase: 52
 total_phases: 54
 
 ## Context
@@ -49,12 +49,13 @@ Numeracao preservada pra alinhar com `.planning/` historico. Phases pre-48 nao s
 
 ### Phase 51: Frontend Client — Fundos UI
 - **Slug:** 50-frontend-client-fundos
-- **Status:** ready
+- **Status:** done (shipped 2026-05-17, verdict APPROVED_WITH_WARNINGS, 12 iter / 3 rounds / 3 resets)
 - **Goal:** SPA cliente PJ ganha secao Fundos (paginacao, search, badges de status, forms Zod espelhando regras backend). Dropdown de status filtra transicoes validas baseado no estado atual (RASCUNHO→ATIVO, ATIVO↔SUSPENSO, etc).
+- **Carry-forward warnings (Phase 52/53):** W-G4.4 (Meter placement migrate to Telemetry/ when Phase 53 creates), W-G2 (Authorize justification comment), W-seed (seed script email match), W-metric-privacy (full sub logged), W-audit-format (JsonStringEnumConverter int→string), W-perf/W-bundle (765 KB raw → code-split before Phase 52), W-otel (Phase 53), W-react-setstate (Transitioner pre-existing).
 
 ### Phase 52: Frontend Backoffice — Fundos UI (read-only)
 - **Slug:** 51-frontend-backoffice-fundos
-- **Status:** pending
+- **Status:** ready
 - **Goal:** Backoffice admin lista/visualiza Fundo/ConsultoriaFundo/Custodiante/Cedente cross-company em read-only. Mostra nome da empresa alongside fund data. Sem create/update/delete (FRO-04).
 
 ### Phase 53: Integration Tests — v8.0 Fundos end-to-end

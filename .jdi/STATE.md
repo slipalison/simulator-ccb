@@ -7,10 +7,10 @@ specialists:
   - jdi-doer-onboarding-keycloak-backend-csharp + jdi-reviewer-onboarding-keycloak-backend-csharp
   - jdi-doer-onboarding-keycloak-frontend-vinext + jdi-reviewer-onboarding-keycloak-frontend-vinext
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
-current_phase: frontend-client-fundos
-current_phase_slug: frontend-client-fundos
-phase_status: verified
-phase_verdict: APPROVED_WITH_WARNINGS
-prior_phase_slug: fundo-cedente-relationships
+current_phase: frontend-backoffice-fundos
+current_phase_slug: frontend-backoffice-fundos
+phase_status: ready
+phase_verdict: pending
+prior_phase_slug: frontend-client-fundos
 prior_phase_verdict: APPROVED_WITH_WARNINGS
-next_step: /jdi-ship frontend-client-fundos
+next_step: /jdi-discuss frontend-backoffice-fundos

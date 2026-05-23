@@ -31,7 +31,7 @@
       "slug": "frontend-client-fundos",
       "raw_slug": "50-frontend-client-fundos",
       "folder": ".jdi/phases/50-frontend-client-fundos",
-      "status": "ready",
+      "status": "done",
       "legacy": true
     },
     {
@@ -39,7 +39,7 @@
       "slug": "frontend-backoffice-fundos",
       "raw_slug": "51-frontend-backoffice-fundos",
       "folder": ".jdi/phases/51-frontend-backoffice-fundos",
-      "status": "pending",
+      "status": "ready",
       "legacy": true
     },
     {

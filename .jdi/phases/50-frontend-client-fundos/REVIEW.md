@@ -1025,3 +1025,89 @@ Fix options (in order of preference):
 - POST /cedentes/pf (empty email/telefone) → 201 PASS
 - GET /cedentes → 500 NRE FAIL (B1 blocker)
 - POST /tipos-ativo → 400 enum mismatch (pre-existing, W-tipoativo-enum)
+
+## Round 3 review iter 2 (total iter 9) — backend
+
+Run: 2026-05-23
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Commits reviewed: f9f1c2b, a594851, 86896d4, 4c352bf
+
+### Verdict
+BLOCKED
+
+---
+
+### Gates
+
+- [G1 Multi-tenant isolation] PASS — CedenteRepository.GetPagedByCompanyAsync uses IgnoreQueryFilters() with explicit WHERE ClienteId = companyId. Compliant (D-5). Admin handlers (FundosAdminQueryHandlers, RelationshipsAdminQueryHandlers) use IgnoreQueryFilters in Admin*-prefixed handler context. No bare IgnoreQueryFilters without companyId guard.
+
+- [G2 Endpoint AuthZ + audit] CARRY-FORWARD — no new endpoints in this iteration.
+
+- [G3 Secret + raw SQL] PASS — no secrets in diff. No interpolated FromSqlRaw.
+
+- [G4 Telemetry (OTel+Serilog+W3C)] CARRY-FORWARD — Program.cs changes limited to AddJsonOptions. OTel wiring, Serilog, W3C unchanged.
+
+- [G5 Performance hygiene] PASS — AsNoTracking removed intentionally (B1 fix); ChangeTracker.Clear() post-reconstruction provides equivalent isolation. No unbounded list endpoints added.
+
+- [G6 Index coverage] PASS — no new migrations.
+
+- [G7 Build] PASS — 0 errors, 0 warnings (3.94s).
+
+- [G8 Lint] NOT RUN — blocked.
+
+- [G9 DDD/Design] CARRY-FORWARD — no domain changes. ChangeTracker.Clear() in repository layer is appropriate.
+
+- [G10 Tests] BLOCKED — 6 integration tests FAILED.
+  - Domain.Tests: 474 pass, 0 fail.
+  - Application.Tests: 138 pass, 0 fail.
+  - API.Tests: 349 pass, 0 fail, 4 skipped.
+  - Integration.Tests: 37 pass, 6 FAIL.
+
+- [G11 Coverage] NOT EVALUATED — blocked by G10.
+
+- [G12 Playwright regression] NOT RUN — blocked by G10.
+
+- [G13 Static scans] ADVISORY — not run on BLOCKED verdict.
+
+---
+
+### Blockers
+
+**B1 — JsonStringEnumConverter blast radius: 6 existing integration tests broken**
+
+Commit 4c352bf added `JsonStringEnumConverter` globally via `AddControllers().AddJsonOptions(...)`. This changes all enum JSON responses from integers to strings. Six integration tests assert `.GetInt32()` on `status` fields that now serialize as strings — `InvalidOperationException: element has type 'String'`.
+
+Failing locations:
+- `RelationshipAggregatesIntegrationTests.cs:276` — `dto.GetProperty("status").GetInt32().ShouldBe(1)`
+- `RelationshipAggregatesIntegrationTests.cs:370` — `transitionDto.GetProperty("status").GetInt32().ShouldBe(2)`
+- `RelationshipAggregatesIntegrationTests.cs:445` — `ctaDto.GetProperty("status").GetInt32().ShouldBe(1)`
+- `RelationshipAggregatesIntegrationTests.cs:549` — `ctaDto.GetProperty("status").GetInt32().ShouldBe(1)`
+- `FundosControllerIntegrationTests.cs:723` — `fundoBody.GetProperty("status").GetInt32().ShouldBe((int)FundoStatus.RASCUNHO)`
+- `FundosControllerIntegrationTests.cs:731` — `transitionBody.GetProperty("status").GetInt32().ShouldBe((int)FundoStatus.ATIVO)`
+
+Fix — update all 6 sites to use `.GetString()` and compare against enum name:
+- `GetInt32().ShouldBe(1)` on RelationshipStatus.ATIVO → `.GetString().ShouldBe("ATIVO")`
+- `GetInt32().ShouldBe(2)` on RelationshipStatus.INATIVO → `.GetString().ShouldBe("INATIVO")`
+- `GetInt32().ShouldBe((int)FundoStatus.RASCUNHO)` → `.GetString().ShouldBe("RASCUNHO")`
+- `GetInt32().ShouldBe((int)FundoStatus.ATIVO)` → `.GetString().ShouldBe("ATIVO")`
+
+Also audit `FundosControllerIntegrationTests.cs:726-727`: request payload sends `new { newStatus = (int)FundoStatus.ATIVO }` (integer). Verify that the API now reads integer or string — if `JsonStringEnumConverter` rejects integer input on the request side, update the payload to send the string name instead.
+
+Do NOT revert `JsonStringEnumConverter`. It is the correct fix for TipoAtivo POST 400 (W-tipoativo-enum from round 3 iter 1). The stale test assertions are the wrong side to preserve.
+
+---
+
+### Warnings (carry-forward)
+
+- W-arch — BFF permission hardcoding (carry-forward, Phase 52 target).
+- W-data — companies.keycloak_user_id seed not automated (carry-forward).
+- W-fundo-nullable — ClasseAnbima/Segmento empty string not normalized (carry-forward).
+- W-perf — Bundle 221 KB gz (carry-forward).
+
+---
+
+### Root cause
+
+Commit 4c352bf solved W-tipoativo-enum correctly. The doer did not grep for `.GetInt32()` on `status` fields in existing tests before shipping the serializer change. The B1 NRE fix (f9f1c2b), the 7 W-tests (a594851), and the 2 new integration tests (86896d4) are all correct and pass. Only the 6 pre-existing test assertion sites need updating.
+
+Recovery path: fix 6 `.GetInt32()` → `.GetString()` assertion sites in Integration.Tests. Optionally fix request payload if needed. dotnet test must return 0 failures.

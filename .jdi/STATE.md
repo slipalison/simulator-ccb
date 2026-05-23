@@ -9,8 +9,8 @@ specialists:
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
 current_phase: integration-tests-fundos
 current_phase_slug: integration-tests-fundos
-phase_status: planned
+phase_status: executed
 phase_verdict: pending
 prior_phase_slug: frontend-backoffice-fundos
 prior_phase_verdict: APPROVED
-next_step: /jdi-do integration-tests-fundos
+next_step: /jdi-verify integration-tests-fundos

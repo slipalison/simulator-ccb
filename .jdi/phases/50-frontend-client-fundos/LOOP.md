@@ -2,10 +2,12 @@
 phase_slug: frontend-client-fundos
 phase_position: 51
 iter: 11
-total_resets: 2
-status: converged
+total_resets: 3
+status: running
 round3_converged_at: 2026-05-17T00:00:00Z
 round3_verdict: APPROVED_WITH_WARNINGS
+round4_reopened_at: 2026-05-17T00:00:00Z
+round4_reopened_reason: User refused ship — wants W-data + W-arch fixed before /jdi-ship. Plan: new backend Bearer-only GET /api/auth/permissions endpoint + BFF removes hardcoded map and calls it + ClientClaimsMiddleware emits metric on no-match + seed script sync. Last reset (3 of 3, absolute cap 15 iter).
 third_reopen_at: 2026-05-17T00:00:00Z
 third_reopen_reason: User reports Sidebar Fundos menu missing — investigation shows backend GET /api/auth/me returns only { AccessToken, ExpiresIn, TokenType, Scope } with no permissions claim. Frontend AuthContext reads data.permissions ?? [] → empty array → Sidebar permissions.includes('funds:read') → false. Routes work via direct URL but no navigation entry point.
 fourth_reopen_at: 2026-05-17T00:00:00Z
@@ -198,6 +200,17 @@ second_reopen_at: 2026-05-17T00:00:00Z
 
 ### iter=11 — converged (round 3)
 - iter 11: APPROVED_WITH_WARNINGS, hash=33ce91219ef6, commit=ddb4dd8, ts=2026-05-17T00:00:00Z
+
+--- RESET 3 at 2026-05-17 — user refused ship, demands W-data + W-arch fixed before close; total_resets=3 (last available) ---
+
+### iter=12 (round 4 iter 1) — start — fix W-arch (BFF hardcode) + W-data (sync gap)
+- Plan:
+  1. Backend: GET /api/auth/permissions Bearer-only endpoint (BearerClient scheme, no cookie). Reuses ResolvePermissionsFromAccessTokenAsync (currently dead code from iter 6) → real source of truth. Returns { permissions: string[], accessGroup: string|null, companyId: string|null }.
+  2. Backend: ClientClaimsMiddleware emits structured log warning + metric `clientclaims.no_match` when sub matches neither Company nor Employee → ops alerting hook for W-data drift.
+  3. Backend: scripts/seed-test-users.sh sync — after seed user creation in Keycloak, update companies row keycloak_user_id to match the seeded sub. Idempotent.
+  4. Frontend BFF: auth-server.ts GET /me — remove hardcoded accessGroup→permissions map (lines ~373-383). Call new GET /api/auth/permissions with `Authorization: Bearer ${client_access_token}`. Forward permissions array. Custom AccessGroups now reflected accurately.
+  5. Tests: new API.Tests for the endpoint (Bearer auth, multi-tenant guard, AccessGroup variants). Frontend test for BFF /me passthrough.
+  6. MCP runtime verify: Sidebar shows correct perms based on backend; admin-empresa sees Fundos; custom group with subset shows only those items.
 
 ### iter=8 (round 3 iter 1) — start — POST create endpoints return non-2xx
 - User curl: POST /api/fundos/consultorias body {razaoSocial,cnpj,nomeFantasia,email:"",telefone:""}

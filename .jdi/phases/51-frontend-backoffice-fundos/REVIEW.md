@@ -260,3 +260,64 @@ All other modified files (AdminAuditLog, IAuditService, AuditService, GetAuditLo
 - Console errors: Vite HMR WebSocket only (3 errors, pre-existing, benign)
 - 5xx: zero
 - CORS errors: zero
+
+
+## Phase 52 Security review iter 2
+
+## Security Verdict
+APPROVED_WITH_WARNINGS
+
+### Gates
+
+- **[G1 Multi-tenant filter] PASS**
+  All 4 new endpoints (`GET /api/admin/fundos/{id}`, `/cedentes/{id}`, `/consultorias/{id}`, `/custodiantes/{id}`) inherit class-level `[Authorize(AuthenticationSchemes = "BearerBackoffice", Policy = PermissionPolicies.CrossCompanyAccess)]` on `AdminFundosController`. No method-level `[AllowAnonymous]` override present (grep clean). `IgnoreQueryFilters()` use is intentional and scoped exclusively to this admin controller behind `CrossCompanyAccess`. All four handlers are annotated with the mandatory security comment: "MUST only be consumed by AdminFundosController which requires Policy = CrossCompanyAccess." Iter 1 W-arch (pageSize=200 hack) is now resolved.
+
+- **[G2 Permission policy coverage] PASS**
+  `CrossCompanyAccess` maps to `policy.RequireRole("admin")` in `Program.cs` (line 223-224). A BearerBackoffice token without admin realm role → 403. A BearerClient scheme token → 401 (wrong scheme, not validated). Integration tests scenarios 6 and 7 in `AdminFundosByIdIntegrationTests.cs` confirm both cases: `ShouldBeOneOf(401, 403)`. No naked `[HttpGet]` without class-level auth. No new permission constant was added (CrossCompanyAccess already registered).
+
+- **[G3 Secrets + env hygiene] PASS**
+  Diff across all 4 iter 2 commits (197163c, 4232aa8, ac81ba5, f10eff3) contains no hardcoded passwords, secrets, tokens, or API keys. Testcontainers-based integration tests use fixture credentials only, not production secrets. No appsettings.json changes.
+
+- **[G4 Semgrep] NOT_RUN (advisory — carry-forward)**
+  Binary absent. Manual inspection: zero raw SQL, zero string interpolation in query handlers. All 4 handlers use EF LINQ `.Where(f => f.Id == query.Id)` with typed Guid — parameterized query guaranteed.
+
+- **[G5 Trivy FS + container] NOT_RUN (advisory — carry-forward)**
+  Binary absent. No new NuGet or npm dependencies in iter 2. No Dockerfile changes.
+
+- **[G6 Keycloak hardening] PASS (no drift)**
+  No `keycloak/exports/*.json` changes in iter 2 commits.
+
+- **[G7 Security headers] NOT_VERIFIED (stack not exercised)**
+  No changes to middleware pipeline. Posture unchanged from iter 1 baseline.
+
+- **[G8 Dependabot] NOT_CHECKED**
+  No new dependencies added in iter 2.
+
+- **[G9 Audit log] PASS (not applicable to new endpoints)**
+  All 4 new endpoints are read-only GET handlers. No mutation commands added; G9 audit-trail gate does not apply. Pre-existing mutation handlers from iter 1 retain ActorSub + ActorEmail — unchanged.
+
+### Additional checks (scoped per task)
+
+- **D-12 cookie hygiene** PASS — all 4 new `admin-fundos-api.ts` functions call `adminFetch(...)` which sets `credentials: "include"` unconditionally (confirmed in `admin-http-interceptor.ts` line 24). No localStorage or sessionStorage writes found.
+
+- **DTO ownership disclosure** PASS — all 4 handlers JOIN `Companies` table and project both `ClienteId` and `EmpresaNome` (RazaoSocial) into the returned DTO. Admin frontend receives the correct tenant label for every cross-company record; no misattribution risk.
+
+- **W-script-injection / raw SQL** PASS — zero `FromSqlRaw`, `FromSqlInterpolated`, `ExecuteSqlRaw`, or string-interpolated query paths in `FundosAdminByIdQueryHandlers.cs`. All predicates are typed LINQ expressions.
+
+- **404 vs 401 disclosure** ACCEPTABLE — 404 is returned only post-authentication (after `CrossCompanyAccess` policy clears). An authenticated admin learning a GUID doesn't exist in any tenant is acceptable; no unauthenticated entity-existence oracle.
+
+### Blockers
+None.
+
+### Warnings
+
+- **W-g4/W-g5 (carry-forward)** — Semgrep and Trivy not available in environment. CI must run both before ship gate closes.
+
+- **W-schema-auditlog (carry-forward)** — Frontend Zod schema for AuditLogEntry still omits `entityType`/`entityId`. Backend emits them; silently dropped in parse. Non-blocking display omission.
+
+- **W-perf-index (carry-forward)** — `admin_audit_logs(entity_type, entity_id)` composite index missing. Operational, not security. Mandatory before production load.
+
+### Pipeline artifacts
+- Trivy FS: not generated (binary absent)
+- Semgrep: not generated (binary absent)
+- Gitleaks: not generated (binary absent) — manual diff inspection clean

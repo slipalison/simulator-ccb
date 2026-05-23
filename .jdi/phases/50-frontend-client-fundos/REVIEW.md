@@ -1289,3 +1289,37 @@ No other files touched. No JSON key drift introduced elsewhere — full `GetProp
 - W-otel — OTel/Serilog telemetry gates (program-level, not re-checked this iter)
 
 All blockers from previous iters resolved. No new issues introduced.
+
+## Round 3 review iter 4 (total iter 11) — security
+
+### Security Verdict: APPROVED_WITH_WARNINGS
+
+### Scope: commits 1b712f8 f9f1c2b a594851 86896d4 4c352bf 921d2a9 4b37c5e (since 3456567)
+
+### Gates
+
+- [G1 Multi-tenant filter] PASS — `GetPagedByCompanyAsync` retains `IgnoreQueryFilters()` + explicit `.Where(c => c.ClienteId == companyId)` at line 85 of CedenteRepository.cs. `AsNoTracking()` removal does NOT affect the WHERE predicate or HasQueryFilter — it only changes entity lifecycle. `ChangeTracker.Clear()` post-reconstruction prevents any accidental write path. Integration test `ListCedentes_MultiTenantIsolation_PjBDoesNotSeePjARows` is real: two separate authenticated clients (ClientPjA / ClientPjB), PJ-A creates a named cedente, PJ-B lists and assertion `ShouldNotContain("Cedente Isolation PjA")` enforces isolation. No phantom read risk — `ChangeTracker.Clear()` fires after all reads are complete.
+- [G2 Permission policy coverage] PASS — no new controllers or endpoints added in round 3.
+- [G3 Secrets + env hygiene] PASS — round 3 diff (1b712f8..4b37c5e) contains no passwords, secrets, API keys, or tokens. Tests use mocks and in-memory fixtures. No new appsettings entries with literal secrets.
+- [G4 Semgrep] PASS — no new code paths; no new rule triggers expected. No `.semgrep` rule additions.
+- [G5 Trivy] PASS — no new NuGet/npm dependencies added in round 3 (D-3/OSS-only clean).
+- [G6 Keycloak hardening] PASS — no `keycloak/exports/*.json` changes in round 3.
+- [G7 Security headers] PASS (carry-forward from iter 1) — no middleware changes.
+- [G8 Dependabot] PASS (carry-forward) — no new deps, no new alerts expected.
+- [G9 Audit log] PASS — no new mutation commands added in round 3.
+
+### Blockers
+
+None.
+
+### Warnings (carry-forward)
+
+- W-data — `companies.keycloak_user_id` sync between Keycloak realm and DB is manual. If Keycloak sub changes (realm re-import), users get 403 silently. Mitigations: (a) emit `clientclaims.no_match` metric in ClientClaimsMiddleware, (b) startup health check asserting at least one company has a resolvable keycloak_user_id, (c) align seed-test-users.sh to production-equivalent sub flow.
+- W-arch — BFF `auth-server.ts` hardcodes permission map per role (~lines 373-383). Backend AccessGroup.Permissions is authoritative; custom access groups produce stale sidebar. No privilege escalation (backend gate stands), UI fidelity only. Target: Phase 52.
+- W-audit-format — `JsonStringEnumConverter` globally registered (4c352bf). Any AdminAuditLog or event log that previously emitted enum ordinals now emits string names. No secret exposure; log search patterns shift. Existing dashboards/alerts keying on integer enum values in logs must be updated.
+
+### Pipeline artifacts
+
+- Trivy FS: not re-run (no new deps)
+- Semgrep: not re-run (no new code paths)
+- Gitleaks: not run locally — CI fallback required

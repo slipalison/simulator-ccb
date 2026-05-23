@@ -4,6 +4,7 @@ import {
   createRouter,
   Outlet,
   useNavigate,
+  lazyRouteComponent,
 } from "@tanstack/react-router";
 import { NotFoundPage } from "@/components/pages/NotFoundPage";
 import { AdminLoginPage } from "@/components/pages/AdminLoginPage";
@@ -17,6 +18,7 @@ import { PasswordChangePage } from "@/components/pages/PasswordChangePage";
 import { AuditLogPage } from "@/components/pages/AuditLogPage";
 import { AdminAdministratorsPage } from "@/components/pages/AdminAdministratorsPage";
 import { AdminLayout } from "@/components/templates/AdminLayout";
+import { adminListSearchSchema } from "@/lib/admin-fundos-schemas";
 import { useEffect } from "react";
 
 // Root route com notFoundComponent para roteamento type-safe de 404
@@ -76,9 +78,6 @@ const adminEmployeesRoute = createRoute({
 });
 
 // Rota admin users: /admin/users — user management list
-// Note: auth-server.ts post-login redirect previously pointed here, then bounced to
-// /admin/companies via RedirectCompanies. That was resolved by pointing auth-server.ts
-// directly to /admin/companies (T-6c, option B). This route now serves the real page.
 const adminUsersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin/users",
@@ -133,6 +132,193 @@ const adminAdministratorsRoute = createRoute({
   ),
 });
 
+// ---------------------------------------------------------------------------
+// Fundos module routes (Phase 52, D-28..D-32) — ALL lazy per D-32
+// ---------------------------------------------------------------------------
+
+// /admin/fundos — list page
+const adminFundosRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/fundos",
+  validateSearch: adminListSearchSchema,
+  component: lazyRouteComponent(
+    () =>
+      import("@/components/pages/AdminFundosListPage").then((m) => ({
+        default: () => (
+          <AdminLayout>
+            <m.AdminFundosListPage />
+          </AdminLayout>
+        ),
+      }))
+  ),
+});
+
+// /admin/fundos/$fundoId — detail page (lazy)
+const adminFundoDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/fundos/$fundoId",
+  component: lazyRouteComponent(
+    () =>
+      import("@/components/pages/AdminFundoDetailPage").then((m) => ({
+        default: () => (
+          <AdminLayout>
+            <m.AdminFundoDetailPage />
+          </AdminLayout>
+        ),
+      }))
+  ),
+});
+
+// /admin/cedentes — list page (lazy)
+const adminCedentesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/cedentes",
+  validateSearch: adminListSearchSchema,
+  component: lazyRouteComponent(
+    () =>
+      import("@/components/pages/AdminCedentesListPage").then((m) => ({
+        default: () => (
+          <AdminLayout>
+            <m.AdminCedentesListPage />
+          </AdminLayout>
+        ),
+      }))
+  ),
+});
+
+// /admin/cedentes/$cedenteId — detail page (lazy)
+const adminCedenteDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/cedentes/$cedenteId",
+  component: lazyRouteComponent(
+    () =>
+      import("@/components/pages/AdminCedenteDetailPage").then((m) => ({
+        default: () => (
+          <AdminLayout>
+            <m.AdminCedenteDetailPage />
+          </AdminLayout>
+        ),
+      }))
+  ),
+});
+
+// /admin/consultorias-fundo — list page (lazy)
+const adminConsultoriasFundoRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/consultorias-fundo",
+  validateSearch: adminListSearchSchema,
+  component: lazyRouteComponent(
+    () =>
+      import("@/components/pages/AdminConsultoriasFundoListPage").then((m) => ({
+        default: () => (
+          <AdminLayout>
+            <m.AdminConsultoriasFundoListPage />
+          </AdminLayout>
+        ),
+      }))
+  ),
+});
+
+// /admin/consultorias-fundo/$consultoriaId — detail page (lazy)
+const adminConsultoriaFundoDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/consultorias-fundo/$consultoriaId",
+  component: lazyRouteComponent(
+    () =>
+      import("@/components/pages/AdminConsultoriaFundoDetailPage").then((m) => ({
+        default: () => (
+          <AdminLayout>
+            <m.AdminConsultoriaFundoDetailPage />
+          </AdminLayout>
+        ),
+      }))
+  ),
+});
+
+// /admin/custodiantes — list page (lazy)
+const adminCustodiantesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/custodiantes",
+  validateSearch: adminListSearchSchema,
+  component: lazyRouteComponent(
+    () =>
+      import("@/components/pages/AdminCustodiantesListPage").then((m) => ({
+        default: () => (
+          <AdminLayout>
+            <m.AdminCustodiantesListPage />
+          </AdminLayout>
+        ),
+      }))
+  ),
+});
+
+// /admin/custodiantes/$custodianteId — detail page (lazy)
+const adminCustodianteDetailRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/custodiantes/$custodianteId",
+  component: lazyRouteComponent(
+    () =>
+      import("@/components/pages/AdminCustodianteDetailPage").then((m) => ({
+        default: () => (
+          <AdminLayout>
+            <m.AdminCustodianteDetailPage />
+          </AdminLayout>
+        ),
+      }))
+  ),
+});
+
+// /admin/fundo-cedentes — N-N association list (lazy)
+const adminFundoCedentesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/fundo-cedentes",
+  validateSearch: adminListSearchSchema,
+  component: lazyRouteComponent(
+    () =>
+      import("@/components/pages/AdminFundoCedentesListPage").then((m) => ({
+        default: () => (
+          <AdminLayout>
+            <m.AdminFundoCedentesListPage />
+          </AdminLayout>
+        ),
+      }))
+  ),
+});
+
+// /admin/fundo-tipos-ativos — N-N association list (lazy)
+const adminFundoTiposAtivosRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/fundo-tipos-ativos",
+  validateSearch: adminListSearchSchema,
+  component: lazyRouteComponent(
+    () =>
+      import("@/components/pages/AdminFundoTiposAtivosListPage").then((m) => ({
+        default: () => (
+          <AdminLayout>
+            <m.AdminFundoTiposAtivosListPage />
+          </AdminLayout>
+        ),
+      }))
+  ),
+});
+
+// /admin/cedente-tipos-ativos — N-N association list (lazy)
+const adminCedenteTiposAtivosRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin/cedente-tipos-ativos",
+  validateSearch: adminListSearchSchema,
+  component: lazyRouteComponent(
+    () =>
+      import("@/components/pages/AdminCedenteTiposAtivosListPage").then((m) => ({
+        default: () => (
+          <AdminLayout>
+            <m.AdminCedenteTiposAtivosListPage />
+          </AdminLayout>
+        ),
+      }))
+  ),
+});
+
 // Arvore de rotas — APENAS rotas admin (sem rotas publicas)
 const routeTree = rootRoute.addChildren([
   indexRoute,
@@ -146,6 +332,18 @@ const routeTree = rootRoute.addChildren([
   adminPasswordChangeRoute,
   adminAuditLogRoute,
   adminAdministratorsRoute,
+  // Fundos module — Phase 52 (D-28..D-32)
+  adminFundosRoute,
+  adminFundoDetailRoute,
+  adminCedentesRoute,
+  adminCedenteDetailRoute,
+  adminConsultoriasFundoRoute,
+  adminConsultoriaFundoDetailRoute,
+  adminCustodiantesRoute,
+  adminCustodianteDetailRoute,
+  adminFundoCedentesRoute,
+  adminFundoTiposAtivosRoute,
+  adminCedenteTiposAtivosRoute,
 ]);
 
 // Instancia do router
@@ -171,4 +369,3 @@ function IndexRoute() {
 
   return null;
 }
-

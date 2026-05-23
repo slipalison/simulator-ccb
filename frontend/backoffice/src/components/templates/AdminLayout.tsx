@@ -2,7 +2,8 @@ import { type ReactNode, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAdminAuth } from "@/lib/admin-auth-context";
 import { toast } from "sonner";
-import { LogOut, Shield, Loader2 } from "lucide-react";
+import { LogOut, Shield, Loader2, ChevronDown } from "lucide-react";
+import { adminFundosLocale as L } from "@/locales/pt-BR/admin-fundos";
 
 // ---------------------------------------------------------------------------
 // AdminHeader
@@ -39,12 +40,13 @@ export function AdminHeader({ adminName, onLogout }: AdminHeaderProps) {
 }
 
 // ---------------------------------------------------------------------------
-// AdminSidebar
+// AdminSidebar — includes Fundos group (D-31, Phase 52)
+// Authenticated-only: shown when admin.isAuthenticated (checked by AdminLayout)
 // ---------------------------------------------------------------------------
 
 function AdminSidebar() {
   return (
-    <aside className="w-56 border-r bg-card p-4" data-testid="admin-sidebar">
+    <aside className="w-56 border-r bg-card p-4 overflow-y-auto" data-testid="admin-sidebar">
       <nav className="space-y-1">
         <a
           href="/admin/companies"
@@ -81,6 +83,65 @@ function AdminSidebar() {
         >
           Audit Log
         </a>
+
+        {/* Fundos group — Phase 52 (D-31) */}
+        <div className="pt-2" data-testid="sidebar-fundos-group">
+          <div className="flex items-center gap-1 px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            <ChevronDown className="h-3 w-3" aria-hidden="true" />
+            <span>{L.sidebarFundosGroup}</span>
+          </div>
+          <div className="mt-1 space-y-1 pl-2">
+            <a
+              href="/admin/fundos"
+              className="block py-2 px-3 text-sm rounded-md hover:bg-accent transition-colors"
+              data-testid="sidebar-fundos-link"
+            >
+              {L.sidebarFundos}
+            </a>
+            <a
+              href="/admin/cedentes"
+              className="block py-2 px-3 text-sm rounded-md hover:bg-accent transition-colors"
+              data-testid="sidebar-cedentes-link"
+            >
+              {L.sidebarCedentes}
+            </a>
+            <a
+              href="/admin/consultorias-fundo"
+              className="block py-2 px-3 text-sm rounded-md hover:bg-accent transition-colors"
+              data-testid="sidebar-consultorias-fundo-link"
+            >
+              {L.sidebarConsultoriasFundo}
+            </a>
+            <a
+              href="/admin/custodiantes"
+              className="block py-2 px-3 text-sm rounded-md hover:bg-accent transition-colors"
+              data-testid="sidebar-custodiantes-link"
+            >
+              {L.sidebarCustodiantes}
+            </a>
+            <a
+              href="/admin/fundo-cedentes"
+              className="block py-2 px-3 text-sm rounded-md hover:bg-accent transition-colors"
+              data-testid="sidebar-fundo-cedentes-link"
+            >
+              {L.sidebarFundoCedentes}
+            </a>
+            <a
+              href="/admin/fundo-tipos-ativos"
+              className="block py-2 px-3 text-sm rounded-md hover:bg-accent transition-colors"
+              data-testid="sidebar-fundo-tipos-ativos-link"
+            >
+              {L.sidebarFundoTiposAtivos}
+            </a>
+            <a
+              href="/admin/cedente-tipos-ativos"
+              className="block py-2 px-3 text-sm rounded-md hover:bg-accent transition-colors"
+              data-testid="sidebar-cedente-tipos-ativos-link"
+            >
+              {L.sidebarCedenteTiposAtivos}
+            </a>
+          </div>
+        </div>
       </nav>
     </aside>
   );

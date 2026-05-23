@@ -1,10 +1,12 @@
 // ---------------------------------------------------------------------------
 // AdminCedenteDetailPage — cross-company Cedente detail (T-5, D-30)
+// Iter 2: direct GET /api/admin/fundos/cedentes/{id} — removes pageSize=200 hack (D-8).
 // ---------------------------------------------------------------------------
 
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import { listAdminCedentes } from "@/lib/admin-fundos-api";
+import { getAdminCedente } from "@/lib/admin-fundos-api";
+import { AdminApiError } from "@/lib/admin-api";
 import { AdminEntityHeader } from "@/components/molecules/AdminEntityHeader";
 import { AdminFieldsGrid } from "@/components/molecules/AdminFieldsGrid";
 import { AuditHistorySection } from "@/components/molecules/AuditHistorySection";
@@ -15,13 +17,13 @@ export function AdminCedenteDetailPage() {
   const { cedenteId } = useParams({ from: "/admin/cedentes/$cedenteId" as any });
   const navigate = useNavigate();
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["admin-cedente-detail", cedenteId],
-    queryFn: () => listAdminCedentes({ page: 1, pageSize: 200 }),
+  const { data: cedente, isLoading, isError, error } = useQuery({
+    queryKey: ["admin-cedente", cedenteId],
+    queryFn: () => getAdminCedente(cedenteId),
     enabled: !!cedenteId,
   });
 
-  const cedente = data?.items.find((c) => c.id === cedenteId);
+  const is404 = error instanceof AdminApiError && error.status === 404;
 
   if (isLoading) {
     return (
@@ -32,15 +34,7 @@ export function AdminCedenteDetailPage() {
     );
   }
 
-  if (isError) {
-    return (
-      <p className="text-destructive text-sm py-4" data-testid="cedente-detail-error">
-        {L.errorLoadingData}
-      </p>
-    );
-  }
-
-  if (!cedente) {
+  if (is404) {
     return (
       <div className="py-12 text-center" data-testid="cedente-detail-not-found">
         <p className="text-muted-foreground text-sm">{L.notFound}</p>
@@ -54,6 +48,16 @@ export function AdminCedenteDetailPage() {
       </div>
     );
   }
+
+  if (isError) {
+    return (
+      <p className="text-destructive text-sm py-4" data-testid="cedente-detail-error">
+        {L.errorLoadingData}
+      </p>
+    );
+  }
+
+  if (!cedente) return null;
 
   const fields = [
     { label: L.detailFieldId, value: cedente.id, testId: "cedente-id" },

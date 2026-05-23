@@ -1,10 +1,12 @@
 // ---------------------------------------------------------------------------
 // AdminConsultoriaFundoDetailPage — cross-company ConsultoriaFundo detail (T-5, D-30)
+// Iter 2: direct GET /api/admin/fundos/consultorias/{id} — removes pageSize=200 hack (D-8).
 // ---------------------------------------------------------------------------
 
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import { listAdminConsultorias } from "@/lib/admin-fundos-api";
+import { getAdminConsultoriaFundo } from "@/lib/admin-fundos-api";
+import { AdminApiError } from "@/lib/admin-api";
 import { AdminEntityHeader } from "@/components/molecules/AdminEntityHeader";
 import { AdminFieldsGrid } from "@/components/molecules/AdminFieldsGrid";
 import { AuditHistorySection } from "@/components/molecules/AuditHistorySection";
@@ -15,13 +17,13 @@ export function AdminConsultoriaFundoDetailPage() {
   const { consultoriaId } = useParams({ from: "/admin/consultorias-fundo/$consultoriaId" as any });
   const navigate = useNavigate();
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["admin-consultoria-detail", consultoriaId],
-    queryFn: () => listAdminConsultorias({ page: 1, pageSize: 200 }),
+  const { data: consultoria, isLoading, isError, error } = useQuery({
+    queryKey: ["admin-consultoria-fundo", consultoriaId],
+    queryFn: () => getAdminConsultoriaFundo(consultoriaId),
     enabled: !!consultoriaId,
   });
 
-  const consultoria = data?.items.find((c) => c.id === consultoriaId);
+  const is404 = error instanceof AdminApiError && error.status === 404;
 
   if (isLoading) {
     return (
@@ -32,15 +34,7 @@ export function AdminConsultoriaFundoDetailPage() {
     );
   }
 
-  if (isError) {
-    return (
-      <p className="text-destructive text-sm py-4" data-testid="consultoria-detail-error">
-        {L.errorLoadingData}
-      </p>
-    );
-  }
-
-  if (!consultoria) {
+  if (is404) {
     return (
       <div className="py-12 text-center" data-testid="consultoria-detail-not-found">
         <p className="text-muted-foreground text-sm">{L.notFound}</p>
@@ -54,6 +48,16 @@ export function AdminConsultoriaFundoDetailPage() {
       </div>
     );
   }
+
+  if (isError) {
+    return (
+      <p className="text-destructive text-sm py-4" data-testid="consultoria-detail-error">
+        {L.errorLoadingData}
+      </p>
+    );
+  }
+
+  if (!consultoria) return null;
 
   const fields = [
     { label: L.detailFieldId, value: consultoria.id, testId: "consultoria-id" },

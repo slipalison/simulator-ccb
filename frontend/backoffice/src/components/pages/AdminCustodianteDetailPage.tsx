@@ -1,10 +1,12 @@
 // ---------------------------------------------------------------------------
 // AdminCustodianteDetailPage — cross-company Custodiante detail (T-5, D-30)
+// Iter 2: direct GET /api/admin/fundos/custodiantes/{id} — removes pageSize=200 hack (D-8).
 // ---------------------------------------------------------------------------
 
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import { listAdminCustodiantes } from "@/lib/admin-fundos-api";
+import { getAdminCustodiante } from "@/lib/admin-fundos-api";
+import { AdminApiError } from "@/lib/admin-api";
 import { AdminEntityHeader } from "@/components/molecules/AdminEntityHeader";
 import { AdminFieldsGrid } from "@/components/molecules/AdminFieldsGrid";
 import { AuditHistorySection } from "@/components/molecules/AuditHistorySection";
@@ -15,13 +17,13 @@ export function AdminCustodianteDetailPage() {
   const { custodianteId } = useParams({ from: "/admin/custodiantes/$custodianteId" as any });
   const navigate = useNavigate();
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["admin-custodiante-detail", custodianteId],
-    queryFn: () => listAdminCustodiantes({ page: 1, pageSize: 200 }),
+  const { data: custodiante, isLoading, isError, error } = useQuery({
+    queryKey: ["admin-custodiante", custodianteId],
+    queryFn: () => getAdminCustodiante(custodianteId),
     enabled: !!custodianteId,
   });
 
-  const custodiante = data?.items.find((c) => c.id === custodianteId);
+  const is404 = error instanceof AdminApiError && error.status === 404;
 
   if (isLoading) {
     return (
@@ -32,15 +34,7 @@ export function AdminCustodianteDetailPage() {
     );
   }
 
-  if (isError) {
-    return (
-      <p className="text-destructive text-sm py-4" data-testid="custodiante-detail-error">
-        {L.errorLoadingData}
-      </p>
-    );
-  }
-
-  if (!custodiante) {
+  if (is404) {
     return (
       <div className="py-12 text-center" data-testid="custodiante-detail-not-found">
         <p className="text-muted-foreground text-sm">{L.notFound}</p>
@@ -54,6 +48,16 @@ export function AdminCustodianteDetailPage() {
       </div>
     );
   }
+
+  if (isError) {
+    return (
+      <p className="text-destructive text-sm py-4" data-testid="custodiante-detail-error">
+        {L.errorLoadingData}
+      </p>
+    );
+  }
+
+  if (!custodiante) return null;
 
   const fields = [
     { label: L.detailFieldId, value: custodiante.id, testId: "custodiante-id" },

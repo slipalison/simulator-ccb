@@ -1,12 +1,12 @@
 // ---------------------------------------------------------------------------
 // AdminFundoDetailPage — cross-company Fundo detail (T-5, D-30)
-// Backend has no detail-by-id (D-8 scope). Fetches list filtered by name/id
-// and matches the item. AuditHistorySection added inline (D-30, T-7).
+// Iter 2: direct GET /api/admin/fundos/{id} — removes pageSize=200 hack (D-8).
 // ---------------------------------------------------------------------------
 
 import { useQuery } from "@tanstack/react-query";
 import { useParams, useNavigate } from "@tanstack/react-router";
-import { listAdminFundos } from "@/lib/admin-fundos-api";
+import { getAdminFundo } from "@/lib/admin-fundos-api";
+import { AdminApiError } from "@/lib/admin-api";
 import { AdminEntityHeader } from "@/components/molecules/AdminEntityHeader";
 import { AdminFieldsGrid } from "@/components/molecules/AdminFieldsGrid";
 import { AuditHistorySection } from "@/components/molecules/AuditHistorySection";
@@ -17,15 +17,13 @@ export function AdminFundoDetailPage() {
   const { fundoId } = useParams({ from: "/admin/fundos/$fundoId" as any });
   const navigate = useNavigate();
 
-  // Fetch all fundos to find by ID — backend has no GET /by-id endpoint (D-8).
-  // Using page 1 with large pageSize; in production, a real GET /:id endpoint should be added.
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["admin-fundo-detail", fundoId],
-    queryFn: () => listAdminFundos({ page: 1, pageSize: 200 }),
+  const { data: fundo, isLoading, isError, error } = useQuery({
+    queryKey: ["admin-fundo", fundoId],
+    queryFn: () => getAdminFundo(fundoId),
     enabled: !!fundoId,
   });
 
-  const fundo = data?.items.find((f) => f.id === fundoId);
+  const is404 = error instanceof AdminApiError && error.status === 404;
 
   if (isLoading) {
     return (
@@ -36,15 +34,7 @@ export function AdminFundoDetailPage() {
     );
   }
 
-  if (isError) {
-    return (
-      <p className="text-destructive text-sm py-4" data-testid="fundo-detail-error">
-        {L.errorLoadingData}
-      </p>
-    );
-  }
-
-  if (!fundo) {
+  if (is404) {
     return (
       <div className="py-12 text-center" data-testid="fundo-detail-not-found">
         <p className="text-muted-foreground text-sm">{L.notFound}</p>
@@ -58,6 +48,16 @@ export function AdminFundoDetailPage() {
       </div>
     );
   }
+
+  if (isError) {
+    return (
+      <p className="text-destructive text-sm py-4" data-testid="fundo-detail-error">
+        {L.errorLoadingData}
+      </p>
+    );
+  }
+
+  if (!fundo) return null;
 
   const fields = [
     { label: L.detailFieldId, value: fundo.id, testId: "fundo-id" },

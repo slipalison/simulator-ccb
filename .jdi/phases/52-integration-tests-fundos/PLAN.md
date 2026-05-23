@@ -104,7 +104,7 @@ Dupla missão: (1) Integration tests end-to-end Testcontainers PG cobrindo 5 ent
   - Coverage ≥80% on new test files + exercised handler/repo new code lines.
 - **Dependencies:** T-1
 - **Test:** xUnit Integration (Testcontainers)
-- **Status:** pending
+- **Status:** completed
 
 #### T-3: Integration tests — Cedente PF+PJ + TipoAtivo CRUD + uniqueness
 - **Specialist:** jdi-doer-onboarding-keycloak-backend-csharp

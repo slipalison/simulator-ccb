@@ -63,13 +63,13 @@ public sealed class CustodianteIntegrationTests : PostgreSqlIntegrationTestBase,
     private static async Task SeedAsync(AppDbContext db)
     {
         var companyA = Company.Register(
-            "Alpha Custodiante CRUD Ltda", "45343410000131",
+            "Alpha Custodiante CRUD Ltda", "11444777000161",
             "alpha.cust.crud@test.com", "+5511000000030",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "192.168.1.50"));
         companyA.SetKeycloakUserId(SubPjA);
 
         var companyB = Company.Register(
-            "Beta Custodiante CRUD S.A.", "57838178000197",
+            "Beta Custodiante CRUD S.A.", "62232889000190",
             "beta.cust.crud@test.com", "+5511000000031",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "192.168.1.51"));
         companyB.SetKeycloakUserId(SubPjB);

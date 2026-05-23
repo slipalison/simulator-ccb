@@ -63,13 +63,13 @@ public sealed class ConsultoriaFundoIntegrationTests : PostgreSqlIntegrationTest
     private static async Task SeedAsync(AppDbContext db)
     {
         var companyA = Company.Register(
-            "Alpha Consultoria CRUD Ltda", "19131243000197",
+            "Alpha Consultoria CRUD Ltda", "11444777000161",
             "alpha.cf.crud@test.com", "+5511000000020",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "192.168.1.40"));
         companyA.SetKeycloakUserId(SubPjA);
 
         var companyB = Company.Register(
-            "Beta Consultoria CRUD S.A.", "49096843000190",
+            "Beta Consultoria CRUD S.A.", "62232889000190",
             "beta.cf.crud@test.com", "+5511000000021",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "192.168.1.41"));
         companyB.SetKeycloakUserId(SubPjB);

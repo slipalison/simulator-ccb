@@ -1350,6 +1350,138 @@ public class FundosControllerTests
     }
 
     // =========================================================================
+    // W-test: empty-string normalization locked for Email + Telefone (7 endpoints)
+    // Reviewer flag: normalization present at 7 sites but zero tests covered the mapping.
+    // Each test posts email="" / telefone="" and asserts the handler receives null.
+    // =========================================================================
+
+    [Fact]
+    public async Task RegisterConsultoria_EmptyEmailAndTelefone_NormalizesToNull()
+    {
+        _registerConsultoriaValidator
+            .ValidateAsync(Arg.Any<RegisterConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerConsultoriaHandler
+            .HandleAsync(Arg.Any<RegisterConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleConsultoria);
+
+        var request = new RegisterConsultoriaFundoRequest("Consultoria Ltda", "12.345.678/0001-90", null, "", "");
+        await _sut.RegisterConsultoria(request, CancellationToken.None);
+
+        await _registerConsultoriaHandler.Received(1).HandleAsync(
+            Arg.Is<RegisterConsultoriaFundoCommand>(c => c.Email == null && c.Telefone == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateConsultoria_EmptyEmailAndTelefone_NormalizesToNull()
+    {
+        _updateConsultoriaValidator
+            .ValidateAsync(Arg.Any<UpdateConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _updateConsultoriaHandler
+            .HandleAsync(Arg.Any<UpdateConsultoriaFundoCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleConsultoria);
+
+        var request = new UpdateConsultoriaFundoRequest("Consultoria Ltda", null, "", "", ConsultoriaFundoStatus.ATIVO);
+        await _sut.UpdateConsultoria(ConsultoriaId, request, CancellationToken.None);
+
+        await _updateConsultoriaHandler.Received(1).HandleAsync(
+            Arg.Is<UpdateConsultoriaFundoCommand>(c => c.Email == null && c.Telefone == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RegisterCustodiante_EmptyEmailAndTelefone_NormalizesToNull()
+    {
+        _registerCustodianteValidator
+            .ValidateAsync(Arg.Any<RegisterCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerCustodianteHandler
+            .HandleAsync(Arg.Any<RegisterCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleCustodiante);
+
+        var request = new RegisterCustodianteRequest("Custodiante S.A.", "98.765.432/0001-10", null, "", "");
+        await _sut.RegisterCustodiante(request, CancellationToken.None);
+
+        await _registerCustodianteHandler.Received(1).HandleAsync(
+            Arg.Is<RegisterCustodianteCommand>(c => c.Email == null && c.Telefone == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateCustodiante_EmptyEmailAndTelefone_NormalizesToNull()
+    {
+        _updateCustodianteValidator
+            .ValidateAsync(Arg.Any<UpdateCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _updateCustodianteHandler
+            .HandleAsync(Arg.Any<UpdateCustodianteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleCustodiante);
+
+        var request = new UpdateCustodianteRequest("Custodiante S.A.", null, "", "", CustodianteStatus.ATIVO);
+        await _sut.UpdateCustodiante(CustodianteId, request, CancellationToken.None);
+
+        await _updateCustodianteHandler.Received(1).HandleAsync(
+            Arg.Is<UpdateCustodianteCommand>(c => c.Email == null && c.Telefone == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RegisterCedentePf_EmptyEmailAndTelefone_NormalizesToNull()
+    {
+        _registerCedentePfValidator
+            .ValidateAsync(Arg.Any<RegisterCedentePfCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerCedentePfHandler
+            .HandleAsync(Arg.Any<RegisterCedentePfCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleCedentePf);
+
+        var request = new RegisterCedentePfRequest("12345678909", "João Silva", "", "", null);
+        await _sut.RegisterCedentePf(request, CancellationToken.None);
+
+        await _registerCedentePfHandler.Received(1).HandleAsync(
+            Arg.Is<RegisterCedentePfCommand>(c => c.Email == null && c.Telefone == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task RegisterCedentePj_EmptyEmailAndTelefone_NormalizesToNull()
+    {
+        _registerCedentePjValidator
+            .ValidateAsync(Arg.Any<RegisterCedentePjCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _registerCedentePjHandler
+            .HandleAsync(Arg.Any<RegisterCedentePjCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleCedentePj);
+
+        var request = new RegisterCedentePjRequest("11222333000181", "Empresa PJ Ltda", "", "", null);
+        await _sut.RegisterCedentePj(request, CancellationToken.None);
+
+        await _registerCedentePjHandler.Received(1).HandleAsync(
+            Arg.Is<RegisterCedentePjCommand>(c => c.Email == null && c.Telefone == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task UpdateCedente_EmptyEmailAndTelefone_NormalizesToNull()
+    {
+        _updateCedenteValidator
+            .ValidateAsync(Arg.Any<UpdateCedenteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(ValidResult());
+        _updateCedenteHandler
+            .HandleAsync(Arg.Any<UpdateCedenteCommand>(), Arg.Any<CancellationToken>())
+            .Returns(SampleCedentePf);
+
+        var request = new UpdateCedenteRequest("João Silva", "", "", null, CedenteStatus.ATIVO);
+        await _sut.UpdateCedente(CedenteId, request, CancellationToken.None);
+
+        await _updateCedenteHandler.Received(1).HandleAsync(
+            Arg.Is<UpdateCedenteCommand>(c => c.Email == null && c.Telefone == null),
+            Arg.Any<CancellationToken>());
+    }
+
+    // =========================================================================
     // Domain aggregate builders (use reflection to avoid ctor dependency on domain internals)
     // =========================================================================
 

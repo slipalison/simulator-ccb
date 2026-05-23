@@ -419,3 +419,95 @@ Confirmed: 4 endpoints exist, 13/13 integration tests pass G0 scenarios (200+com
 - Console errors: Vite HMR WebSocket only (pre-existing, benign)
 - 5xx: zero
 - CORS errors: zero
+
+## Phase 52 Frontend review iter 2
+
+**Verdict: APPROVED_WITH_WARNINGS**
+
+---
+
+### Gates
+
+**[G1 Security frontend] PASS (no change)**
+D-4 cross-import: zero. No token storage, no dangerouslySetInnerHTML in iter 2 files.
+
+**[G2 Telemetry] carry-forward pre-existing — not addressed in iter 2**
+
+**[G3 Perf + bundle] PASS**
+Build clean. Backoffice main chunk: index-B73TExdd.js — 205.31 KB gz (unchanged from iter 1, under 300 KB gate). Four detail page lazy chunks each < 3 KB gz.
+
+**[G4 Build] PASS**
+pnpm --filter frontend-backoffice build: exit 0. Required docker compose build api + frontend-backoffice (both containers were stale — iter 2 commits landed after containers were created; rebuilt before MCP verification).
+
+**[G5 Typecheck+Lint] PASS**
+pnpm --filter frontend-backoffice typecheck: exit 0. pnpm --filter frontend-backoffice lint --max-warnings 0: exit 0.
+
+**[G6 Code-design + Frontend rules] PASS**
+D-4 separation: zero cross-imports confirmed. pageSize=200 string appears only in comments (documentation of removed hack), not in any query string. No pt-BR strings in JSX.
+
+**[G7 Coverage new files] PARTIAL PASS — WARNING (carry-forward)**
+251/251 vitest tests pass (31 test files). 4 new test files added for detail pages (AdminFundoDetailPage.test.tsx, AdminCedenteDetailPage.test.tsx, AdminConsultoriaFundoDetailPage.test.tsx, AdminCustodianteDetailPage.test.tsx). Coverage provider still NOT configured in vitest.config.ts — W-cov carry-forward open.
+
+**[G8 Playwright regression — Client SPA] PASS (carry-forward from iter 1)**
+No client SPA code touched in iter 2. Client SPA regression status unchanged from iter 1 PASS.
+
+**[G9 Playwright regression — Backoffice SPA] PASS — D-8 CLOSED**
+
+MCP runtime verification with freshly rebuilt containers (both api + frontend-backoffice rebuilt to pick up iter 2 commits):
+
+- ConsultoriaFundo detail (existing ID 3401f1d8-7e55-4d1e-a8d4-aa6993f04fa8):
+  - GET /api/admin/fundos/consultorias/3401f1d8-... → 200 OK
+  - No pageSize=200 query string anywhere in network log
+  - Page renders full fields: CNPJ, Empresa, Nome Fantasia, Email, Telefone, Criado em
+  - AuditHistorySection renders "Sem histórico de auditoria." + GET /api/admin/audit-log?entityType=ConsultoriaFundo&entityId=3401f1d8-... → 200 (T-7 regression PASS)
+  - Screenshot: .jdi/cache/phase-52-r1i2-detail-consultoria.png
+
+- Fundo 404: GET /api/admin/fundos/00000000-0000-0000-0000-000000000000 → 404 Not Found (real backend 404, not client-side undefined). Graceful "Registro não encontrado." state with back button.
+- Cedente 404: GET /api/admin/fundos/cedentes/00000000-0000-0000-0000-000000000000 → 404 Not Found. Graceful state rendered.
+- Custodiante 404: GET /api/admin/fundos/custodiantes/00000000-0000-0000-0000-000000000000 → 404 Not Found. Graceful state rendered.
+- ConsultoriaFundo 404: GET /api/admin/fundos/consultorias/00000000-0000-0000-0000-000000000000 → 404 Not Found. Graceful state rendered.
+
+All 4 detail pages use direct GET endpoint. Zero pageSize=200 query strings intercepted. D-8 CLOSED.
+
+Console errors on backoffice: 404 resource errors from intentional 404-path tests + 2 Vite HMR WebSocket (pre-existing benign per D-16). Zero React invariant errors.
+
+---
+
+### D-8 Closure — CONFIRMED
+
+| Assertion | Result |
+|---|---|
+| GET /api/admin/fundos/{id} wired | PASS — 404 from backend |
+| GET /api/admin/fundos/cedentes/{id} wired | PASS — 404 from backend |
+| GET /api/admin/fundos/consultorias/{id} wired | PASS — 200 with real data |
+| GET /api/admin/fundos/custodiantes/{id} wired | PASS — 404 from backend |
+| No pageSize=200 in any network request for detail navigation | PASS — zero hits |
+| 404 → typed AdminApiError → "Registro não encontrado." | PASS — all 4 entities |
+| AuditHistorySection still renders on detail pages (T-7 regression) | PASS |
+
+---
+
+### Carry-forward warnings
+
+**W-cov (OPEN)** — vitest.config.ts has no coverage provider. @vitest/coverage-v8 + coverage.thresholds.lines = 80 not added. 4 new test files exist but coverage cannot be measured. Phase 53 scope.
+
+**W-perf-index (OPEN — backend)** — admin_audit_logs(entity_type, entity_id) composite index missing. Backend doer scope. Non-blocking now (table small).
+
+**W-schema-auditlog (OPEN)** — AuditLogEntry Zod schema missing entityType/entityId fields. Audit inline views silently drop these fields. Non-blocking display omission. Phase 53/54 scope.
+
+**W-deploy (OPEN)** — Both api and frontend-backoffice containers required explicit rebuild after iter 2 commits. docker compose build api frontend-backoffice must be documented in docs/dev-setup.md (same W-deploy from iter 1, compounded).
+
+---
+
+### Blockers
+None. D-8 fully closed via MCP. All carry-forward warnings are non-runtime.
+
+---
+
+### Regression captures
+- Screenshots: .jdi/cache/phase-52-r1i2-detail-consultoria.png, .jdi/cache/phase-52-r1i2-detail-fundo-404.png
+- ConsultoriaFundo GET 200: /api/admin/fundos/consultorias/3401f1d8-7e55-4d1e-a8d4-aa6993f04fa8
+- Fundo GET 404: /api/admin/fundos/00000000-0000-0000-0000-000000000000
+- Cedente GET 404: /api/admin/fundos/cedentes/00000000-0000-0000-0000-000000000000
+- Custodiante GET 404: /api/admin/fundos/custodiantes/00000000-0000-0000-0000-000000000000
+- Zero 5xx, zero CORS errors, zero React invariant errors

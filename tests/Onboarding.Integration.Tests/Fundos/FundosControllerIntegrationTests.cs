@@ -800,6 +800,75 @@ public class FundosControllerIntegrationTests : IAsyncLifetime
         var errorBody = await invalidTransitionResp.Content.ReadAsStringAsync();
         errorBody.ShouldContain("transition");
     }
+
+    // =========================================================================
+    // SCENARIO B1 regression lock: GET /api/fundos/cedentes must return
+    // non-null Documento fields after CedenteRepository B1 fix (ChangeTracker.Clear).
+    //
+    // Root cause (B1): GetPagedByCompanyAsync used AsNoTracking(); ReconstructDocumento
+    // reads shadow properties via _db.Entry() which requires tracked entities.
+    // Detached entities returned NullReferenceException when Documento.Match() was called.
+    // Fix: remove AsNoTracking(), call ChangeTracker.Clear() post-reconstruction.
+    // =========================================================================
+
+    [Fact]
+    public async Task ListCedentes_AfterPfCreate_ReturnsCpfPopulated()
+    {
+        // Arrange — PJ-A creates a CedentePf via the API (persists shadow properties via repo)
+        using var client = ClientPjA();
+        const string testCpf = "52998224725";
+        var createResp = await client.PostAsJsonAsync("/api/fundos/cedentes/pf",
+            new { cpf = testCpf, nome = "Cedente B1 Regression PF" });
+        createResp.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        // Act — list cedentes; this path exercised ReconstructDocumento on detached entity (B1)
+        var listResp = await client.GetAsync("/api/fundos/cedentes");
+
+        // Assert status
+        listResp.StatusCode.ShouldBe(HttpStatusCode.OK,
+            "GET /api/fundos/cedentes must return 200 after B1 fix.");
+
+        var body = await listResp.Content.ReadFromJsonAsync<JsonElement>();
+
+        // PaginatedResult shape: { items: [...], totalCount, page, pageSize }
+        var items = body.GetProperty("items");
+        items.GetArrayLength().ShouldBeGreaterThan(0, "At least one Cedente must be returned.");
+
+        // Find the cedente we just created and assert Documento (cpf field) is populated
+        var match = Enumerable.Range(0, items.GetArrayLength())
+            .Select(i => items[i])
+            .FirstOrDefault(item =>
+                item.TryGetProperty("nome", out var n) && n.GetString() == "Cedente B1 Regression PF");
+
+        match.ValueKind.ShouldNotBe(JsonValueKind.Undefined,
+            "Created cedente must appear in list response.");
+
+        // documentoNumero = the Cpf/Cnpj value (first positional property in CedenteDto)
+        var documentoNumero = match.GetProperty("documentoNumero").GetString();
+        documentoNumero.ShouldNotBeNull(
+            "documentoNumero must be non-null — B1: Documento.Match() was throwing NRE on detached entity.");
+        documentoNumero.ShouldBe(testCpf,
+            "documentoNumero must contain the CPF stored via shadow property.");
+    }
+
+    [Fact]
+    public async Task ListCedentes_MultiTenantIsolation_PjBDoesNotSeePjARows()
+    {
+        // Arrange — PJ-A creates a cedente
+        using var clientA = ClientPjA();
+        await clientA.PostAsJsonAsync("/api/fundos/cedentes/pf",
+            new { cpf = "52998224725", nome = "Cedente Isolation PjA" });
+
+        // Act — PJ-B lists its own cedentes
+        using var clientB = ClientPjB();
+        var listResp = await clientB.GetAsync("/api/fundos/cedentes");
+
+        listResp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var body = await listResp.Content.ReadAsStringAsync();
+
+        // Assert — PJ-B must NOT see PJ-A's cedente (WHERE ClienteId = PjB's companyId via HasQueryFilter)
+        body.ShouldNotContain("Cedente Isolation PjA");
+    }
 }
 
 /// <summary>

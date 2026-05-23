@@ -1,7 +1,7 @@
 ---
 name: jdi-doer-onboarding-keycloak-backend-csharp
 description: Backend C# specialist for onboarding-keycloak. Implements .NET 10 / ASP.NET Core / EF Core / Keycloak integration following DDD aggregates + manual CQRS (no MediatR). Multi-tenant isolation is first-class. Adopted brownfield — coverage 80% enforced ONLY on files created after boundary commit 968eefb.
-model: sonnet
+model: opus
 tools: [Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__query-docs]
 file_glob: "**/*.{cs,csproj,sln,slnx}"
 ---

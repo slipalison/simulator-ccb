@@ -2,7 +2,7 @@
 
 ## Status
 adopted: true
-current_phase: 52
+current_phase: 53
 total_phases: 54
 
 ## Context
@@ -55,12 +55,14 @@ Numeracao preservada pra alinhar com `.planning/` historico. Phases pre-48 nao s
 
 ### Phase 52: Frontend Backoffice — Fundos UI (read-only)
 - **Slug:** 51-frontend-backoffice-fundos
-- **Status:** ready
+- **Status:** done (shipped 2026-05-23, verdict APPROVED clean, 3 iter / 2 rounds / 1 reset)
 - **Goal:** Backoffice admin lista/visualiza Fundo/ConsultoriaFundo/Custodiante/Cedente cross-company em read-only. Mostra nome da empresa alongside fund data. Sem create/update/delete (FRO-04).
+- **DoD G0 cumprido:** Testcontainers 13/13 backend (4 endpoints GET /{id}) + 5/5 (audit filter) + MCP runtime detail pages direct fetch + AuditEventRow entity caption + perFile coverage thresholds D-2 (94.46/90.30/93.10/95.77) + bundle 205 KB gz + CI security pipeline ativa.
+- **Carry-forward NÃO-phase-52 (pre-existing):** W-telemetry (OTel JS Phase 53 mandate), W-gitignore (cleanup futuro).
 
 ### Phase 53: Integration Tests — v8.0 Fundos end-to-end
 - **Slug:** 52-integration-tests-fundos
-- **Status:** pending
+- **Status:** ready
 - **Goal:** Testcontainers PostgreSQL real cobrindo CRUD round-trip dos 5 entity types + 3 relationship types, isolamento multi-tenant, transicoes de state machine, REL-09, deteccao de duplicatas (409).
 
 ### Phase 54: Migracao Vinxi -> Vinext (Cloudflare fork)

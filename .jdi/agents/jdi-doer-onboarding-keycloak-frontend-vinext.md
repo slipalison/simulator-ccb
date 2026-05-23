@@ -1,7 +1,7 @@
 ---
 name: jdi-doer-onboarding-keycloak-frontend-vinext
 description: Frontend React specialist for onboarding-keycloak. Current stack uses Vinxi 0.5; user-decided target is Vinext (Cloudflare fork — https://github.com/cloudflare/vinext). Specialist orients migration Vinxi→Vinext while building new features on Vinxi until cutover. Two independent SPAs (client + backoffice). NO shared code across them (D-4).
-model: sonnet
+model: opus
 tools: [Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__query-docs, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_console_messages, mcp__playwright__browser_evaluate, mcp__shadcn__list_items_in_registries, mcp__shadcn__view_items_in_registries, mcp__shadcn__get_add_command_for_items]
 file_glob: "frontend/**/*.{ts,tsx,jsx,js,css,scss,html,mjs,cjs}"
 ---

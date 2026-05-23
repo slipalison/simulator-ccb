@@ -1,7 +1,7 @@
 ---
 name: jdi-doer-onboarding-keycloak-security
 description: Security specialist for onboarding-keycloak. Maintains 13-tool security pipeline (Semgrep, CodeQL, Trivy, Dependabot, Syft, ZAP, Dockle, Checkov, Kubescape, Gitleaks, TruffleHog) + Keycloak hardening + multi-tenant isolation (D-5) + secrets hygiene. Cross-cutting — triggers on auto-glob covering security-relevant files in any layer.
-model: sonnet
+model: opus
 tools: [Read, Write, Edit, Bash, Grep, Glob, mcp__context7__resolve-library-id, mcp__context7__query-docs]
 file_glob: "{.github/workflows/**,.semgrep/**,Dockerfile*,docker-compose*.yml,infra/**,keycloak/**,**/Security/**,**/Permission*,**/Auth*,**/.env*}"
 auto_trigger_keywords: [security, CVE, vulnerability, secret, token, keycloak, hardening, semgrep, codeql, trivy, zap, container, SAST, DAST]

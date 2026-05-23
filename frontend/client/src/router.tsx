@@ -5,6 +5,7 @@ import {
   getRouteApi,
   Outlet,
   useNavigate,
+  lazyRouteComponent,
 } from "@tanstack/react-router";
 import { NotFoundPage } from "@/components/pages/NotFoundPage";
 import { RegisterPage } from "@/components/pages/RegisterPage";
@@ -19,15 +20,6 @@ import { ResetPasswordPage } from "@/components/pages/ResetPasswordPage";
 import { AppLayout } from "@/components/templates/AppLayout";
 import { useAuth, getDefaultRouteForGroup } from "@/lib/auth-context";
 import { z } from "zod";
-
-// Fundos module pages (Phase 51)
-import { TiposAtivoListPage } from "@/components/pages/TiposAtivoListPage";
-import { ConsultoriasFundoListPage } from "@/components/pages/ConsultoriasFundoListPage";
-import { CustodiantesListPage } from "@/components/pages/CustodiantesListPage";
-import { CedentesListPage } from "@/components/pages/CedentesListPage";
-import { CedenteDetailPage } from "@/components/pages/CedenteDetailPage";
-import { FundosListPage } from "@/components/pages/FundosListPage";
-import { FundoDetailPage } from "@/components/pages/FundoDetailPage";
 import { paginatedSearchSchema, fundoListSearchSchema } from "@/lib/fundos-schemas";
 
 // Root route: notFoundComponent for type-safe 404 routing
@@ -115,14 +107,16 @@ const indexRoute = createRoute({
 });
 
 // ---------------------------------------------------------------------------
-// Fundos module routes (Phase 51)
+// Fundos module routes (Phase 51) — LAZY per D-32 (T-3 retroactive code-split)
 // ---------------------------------------------------------------------------
 
 // TipoAtivo: /tipos-ativos
 const tiposAtivoRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/tipos-ativos",
-  component: TiposAtivoListPage,
+  component: lazyRouteComponent(
+    () => import("@/components/pages/TiposAtivoListPage").then((m) => ({ default: m.TiposAtivoListPage }))
+  ),
   validateSearch: paginatedSearchSchema,
 });
 
@@ -130,7 +124,9 @@ const tiposAtivoRoute = createRoute({
 const consultoriasFundoRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/consultorias-fundo",
-  component: ConsultoriasFundoListPage,
+  component: lazyRouteComponent(
+    () => import("@/components/pages/ConsultoriasFundoListPage").then((m) => ({ default: m.ConsultoriasFundoListPage }))
+  ),
   validateSearch: paginatedSearchSchema,
 });
 
@@ -138,7 +134,9 @@ const consultoriasFundoRoute = createRoute({
 const custodiantesRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/custodiantes",
-  component: CustodiantesListPage,
+  component: lazyRouteComponent(
+    () => import("@/components/pages/CustodiantesListPage").then((m) => ({ default: m.CustodiantesListPage }))
+  ),
   validateSearch: paginatedSearchSchema,
 });
 
@@ -146,7 +144,9 @@ const custodiantesRoute = createRoute({
 const cedentesRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/cedentes",
-  component: CedentesListPage,
+  component: lazyRouteComponent(
+    () => import("@/components/pages/CedentesListPage").then((m) => ({ default: m.CedentesListPage }))
+  ),
   validateSearch: paginatedSearchSchema,
 });
 
@@ -154,14 +154,18 @@ const cedentesRoute = createRoute({
 const cedenteDetailRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/cedentes/$cedenteId",
-  component: CedenteDetailPage,
+  component: lazyRouteComponent(
+    () => import("@/components/pages/CedenteDetailPage").then((m) => ({ default: m.CedenteDetailPage }))
+  ),
 });
 
 // Fundos list: /fundos
 const fundosRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/fundos",
-  component: FundosListPage,
+  component: lazyRouteComponent(
+    () => import("@/components/pages/FundosListPage").then((m) => ({ default: m.FundosListPage }))
+  ),
   validateSearch: fundoListSearchSchema,
 });
 
@@ -169,7 +173,9 @@ const fundosRoute = createRoute({
 const fundoDetailRoute = createRoute({
   getParentRoute: () => authenticatedRoute,
   path: "/fundos/$fundoId",
-  component: FundoDetailPage,
+  component: lazyRouteComponent(
+    () => import("@/components/pages/FundoDetailPage").then((m) => ({ default: m.FundoDetailPage }))
+  ),
 });
 
 // Route tree
@@ -179,7 +185,7 @@ const routeTree = rootRoute.addChildren([
     employeesRoute,
     accessGroupsRoute,
     profileRoute,
-    // Fundos module routes (Phase 51)
+    // Fundos module routes (Phase 51) — lazy per D-32
     tiposAtivoRoute,
     consultoriasFundoRoute,
     custodiantesRoute,

@@ -12,6 +12,10 @@
 //   - Dynamic import after first paint (bundle isolation)
 //   - Head sampling 10–20%
 //
+// BFE-4: FetchInstrumentation is explicitly imported and used in this file.
+// This satisfies the G2.1 grep gate requiring the literal FetchInstrumentation
+// to appear in src/lib/telemetry/index.ts.
+//
 // OTel SDK version: v2.x — API differences from v1:
 //   - Resource is an interface; use resourceFromAttributes() not new Resource()
 //   - WebTracerProvider accepts { spanProcessors: [...], resource } in constructor
@@ -77,7 +81,8 @@ function isSuppressedUrl(url: string): boolean {
   return SUPPRESS_URL_PATTERNS.some((p) => p.test(url));
 }
 
-function scrubAttributes(
+/** @internal Exported for unit testing — scrubs PII keys and large values from span attributes. */
+export function scrubAttributes(
   attrs: Record<string, string>
 ): Attributes {
   const out: Attributes = {};
@@ -94,6 +99,16 @@ function scrubAttributes(
 // Telemetry initialised flag — prevents double-init
 // ---------------------------------------------------------------------------
 let _initialised = false;
+
+/**
+ * Reset the initialised flag for testing purposes.
+ * NEVER call this in production code.
+ * Exported so unit tests can reset state between test cases without
+ * vi.resetModules() (which breaks v8 coverage attribution — BFE-1 fix).
+ */
+export function _resetInitialisedForTesting(): void {
+  _initialised = false;
+}
 
 // ---------------------------------------------------------------------------
 // initAdminTelemetry
@@ -125,10 +140,16 @@ export async function initAdminTelemetry(sessionId: string): Promise<void> {
   // W3C Trace Context propagator — NEVER B3 or Jaeger
   provider.register({ propagator: new W3CTraceContextPropagator() });
 
+  // BFE-3: Register Web Vitals observers after SDK is ready.
+  // Imported inline (module is already resolved in this async context).
+  const { registerWebVitals } = await import("./web-vitals");
+  registerWebVitals();
+
   registerInstrumentations({
     instrumentations: [
       new DocumentLoadInstrumentation(),
 
+      // FetchInstrumentation — explicit instance (BFE-4: G2.1 literal requirement)
       new FetchInstrumentation({
         // ONLY forward traceparent to allowlisted admin API origins
         propagateTraceHeaderCorsUrls: ALLOWED_BACKEND_URLS,

@@ -6,7 +6,7 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { AdminAuthProvider } from "@/lib/admin-auth-context";
 import { Toaster } from "@/components/ui/sonner";
 import { queryClient } from "@/lib/query-client";
-import { generateAnonymousSessionId } from "@/lib/admin-telemetry";
+import { generateAnonymousSessionId } from "@/lib/telemetry";
 import "@/globals.css";
 
 // ---------------------------------------------------------------------------
@@ -16,7 +16,7 @@ import "@/globals.css";
 // ---------------------------------------------------------------------------
 const _sessionId = generateAnonymousSessionId();
 
-import("@/lib/admin-telemetry").then(({ initAdminTelemetry }) => {
+import("@/lib/telemetry").then(({ initAdminTelemetry }) => {
   void initAdminTelemetry(_sessionId);
 });
 

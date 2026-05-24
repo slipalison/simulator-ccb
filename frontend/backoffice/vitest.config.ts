@@ -37,8 +37,8 @@ export default defineConfig({
         'src/lib/admin-fundos-api.ts',
         'src/lib/admin-companies-api.ts',
         'src/lib/query-client.ts',
-        // Phase 53 — T-7: OTel backoffice telemetry
-        'src/lib/admin-telemetry.ts',
+        // Phase 52 — T-7: OTel backoffice telemetry (BFE-2: moved to telemetry/index.ts)
+        'src/lib/telemetry/index.ts',
         // Atoms
         'src/components/atoms/AuditEventRow.tsx',
         // Molecules — Phase 52 new

@@ -302,4 +302,62 @@ public sealed class AdminFundosByIdIntegrationTests : PostgreSqlIntegrationTestB
         var resp = await client.GetAsync($"/api/admin/fundos/{Guid.NewGuid()}");
         ((int)resp.StatusCode).ShouldBeOneOf(401, 403);
     }
+
+    // =========================================================================
+    // SCENARIO 8: Admin list endpoints — drives AdminFundosController list bodies (B5-iter5)
+    //
+    // 5 list endpoints were uncovered because no integration test reached their handler bodies.
+    // These tests exercise ListFundos, ListCustodiantes, ListCedentes, ListFundoTiposAtivos,
+    // ListCedenteTiposAtivos — completing AdminFundosController coverage to ≥80%.
+    // =========================================================================
+
+    [Fact]
+    public async Task AdminListFundos_AuthenticatedAdmin_Returns200()
+    {
+        using var admin = ClientAdmin();
+        var resp = await admin.GetAsync("/api/admin/fundos?page=1&pageSize=10");
+        resp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("totalCount").GetInt32().ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task AdminListCustodiantes_AuthenticatedAdmin_Returns200()
+    {
+        using var admin = ClientAdmin();
+        var resp = await admin.GetAsync("/api/admin/fundos/custodiantes?page=1&pageSize=10");
+        resp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("totalCount").GetInt32().ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task AdminListCedentes_AuthenticatedAdmin_Returns200()
+    {
+        using var admin = ClientAdmin();
+        var resp = await admin.GetAsync("/api/admin/fundos/cedentes?page=1&pageSize=10");
+        resp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("totalCount").GetInt32().ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task AdminListFundoTiposAtivos_AuthenticatedAdmin_Returns200()
+    {
+        using var admin = ClientAdmin();
+        var resp = await admin.GetAsync("/api/admin/fundos/fundo-tipos-ativos?page=1&pageSize=10");
+        resp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("totalCount").GetInt32().ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    [Fact]
+    public async Task AdminListCedenteTiposAtivos_AuthenticatedAdmin_Returns200()
+    {
+        using var admin = ClientAdmin();
+        var resp = await admin.GetAsync("/api/admin/fundos/cedente-tipos-ativos?page=1&pageSize=10");
+        resp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var body = await resp.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("totalCount").GetInt32().ShouldBeGreaterThanOrEqualTo(0);
+    }
 }

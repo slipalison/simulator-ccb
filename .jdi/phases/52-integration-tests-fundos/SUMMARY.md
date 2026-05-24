@@ -456,3 +456,68 @@ before any projection. Only current-company records are ever materialised client
 | Full suite | 150 + 481 + 187 + 378 = **1196 pass**, 4 pre-existing API.Tests skips |
 | `ListConsultorias_SearchByName_FiltersResults` | PASS |
 | `ListCustodiantes_SearchByName_FiltersResults` | PASS |
+
+---
+
+## Iter 6 fix (round 2 iter 1) — B5-iter5 coverage gap (4 files below 80%)
+
+### Root cause
+
+Integration.Tests coverlet (measured for the first time in iter 5) revealed that concrete handler
+bodies for the three GET-list query handlers and five AdminFundosController list actions were
+never executed. All prior integration tests for those endpoints returned 401 (unauthenticated) or
+404 (cross-tenant) before the handler was dispatched. API.Tests measured coverage via NSubstitute
+mocks — the concrete handler body was never called.
+
+### Fix A — 3 association GET-list happy-path tests (commit `7a67c64`)
+
+Files modified:
+- `tests/Onboarding.Integration.Tests/Fundos/FundoCedenteAssociationIntegrationTests.cs`
+- `tests/Onboarding.Integration.Tests/Fundos/FundoTipoAtivoAssociationIntegrationTests.cs`
+- `tests/Onboarding.Integration.Tests/Fundos/CedenteTipoAtivoAssociationIntegrationTests.cs`
+
+One test added per file immediately before the JSON DTO section:
+
+| Test | Handler exercised | Route |
+|---|---|---|
+| `FundoCedente_GetList_AuthenticatedPjA_Returns200` | `GetFundoCedentesQueryHandler` | `GET /api/fundos/{_fundoAId}/cedentes` |
+| `FundoTipoAtivo_GetList_AuthenticatedPjA_Returns200` | `GetFundoTiposAtivosQueryHandler` | `GET /api/fundos/{_fundoAId}/tipos-ativos` |
+| `CedenteTipoAtivo_GetList_AuthenticatedPjA_Returns200` | `GetCedenteTiposAtivosQueryHandler` | `GET /api/cedentes/{_cedenteAId}/tipos-ativos` |
+
+Each test uses the existing `ClientPjA()` helper and the pre-seeded `_fundoAId` / `_cedenteAId`
+fixture IDs, asserting `200 OK` + `totalCount >= 0`. No new fixture data needed — the handlers
+correctly return an empty page when no associations exist.
+
+### Fix B — 5 admin list endpoint tests (commit `0474d0e`)
+
+File modified:
+- `tests/Onboarding.Integration.Tests/Admin/AdminFundosByIdIntegrationTests.cs`
+
+Five tests appended after the existing SCENARIO 7 block (same file — YAGNI, no new file):
+
+| Test | Controller action | Route |
+|---|---|---|
+| `AdminListFundos_AuthenticatedAdmin_Returns200` | `ListFundos` | `GET /api/admin/fundos?page=1&pageSize=10` |
+| `AdminListCustodiantes_AuthenticatedAdmin_Returns200` | `ListCustodiantes` | `GET /api/admin/fundos/custodiantes?page=1&pageSize=10` |
+| `AdminListCedentes_AuthenticatedAdmin_Returns200` | `ListCedentes` | `GET /api/admin/fundos/cedentes?page=1&pageSize=10` |
+| `AdminListFundoTiposAtivos_AuthenticatedAdmin_Returns200` | `ListFundoTiposAtivos` | `GET /api/admin/fundos/fundo-tipos-ativos?page=1&pageSize=10` |
+| `AdminListCedenteTiposAtivos_AuthenticatedAdmin_Returns200` | `ListCedenteTiposAtivos` | `GET /api/admin/fundos/cedente-tipos-ativos?page=1&pageSize=10` |
+
+Each test uses the existing `ClientAdmin()` helper (BearerBackoffice JWT), asserting `200 OK`
++ `totalCount >= 0`. No seed data mutations — admin endpoints return cross-company pages that
+are empty or populated depending on prior test run state; `>= 0` is the correct invariant.
+
+### Expected coverage delta
+
+| File | Before | After (expected) | Notes |
+|---|---|---|---|
+| `GetFundoCedentesQueryHandler.cs` | 22.2% (4/18) | ≥80% | HandleAsync body now reachable |
+| `GetFundoTiposAtivosQueryHandler.cs` | 22.2% (4/18) | ≥80% | HandleAsync body now reachable |
+| `GetCedenteTiposAtivosQueryHandler.cs` | 22.2% (4/18) | ≥80% | HandleAsync body now reachable |
+| `AdminFundosController.cs` | 67.1% (102/152) | ≥80% | 5 previously-uncovered list bodies now exercised |
+
+### Test count delta
+
+- Before: 1196 pass (1009 unit + 187 integration), 4 pre-existing skips.
+- After: 1204 pass (1009 unit + 195 integration), 4 pre-existing skips.
+- New tests: 8 (Fix A: 3, Fix B: 5).

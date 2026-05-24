@@ -866,3 +866,307 @@ No new G1 gaps introduced by iter 2 commits.
 - Semgrep: .jdi/cache/phase-52-security-iter2-semgrep.json (0 findings, 5 rules, 801 files, exit 0)
 - Trivy FS: .jdi/cache/phase-52-security-iter2-trivy-fs.json (tool unavailable -- CI required)
 - Gitleaks: .jdi/cache/phase-52-security-iter2-gitleaks.json (binary unavailable; manual diff scan: 0 new production secrets)
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-backend-csharp (iter 3)
+
+**Verdict:** BLOCKED
+
+---
+
+### Gates
+
+- [G1 Multi-tenant isolation] PASS
+- [G2 Endpoint AuthZ + audit] PASS
+- [G3 Secret + raw SQL] PASS
+- [G4 Telemetry] WARN (pre-existing carry-forward)
+- [G5 Performance hygiene] PASS
+- [G6 Index coverage] PASS
+- [G7 Build] PASS (0 errors, 0 warnings)
+- [G8 Lint] PASS (dotnet format exits 0)
+- [G9 DDD/Design] PASS
+- [G10 Tests] FAIL - BLOCKER (2 integration tests still failing - B3-iter3)
+- [G11 Coverage] FAIL (3 new files below 80% - tooling gap)
+- [G12 Playwright regression] PASS
+- [G13 Static scans] Not run (advisory)
+
+---
+
+### Blockers
+
+#### B3-iter3 -- G10: EF.Property uses column name not C# property name (2 tests still failing)
+
+Files:
+- src/Onboarding.Infrastructure/Repositories/ConsultoriaFundoRepository.cs:63
+- src/Onboarding.Infrastructure/Repositories/CustodianteRepository.cs:62
+
+Root cause: Iter 3 used EF.Property<string>(c, "cnpj") where "cnpj" is the HasColumnName snake_case value. EF.Property requires the C# property name. The runtime exception confirms: "property does not exist on the entity type." Even correcting the casing to "Cnpj" will fail because the C# property is typed as Cnpj (value object), not string. EF.Property<string> cannot bridge the HasConversion gap in EF Core 10 LINQ-to-SQL for ILike expressions.
+
+Evidence: ListConsultorias_SearchByName_FiltersResults and ListCustodiantes_SearchByName_FiltersResults both return HTTP 500. Exception at CountAsync (ConsultoriaFundoRepository.cs:66 and CustodianteRepository.cs analogue).
+
+Fix (shadow property approach):
+
+In ConsultoriaFundoConfiguration.Configure():
+  builder.Property<string>("CnpjRaw").HasColumnName("cnpj").HasMaxLength(14).IsRequired();
+
+In ConsultoriaFundoRepository.cs:63:
+  (digitsOnly.Length > 0 && EF.Functions.ILike(EF.Property<string>(c, "CnpjRaw"), "%" + digitsOnly + "%"))
+
+Apply identically to CustodianteConfiguration.cs and CustodianteRepository.cs:62.
+
+EF Core allows multiple property mappings to the same column when only one participates in constraints/indexes. The existing Cnpj value-object property retains all uniqueness constraints; CnpjRaw is a read-only shadow property used only for ILike search translation.
+
+#### G11-iter3 -- Coverage tooling gap (3 new files below 80% in available report)
+
+Files: JanelaVigencia.cs (57.89%), LimiteExposicao.cs (45.16%), DuplicateActiveAssociationException.cs (71.42%)
+
+Root cause: Onboarding.Domain.Tests lacks coverlet.msbuild. The dedicated domain unit tests (JanelaVigenciaTests.cs 127 lines, LimiteExposicaoTests.cs 141 lines, LimiteExposicaoPercentualTests.cs 80 lines) all pass but do not produce Cobertura XML. The only available coverage report is from API.Tests (coverlet.msbuild present), which exercises these value objects only through WebApplicationFactory-based handler tests.
+
+Fix: Add coverlet.msbuild to tests/Onboarding.Domain.Tests/Onboarding.Domain.Tests.csproj and re-run coverage. All 3 files are expected to reach >= 80% when Domain.Tests contributes.
+
+---
+
+### Progress vs iter 2
+
+| Blocker | Iter 2 | Iter 3 |
+|---|---|---|
+| B1-iter2: 4 unit tests missing fundoRepo mock stub | FAIL (4 tests) | RESOLVED -- 5 TransitionFundoStatus tests pass |
+| B2-iter2: 3 invalid CPF seeds in T-4 InitializeAsync | FAIL (30 tests) | RESOLVED -- 44 T-4 association tests pass (16+14+14) |
+| B3-iter2: EF.Property CNPJ search translation | FAIL (2 tests) | STILL FAILING (2 tests) -- column name vs property name mistake |
+
+---
+
+### Test Summary (iter 3)
+
+| Suite | Total | Pass | Fail | Root cause |
+|---|---|---|---|---|
+| Domain.Tests | 478 | 478 | 0 | clean |
+| Application.Tests | 150 | 150 | 0 | clean |
+| API.Tests | 382 | 378 | 0 | 4 pre-existing skips |
+| Integration.Tests | 187 | 185 | 2 | B3-iter3: EF.Property("cnpj") wrong key |
+| TOTAL | 1197 | 1191 | 2 | 1 blocker |
+
+Target: 1197/1197 pass, 0 fail. Current: 1191 pass, 2 fail.
+
+---
+
+### Coverage gaps (new files -- iter 3)
+
+Coverage from API.Tests (coverlet.msbuild). Domain.Tests lacks coverlet.
+
+| File | Coverage | Required | Status | Notes |
+|---|---|---|---|---|
+| JanelaVigencia.cs | 57.89% (22/38) | 80% | FAIL | Dedicated tests in Domain.Tests; tooling gap |
+| LimiteExposicao.cs | 45.16% (28/62) | 80% | FAIL | Dedicated tests in Domain.Tests; tooling gap |
+| DuplicateActiveAssociationException.cs | 71.42% (10/14) | 80% | FAIL | Partially covered via aggregate tests |
+| FundoCedenteAggregate.cs | 91.04% | 80% | PASS | |
+| CedenteTipoAtivoAggregate.cs | 91.04% | 80% | PASS | |
+| FundoTipoAtivoAggregate.cs | 91.04% | 80% | PASS | |
+| TransitionFundoStatusCommandHandler.cs | 100% | 80% | PASS | B1-iter2 resolved |
+| All Create/Transition/Update handlers | >=94% | 80% | PASS | T-4 now executes |
+| Infrastructure repos | exempt | -- | -- | [ExcludeFromCodeCoverage] |
+
+---
+
+### Regression captures (iter 3)
+
+- GET http://localhost:8080/healthz/live -> 200 Healthy (MCP verified)
+- GET http://localhost:8080/api/fundos (no token) -> 401 (MCP verified)
+- GET http://localhost:8080/api/fundos (bad token) -> 401 (MCP verified)
+- GET http://localhost:8080/api/fundos/consultorias (no token) -> 401 (MCP verified)
+- GET http://localhost:8080/api/fundos/custodiantes (no token) -> 401 (MCP verified)
+- GET http://localhost:8080/api/fundos/tipos-ativo (no token) -> 401 (MCP verified)
+- POST http://localhost:8080/api/fundos/{id}/status (no token) -> 401 (MCP verified)
+- POST http://localhost:8080/api/fundos/{id}/status (bad token) -> 401 (MCP verified)
+- Jaeger UI: http://localhost:16686 -> 200 (MCP verified, 6 services)
+- Screenshot: .jdi/cache/phase-52-backend-iter3-health.png
+- Screenshot: .jdi/cache/phase-52-backend-iter3-jaeger.png
+- Console errors: 0
+
+---
+
+### Warnings (carry-forward from iter 2)
+
+- W1 -- G4: PII scrubber class name (SensitiveDataDestructuringPolicy vs PiiScrubber) -- pre-existing.
+- W2 -- G4: TenantBaggageMiddleware not wired -- pre-existing.
+- W3 -- G4: TelemetryCommandHandlerDecorator not registered -- pre-existing.
+- W4 -- G12: run-uat.mjs targets /api/registration (legacy route) -- pre-existing.
+
+---
+
+### Required fixes before re-verify (iter 4)
+
+1. B3-iter3 (BLOCKING -- G10, 2 tests):
+   - Add builder.Property<string>("CnpjRaw").HasColumnName("cnpj").HasMaxLength(14).IsRequired() to ConsultoriaFundoConfiguration.cs and CustodianteConfiguration.cs.
+   - Replace EF.Property<string>(c, "cnpj") with EF.Property<string>(c, "CnpjRaw") in ConsultoriaFundoRepository.cs:63 and CustodianteRepository.cs:62.
+   - Validate: ListConsultorias_SearchByName_FiltersResults and ListCustodiantes_SearchByName_FiltersResults return 200 OK.
+
+2. G11-iter3 (BLOCKING -- 3 files below 80%):
+   - Add coverlet.msbuild package to tests/Onboarding.Domain.Tests/Onboarding.Domain.Tests.csproj.
+   - Re-run dotnet test --collect:"XPlat Code Coverage" and confirm JanelaVigencia, LimiteExposicao, DuplicateActiveAssociationException all reach >= 80%.
+
+After both fixes: dotnet test targeting 0 fail (1197/1197 pass), coverage >= 80% all new files, then /jdi-verify iter 4.
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-frontend-vinext (iter 3)
+
+**Verdict:** APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+- [G1 Security frontend] PASS -- no token storage violations; no dangerouslySetInnerHTML in source; no secrets in bundle; no cross-SPA imports (D-4 clean)
+- [G2 Telemetry (OTel JS + W3C)] PASS -- src/lib/telemetry/ directory + index.ts present both SPAs; web-vitals.ts present both SPAs (BFE-3 resolved); FetchInstrumentation literal present both SPAs (BFE-4 resolved); WebTracerProvider, BatchSpanProcessor, OTLPTraceExporter, W3CTraceContextPropagator all present both SPAs; propagateTraceHeaderCorsUrls allowlist present both SPAs; ignoreUrls covers auth/keycloak/well-known both SPAs; PII_REGEX/scrub present both SPAs; no B3/Jaeger propagators; no wildcard allowlist
+- [G3 Perf + bundle] PASS -- client 210.06 KB gz; backoffice 205.75 KB gz (gate 300 KB both pass)
+- [G4 Build] PASS -- client build clean (5.37s); backoffice build clean (4.48s); 0 errors both SPAs; WFE-2 Vite double-import warning in backoffice persists (carry-forward, pre-existing)
+- [G5 Typecheck+Lint] PASS -- tsc --noEmit exit 0 both SPAs; eslint --max-warnings 0 exit 0 both SPAs
+- [G6 Code-design] WARN -- WFE-1/WFE-2/WFE-3/WFE-4 carry-forward; no new violations from BFE-5 commits
+- [G7 Coverage] PASS -- all 3 BFE-5 files now >=80%; client web-vitals.ts 100% L/F; backoffice web-vitals.ts 100% L/F; backoffice use-admin-list-search.ts 100% L/F/B; all other D-2 included files >=80% (client aggregate 96.3% stmts / 85.35% branch; backoffice 47 files 453 tests 0 failures exit 0); pre-existing test failures in registration-form + profile-page (4 files, 15 tests) are pre-boundary (committed before 968eefb in Feat/client portal PR 3f238ea) -- not in D-2 coverage include list
+- [G8 Playwright client] PASS -- HTTP 200 at :5173; fundos route renders ("Nenhum fundo encontrado" expected without auth); ACF+PKCE redirect chain confirmed (code_challenge_method=S256, client realm); auth guard active (401 on /auth/me before authentication); no 5xx; no new application-level console errors
+- [G9 Playwright backoffice] PASS -- HTTP 200 at :5174; /admin/login renders Admin Backoffice login page; ACF+PKCE redirect confirmed (code_challenge_method=S256, backoffice realm, custom Keycloak theme "Sign in to Backoffice"); auth guard redirects /admin/companies and /admin/fundos to /admin/login; no 5xx; no CORS errors; no cross-SPA code refs
+- [G10 Accessibility] ADVISORY -- carry-forward pre-existing: client button-name (TanStack devtools); backoffice landmark/heading on login page; no keyboard traps; no new violations from BFE-5 commits
+- [G11 Vinext debt] PASS -- no new Vinxi imports in phase 52 BFE-5 commits; web-vitals.ts and use-admin-list-search.ts use no Vinxi APIs
+
+---
+
+### BFE-5 Resolution Verification
+
+#### BFE-5a -- client web-vitals.ts coverage: RESOLVED
+
+- frontend/client/vitest.config.ts: src/lib/telemetry/web-vitals.ts in coverage include array -- CONFIRMED
+- frontend/client/src/tests/lib/web-vitals.test.ts: 16 tests, all pass
+- Coverage: Lines 8/8 = 100%, Functions 2/2 = 100%, Branches 0/0 (no branches in file)
+- Commits: b22bed3
+
+#### BFE-5b -- backoffice web-vitals.ts coverage: RESOLVED
+
+- frontend/backoffice/vitest.config.ts: src/lib/telemetry/web-vitals.ts in coverage include array -- CONFIRMED
+- frontend/backoffice/src/tests/lib/web-vitals.test.ts: 16 tests, all pass
+- Coverage: Lines 8/8 = 100%, Functions 2/2 = 100%, Branches 0/0
+- Commits: ba88a1c
+
+#### BFE-5c -- backoffice use-admin-list-search.ts coverage: RESOLVED
+
+- frontend/backoffice/vitest.config.ts: src/lib/use-admin-list-search.ts in coverage include array -- CONFIRMED
+- frontend/backoffice/src/tests/lib/use-admin-list-search.test.tsx: 13 tests, all pass
+- Coverage: Lines 6/6 = 100%, Functions 4/4 = 100%, Branches 2/2 = 100%
+- Commits: d4332d8
+
+---
+
+### New test count (BFE-5 commits b22bed3 + ba88a1c + d4332d8)
+
+| File | Tests | Result |
+|---|---|---|
+| client/src/tests/lib/web-vitals.test.ts | 16 | all pass |
+| backoffice/src/tests/lib/web-vitals.test.ts | 16 | all pass |
+| backoffice/src/tests/lib/use-admin-list-search.test.tsx | 13 | all pass |
+| **Total new** | **45** | **all pass** |
+
+---
+
+### Coverage gaps (D-2 boundary files, iter 3)
+
+| File | Stmts | Branch | Funcs | Lines | Gate |
+|---|---|---|---|---|---|
+| client/src/lib/telemetry/index.ts | 96.96% | 80.64% | 83.33% | 96.66% | PASS |
+| client/src/lib/telemetry/web-vitals.ts | 100% | N/A | 100% | 100% | PASS (BFE-5a resolved) |
+| backoffice/src/lib/telemetry/index.ts | 100% | 96.55% | 100% | 100% | PASS |
+| backoffice/src/lib/telemetry/web-vitals.ts | 100% | N/A | 100% | 100% | PASS (BFE-5b resolved) |
+| backoffice/src/lib/use-admin-list-search.ts | 100% | 100% | 100% | 100% | PASS (BFE-5c resolved) |
+| All other D-2 included files | All >=80% | All >=80% | All >=80% | All >=80% | PASS |
+
+Aggregate client (excluding pre-existing failures): 96.3% stmts / 85.35% branch / 97.19% funcs / 97.12% lines.
+Aggregate backoffice: 453/453 tests pass, exit 0, all thresholds pass.
+
+---
+
+### Warnings (carry-forward)
+
+- WFE-1: initAdminTelemetry fires after React render in backoffice main.tsx (dynamic import post-createRoot). Pre-existing.
+- WFE-2: Double-import of telemetry/index.ts in backoffice main.tsx. Vite warns: dynamic import will not chunk-split. Pre-existing.
+- WFE-3: pt-BR string in client main.tsx. Pre-existing, not phase-52.
+- WFE-4: VITE_OTEL_ENABLED absent from compose.yaml. OTel inactive in compose stack. Positive traceparent test skips. Pre-existing.
+
+---
+
+### Regression captures
+
+- Client fundos route: .jdi/cache/phase-52-frontend-iter3-client-fundos.png
+- Client Keycloak ACF+PKCE: .jdi/cache/phase-52-frontend-iter3-client-keycloak-login.png
+- Backoffice route guard: .jdi/cache/phase-52-frontend-iter3-backoffice-home.png
+- Backoffice Keycloak custom theme: .jdi/cache/phase-52-frontend-iter3-backoffice-keycloak-login.png
+- Client network: .jdi/cache/phase-52-frontend-iter3-client-network.json
+- Backoffice network: .jdi/cache/phase-52-frontend-iter3-backoffice-network.json
+- Console errors client (app-level): 0 (401/403 from API + Vite HMR WebSocket are pre-existing infrastructure artefacts)
+- Console errors backoffice (app-level): 0 (same artefacts)
+- No 5xx observed on either SPA
+
+---
+
+### DoD G0 OTel JS checklist (final)
+
+| Item | Iter 2 | Iter 3 | Evidence |
+|---|---|---|---|
+| src/lib/telemetry/ composition root both SPAs | PASS | PASS | Directory + index.ts at correct path both SPAs |
+| web-vitals.ts adapter both SPAs | PASS (file) | PASS | Both SPAs: registerWebVitals wires onCLS/onINP/onLCP/onFCP/onTTFB; 100% coverage |
+| FetchInstrumentation literal client | PASS | PASS | Client: explicit literal present in telemetry/index.ts |
+| backoffice telemetry coverage >= 80% | PASS | PASS | 100% stmts / 96.55% branch |
+| web-vitals.ts coverage >= 80% both SPAs | FAIL BFE-5 | PASS | 100% both SPAs |
+| use-admin-list-search.ts coverage >= 80% | FAIL BFE-5 | PASS | 100% all metrics |
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-security (iter 3)
+
+**Verdict:** APPROVED_WITH_WARNINGS
+
+---
+
+### Scope
+
+Minimal re-verify. Iter 3 commits touch: unit test mock stubs (e29798e), CPF seed fixes (33df07d), EF.Property CNPJ search (54ec103), frontend coverage tests (b22bed3/ba88a1c/d4332d8). No production auth, no Keycloak config, no compose, no appsettings changes.
+
+---
+
+### Gates
+
+- [G1 Multi-tenant filter] PASS -- No change to EF configurations or HasQueryFilter registrations. Tenant guard at FundosController.cs:760 (SEC-B1 fix from iter 2) still in place. Search queries in ConsultoriaFundoRepository and CustodianteRepository use IgnoreQueryFilters() but are scoped by explicit `.Where(c => c.ClienteId == companyId)` predicate -- no cross-tenant data leak possible even if ILike clause throws HTTP 500. All 5 ClienteId guard assertions confirmed at FundosController lines 263, 404, 681, 760, 933.
+- [G2 Permission policy coverage] PASS -- No new controllers or HTTP endpoints introduced. Carry-forward from iter 2: all endpoints authorized.
+- [G3 Secrets + env hygiene] PASS -- New test files (web-vitals.test.ts x2, use-admin-list-search.test.tsx, FundoCedenteAssociationIntegrationTests.cs, CedenteTipoAtivoAssociationIntegrationTests.cs, FundosControllerTests.cs) contain no production credentials. PII pattern literals in web-vitals tests (`/(email|sub|cpf|cnpj|token|password|authorization|user)/i`) are test assertions for PII scrubbing logic, not secrets. CPF seeds use GenerateCpf(9001/9002/9003) -- deterministic algorithmic generation, not real CPFs. No appsettings.json, compose.yaml, or Keycloak realm changes.
+- [G4 Semgrep] PASS -- 0 ERROR findings, 0 WARNING findings. 5 rules, 804 files scanned, exit 0. Artifact: .jdi/cache/phase-52-security-iter3-semgrep.json.
+- [G5 Trivy FS + container] ADVISORY -- trivy binary not installed on host. No Dockerfile changes in iter 3. No new container images. Carry-forward SEC-W4.
+- [G6 Keycloak hardening drift] PASS -- No Keycloak realm exports changed in iter 3. Carry-forward from iter 2.
+- [G7 Security headers + CSP] PASS (code-only carry-forward) -- No changes to Program.cs CORS config or OTel collector CORS config. Exact-origin allowlist unchanged.
+- [G8 Dependabot] NOT RUN -- gh CLI not available on host.
+- [G9 Audit log] PASS -- No new mutation commands introduced in iter 3 commits. Carry-forward from iter 2: all 41 mutation handlers confirmed with ActorSub capture.
+
+---
+
+### Blockers
+
+None. No new security issues introduced by iter 3 commits.
+
+---
+
+### Security note on B3-iter3 (EF.Property column name)
+
+The backend reviewer flags B3-iter3 as a functional blocker: `EF.Property<string>(c, "cnpj")` uses the column name instead of the C# property or a shadow-property key, which may still fail EF Core 10 translation at runtime. From a security standpoint this is NOT a concern: the search query is already tenant-scoped via `.Where(c => c.ClienteId == companyId)` before the ILike predicate is evaluated. An exception in the ILike clause produces HTTP 500 (no data returned), which is fail-safe from an isolation standpoint. The fix is a functional correctness issue only; it does not create a data leak path.
+
+---
+
+### Warnings (carry-forward from iter 2 -- unchanged)
+
+- SEC-W1 -- G5: OTel + Jaeger images use :latest tag in compose.yaml. Dev-only; pin before production.
+- SEC-W2 -- G3 legacy: Dev secrets in Keycloak realm exports and appsettings.json. Pre-existing at D-2 boundary.
+- SEC-W3 -- G3: E2E test passwords hardcoded in Playwright spec files. Pattern matches pre-existing specs. Use process.env.E2E_*_PASSWORD.
+- SEC-W4 -- G5: Trivy binary unavailable. CI scan required before ship.
+- SEC-W5 -- G7: VITE_OTEL_ENABLED absent from compose.yaml; positive traceparent test always skips.
+- SEC-W6 -- OTel collector: db.statement not in key-drop list.
+- SEC-W7 -- G6: ROPC enabled on onboarding-app (directAccessGrantsEnabled=true). Pre-existing at D-2 boundary; ACF+PKCE is active flow.
+- SEC-W7b -- G6: Password policy length(8), not length(12). Pre-existing; tighten in hardening phase.
+
+---
+
+### Pipeline artifacts
+
+- Semgrep: .jdi/cache/phase-52-security-iter3-semgrep.json (0 findings, 5 rules, 804 files, exit 0)
+- Trivy FS: not run (binary unavailable on host -- CI required)
+- Gitleaks: not run (binary unavailable on host); manual diff confirms 0 new production secrets in iter 3 diff

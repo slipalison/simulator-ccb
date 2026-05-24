@@ -59,7 +59,7 @@ public sealed class CustodianteRepository : ICustodianteRepository
 
             query = query.Where(c =>
                 EF.Functions.ILike(c.RazaoSocial, $"%{normalized}%") ||
-                (digitsOnly.Length > 0 && c.Cnpj.Value.Contains(digitsOnly)));
+                (digitsOnly.Length > 0 && EF.Functions.ILike(c.Cnpj.Value, "%" + digitsOnly + "%")));
         }
 
         var totalCount = await query.CountAsync(ct);

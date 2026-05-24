@@ -39,6 +39,8 @@ export default defineConfig({
         'src/lib/query-client.ts',
         // Phase 52 — T-7: OTel backoffice telemetry (BFE-2: moved to telemetry/index.ts)
         'src/lib/telemetry/index.ts',
+        'src/lib/telemetry/web-vitals.ts',
+        'src/lib/use-admin-list-search.ts',
         // Atoms
         'src/components/atoms/AuditEventRow.tsx',
         // Molecules — Phase 52 new

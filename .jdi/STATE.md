@@ -9,12 +9,12 @@ specialists:
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
 current_phase: vinxi-to-vinext-migration
 current_phase_slug: vinxi-to-vinext-migration
-phase_status: planned
-phase_verdict: pending
+phase_status: paused
+phase_verdict: BLOCKED
 prior_phase_slug: integration-tests-fundos
 prior_phase_verdict: APPROVED_WITH_WARNINGS
 prior_phase_shipped_at: 2026-05-24
 decisions_locked: D-38..D-42
 plan_tasks: 8
 plan_waves: 6
-next_step: /jdi-do vinxi-to-vinext-migration
+next_step: revise PLAN.md + CONTEXT.md (Vinext = re-platform, not drop-in; D-39 conflict needs resolution); re-run /jdi-loop vinxi-to-vinext-migration after revision

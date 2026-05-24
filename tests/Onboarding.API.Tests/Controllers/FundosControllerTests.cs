@@ -1027,6 +1027,8 @@ public class FundosControllerTests
     public async Task TransitionFundoStatus_RascunhoToAtivo_ValidTransition_Returns200()
     {
         // RASCUNHO → ATIVO is a valid transition per state machine (D-02)
+        _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(BuildFundo());
+
         _transitionFundoStatusValidator
             .ValidateAsync(Arg.Any<TransitionFundoStatusCommand>(), Arg.Any<CancellationToken>())
             .Returns(ValidResult());
@@ -1048,6 +1050,8 @@ public class FundosControllerTests
     public async Task TransitionFundoStatus_EncerradoToAtivo_InvalidTransition_Returns400WithFromToDetail()
     {
         // ENCERRADO → ATIVO is an invalid transition — domain throws InvalidStateTransitionException
+        _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(BuildFundo());
+
         _transitionFundoStatusValidator
             .ValidateAsync(Arg.Any<TransitionFundoStatusCommand>(), Arg.Any<CancellationToken>())
             .Returns(ValidResult());
@@ -1070,6 +1074,7 @@ public class FundosControllerTests
     [Fact]
     public async Task TransitionFundoStatus_FundoNotFound_Returns404()
     {
+        // _fundoRepo.GetByIdAsync returns null by default (NSubstitute) — controller returns NotFound() bare.
         _transitionFundoStatusValidator
             .ValidateAsync(Arg.Any<TransitionFundoStatusCommand>(), Arg.Any<CancellationToken>())
             .Returns(ValidResult());
@@ -1080,12 +1085,15 @@ public class FundosControllerTests
         var request = new TransitionFundoStatusRequest(FundoStatus.ATIVO);
         var result = await _sut.TransitionFundoStatus(FundoId, request, CancellationToken.None);
 
-        result.ShouldBeOfType<NotFoundObjectResult>();
+        // Controller uses bare return NotFound() (no body) — NotFoundResult, not NotFoundObjectResult.
+        result.ShouldBeOfType<NotFoundResult>();
     }
 
     [Fact]
     public async Task TransitionFundoStatus_CapturesActorFromJwt()
     {
+        _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(BuildFundo());
+
         _transitionFundoStatusValidator
             .ValidateAsync(Arg.Any<TransitionFundoStatusCommand>(), Arg.Any<CancellationToken>())
             .Returns(ValidResult());

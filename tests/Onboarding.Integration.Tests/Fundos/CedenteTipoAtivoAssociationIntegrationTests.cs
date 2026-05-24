@@ -104,13 +104,13 @@ public sealed class CedenteTipoAtivoAssociationIntegrationTests : PostgreSqlInte
     private static async Task SeedAsync(AppDbContext db, IServiceProvider services)
     {
         var companyA = Company.Register(
-            "CTA Alpha Ltda", "66444222000166",
+            "CTA Alpha Ltda", "66444222000101",
             "cta.alpha@test.com", "+5511000000021",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "10.0.1.1"));
         companyA.SetKeycloakUserId(SubPjA);
 
         var companyB = Company.Register(
-            "CTA Beta S.A.", "77555333000177",
+            "CTA Beta S.A.", "77555333000101",
             "cta.beta@test.com", "+5511000000022",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "10.0.1.2"));
         companyB.SetKeycloakUserId(SubPjB);

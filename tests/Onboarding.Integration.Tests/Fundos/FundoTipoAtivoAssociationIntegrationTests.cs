@@ -107,13 +107,13 @@ public sealed class FundoTipoAtivoAssociationIntegrationTests : PostgreSqlIntegr
     private static async Task SeedAsync(AppDbContext db, IServiceProvider services)
     {
         var companyA = Company.Register(
-            "FTA Alpha Ltda", "88666444000188",
+            "FTA Alpha Ltda", "88666444000101",
             "fta.alpha@test.com", "+5511000000031",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "10.0.2.1"));
         companyA.SetKeycloakUserId(SubPjA);
 
         var companyB = Company.Register(
-            "FTA Beta S.A.", "99777555000199",
+            "FTA Beta S.A.", "99777555000101",
             "fta.beta@test.com", "+5511000000032",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "10.0.2.2"));
         companyB.SetKeycloakUserId(SubPjB);
@@ -121,8 +121,8 @@ public sealed class FundoTipoAtivoAssociationIntegrationTests : PostgreSqlIntegr
         await db.Companies.AddRangeAsync(companyA, companyB);
         await db.SaveChangesAsync();
 
-        var cnpjA = "88666444000188";
-        var cnpjB = "99777555000199";
+        var cnpjA = "88666444000101";
+        var cnpjB = "99777555000101";
 
         var consultoriaA = ConsultoriaFundo.Register("FTA Consultoria Alpha", cnpjA, companyA.Id);
         var custodianteA = Custodiante.Register("FTA Custodiante Alpha", cnpjA, companyA.Id);

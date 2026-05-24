@@ -113,13 +113,13 @@ public sealed class FundoCedenteAssociationIntegrationTests : PostgreSqlIntegrat
     private static async Task SeedAsync(AppDbContext db, IServiceProvider services)
     {
         var companyA = Company.Register(
-            "FCA Alpha Ltda", "44222999000144",
+            "FCA Alpha Ltda", "11222333000181",
             "fca.alpha@test.com", "+5511000000011",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "10.0.0.1"));
         companyA.SetKeycloakUserId(SubPjA);
 
         var companyB = Company.Register(
-            "FCA Beta S.A.", "55333111000155",
+            "FCA Beta S.A.", "55333111000101",
             "fca.beta@test.com", "+5511000000012",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "10.0.0.2"));
         companyB.SetKeycloakUserId(SubPjB);
@@ -127,7 +127,7 @@ public sealed class FundoCedenteAssociationIntegrationTests : PostgreSqlIntegrat
         await db.Companies.AddRangeAsync(companyA, companyB);
         await db.SaveChangesAsync();
 
-        var cnpjA = "44222999000144";
+        var cnpjA = "11222333000181";
         var consultoriaA = ConsultoriaFundo.Register("FCA Consultoria Alpha", cnpjA, companyA.Id);
         var custodianteA = Custodiante.Register("FCA Custodiante Alpha", cnpjA, companyA.Id);
         var fundoA = Fundo.Register("FCA Fundo Alpha", cnpjA, companyA.Id,

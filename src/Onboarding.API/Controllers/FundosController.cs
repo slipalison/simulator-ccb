@@ -754,6 +754,12 @@ public sealed class FundosController : ControllerBase
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
+        // Security: IgnoreQueryFilters in repo returns cross-tenant rows; enforce tenant boundary
+        // here. Return NotFound (not Forbid) — do not leak entity existence to other tenants.
+        var fundo = await _fundoRepository.GetByIdAsync(id, ct);
+        if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
+            return NotFound();
+
         var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
         var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
 

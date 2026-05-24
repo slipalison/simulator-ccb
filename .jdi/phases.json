@@ -15,9 +15,10 @@
       "position": 49,
       "slug": "auth-flow-fix",
       "raw_slug": "auth-flow-fix",
-      "folder": ".jdi/phases/auth-flow-fix",
+      "folder": ".jdi/archive/auth-flow-fix",
       "status": "done",
-      "legacy": false
+      "legacy": false,
+      "archived": true
     },
     {
       "position": 50,
@@ -48,7 +49,7 @@
       "slug": "integration-tests-fundos",
       "raw_slug": "52-integration-tests-fundos",
       "folder": ".jdi/phases/52-integration-tests-fundos",
-      "status": "ready",
+      "status": "done",
       "legacy": true
     },
     {
@@ -56,7 +57,7 @@
       "slug": "vinxi-to-vinext-migration",
       "raw_slug": "53-vinxi-to-vinext-migration",
       "folder": ".jdi/phases/53-vinxi-to-vinext-migration",
-      "status": "pending",
+      "status": "ready",
       "legacy": true
     }
   ]

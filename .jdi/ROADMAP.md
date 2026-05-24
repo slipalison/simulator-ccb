@@ -2,7 +2,7 @@
 
 ## Status
 adopted: true
-current_phase: 53
+current_phase: 54
 total_phases: 54
 
 ## Context
@@ -62,11 +62,13 @@ Numeracao preservada pra alinhar com `.planning/` historico. Phases pre-48 nao s
 
 ### Phase 53: Integration Tests — v8.0 Fundos end-to-end
 - **Slug:** 52-integration-tests-fundos
-- **Status:** ready
+- **Status:** done (shipped 2026-05-24, verdict APPROVED_WITH_WARNINGS, 6 iter / 2 rounds / 1 reset)
 - **Goal:** Testcontainers PostgreSQL real cobrindo CRUD round-trip dos 5 entity types + 3 relationship types, isolamento multi-tenant, transicoes de state machine, REL-09, deteccao de duplicatas (409).
+- **DoD G0 cumprido:** 1204 testes pass / 0 fail / 4 pre-existing skip; Integration.Tests 187 -> 195 com 8 novos GET-list happy-path; coverage D-2 dos 4 arquivos antes-bloqueados agora 100% (GetFundoCedentesQueryHandler, GetFundoTiposAtivosQueryHandler, GetCedenteTiposAtivosQueryHandler, AdminFundosController); Playwright regression on backend (health, auth-blocked, Jaeger UI) PASS; security audit zero src/ changes em diff iter 6.
+- **Carry-forward NÃO-phase-53 (pre-existing):** W1-W4 backend telemetry (PII scrubber naming, TenantBaggageMiddleware/TelemetryCommandHandlerDecorator unwired, run-uat.mjs legacy route), WFE-1-5 frontend (init-after-render backoffice telemetry, double-import Vite warning, pt-BR strings em main.tsx + D-2 JSX, VITE_OTEL_ENABLED missing em compose.yaml), SEC-W1-W7b cross-cutting (ROPC legado, password policy length, db.statement scrubber gap).
 
 ### Phase 54: Migracao Vinxi -> Vinext (Cloudflare fork)
 - **Slug:** 53-vinxi-to-vinext-migration
-- **Status:** pending (decisao user em /jdi-bootstrap)
+- **Status:** ready
 - **Goal:** Migrar `frontend/client` e `frontend/backoffice` de Vinxi 0.5.11 para Vinext (https://github.com/cloudflare/vinext). Aproveita "Vinext migration debt" acumulada nos SUMMARY.md de phases 50/51 pra mapear changes. Validar build, dev server, Playwright e2e em ambos SPAs apos cutover. Sem regressoes funcionais nem perda de SSR/hydration.
 - **Specialist responsavel:** jdi-doer-onboarding-keycloak-frontend-vinext

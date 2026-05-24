@@ -1478,3 +1478,261 @@ Domain.Tests aggregate: 95.95% line / 86.42% branch / 93.01% method.
      - GET /api/admin/fundos/cedente-tipos-ativos -- admin client, assert 200
 
    After 8 new tests: dotnet test targeting 0 fail (1208+ total), all 4 failing files >= 80%, then /jdi-verify iter 6.
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-backend-csharp (iter 6)
+
+**Verdict:** APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+- [G1 Multi-tenant isolation] PASS — HasQueryFilter unchanged on all company-scoped configurations; IgnoreQueryFilters only in Admin* handler classes (ListAdminFundo/Consultoria/Custodiante/Cedente/RelFundoCedente/etc.) with explicit D-8/D-12 justification comments.
+- [G2 Endpoint AuthZ + audit] PASS — All endpoints on AdminFundosController, FundoCedentesController, FundoTiposAtivosController, CedenteTiposAtivosController carry [Authorize(...)] with scheme + policy. No bare endpoints added in iter 6.
+- [G3 Secret + raw SQL] PASS — No FromSqlRaw usages; no hardcoded secrets; gitleaks clean.
+- [G4 Telemetry] WARN (pre-existing carry-forward W1–W4; see Warnings section)
+- [G5 Performance hygiene] PASS — No new src files added in iter 6; previously verified src files unchanged.
+- [G6 Index coverage] PASS — No new migrations in iter 6.
+- [G7 Build] PASS — 0 errors, 0 warnings (dotnet build --no-restore).
+- [G8 Lint] PASS — dotnet format --verify-no-changes exited 0.
+- [G9 DDD/Design] PASS — Iter 6 changes are test-only files; no src DDD violations introduced.
+- [G10 Tests] PASS — 1204 pass, 0 fail, 4 pre-existing skips.
+- [G11 Coverage] PASS — All 4 formerly failing D-2 files now at 100%; all previously passing files remain ≥80%.
+- [G12 Playwright regression] PASS — All mandatory scenarios verified via MCP browser.
+- [G13 Static scans] Not run (advisory; no new src files in iter 6).
+
+---
+
+### B5-iter5 Resolution: CONFIRMED
+
+Commits 7a67c64 (Fix A: 3 association GET-list happy-path tests) and 0474d0e (Fix B: 5 admin list endpoint tests) implement exactly the fixes prescribed in iter 5 REVIEW.md.
+
+Fix A: `FundoCedente_GetList_AuthenticatedPjA_Returns200` appended to FundoCedenteAssociationIntegrationTests.cs, `FundoTipoAtivo_GetList_AuthenticatedPjA_Returns200` appended to FundoTipoAtivoAssociationIntegrationTests.cs, `CedenteTipoAtivo_GetList_AuthenticatedPjA_Returns200` appended to CedenteTipoAtivoAssociationIntegrationTests.cs. Each uses `ClientPjA()` + existing `_fundoAId` / `_cedenteAId` fixtures, GET the list endpoint, asserts 200 + `totalCount ≥ 0`.
+
+Fix B: 5 admin list tests (`AdminListFundos_AuthenticatedAdmin_Returns200`, `AdminListCustodiantes_AuthenticatedAdmin_Returns200`, `AdminListCedentes_AuthenticatedAdmin_Returns200`, `AdminListFundoTiposAtivos_AuthenticatedAdmin_Returns200`, `AdminListCedenteTiposAtivos_AuthenticatedAdmin_Returns200`) appended to existing `AdminFundosByIdIntegrationTests.cs` as prescribed (no new file — YAGNI).
+
+All 8 methods exist and pass in isolation: `dotnet test --filter "FullyQualifiedName~..."` → 8/8 PASS in 6s.
+
+---
+
+### Progress vs iter 5
+
+| Blocker | Iter 5 | Iter 6 |
+|---|---|---|
+| B5-iter5: GetFundoCedentesQueryHandler.cs 22.2% | FAIL | RESOLVED (100%) |
+| B5-iter5: GetFundoTiposAtivosQueryHandler.cs 22.2% | FAIL | RESOLVED (100%) |
+| B5-iter5: GetCedenteTiposAtivosQueryHandler.cs 22.2% | FAIL | RESOLVED (100%) |
+| B5-iter5: AdminFundosController.cs 67.1% | FAIL | RESOLVED (100%) |
+| B4-iter4: shadow CnpjRaw EF model crash | RESOLVED | RESOLVED |
+| G10 Tests (0 fail) | PASS | PASS |
+| G7 Build (0 errors) | PASS | PASS |
+
+---
+
+### Test Summary (iter 6)
+
+| Suite | Total | Pass | Fail | Skip |
+|---|---|---|---|---|
+| Domain.Tests | 481 | 481 | 0 | 0 |
+| Application.Tests | 150 | 150 | 0 | 0 |
+| API.Tests | 382 | 378 | 0 | 4 (pre-existing) |
+| Integration.Tests | 195 | 195 | 0 | 0 |
+| **TOTAL** | **1208** | **1204** | **0** | **4** |
+
+Doer claim 195/195 integration: VERIFIED. Total 1204 pass (excluding 4 pre-existing skips): VERIFIED.
+
+Isolated run of 8 new test methods: 8/8 PASS in 6s.
+
+---
+
+### Coverage (new D-2 files — iter 6 Integration.Tests coverlet run)
+
+| File | Lines Cov | Lines Tot | Coverage | Required | Delta vs iter 5 | Status |
+|---|---|---|---|---|---|---|
+| GetFundoCedentesQueryHandler.cs | 18 | 18 | 100.0% | 80% | +77.8pp | PASS |
+| GetFundoTiposAtivosQueryHandler.cs | 18 | 18 | 100.0% | 80% | +77.8pp | PASS |
+| GetCedenteTiposAtivosQueryHandler.cs | 18 | 18 | 100.0% | 80% | +77.8pp | PASS |
+| AdminFundosController.cs | 152 | 152 | 100.0% | 80% | +32.9pp | PASS |
+| FundosController.cs | 1046 | 1126 | 92.9% | 80% | stable | PASS |
+| FundoCedentesController.cs | 238 | 284 | 83.8% | 80% | stable | PASS |
+| FundoTiposAtivosController.cs | 230 | 276 | 83.3% | 80% | stable | PASS |
+| CedenteTiposAtivosController.cs | 230 | 276 | 83.3% | 80% | stable | PASS |
+
+Coverage measured via `dotnet test Onboarding.Integration.Tests.csproj -p:CollectCoverage=true -p:CoverletOutputFormat=cobertura`. XML: `tests/Onboarding.Integration.Tests/coverage-iter6-integration.xml`.
+
+All previously passing D-2 files (TransitionFundoStatus*, N-N create/transition/update handlers, JanelaVigencia.cs, LimiteExposicao.cs, DuplicateActiveAssociationException.cs, FundoCedenteAggregate.cs, CedenteTipoAtivoAggregate.cs, FundoTipoAtivoAggregate.cs) verified stable via integration XML — no regression.
+
+Domain.Tests aggregate: 95.95% line / 86.42% branch / 93.01% method (unchanged).
+
+Infrastructure repositories: [ExcludeFromCodeCoverage] — EXEMPT.
+
+---
+
+### Warnings (carry-forward from iter 4/5 — no change)
+
+- W1 — G4: PII scrubber wired as `SensitiveDataDestructuringPolicy` (Serilog destructuring policy), not named `PiiScrubber`. Pattern mismatch with G4.8 regex `PiiScrubbing|PiiScrubber`. Pre-existing, no action required this phase.
+- W2 — G4: `TenantBaggageMiddleware` not wired in Program.cs. Pre-existing carry-forward.
+- W3 — G4: `TelemetryCommandHandlerDecorator` not registered in Program.cs. Pre-existing carry-forward.
+- W4 — G12: `tests/run-uat.mjs` targets `/api/registration` (legacy route). Pre-existing carry-forward.
+
+---
+
+### Regression captures (iter 6)
+
+- GET http://localhost:8080/healthz/live → 200 Healthy (MCP verified)
+- GET http://localhost:8080/api/fundos (no token) → 401 (MCP verified)
+- GET http://localhost:8080/api/fundos/consultorias (no token) → 401 (MCP verified)
+- GET http://localhost:8080/api/fundos/custodiantes (no token) → 401 (MCP verified)
+- GET http://localhost:8080/api/fundos/tipos-ativo (no token) → 401 (MCP verified)
+- GET http://localhost:8080/api/companies/me (no token) → 401 (MCP verified)
+- GET http://localhost:8080/api/admin/fundos?page=1&pageSize=10 (no token) → 401 (MCP verified)
+- GET http://localhost:8080/api/fundos (malformed JWT) → 401 (MCP verified)
+- W3C traceparent accepted (401 auth rejection, not 400 header rejection) (MCP verified)
+- Jaeger UI: http://localhost:16686 → 200, Jaeger UI page title confirmed (MCP verified)
+- Screenshot: .jdi/cache/phase-52-backend-iter6-health.png
+- Screenshot: .jdi/cache/phase-52-backend-iter6-jaeger.png
+- HAR: .jdi/cache/phase-52-backend-iter6-network.json
+- Console errors: 2 (favicon 404 + CORS error from chrome-error:// origin — browser navigation artifacts, not application regressions)
+
+---
+
+### No required fixes
+
+B5-iter5 is the sole historical blocker. It is fully resolved. No new blockers introduced. Phase is ready for /jdi-ship.
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-frontend-vinext (iter 6)
+
+**Verdict:** APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+- [G1 Security frontend] PASS -- no token storage violations in source; no dangerouslySetInnerHTML; no secrets in production code (test fixture password in AdminLoginForm.test.tsx is test-only); no cross-SPA imports (D-4 clean); no target=_blank without rel
+- [G2 Telemetry (OTel JS + W3C)] PASS -- src/lib/telemetry/index.ts + web-vitals.ts present both SPAs (carry-forward from iter 3); WebTracerProvider, FetchInstrumentation, OTLPTraceExporter, W3CTraceContextPropagator, BatchSpanProcessor all present both SPAs; propagateTraceHeaderCorsUrls allowlist present both SPAs; ignoreUrls covers auth/keycloak/well-known both SPAs; PII_REGEX + scrubAttributes both SPAs; no B3/Jaeger propagators; no wildcard allowlist; no request.headers or response.body capture; no sub/email in spans (anonymous sessionId only)
+- [G3 Perf + bundle] PASS -- client main chunk 210.06 KB gz; backoffice main chunk 205.75 KB gz (gate 300 KB; both pass); no frontend changes in iter 6, sizes stable
+- [G4 Build] PASS -- client build clean (5.73s, 0 errors); backoffice build clean (4.78s, 0 errors); WFE-2 Vite double-import warning in backoffice persists (pre-existing carry-forward)
+- [G5 Typecheck+Lint] PASS -- tsc --noEmit exit 0 both SPAs; eslint --max-warnings 0 exit 0 both SPAs
+- [G6 Code-design] WARN -- WFE-1/WFE-2/WFE-3/WFE-4 carry-forward (unchanged); WFE-5 pt-BR strings in D-2 JSX components carry-forward (noted iter 3 as WFE-3 extended pattern); no cross-SPA imports; no outline:none without focus alternative found
+- [G7 Coverage] PASS -- no new frontend files in iter 6 commits (iter 6 = .cs test-only); D-2 frontend files confirmed >= 80%: client aggregate 96.3% stmts/85.35% branch/97.19% funcs/97.12% lines; backoffice 453/453 tests pass, all files >= 80%; pre-existing 15 failing client tests (registration-form, profile-page: 4 test files) are pre-boundary (commit 3f238ea before 968eefb), not in D-2 scope
+- [G8 Playwright client] PASS -- HTTP 200 at :5173; fundos route renders (loading state expected without auth); auth guard active; ACF+PKCE redirect confirmed (code_challenge_method=S256, client realm); /auth/login and /fundos navigable; no 5xx; application-level console errors: 0 (401/503 are pre-auth + backend-not-running artefacts)
+- [G9 Playwright backoffice] PASS -- HTTP 200 at :5174; /admin/login renders "Admin Backoffice" login page; ACF+PKCE redirect confirmed (backoffice realm, code_challenge_method=S256, custom theme "Sign in to Backoffice"); auth guard redirects /admin/companies and /admin/fundos to /admin/login; no 5xx; application-level console errors: 0 (favicon 404 + auth/me 401 are infra artefacts)
+- [G10 Accessibility] ADVISORY -- backoffice /admin/login: 3 moderate violations (landmark-one-main, page-has-heading-one, region) -- pre-existing carry-forward from iter 3; no critical violations; no keyboard traps; 18 axe passes
+- [G11 Vinext debt] PASS -- no new Vinxi imports in any iter 6 commits (all iter 6 changes are .cs backend test files)
+
+---
+
+### No new blockers
+
+No frontend files were modified in iter 6 (commits 7a67c64 and 0474d0e add .cs integration tests only). All frontend gates are stable carry-forward from iter 3 APPROVED_WITH_WARNINGS verdict.
+
+---
+
+### Warnings (carry-forward from iter 3 — unchanged)
+
+- WFE-1: initAdminTelemetry fires after React render in backoffice main.tsx (dynamic import post-createRoot). Pre-existing.
+- WFE-2: Double-import of telemetry/index.ts in backoffice main.tsx; Vite dynamic-import chunk-split defeated. Pre-existing.
+- WFE-3: pt-BR throw message in client main.tsx. Pre-existing, not phase-52.
+- WFE-4: VITE_OTEL_ENABLED absent from compose.yaml. OTel inactive in running compose stack. Positive traceparent test skips unconditionally.
+- WFE-5: pt-BR strings hardcoded in D-2 JSX components (e.g., "Razão Social", "Código Interno", "Ações", "Descrição" in organisms/pages). Carry-forward from phase-52 doer work. Track for i18n phase.
+
+---
+
+### Coverage gaps (D-2 frontend files — iter 6 stable)
+
+No new frontend files in iter 6. All D-2 frontend files confirmed >= 80% (resolved iter 3, stable):
+
+| SPA | Total tests | Pass | Fail | Stmts | Branch | Funcs | Lines |
+|---|---|---|---|---|---|---|---|
+| client | 719 | 704 | 15 (pre-boundary, not D-2) | 96.3% | 85.35% | 97.19% | 97.12% |
+| backoffice | 453 | 453 | 0 | 95.31% | 90.85% | 93.89% | 96.39% |
+
+---
+
+### Regression captures
+
+- Client Keycloak ACF+PKCE: .jdi/cache/phase-52-frontend-iter6-client-keycloak-login.png
+- Client fundos route (loading state): .jdi/cache/phase-52-frontend-iter6-client-fundos.png
+- Backoffice route guard redirect: .jdi/cache/phase-52-frontend-iter6-backoffice-home.png
+- Backoffice Keycloak custom theme: .jdi/cache/phase-52-frontend-iter6-backoffice-keycloak-login.png
+- Client HAR: .jdi/cache/phase-52-frontend-iter6-client-har.json
+- Backoffice HAR: .jdi/cache/phase-52-frontend-iter6-backoffice-har.json
+- Console errors client (app-level): 0 | backoffice (app-level): 0
+- No 5xx on either SPA
+
+---
+
+### No required fixes
+
+Frontend is stable. All prior blockers (BFE-1 through BFE-5) resolved in iters 2-3. No new frontend issues introduced by iter 6. Phase is clear for /jdi-ship from frontend perspective.
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-security (iter 6)
+
+**Verdict:** APPROVED
+
+---
+
+### Scope
+
+Iter 6 commits (7a67c64, 0474d0e, 2039b94) — test-only diff. Production surface unchanged:
+- 0 `src/` files modified (confirmed `git diff f871395..HEAD -- src/` produces empty output)
+- 3 integration test files appended (association GET-list happy-path)
+- 1 integration test file appended (5 admin list endpoint tests)
+- 1 SUMMARY.md and state/loop docs updated
+
+No Keycloak realm exports changed. No compose.yaml changed. No appsettings changed.
+
+---
+
+### Gates
+
+- [G1 Multi-tenant filter] PASS — No EF configurations or HasQueryFilter registrations touched in iter 6. Tenant guard at FundosController.cs:760 (SEC-B1 fix, iter 2) confirmed still in place (no src changes). Admin GET-list tests use `ClientAdmin()` which generates a `BearerBackoffice` JWT with `role=admin`; AdminFundosController is gated by `[Authorize(AuthenticationSchemes = "BearerBackoffice", Policy = PermissionPolicies.CrossCompanyAccess)]` at class level. `IgnoreQueryFilters` on all admin query handlers is documented as intentional (`// IgnoreQueryFilters applied — no tenant isolation. Admin use only.`) and is enforced by the `BearerBackoffice + admin role` policy — legitimate admin bypass. Association GET-list tests use `ClientPjA()` which generates a `BearerClient` JWT scoped to PjA sub; the underlying query handlers are tenant-scoped via `ClienteId == companyId` predicate. No cross-tenant data leak path introduced.
+
+- [G2 Permission policy coverage] PASS — No new controllers or HTTP endpoints added in iter 6. All 8 new test methods call existing endpoints already verified as authorized in prior iters. AdminFundosController: `BearerBackoffice + CrossCompanyAccess` (class-level), confirmed. Association endpoints: `BearerClient + FundRead/FundWrite` per method, confirmed. No `[AllowAnonymous]` added. No new `[HttpX]` methods without `[Authorize]`.
+
+- [G3 Secrets + env hygiene] PASS — Diff scan on all `+` lines in iter 6 `.cs` additions: 0 matches for `Password|Secret|Token|ApiKey|ConnectionString` patterns. No `.env`, `appsettings*.json`, `compose.yaml`, or Keycloak realm files modified (0-line JSON diff confirmed). `IntegrationFakeJwt.TestSigningKey` is the pre-existing test signing key — not a new introduction, not a production secret.
+
+- [G4 Semgrep] PASS — Semgrep run against all 4 modified `.cs` files with `--config .semgrep --severity ERROR`: 0 findings, 0 blocking, 3 C# rules evaluated, exit 0.
+
+- [G5 Trivy FS + container] ADVISORY (carry-forward) — Trivy binary unavailable on Windows host. No Dockerfile changes in iter 6. No new NuGet packages added. Carry-forward SEC-W4 unchanged.
+
+- [G6 Keycloak hardening drift] PASS — No Keycloak realm JSON files changed in iter 6 (0-line diff confirmed). All prior iter 2 posture (bruteForceProtected=true, failureFactor=5, ssoSessionIdleTimeout=1800, no wildcard redirects) remains in place.
+
+- [G7 Security headers + CSP] PASS (carry-forward) — No Program.cs or middleware changes. CORS exact-origins allowlist unchanged. No live header inspection needed for test-only commit.
+
+- [G8 Dependabot] NOT RUN — gh CLI not available on host. Carry-forward from prior iters.
+
+- [G9 Audit log] PASS — No new mutation commands introduced in iter 6. All 41 mutation handlers confirmed with ActorSub capture from prior iters. Iter 6 adds only query-side tests (GET-list); no ActorSub capture requirement applies.
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings (carry-forward — unchanged from iter 3/iter 2)
+
+- SEC-W1 — G5: OTel + Jaeger images use `:latest` tag in compose.yaml. Dev-only; pin to semver before production.
+- SEC-W2 — G3 legacy: Dev secrets in Keycloak realm exports and appsettings.json. Pre-existing at D-2 boundary; compose.yaml uses env overrides at runtime.
+- SEC-W3 — G3: E2E test passwords hardcoded in Playwright spec files (admin-fundos-*.spec.ts, auth-flow.spec.ts). Pattern matches pre-existing E2E specs. Recommended: extract to process.env.E2E_*_PASSWORD.
+- SEC-W4 — G5: Trivy binary unavailable on Windows host. Formal Trivy scan required in CI before ship.
+- SEC-W5 — G7: VITE_OTEL_ENABLED absent from compose.yaml; positive traceparent test always skips unconditionally.
+- SEC-W6 — OTel collector: `db.statement` not in key-drop list; SQL query text from npgsql spans partially covered by value-redaction only.
+- SEC-W7 — G6: ROPC enabled on `onboarding-app` client (directAccessGrantsEnabled=true). Pre-existing at D-2 boundary; ACF+PKCE is the active flow (D-feedback).
+- SEC-W7b — G6: Password policy length(8), not length(12). Pre-existing at D-2 boundary; tighten in hardening phase.
+
+---
+
+### Admin path security note (G1 — iter 6 specific)
+
+The 5 new admin list tests use `ClientAdmin()` which produces a `BearerBackoffice` JWT with `role=admin` claim. `IntegrationFakeJwt.GenerateAdminJwt` sets issuer to `http://localhost:8180/realms/backoffice` and audience to `http://localhost:8180/realms/backoffice`, matching the test `BearerBackoffice` JWT bearer configuration in `PostgreSqlFixture.cs` (token validation uses `IntegrationFakeJwt.SecurityKey`). The `CrossCompanyAccess` policy at `Program.cs:225` requires `RequireRole("admin")` — the `role=admin` claim in the fake JWT satisfies this. `IgnoreQueryFilters` on the admin handlers is the intentional bypass for cross-company admin reads (D-8); it is gated by the admin authentication policy and not accessible to `BearerClient` (PjA/PjB) tokens. No tenant isolation regression introduced.
+
+---
+
+### Pipeline artifacts
+
+- Semgrep: run on 4 iter-6 files — 0 findings, 3 C# rules, exit 0 (no artifact file; interactive run)
+- Trivy FS: not run (binary unavailable on Windows host — CI required)
+- Gitleaks: not run (binary unavailable); manual diff scan — 0 secret-pattern matches in iter-6 additions

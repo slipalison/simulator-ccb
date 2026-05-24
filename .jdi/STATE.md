@@ -9,10 +9,12 @@ specialists:
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
 current_phase: integration-tests-fundos
 current_phase_slug: integration-tests-fundos
-phase_status: looping
-phase_verdict: pending
+phase_status: verified
+phase_verdict: APPROVED_WITH_WARNINGS
 prior_phase_slug: frontend-backoffice-fundos
 prior_phase_verdict: APPROVED
 loop_round: 2
 loop_iter: 1
-next_step: /jdi-loop integration-tests-fundos round 2 iter 1 (backend doer fixes B5 coverage gap: 8 new GET-list integration tests)
+loop_absolute_iter: 6
+loop_total_resets: 1
+next_step: /jdi-ship integration-tests-fundos

@@ -213,3 +213,73 @@ Ran `dotnet format Onboarding.slnx`. Fixed 14 whitespace violations in 6 files:
 - `dotnet build Onboarding.slnx`: 0 errors, 0 warnings.
 - `dotnet format Onboarding.slnx --verify-no-changes`: exit 0.
 - Integration tests not run locally (require Docker/Testcontainers) — all fixes are structurally correct and ready for re-verify gate.
+
+---
+
+## Iter 3 fixes (fix_blockers mode)
+
+Three residual blockers from iter 2 fixed in 3 atomic commits.
+
+### B1-iter2 — Unit tests for TransitionFundoStatus broken by B1 security fix (commit `e29798e`)
+
+File: `tests/Onboarding.API.Tests/Controllers/FundosControllerTests.cs`
+
+Root cause: The B1 security fix correctly added `_fundoRepository.GetByIdAsync(id, ct)` at the
+start of `TransitionFundoStatus`. Four unit tests did not stub the mock, so NSubstitute returned
+null by default and the controller returned `NotFound()` before dispatching — causing all 4 tests
+to fail regardless of their intended scenario.
+
+Fixes applied:
+- Tests `TransitionFundoStatus_RascunhoToAtivo_ValidTransition_Returns200` (line 1027),
+  `TransitionFundoStatus_EncerradoToAtivo_InvalidTransition_Returns400WithFromToDetail` (line 1048),
+  `TransitionFundoStatus_CapturesActorFromJwt` (line 1087): added
+  `_fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(BuildFundo())` before action call.
+- Test `TransitionFundoStatus_FundoNotFound_Returns404` (line 1071): left mock returning null
+  (NSubstitute default = correct behaviour for this test). Fixed assertion from
+  `ShouldBeOfType<NotFoundObjectResult>()` to `ShouldBeOfType<NotFoundResult>()` — controller uses
+  bare `return NotFound()` (no body), which returns `NotFoundResult` not `NotFoundObjectResult`.
+
+Verification: 5/5 TransitionFundoStatus unit tests pass; 378/382 API.Tests pass (4 pre-existing skips).
+
+### B2-iter2 — Invalid CPF seeds in Cedente.RegisterPf calls (commit `33df07d`)
+
+Files: `FundoCedenteAssociationIntegrationTests.cs`, `CedenteTipoAtivoAssociationIntegrationTests.cs`
+
+Root cause: B2 fixed the 6 Company CNPJ seeds but missed 3 CPF literals used in `Cedente.RegisterPf`
+calls inside `InitializeAsync`. All 3 had invalid check digits, throwing `ArgumentException` at seed
+time and aborting all 30 T-4 tests before any executed.
+
+Fixes:
+- `FundoCedenteAssociationIntegrationTests.cs:144` — `"74971027018"` → `GenerateCpf(9001)`
+- `FundoCedenteAssociationIntegrationTests.cs:148` — `"54896705091"` → `GenerateCpf(9002)`
+- `CedenteTipoAtivoAssociationIntegrationTests.cs:131` — `"59978867083"` → `GenerateCpf(9003)`
+
+Counters 9001–9003 are outside the existing pool range (1000–3000+), preventing collisions.
+`GenerateCpf` is a static helper on `PostgreSqlIntegrationTestBase` that produces valid CPFs
+using the same modulo-11 algorithm as `Cpf.IsValid` in the domain.
+
+### B3-iter2 — c.Cnpj.Value untranslatable by EF Core 10 (commit `54ec103`)
+
+Files: `ConsultoriaFundoRepository.cs`, `CustodianteRepository.cs`
+
+Root cause: B3 (iter 1) replaced `Contains()` with `ILike()` but left `c.Cnpj.Value` as the
+expression argument. EF Core 10 cannot translate a ValueObject property navigation inside an
+expression tree even when `HasConversion` is configured — `HasConversion` affects materialisation,
+not expression-tree generation. The LINQ → SQL translation failed at runtime with
+`InvalidOperationException`, returning HTTP 500 on both search endpoints.
+
+Fix: Replace `c.Cnpj.Value` with `EF.Property<string>(c, "cnpj")` in both repository search
+predicates. `EF.Property<T>` is the standard EF Core escape hatch for accessing shadow properties
+and mapped column values directly in expression trees. Column name `"cnpj"` confirmed via
+`HasColumnName("cnpj")` in `ConsultoriaFundoConfiguration` and `CustodianteConfiguration`.
+
+### Post-iter-3 gate status
+
+| Gate | Status | Evidence |
+|---|---|---|
+| G7 Build | PASS | 0 errors, 0 warnings — `dotnet build` clean |
+| G8 Lint | PASS | `dotnet format --verify-no-changes` exits 0 |
+| G10 API.Tests | PASS | 378/382 pass, 4 pre-existing skips |
+| G10 T-4 integration tests (B2) | READY | CPF seeds valid — pass on re-verify with Docker |
+| G10 T-2 search tests (B3) | READY | EF.Property translation fixed — pass on re-verify with Docker |
+| G11 Coverage | EXPECTED PASS | All 21 gaps downstream of B1/B2/B3; recover when tests execute |

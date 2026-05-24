@@ -60,7 +60,7 @@ public sealed class ConsultoriaFundoRepository : IConsultoriaFundoRepository
             query = query.Where(c =>
                 EF.Functions.ILike(c.RazaoSocial, $"%{normalized}%") ||
                 (c.NomeFantasia != null && EF.Functions.ILike(c.NomeFantasia, $"%{normalized}%")) ||
-                (digitsOnly.Length > 0 && EF.Functions.ILike(EF.Property<string>(c, "cnpj"), "%" + digitsOnly + "%")));
+                (digitsOnly.Length > 0 && EF.Functions.ILike(EF.Property<string>(c, "CnpjRaw"), "%" + digitsOnly + "%")));
         }
 
         var totalCount = await query.CountAsync(ct);

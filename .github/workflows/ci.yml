@@ -548,10 +548,15 @@ jobs:
           format: sarif
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
-          exit-code: "1"
+          # exit-code:"0" — gate is enforced in "Enforce SCA gate" step below using SARIF
+          # ground truth (after ignore-unfixed filter). The trivy-action exit-code
+          # check fires BEFORE ignore-unfixed is applied, producing false-positive
+          # failures when all detected highs lack a fix.
+          exit-code: "0"
           ignore-unfixed: true
 
       - name: Generate Trivy SCA Summary
+        id: trivy-summary
         if: always()
         run: |
           # Parse SARIF for vulnerability counts
@@ -573,6 +578,8 @@ jobs:
 
           TOTAL=$(echo "$VULNS" | cut -d'|' -f1)
           ERRORS=$(echo "$VULNS" | cut -d'|' -f2)
+          echo "errors=${ERRORS}" >> "$GITHUB_OUTPUT"
+          echo "total=${TOTAL}" >> "$GITHUB_OUTPUT"
 
           {
             echo "## 📦 SCA — Trivy Filesystem Scan"
@@ -624,6 +631,13 @@ jobs:
         with:
           sarif_file: trivy-results.sarif
           category: trivy
+
+      - name: Enforce SCA gate (fail on actionable HIGH/CRITICAL findings)
+        if: always() && steps.trivy-summary.outputs.errors != '0' && steps.trivy-summary.outputs.errors != ''
+        run: |
+          echo "::error::Trivy SCA found ${{ steps.trivy-summary.outputs.errors }} actionable HIGH/CRITICAL vulnerability(ies) — merge blocked."
+          echo "::error::Review findings in: Security → Code scanning alerts → filter by \`trivy\`"
+          exit 1
 
   security-container-trivy:
     name: "Security › Container — Trivy Image"

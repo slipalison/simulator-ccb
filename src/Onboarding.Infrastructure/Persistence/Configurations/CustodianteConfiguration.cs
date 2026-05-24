@@ -54,15 +54,6 @@ public sealed class CustodianteConfiguration : IEntityTypeConfiguration<Custodia
             .HasMaxLength(14)
             .IsRequired();
 
-        // Shadow string property for ILike search translation (B3-iter3).
-        // EF.Property<string>(c, "CnpjRaw") is translatable to SQL in expression trees;
-        // c.Cnpj.Value is not, because EF Core 10 cannot bridge HasConversion in LINQ-to-SQL.
-        // Maps to the same column so no migration is needed.
-        builder.Property<string>("CnpjRaw")
-            .HasColumnName("cnpj")
-            .HasMaxLength(14)
-            .IsRequired();
-
         // Value object mapping: Email → string (nullable)
         builder.Property(e => e.Email)
             .HasColumnName("email")

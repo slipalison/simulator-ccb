@@ -47,19 +47,46 @@ public sealed class CustodianteRepository : ICustodianteRepository
     public async Task<(IReadOnlyList<Custodiante> Items, int TotalCount)> GetPagedByCompanyAsync(
         Guid companyId, int page, int pageSize, string? search, CancellationToken ct = default)
     {
-        var query = _db.Custodiantes
+        var baseQuery = _db.Custodiantes
             .IgnoreQueryFilters()
             .Where(c => c.ClienteId == companyId)
             .AsNoTracking();
+
+        IQueryable<Custodiante> query;
 
         if (!string.IsNullOrWhiteSpace(search))
         {
             var normalized = search.Trim().ToLowerInvariant();
             var digitsOnly = new string(normalized.Where(char.IsDigit).ToArray());
 
-            query = query.Where(c =>
-                EF.Functions.ILike(c.RazaoSocial, $"%{normalized}%") ||
-                (digitsOnly.Length > 0 && EF.Functions.ILike(EF.Property<string>(c, "CnpjRaw"), "%" + digitsOnly + "%")));
+            // Name filter is translatable to SQL via ILike directly.
+            var nameFilteredIds = await baseQuery
+                .Where(c => EF.Functions.ILike(c.RazaoSocial, $"%{normalized}%"))
+                .Select(c => c.Id)
+                .ToListAsync(ct);
+
+            // CNPJ filter: EF Core 10 cannot translate HasConversion VO.Value in ILike expressions.
+            // Materialize Id+Cnpj pairs for this company (tenant-scoped via baseQuery) and filter
+            // client-side. The Select projects the Cnpj VO — EF applies HasConversion on load.
+            HashSet<Guid> matchedIds = nameFilteredIds.ToHashSet();
+            if (digitsOnly.Length > 0)
+            {
+                var cnpjProjection = await baseQuery
+                    .Select(c => new { c.Id, c.Cnpj })
+                    .ToListAsync(ct);
+
+                foreach (var item in cnpjProjection)
+                {
+                    if (item.Cnpj.Value.Contains(digitsOnly, StringComparison.OrdinalIgnoreCase))
+                        matchedIds.Add(item.Id);
+                }
+            }
+
+            query = baseQuery.Where(c => matchedIds.Contains(c.Id));
+        }
+        else
+        {
+            query = baseQuery;
         }
 
         var totalCount = await query.CountAsync(ct);

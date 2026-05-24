@@ -521,6 +521,20 @@ public sealed class FundoTipoAtivoAssociationIntegrationTests : PostgreSqlIntegr
     }
 
     // =========================================================================
+    // GET list happy-path — drives GetFundoTiposAtivosQueryHandler (B5-iter5 coverage fix)
+    // =========================================================================
+
+    [Fact]
+    public async Task FundoTipoAtivo_GetList_AuthenticatedPjA_Returns200()
+    {
+        using var client = ClientPjA();
+        var response = await client.GetAsync($"/api/fundos/{_fundoAId}/tipos-ativos");
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+        result.GetProperty("totalCount").GetInt32().ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    // =========================================================================
     // JSON DTO types — self-contained
     // =========================================================================
 

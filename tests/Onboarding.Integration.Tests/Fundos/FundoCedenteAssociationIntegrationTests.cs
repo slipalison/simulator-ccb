@@ -577,6 +577,20 @@ public sealed class FundoCedenteAssociationIntegrationTests : PostgreSqlIntegrat
     }
 
     // =========================================================================
+    // GET list happy-path — drives GetFundoCedentesQueryHandler (B5-iter5 coverage fix)
+    // =========================================================================
+
+    [Fact]
+    public async Task FundoCedente_GetList_AuthenticatedPjA_Returns200()
+    {
+        using var client = ClientPjA();
+        var response = await client.GetAsync($"/api/fundos/{_fundoAId}/cedentes");
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+        result.GetProperty("totalCount").GetInt32().ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    // =========================================================================
     // JSON DTO types — self-contained, no cross-project coupling
     // =========================================================================
 

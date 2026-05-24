@@ -508,6 +508,20 @@ public sealed class CedenteTipoAtivoAssociationIntegrationTests : PostgreSqlInte
     }
 
     // =========================================================================
+    // GET list happy-path — drives GetCedenteTiposAtivosQueryHandler (B5-iter5 coverage fix)
+    // =========================================================================
+
+    [Fact]
+    public async Task CedenteTipoAtivo_GetList_AuthenticatedPjA_Returns200()
+    {
+        using var client = ClientPjA();
+        var response = await client.GetAsync($"/api/cedentes/{_cedenteAId}/tipos-ativos");
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+        result.GetProperty("totalCount").GetInt32().ShouldBeGreaterThanOrEqualTo(0);
+    }
+
+    // =========================================================================
     // JSON DTO types — self-contained
     // =========================================================================
 

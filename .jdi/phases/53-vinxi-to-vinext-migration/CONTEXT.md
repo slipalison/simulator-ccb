@@ -1,250 +1,157 @@
-# CONTEXT — Phase 54 Migração de runtime (spike comparativo Vinext vs TanStack Start)
+# CONTEXT — Phase 54 BFF h3 → Hono migration (re-scoped final 2026-05-24)
 
-## Goal
+## Histórico de redirects desta phase
 
-**Phase 54 foi redefinida após iter 1 do Ralph loop (commit `45811ef`)** revelar que `cloudflare/vinext` não é fork do Vinxi — é reimplementação da API do Next.js sobre Vite. A premissa original era inválida.
+1. **Original (commits `f4ee554` + `ccde3fd` + `85ef11b`):** Migrar `frontend/client` de Vinxi 0.5.11 → cloudflare/vinext. D-38..D-42 capturadas.
+2. **Iter 1 do Ralph loop (commit `45811ef`):** Doer descobriu que cloudflare/vinext é reimplementação Next.js sobre Vite, não fork do Vinxi. BLOCKED.
+3. **Re-discuss 1 (commit `adbf7c3`):** Phase 54 vira spike comparativo Vinext vs TanStack Start em branch isolado. D-43..D-46 capturadas.
+4. **Re-discuss 2 (este CONTEXT, 2026-05-24):** Análise honesta de ganhos vs perdas concluiu Vinext não compensa, TanStack Start tampouco justifica spike isolado. Migração de runtime CANCELADA via D-47. Phase 54 vira BFF-only (Hono via D-44 mantida).
 
-Phase 54 agora é um **spike comparativo data-driven**: migrar **1 rota (`/dashboard`)** em ambos os alvos candidatos em um branch isolado (`spike/migration-poc-vinext-vs-start`), medir métricas reais neste codebase (build time, bundle size, effort em horas, integração com BFF Hono), e tomar a decisão de alvo final em uma phase 54.5 ou 55 dedicada.
+## Goal final
 
-Após o spike, decisão de alvo final é tomada com base em:
-- Tempo de build empírico (vs benchmark de terceiros)
-- Bundle size empírico (vs benchmark de terceiros)
-- Effort em horas (rewrite de routes vs zero rewrite)
-- Integração com BFF Hono (decidido em D-44)
-- DX (HMR, type errors, debugger)
+Migrar BFF (`frontend/client/server.ts` + `frontend/client/auth-server.ts`) de **h3** para **Hono 4.12+** preservando:
+- Token isolation (D-12) — cookies httpOnly server-side
+- Same-origin cookies — SPA + BFF mesma origem
+- PKCE state correlation — cookie `pkce_code_verifier` entre `/auth/login` e `/auth/callback`
+- ACF+PKCE flow completo (Phase 33 + 49) — sem regressão
+- Realm-per-SPA (`KEYCLOAK_REALM` env diferente client vs backoffice eventual)
+- API contract decoupling — BFF compõe `/auth/me`
+- OWASP-recommended BFF pattern
 
-**O que esta phase NÃO faz:**
-- Não migra master para nenhum runtime
-- Não compromete nenhuma decisão de alvo final
-- Não modifica `frontend/client/` em master (só em branch de spike)
+**Vinxi 0.5.11 mantido como runtime do bundler** (D-47). Sem mudança em `app.config.ts`, sem mudança em `frontend/client/src/router.tsx`, sem mudança nas 17 rotas TanStack, sem mudança em build/HMR/SSR.
 
-**O que esta phase entrega:**
-- Branch `spike/migration-poc-vinext-vs-start` com 2 commits (1 por alvo)
-- Documento `SPIKE-COMPARISON.md` com métricas medidas neste codebase
-- DECISIONS.md D-43..D-46 capturadas
-- ROADMAP.md ajustado: phase 54 = spike; phase 55 = migração efetiva pós-decisão
+## Stack atual relevante
 
----
+- BFF h3: `frontend/client/server.ts` (proxy `/api/*` para `api:8080`) + `frontend/client/auth-server.ts` (ACF+PKCE: `/auth/login`, `/auth/callback`, `/auth/me`, `/auth/logout`, `/auth/error`)
+- h3 primitives usados: `defineEventHandler`, `setCookie`, `getCookie`, `deleteCookie`, `sendRedirect`, `getQuery`, `readBody`, `proxyRequest`
+- Docker compose bind mounts: `server.ts` + `auth-server.ts` + `app.config.ts` → hot-reload dev
+- Auth: ACF+PKCE com `pkce_code_verifier` cookie + state validation no callback + logout invalidando session em Keycloak (`end_session_endpoint`)
+- Realms: client realm (`onboarding`)
+- Tests:
+  - Vitest unit: `auth-server.test.ts` (37 tests — CLIENT_SECRET fail-fast + cookie attrs + logout + id_token_hint + dev script guard + compose.yaml guard)
+  - Playwright e2e: `api-proxy.spec.ts` (single listener + POST 422 not 503 + GET 405 not 503) + `login-flow.spec.ts` ACF+PKCE redirect cookies + registration-flow
 
-## Stack atual
+## Stack alvo
 
-- React 19 + Vinxi 0.5.11 + TanStack Router + TanStack Query + Tailwind 4
-- 2 SPAs independentes (D-4): `frontend/client` (5173) + `frontend/backoffice` (5174)
-- BFF h3 routers em ambos: `server.ts` (proxy `/api/*`) + `auth-server.ts` (ACF+PKCE flow)
-- Testes: Vitest unit + Playwright e2e
-- Docker compose: bind mounts hot-reload dev
-- Node 22-alpine (container), Node 24.x (host)
-- 17 rotas em `frontend/client/src/router.tsx` (createRoute pattern; 7 lazy via `lazyRouteComponent`; 3 com `validateSearch` Zod)
-- Bundle main client: 678 KB raw / ~200 KB gzip (medido em commit `c4e2623`)
+- BFF Hono 4.12.22: `app.get()`, `app.post()`, `app.all()` substituem `defineEventHandler` h3
+- Hono primitives equivalentes: `c.req.query()`, `c.req.json()`, `setCookie(c, ...)`, `getCookie(c, ...)`, `deleteCookie(c, ...)`, `c.redirect(...)`, proxy via fetch nativo ou `@hono/proxy`
+- Vinxi 0.5.11 mantido — `app.config.ts` aponta para `server.ts` + `auth-server.ts` como antes
+- Vinxi router `type: "http"` aceita Hono apps em vez de h3 (Hono exporta `fetch` Web standard — Vinxi h3 router consome qualquer handler que aceita Request → Response, que é exatamente o que Hono entrega)
+- Docker compose hot-reload preservado (bind mounts inalterados; só conteúdo dos files muda)
+- Auth flow ACF+PKCE intacto — só implementação do BFF muda, contrato externo igual
 
-## Alvos candidatos do spike
+## Decisões locked (consolidadas)
 
-### A. Vinext (`vinext@0.0.52`)
-- Cloudflare fork — reimplementação Next.js sobre Vite
-- 8.1k stars, 939 commits, push há 2 dias (ativo)
-- 94% Next.js 16 API surface
-- RSC nativo via `@vitejs/plugin-rsc`
-- Self-marked experimental, "use at your own risk"
-- Benchmark declarado: 4× faster build, 50% smaller bundle (vs Next.js+Turbopack)
-- Peer deps: Vite 7/8, React 19.2.6, react-server-dom-webpack 19.2.6
-- **Custo neste projeto:** rewrite 17 rotas TanStack → file-based `app/`, 21 arquivos dependentes, 3 Zod searchSchemas
+### D-38 (kept): escopo só `frontend/client/`
+Backoffice em phase futura. Isola blast radius.
 
-### B. TanStack Start (`@tanstack/react-start@1.168.11`)
-- TanStack ecosystem — SSR sobre Vite
-- v1.x stable (declared RC, feature-complete approaching 1.0)
-- Mantém TanStack Router (`@tanstack/react-router@1.170.8` incluído)
-- SSR streaming, server functions, middleware
-- RSC support em desenvolvimento (não nativo ainda)
-- Peer deps: Vite >=7, React >=18 || >=19
-- **Custo neste projeto:** zero rewrite de rotas (estrutura TanStack preservada), só BFF + config SSR
+### D-41 (kept): NPM exclusivo
+Mantido. Cleanup de `pnpm-lock.yaml` continua sendo trabalho válido — pode estar em task dedicada da phase.
 
-### C. Vinxi 0.6+ (incremental — investigado durante spike)
-- Investigar se existe 0.6.x estável ou fork mantido
-- Se sim: alvo de menor risco (drop-in upgrade)
-- Se não: fica fora do spike
+### D-44 (kept): BFF migra h3 → Hono
+Centro desta phase. Hono substitui h3 em ambos `server.ts` + `auth-server.ts`.
 
----
+### D-47 (new): Vinxi 0.5.11 mantido como runtime do bundler
+Migração de runtime CANCELADA. Re-avaliação só quando substituto razoável amadurecer (TanStack Start v1.0 stable, ou Vinxi 0.6 mantido aparecer, ou requisito de negócio forçar edge global).
 
-## Decisões locked (D-43..D-46)
+### REVOKED
+- D-39: superseded por D-44 (BFF muda, mas valor preservado via Hono)
+- D-40: superseded por D-47 (sem Vinext)
+- D-42: original DoD não se aplica (sem mudança runtime); novo DoD abaixo
+- D-43, D-45, D-46: superseded por D-47 (sem spike, sem alvo runtime, sem branch isolado)
 
-### D-43 (2026-05-24): Phase 54 redefinida — spike comparativo data-driven
+## DoD final (Phase 54 BFF-only)
 
-Phase 54 deixa de ser "migrar para Vinext" e vira "**spike comparativo empírico em branch isolado**" entre Vinext e TanStack Start (Vinxi 0.6+ se viável). Decisão de alvo final fica em phase 55 dedicada baseada em métricas medidas neste codebase.
+1. **Hono substitui h3 em `server.ts`**: proxy `/api/*` funciona idêntico ao atual.
+   - `curl -X POST http://localhost:5173/api/companies/registration` retorna 422 ou 4xx do backend (não 503 fetch failed)
+   - `curl -X GET http://localhost:5173/api/employees` retorna 401 (sem auth) ou 200 (com cookie) — comportamento existente
 
-**Razão:** Iter 1 do Ralph loop revelou que assumimos Vinext = fork do Vinxi. É reimplementação Next.js. Benchmarks de terceiros (4× build, -50% bundle) são interessantes mas não medidos neste codebase. Migrar 17 rotas + 21 arquivos por benchmark genérico é risk inaceitável sem dados deste projeto.
+2. **Hono substitui h3 em `auth-server.ts`**: ACF+PKCE flow completo funciona idêntico.
+   - `GET /auth/login` → 302 redirect Keycloak `/auth?code_challenge=...&code_challenge_method=S256&state=...` + cookies `pkce_code_verifier` + `pkce_state` setados
+   - `GET /auth/callback?code=...&state=...` → token exchange + cookies `id_token` + `refresh_token` + `access_token` setados httpOnly + redirect `/dashboard`
+   - `GET /auth/me` → 200 `{ userName, accessGroup, companyId }` ou 401
+   - `GET /auth/logout` → 302 Keycloak `end_session_endpoint` com `id_token_hint` + cookies deletados
+   - `GET /auth/error` → render página erro
 
-**Aplicação:** Branch `spike/migration-poc-vinext-vs-start`. Migra `/dashboard` em cada alvo. Mede build time, bundle size, effort, DX. Documenta em `SPIKE-COMPARISON.md`. Master fica intocado durante spike.
+3. **Playwright regression PASS**:
+   - `api-proxy.spec.ts` (3 cenários) verde
+   - `login-flow.spec.ts` (ACF+PKCE redirect cookies) verde
+   - `registration-flow` (se existir) verde
 
----
+4. **Vitest unit + coverage D-2 ≥ 80%**:
+   - `auth-server.test.ts` 37 tests verde — adapter test cases pra Hono mocks em vez de h3
+   - Coverage D-2 (new-files since `968eefb`) ≥ 80% lines + 70% branches
+   - Suíte total client preserva green (704 pass / 15 pre-boundary skip)
 
-### D-44 (2026-05-24): BFF migra de h3 → Hono (substitui D-39)
+5. **Docker compose hot-reload OK**:
+   - `docker compose up -d frontend-client` boots OK
+   - Edit em `server.ts` ou `auth-server.ts` → reload do server router via Vinxi HMR (ou container restart documentado se Vinxi não suportar HMR pro h3-port routers)
 
-`server.ts` (proxy `/api/*`) + `auth-server.ts` (ACF+PKCE) migram de h3 para **Hono 4.12+**. D-39 ("BFF preservada em h3 permanente") fica **REVOKED** — preservação da BFF em h3 não é mais princípio.
+6. **Bundle size + build time não regridem**:
+   - `npm run build` exit 0
+   - Bundle main client gz ≤ 250 KB (atual ~200 KB — Hono adiciona ~30 KB esperado, dentro do gate D-3 ≤ 300 KB)
+   - Build time não excede 2× baseline
 
-**Razão:** Independentemente do alvo runtime escolhido (Vinext, TanStack Start, Vinxi 0.6), nenhum integra h3 da mesma forma que Vinxi. Hono é o equivalente moderno: estável (4.12.22), Cloudflare Workers + Node + Bun ready, syntax similar a h3, multi-platform, sem vendor-lock.
+7. **Security não-negociável (D-15 Phase 49)**:
+   - PKCE S256 mantido
+   - Cookies httpOnly + Secure-em-prod
+   - Sem token em storage browser
+   - CORS allowlist exato
+   - CSRF protection equivalente a state validation no callback + SameSite cookies
+   - `bruteForceProtected:true` em realms preservado
+   - Logout invalida session Keycloak
 
-**Aplicação:**
-- BFF rewrite: `defineEventHandler` → `app.get()/post()`, `getCookie/setCookie/deleteCookie/getQuery` mantidos com Hono equivalentes.
-- Token isolation D-12 preservado (cookies httpOnly server-side).
-- PKCE state correlation preservada.
-- Same-origin preservado (Hono serve BFF na mesma origem do SPA).
-- Realm-per-SPA preservado (`KEYCLOAK_REALM` env por SPA).
-- API contract decoupling preservado (BFF compõe `/auth/me`).
-
-D-44 aplica em ambos SPAs (client + backoffice) eventualmente, mas spike valida só client.
-
----
-
-### D-45 (2026-05-24): Alvo final = decisão pós-spike data-driven
-
-Não há alvo runtime locked em Phase 54. Spike produz `SPIKE-COMPARISON.md` com métricas medidas; decisão de alvo final é tomada em phase 55 dedicada, com base nessas métricas.
-
-**Razão:** Vinext promete 4× build / -50% bundle mas exige rewrite de 17 rotas. TanStack Start preserva código mas RSC ainda em desenvolvimento. Decisão correta depende de:
-- Performance real neste codebase (não benchmark de 3rd-party)
-- ROI: ganho em performance vs custo de rewrite
-- Estratégia de longo prazo (ecosystem Next.js vs TanStack)
-
-**Aplicação:**
-- Spike compara Vinext + TanStack Start (Vinxi 0.6 investigado se factível).
-- `SPIKE-COMPARISON.md` é critério objetivo de decisão.
-- Phase 55 abre com alvo locked.
-
----
-
-### D-46 (2026-05-24): Branch `spike/migration-poc-vinext-vs-start` isolado, master intocado
-
-Spike roda exclusivamente em branch `spike/migration-poc-vinext-vs-start`. Master não recebe mudança de runtime durante phase 54.
-
-**Razão:** Limita blast radius. Permite abandonar qualquer alvo sem custo de revert em master. Decisão de alvo final puxa de branch ou refaz limpo em phase 55.
-
-**Aplicação:**
-- 2 commits no branch spike (1 por alvo): `spike(vinext): migrate /dashboard route` + `spike(start): migrate /dashboard route`.
-- Métricas capturadas em `.jdi/cache/spike-54-*` (HAR, build logs, bundle reports) e summarized em `SPIKE-COMPARISON.md`.
-- Branch spike rebase com master conforme master avança.
-
----
-
-## Decisões mantidas
-
-### D-38 (2026-05-24): Spike + migração eventual = só `frontend/client/`
-
-Backoffice fica fora desta phase. Spike + decisão + migração eventual cobrem só client SPA. Backoffice migra em phase 56+ separada após client converger.
-
-**Razão:** Isola blast radius. Reduz escopo de variáveis no spike.
-
----
-
-### D-41 (2026-05-24): NPM exclusivo — PNPM proibido
-
-NPM em todo o projeto. Scripts, Dockerfile, CI, docs npm-only. Lock file: `package-lock.json` único; `pnpm-lock.yaml` removido.
-
-**Razão:** Unificação. Histórico misto cria confusão.
-
-**Aplicação:** Mantém-se. NPM cleanup é tarefa independente do alvo escolhido — pode ser parte do spike ou phase própria.
-
----
-
-### D-42 (2026-05-24): DoD adaptado para spike
-
-DoD original (Playwright full + Vitest 80% + SSR/hydration + hot-reload) **não se aplica ao spike** porque master fica intocado. Spike tem DoD próprio:
-
-1. **Branch `spike/migration-poc-vinext-vs-start` existe** com 2+ commits documentados.
-2. **`/dashboard` route funciona em ambos alvos** (manual smoke via `curl` + abrir browser).
-3. **`SPIKE-COMPARISON.md` documenta**:
-   - Build time medido (3 runs cada, mediana)
-   - Bundle size medido (raw + gzip)
-   - Effort em horas (timestamped commits)
-   - BFF Hono migration: feito uma vez antes do spike (D-44), reused em ambos POCs
-   - DX subjective notes (HMR speed, type errors clarity, debugger)
-4. **Decisão de alvo final** registrada como D-XX (novo) com justificativa.
-
-DoD de migração real (full Playwright, full Vitest, etc.) volta na phase 55 dedicada.
-
----
-
-## Decisões REVOKED
-
-### D-39 (2026-05-24): REVOKED — superseded por D-44
-
-BFF preservada permanente em h3 não é mais princípio. D-44 substitui.
-
-### D-40 (2026-05-24): REVOKED — superseded por D-45
-
-Vinext como alvo locked com pin de versão não é mais lockado. D-45 substitui (alvo final pós-spike).
-
----
+8. **Clean-slate journey (opcional)**:
+   - `docker compose down -v` + up + jornada de registro PJ + login + 1 navegação autenticada
+   - Apenas se reviewer pedir como validação extra; não é blocking gate
 
 ## Specialist routing
 
-- **Spike execution:** `jdi-doer-onboarding-keycloak-frontend-vinext` (renomeio do specialist semantic: cobre frontend migration em geral, não só Vinext)
-- **BFF Hono migration:** mesmo specialist frontend
-- **Security validation (cross-cutting):** `jdi-reviewer-onboarding-keycloak-security` no /jdi-verify regardless
-- **Backend:** nenhum — phase não toca .NET
-
----
+- **Doer:** `jdi-doer-onboarding-keycloak-frontend-vinext` (cobre BFF rewrite)
+- **Reviewers (cross-cutting):** frontend (mandatory Playwright), security (auth flow validation mandatory), backend (no-scope APPROVED defer)
 
 ## Riscos
 
 | Risco | Mitigação |
 |---|---|
-| Spike vira projeto eterno (scope creep) | Time-box estrito: 2 dias por alvo. Quem estourar = abandona, registra "BLOCKED" em SPIKE-COMPARISON.md |
-| Spike inconclusivo (números próximos) | Critério tie-breaker locked antes do spike: se Vinext < 10% mais rápido E < 10% bundle menor → escolhe TanStack Start (menor risk) |
-| BFF Hono migration introduz bug em master | BFF Hono também roda em branch spike. Só vai para master quando phase 55 mergear |
-| Vinext breaks em minor version durante spike | Pin exato `0.0.52`. Aceita re-pin se quebrar |
-| TanStack Start RC → 1.0 quebra durante spike | Pin exato `1.168.11`. Aceita re-pin |
-| Effort de rewrite Vinext > 2 dias por route | Confirma hipótese — registra "BLOCKED por custo" em SPIKE-COMPARISON.md, escolhe alternativa |
+| Hono não integra com Vinxi router `type: "http"` | Hono exporta `fetch` Web standard. Vinxi h3 router internally usa h3 mas aceita handler genérico. Spike 30min antes de Wave 2: confirmar Vinxi aceita Hono via `default export app` ou `export const handler = app.fetch`. Se não, fallback documentado: keep h3 só no entry router, Hono dentro com adapter. |
+| ACF+PKCE regressão | Test-first: `auth-server.test.ts` 37 tests devem PASS após swap. Reviewer roda Playwright full regression `login-flow.spec.ts` + manual login no docker compose up |
+| Cookie semantics diff h3 vs Hono | Hono `setCookie` usa `hono/cookie` helper — atribui `path`, `httpOnly`, `secure`, `sameSite`, `maxAge` mesma semântica que h3 `setCookie`. Verify via test cases existentes |
+| Build error Vinxi + Hono | Hono é pure Web standard ESM, Vite 5 (Vinxi 0.5) compatível. Sem polyfill custom esperado |
+| Phase 33 ACF+PKCE recém-estabilizado | DoD não-negociável (item 7). Reviewer recusa fix que afrouxe gate. |
+| Hot-reload quebra com Hono | Vinxi hot-reload é arquivo-baseado, não h3-específico. Edit no `auth-server.ts` (h3 ou Hono) trigga reload do `type: "http"` router. Verify durante Wave 2 |
 
----
+## Estratégia execução (waves esboço pré-plan)
 
-## Estratégia de execução (waves esboço pré-plan)
-
-1. **Wave 0 (cleanup + branching):** Cria branch `spike/migration-poc-vinext-vs-start`. NPM cleanup (D-41) executa em master independente do spike. Master segue limpo.
-2. **Wave 1 (BFF Hono migration):** Migra `server.ts` + `auth-server.ts` h3 → Hono em branch spike. Valida via Playwright reduzido (login flow + api-proxy). Atomic commit.
-3. **Wave 2 (Vinext POC):** Migra rota `/dashboard` + dependências mínimas para Vinext em branch spike. Mede build/bundle/effort. Atomic commit.
-4. **Wave 3 (TanStack Start POC):** Reseta branch spike pré-Vinext (ou cria sub-branch). Migra `/dashboard` para TanStack Start. Mede mesmas métricas. Atomic commit.
-5. **Wave 4 (Vinxi 0.6 check, opcional):** Investiga existência. Se existe e é trivial, mede também.
-6. **Wave 5 (SPIKE-COMPARISON.md):** Sintetiza métricas. Recomendação data-driven para phase 55.
-7. **Ship:** ROADMAP.md atualiza — phase 54 done, phase 55 = "Migração runtime efetiva (alvo X)" criada com alvo locked.
-
----
-
-## Métricas a capturar no spike (template SPIKE-COMPARISON.md)
-
-| Métrica | Vinext | TanStack Start | Vinxi atual (baseline) |
-|---|---|---|---|
-| Build time produção (mediana 3 runs) | ? | ? | medido |
-| Bundle main raw | ? | ? | 678 KB |
-| Bundle main gzip | ? | ? | ~200 KB |
-| Effort horas (commits timestamped) | ? | ? | 0 |
-| HMR speed dev (ms até refresh) | ? | ? | medido |
-| Type errors quality | ? | ? | medido |
-| BFF integration (linhas mudadas) | ? | ? | 0 |
-| Tests broken (vitest count) | ? | ? | 0 |
-| Tests broken (playwright count) | ? | ? | 0 |
-
----
+1. **Wave 1 — NPM cleanup (D-41)**: Deletar `pnpm-lock.yaml`. Substituir `pnpm` refs em scripts/Dockerfile/CI/docs/check-dev-env.mjs por `npm`. Atomic commit `chore: migrate to npm-only (D-41)`. Independente de Hono.
+2. **Wave 2 — Hono compat spike (30 min)**: Confirma Vinxi aceita Hono apps em `type: "http"` router. Documento em `.jdi/cache/hono-compat-spike-*.md`. Bloqueia Wave 3+ se incompatível.
+3. **Wave 3 — `server.ts` h3 → Hono**: Reescreve proxy `/api/*`. Mantém todas as edge cases (single listener guard, error mapping 503 → 4xx). Atomic commit.
+4. **Wave 4 — `auth-server.ts` h3 → Hono**: Reescreve ACF+PKCE routes (`/auth/login`, `/auth/callback`, `/auth/me`, `/auth/logout`, `/auth/error`). Cookie helpers `hono/cookie`. Test cases `auth-server.test.ts` adaptados para mocks Hono. Atomic commit.
+5. **Wave 5 — Validation**: `npm run typecheck` + `npm run lint` + `npm run test` (vitest) + `npm run test:e2e` (playwright) + manual smoke docker compose up + Playwright full regression suite (mandatory G7/G8). Atomic commit.
+6. **Wave 6 — Docs**: Update `CLAUDE.md` se mencionar h3; update `docs/dev-setup.md` se relevante; bump `.jdi/VERSION`. Atomic commit final.
 
 ## Out-of-scope
 
-- Backoffice migration (phase 56+)
-- Backend .NET changes (sem mudanças nesta phase)
-- Keycloak realm config
-- Cloudflare Workers deploy real (spike só local + docker)
-- OTel JS re-instrumentation (phase 53 cobriu)
-
----
+- Backoffice BFF migration (phase futura)
+- Backend .NET changes
+- Keycloak realm changes
+- Runtime bundler migration (D-47 cancelado)
+- TanStack Router changes
+- Cloudflare Workers deploy
+- OTel JS changes
+- Hono advanced features (middleware composition complex, validation library) — manter apenas o equivalente direto do que h3 entrega hoje
 
 ## Referencias
 
 - ROADMAP.md phase 54
-- DECISIONS.md D-38 + D-41 (mantidas), D-39 + D-40 (revoked), D-43..D-46 (novas)
-- Phase 54 LOOP.md (iter 1 BLOCKED — registro do redirect)
-- Phase 54 DISCOVERY.md (commit `45811ef` — descoberta original do mismatch Vinext)
-- Phase 54 REVIEW.md (verdict BLOCKED com B-1/B-2/B-3)
-- https://github.com/cloudflare/vinext (alvo A do spike)
-- https://tanstack.com/start/latest (alvo B do spike)
-- https://hono.dev (substituto h3 D-44)
-- D-4 (2 SPAs independentes — preservado)
-- D-12 (id_token never in JS — preservado via Hono BFF)
+- DECISIONS.md D-38 + D-41 + D-44 + D-47 (kept/new); D-39 + D-40 + D-42 + D-43 + D-45 + D-46 (revoked)
+- Phase 54 LOOP.md (iter 1 BLOCKED — registro do redirect inicial)
+- Phase 54 DISCOVERY.md (commit `45811ef` — análise técnica original Vinext mismatch)
+- Phase 54 REVIEW.md (verdict BLOCKED iter 1)
+- https://hono.dev (alvo Wave 3 + 4)
+- https://github.com/honojs/hono (repo)
+- D-12 (token isolation — preservado via Hono `hono/cookie`)
+- D-15 Phase 49 (security gates non-negotiable — preservados)
 - D-16 (compose runtime canônico — preservado)
-- D-25 (specialist routing — preservado)
+- D-17 (Playwright base URLs — preservado)
+- Phase 49 REVIEW.md (auth flow lessons learned — aplica aqui)

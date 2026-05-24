@@ -39,7 +39,26 @@ const KEYCLOAK_PUBLIC_URL = process.env.KEYCLOAK_PUBLIC_URL || "http://localhost
 })();
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM ?? "backoffice";
 const CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || "onboarding-backoffice";
-const CLIENT_SECRET = process.env.KEYCLOAK_CLIENT_SECRET || "";
+
+// Fail-fast: empty CLIENT_SECRET produces a cryptic Keycloak 401
+// (unauthorized_client / "Invalid client or Invalid client credentials") on the
+// /token endpoint after the user has already completed the Keycloak login. Catching
+// this at module load surfaces the misconfig immediately on `pnpm dev` startup
+// rather than mid-flow.
+(function validateClientSecret() {
+  const raw = process.env.KEYCLOAK_CLIENT_SECRET;
+  if (raw === undefined || raw === "") {
+    throw new Error(
+      `[auth-server/backoffice] KEYCLOAK_CLIENT_SECRET is not set. ` +
+        `Empty/missing secret causes Keycloak to reject the ACF token exchange with ` +
+        `401 unauthorized_client. ` +
+        `Local dev: ensure the repo-root .env is loaded (the dev script uses ` +
+        `node --env-file-if-exists=../../.env). Docker: compose.yaml passes the secret from .env ` +
+        `as KEYCLOAK_BACKOFFICE_CLIENT_SECRET -> KEYCLOAK_CLIENT_SECRET.`
+    );
+  }
+})();
+const CLIENT_SECRET = process.env.KEYCLOAK_CLIENT_SECRET as string;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5174";
 const REDIRECT_URI = `${FRONTEND_URL}/auth/callback`;
 const IS_PROD = process.env.NODE_ENV === "production";
@@ -236,7 +255,7 @@ router.get(
         // Best-effort: call backend to clear the flag.
         // Even if it fails, we proceed with cookie cleanup + redirect to /admin/login
         // (self-healing: next login repeats the cycle if the flag wasn't cleared).
-        const backendUrl = "http://api:8080";
+        const backendUrl = process.env.API_INTERNAL_URL || "http://localhost:8080";
         try {
           await fetch(`${backendUrl}/api/admin/me/complete-first-login`, {
             method: "POST",

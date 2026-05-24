@@ -114,6 +114,7 @@ services:
     environment:
       VITE_API_URL: http://localhost:8080
       VITE_KEYCLOAK_URL: http://localhost:8180
+      API_INTERNAL_URL: http://api:8080
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_PUBLIC_URL: http://localhost:8180
       KEYCLOAK_REALM: client
@@ -140,6 +141,7 @@ services:
     environment:
       VITE_API_URL: http://localhost:8080
       VITE_KEYCLOAK_URL: http://localhost:8180
+      API_INTERNAL_URL: http://api:8080
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_PUBLIC_URL: http://localhost:8180
       KEYCLOAK_REALM: backoffice

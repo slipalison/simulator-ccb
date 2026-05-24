@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "predev": "node ../../scripts/check-dev-env.mjs frontend-client",
-    "dev": "vinxi dev --port 5173 --host",
+    "dev": "node --env-file-if-exists=../../.env node_modules/vinxi/bin/cli.mjs dev --port 5173 --host",
     "build": "vinxi build",
     "start": "vinxi start",
     "test": "vitest run",

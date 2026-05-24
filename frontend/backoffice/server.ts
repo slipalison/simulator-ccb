@@ -7,7 +7,7 @@
 
 import { defineEventHandler, getHeaders, readRawBody } from "h3";
 
-const BACKEND_URL = "http://api:8080";
+const BACKEND_URL = process.env.API_INTERNAL_URL || "http://localhost:8080";
 
 export default defineEventHandler(async (event) => {
   const method = event.node.req.method ?? "GET";

@@ -38,7 +38,25 @@ const KEYCLOAK_PUBLIC_URL = process.env.KEYCLOAK_PUBLIC_URL || "http://localhost
 })();
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM ?? "client";
 const CLIENT_ID = process.env.KEYCLOAK_CLIENT_ACF_CLIENT_ID || "onboarding-client-acf";
-const CLIENT_SECRET = process.env.KEYCLOAK_CLIENT_ACF_CLIENT_SECRET || "";
+
+// Fail-fast: empty CLIENT_SECRET produces a cryptic Keycloak 401
+// (unauthorized_client / "Invalid client or Invalid client credentials") on the
+// /token endpoint after the user has already completed the Keycloak login. Catching
+// this at module load surfaces the misconfig immediately on `pnpm dev` startup
+// rather than mid-flow.
+(function validateClientSecret() {
+  const raw = process.env.KEYCLOAK_CLIENT_ACF_CLIENT_SECRET;
+  if (raw === undefined || raw === "") {
+    throw new Error(
+      `[auth-server/client] KEYCLOAK_CLIENT_ACF_CLIENT_SECRET is not set. ` +
+        `Empty/missing secret causes Keycloak to reject the ACF token exchange with ` +
+        `401 unauthorized_client. ` +
+        `Local dev: ensure the repo-root .env is loaded (the dev script uses ` +
+        `node --env-file-if-exists=../../.env). Docker: compose.yaml passes the secret from .env.`
+    );
+  }
+})();
+const CLIENT_SECRET = process.env.KEYCLOAK_CLIENT_ACF_CLIENT_SECRET as string;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const REDIRECT_URI = `${FRONTEND_URL}/auth/callback`;
 const IS_PROD = process.env.NODE_ENV === "production";
@@ -344,7 +362,7 @@ router.get(
 
       if (!companyId && sub) {
         try {
-          const API_URL = process.env.API_INTERNAL_URL || "http://api:8080";
+          const API_URL = process.env.API_INTERNAL_URL || "http://localhost:8080";
           const profileRes = await fetch(`${API_URL}/api/companies/me`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           });
@@ -367,7 +385,7 @@ router.get(
 
       if (accessToken) {
         try {
-          const API_URL = process.env.API_INTERNAL_URL || "http://api:8080";
+          const API_URL = process.env.API_INTERNAL_URL || "http://localhost:8080";
           const permRes = await fetch(`${API_URL}/api/auth/permissions`, {
             headers: { Authorization: `Bearer ${accessToken}` },
           });

@@ -47,6 +47,10 @@ vi.mock("./src/lib/auth-code-flow", () => ({
 /**
  * Load auth-server.ts fresh in isolation with a given KEYCLOAK_REALM env value.
  * vi.resetModules() causes the module-level validateRealm() IIFE to re-execute.
+ *
+ * Always stubs KEYCLOAK_CLIENT_SECRET because auth-server.ts also fail-fasts on
+ * an empty secret; tests that only exercise realm validation still need the
+ * secret present to reach the realm check.
  */
 async function loadModuleWithRealm(realm: string | undefined): Promise<void> {
   vi.resetModules();
@@ -55,6 +59,23 @@ async function loadModuleWithRealm(realm: string | undefined): Promise<void> {
     delete process.env.KEYCLOAK_REALM;
   } else {
     vi.stubEnv("KEYCLOAK_REALM", realm);
+  }
+  vi.stubEnv("KEYCLOAK_CLIENT_SECRET", "test-secret");
+  await import("./auth-server");
+}
+
+/**
+ * Load auth-server.ts fresh with a given CLIENT_SECRET env value. Used by the
+ * fail-fast tests below.
+ */
+async function loadModuleWithSecret(secret: string | undefined): Promise<void> {
+  vi.resetModules();
+  vi.unstubAllEnvs();
+  delete process.env.KEYCLOAK_REALM;
+  if (secret === undefined) {
+    delete process.env.KEYCLOAK_CLIENT_SECRET;
+  } else {
+    vi.stubEnv("KEYCLOAK_CLIENT_SECRET", secret);
   }
   await import("./auth-server");
 }
@@ -102,6 +123,54 @@ describe("auth-server/backoffice — realm fail-fast (T-2a)", () => {
 
   it("does NOT throw when KEYCLOAK_REALM is undefined (per-SPA default 'backoffice')", async () => {
     await expect(loadModuleWithRealm(undefined)).resolves.toBeUndefined();
+  });
+});
+
+// ── CLIENT_SECRET fail-fast ───────────────────────────────────────────────────
+//
+// Regression guard mirroring frontend/client/auth-server.test.ts. Prior to the
+// fix, KEYCLOAK_CLIENT_SECRET fell back to "" and the empty secret was sent to
+// Keycloak /token, producing 401 unauthorized_client mid-login flow.
+
+describe("auth-server/backoffice — CLIENT_SECRET fail-fast", () => {
+  afterEach(() => {
+    vi.resetModules();
+    vi.unstubAllEnvs();
+    delete process.env.KEYCLOAK_CLIENT_SECRET;
+  });
+
+  it("throws when KEYCLOAK_CLIENT_SECRET is the empty string", async () => {
+    await expect(loadModuleWithSecret("")).rejects.toThrow(
+      /KEYCLOAK_CLIENT_SECRET is not set/
+    );
+  });
+
+  it("throws when KEYCLOAK_CLIENT_SECRET is undefined", async () => {
+    await expect(loadModuleWithSecret(undefined)).rejects.toThrow(
+      /KEYCLOAK_CLIENT_SECRET is not set/
+    );
+  });
+
+  it("error message names the upstream symptom (401 unauthorized_client)", async () => {
+    await expect(loadModuleWithSecret("")).rejects.toThrow(
+      /401 unauthorized_client/
+    );
+  });
+
+  it("error message points at the .env loading mechanism", async () => {
+    await expect(loadModuleWithSecret("")).rejects.toThrow(
+      /--env-file-if-exists=\.\.\/\.\.\/\.env/
+    );
+  });
+
+  it("error message names the compose env var bridge KEYCLOAK_BACKOFFICE_CLIENT_SECRET", async () => {
+    await expect(loadModuleWithSecret("")).rejects.toThrow(
+      /KEYCLOAK_BACKOFFICE_CLIENT_SECRET/
+    );
+  });
+
+  it("does NOT throw when CLIENT_SECRET is a non-empty value", async () => {
+    await expect(loadModuleWithSecret("real-secret-value")).resolves.toBeUndefined();
   });
 });
 
@@ -301,5 +370,75 @@ describe("auth-server/backoffice — id_token_hint forwarded on logout (T-18)", 
     expect(fullUrl).not.toContain("id_token_hint");
     expect(fullUrl).toContain("client_id=");
     expect(fullUrl).toContain("post_logout_redirect_uri=");
+  });
+});
+
+// ── Static guards: dev script + compose.yaml env injection ───────────────────
+//
+// These guards mirror frontend/client/auth-server.test.ts. They block regression
+// of the .env loading misconfig and the Docker env-var bridge.
+
+describe("auth-server/backoffice — dev script env-file flag (static guard)", () => {
+  const pkg = (() => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs") as typeof import("fs");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("path") as typeof import("path");
+    return fs.readFileSync(path.resolve(__dirname, "./package.json"), "utf8");
+  })();
+
+  it("dev script invokes node with --env-file-if-exists=../../.env", () => {
+    const parsed = JSON.parse(pkg) as { scripts?: Record<string, string> };
+    const dev = parsed.scripts?.dev ?? "";
+    expect(dev).toMatch(/node\b/);
+    expect(dev).toMatch(/--env-file-if-exists=\.\.\/\.\.\/\.env/);
+  });
+
+  it("dev script invokes vinxi via node_modules/vinxi/bin/cli.mjs (not bare vinxi)", () => {
+    const parsed = JSON.parse(pkg) as { scripts?: Record<string, string> };
+    const dev = parsed.scripts?.dev ?? "";
+    expect(dev).toMatch(/node_modules\/vinxi\/bin\/cli\.mjs/);
+  });
+});
+
+describe("auth-server/backoffice — compose.yaml env injection (static guard)", () => {
+  const compose = (() => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs") as typeof import("fs");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("path") as typeof import("path");
+    return fs.readFileSync(path.resolve(__dirname, "../../compose.yaml"), "utf8");
+  })();
+
+  // Extract the frontend-backoffice service block — see client mirror for rationale.
+  const backofficeBlock = (() => {
+    const lines = compose.split("\n");
+    const start = lines.findIndex((l) => l === "  frontend-backoffice:");
+    if (start < 0) return "";
+    let end = lines.length;
+    for (let i = start + 1; i < lines.length; i++) {
+      if (/^ {2}\S/.test(lines[i])) {
+        end = i;
+        break;
+      }
+    }
+    return lines.slice(start, end).join("\n");
+  })();
+
+  it("frontend-backoffice block is found in compose.yaml", () => {
+    expect(backofficeBlock).not.toBe("");
+    expect(backofficeBlock).toMatch(/^ {2}frontend-backoffice:/);
+  });
+
+  it("frontend-backoffice environment includes KEYCLOAK_CLIENT_SECRET (mapped from KEYCLOAK_BACKOFFICE_CLIENT_SECRET)", () => {
+    expect(backofficeBlock).toMatch(/KEYCLOAK_CLIENT_SECRET:\s*\$\{KEYCLOAK_BACKOFFICE_CLIENT_SECRET\}/);
+  });
+
+  it("frontend-backoffice environment includes KEYCLOAK_CLIENT_ID (mapped from KEYCLOAK_BACKOFFICE_CLIENT_ID)", () => {
+    expect(backofficeBlock).toMatch(/KEYCLOAK_CLIENT_ID:\s*\$\{KEYCLOAK_BACKOFFICE_CLIENT_ID\}/);
+  });
+
+  it("frontend-backoffice environment sets API_INTERNAL_URL to http://api:8080", () => {
+    expect(backofficeBlock).toMatch(/API_INTERNAL_URL:\s*http:\/\/api:8080/);
   });
 });

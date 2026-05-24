@@ -47,6 +47,10 @@ vi.mock("./src/lib/auth-code-flow", () => ({
 /**
  * Load auth-server.ts fresh in isolation with a given KEYCLOAK_REALM env value.
  * vi.resetModules() causes the module-level validateRealm() IIFE to re-execute.
+ *
+ * Always stubs KEYCLOAK_CLIENT_ACF_CLIENT_SECRET because auth-server.ts also
+ * fail-fasts on an empty secret; tests that only exercise realm validation
+ * still need the secret present to reach the realm check.
  */
 async function loadModuleWithRealm(realm: string | undefined): Promise<void> {
   vi.resetModules();
@@ -55,6 +59,23 @@ async function loadModuleWithRealm(realm: string | undefined): Promise<void> {
     delete process.env.KEYCLOAK_REALM;
   } else {
     vi.stubEnv("KEYCLOAK_REALM", realm);
+  }
+  vi.stubEnv("KEYCLOAK_CLIENT_ACF_CLIENT_SECRET", "test-secret");
+  await import("./auth-server");
+}
+
+/**
+ * Load auth-server.ts fresh with a given CLIENT_SECRET env value. Used by the
+ * fail-fast tests below.
+ */
+async function loadModuleWithSecret(secret: string | undefined): Promise<void> {
+  vi.resetModules();
+  vi.unstubAllEnvs();
+  delete process.env.KEYCLOAK_REALM;
+  if (secret === undefined) {
+    delete process.env.KEYCLOAK_CLIENT_ACF_CLIENT_SECRET;
+  } else {
+    vi.stubEnv("KEYCLOAK_CLIENT_ACF_CLIENT_SECRET", secret);
   }
   await import("./auth-server");
 }
@@ -102,6 +123,50 @@ describe("auth-server/client — realm fail-fast (T-2a)", () => {
 
   it("does NOT throw when KEYCLOAK_REALM is undefined (per-SPA default 'client')", async () => {
     await expect(loadModuleWithRealm(undefined)).resolves.toBeUndefined();
+  });
+});
+
+// ── CLIENT_SECRET fail-fast ───────────────────────────────────────────────────
+//
+// Regression guard for the dev-env misconfig where the repo-root .env was not
+// loaded into the Vinxi server process. Previously KEYCLOAK_CLIENT_ACF_CLIENT_SECRET
+// fell back to "" and the empty secret was sent to Keycloak /token, producing
+// 401 unauthorized_client mid-login flow ("Invalid client or Invalid client credentials").
+// Fail-fast at module load surfaces the misconfig before any user-facing flow.
+
+describe("auth-server/client — CLIENT_SECRET fail-fast", () => {
+  afterEach(() => {
+    vi.resetModules();
+    vi.unstubAllEnvs();
+    delete process.env.KEYCLOAK_CLIENT_ACF_CLIENT_SECRET;
+  });
+
+  it("throws when KEYCLOAK_CLIENT_ACF_CLIENT_SECRET is the empty string", async () => {
+    await expect(loadModuleWithSecret("")).rejects.toThrow(
+      /KEYCLOAK_CLIENT_ACF_CLIENT_SECRET is not set/
+    );
+  });
+
+  it("throws when KEYCLOAK_CLIENT_ACF_CLIENT_SECRET is undefined", async () => {
+    await expect(loadModuleWithSecret(undefined)).rejects.toThrow(
+      /KEYCLOAK_CLIENT_ACF_CLIENT_SECRET is not set/
+    );
+  });
+
+  it("error message names the upstream symptom (401 unauthorized_client)", async () => {
+    await expect(loadModuleWithSecret("")).rejects.toThrow(
+      /401 unauthorized_client/
+    );
+  });
+
+  it("error message points at the .env loading mechanism", async () => {
+    await expect(loadModuleWithSecret("")).rejects.toThrow(
+      /--env-file-if-exists=\.\.\/\.\.\/\.env/
+    );
+  });
+
+  it("does NOT throw when CLIENT_SECRET is a non-empty value", async () => {
+    await expect(loadModuleWithSecret("real-secret-value")).resolves.toBeUndefined();
   });
 });
 
@@ -363,5 +428,85 @@ describe("auth-server/client — id_token_hint forwarded on logout (T-18)", () =
     expect(fullUrl).not.toContain("id_token_hint");
     expect(fullUrl).toContain("client_id=");
     expect(fullUrl).toContain("post_logout_redirect_uri=");
+  });
+});
+
+// ── Static guards: dev script + compose.yaml env injection ───────────────────
+//
+// These guards block regression of the .env loading misconfig. They read the
+// raw text of package.json and compose.yaml and assert that the bridging
+// mechanism (--env-file-if-exists flag + compose environment block) is present.
+
+describe("auth-server/client — dev script env-file flag (static guard)", () => {
+  const pkg = (() => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs") as typeof import("fs");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("path") as typeof import("path");
+    return fs.readFileSync(path.resolve(__dirname, "./package.json"), "utf8");
+  })();
+
+  it("dev script invokes node with --env-file-if-exists=../../.env", () => {
+    const parsed = JSON.parse(pkg) as { scripts?: Record<string, string> };
+    const dev = parsed.scripts?.dev ?? "";
+    expect(dev).toMatch(/node\b/);
+    expect(dev).toMatch(/--env-file-if-exists=\.\.\/\.\.\/\.env/);
+  });
+
+  it("dev script invokes vinxi via node_modules/vinxi/bin/cli.mjs (not bare vinxi)", () => {
+    const parsed = JSON.parse(pkg) as { scripts?: Record<string, string> };
+    const dev = parsed.scripts?.dev ?? "";
+    // The bare `vinxi dev` form bypasses the --env-file flag because npm resolves
+    // it via a wrapper. The node-direct invocation is the only form that loads
+    // the repo-root .env before module evaluation.
+    expect(dev).toMatch(/node_modules\/vinxi\/bin\/cli\.mjs/);
+  });
+});
+
+describe("auth-server/client — compose.yaml env injection (static guard)", () => {
+  const compose = (() => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require("fs") as typeof import("fs");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require("path") as typeof import("path");
+    return fs.readFileSync(path.resolve(__dirname, "../../compose.yaml"), "utf8");
+  })();
+
+  // Extract the frontend-client service block — from `frontend-client:` to the
+  // next top-level service (two-space indent, non-space at col 3) or EOF.
+  // Uses line-split + findIndex so we don't rely on JS-incompatible regex
+  // anchors like \Z.
+  const clientBlock = (() => {
+    const lines = compose.split("\n");
+    const start = lines.findIndex((l) => l === "  frontend-client:");
+    if (start < 0) return "";
+    let end = lines.length;
+    for (let i = start + 1; i < lines.length; i++) {
+      if (/^ {2}\S/.test(lines[i])) {
+        end = i;
+        break;
+      }
+    }
+    return lines.slice(start, end).join("\n");
+  })();
+
+  it("frontend-client block is found in compose.yaml", () => {
+    expect(clientBlock).not.toBe("");
+    expect(clientBlock).toMatch(/^ {2}frontend-client:/);
+  });
+
+  it("frontend-client environment includes KEYCLOAK_CLIENT_ACF_CLIENT_SECRET", () => {
+    expect(clientBlock).toMatch(/KEYCLOAK_CLIENT_ACF_CLIENT_SECRET:\s*\$\{KEYCLOAK_CLIENT_ACF_CLIENT_SECRET\}/);
+  });
+
+  it("frontend-client environment includes KEYCLOAK_CLIENT_ACF_CLIENT_ID", () => {
+    expect(clientBlock).toMatch(/KEYCLOAK_CLIENT_ACF_CLIENT_ID:\s*\$\{KEYCLOAK_CLIENT_ACF_CLIENT_ID\}/);
+  });
+
+  it("frontend-client environment sets API_INTERNAL_URL to http://api:8080", () => {
+    // The proxy (server.ts) reads API_INTERNAL_URL and defaults to localhost.
+    // Inside Docker the value MUST be http://api:8080 (service-name DNS) for
+    // the proxy to reach the backend container.
+    expect(clientBlock).toMatch(/API_INTERNAL_URL:\s*http:\/\/api:8080/);
   });
 });

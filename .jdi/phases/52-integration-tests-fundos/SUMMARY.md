@@ -283,3 +283,75 @@ and mapped column values directly in expression trees. Column name `"cnpj"` conf
 | G10 T-4 integration tests (B2) | READY | CPF seeds valid — pass on re-verify with Docker |
 | G10 T-2 search tests (B3) | READY | EF.Property translation fixed — pass on re-verify with Docker |
 | G11 Coverage | EXPECTED PASS | All 21 gaps downstream of B1/B2/B3; recover when tests execute |
+
+---
+
+## Iter 3 fixes (fix_blockers mode) — frontend BFE-5
+
+Three files added post-boundary `968eefb` were absent from vitest `coverage.include`, causing 0% measured coverage. G7 gate blocks when any new file has < 80% perFile.
+
+### BFE-5a — client web-vitals.ts coverage (commit `b22bed3`)
+
+**File:** `frontend/client/src/lib/telemetry/web-vitals.ts`
+
+**Root cause:** BFE-2/BFE-3 fix added `web-vitals.ts` to the source tree but did not add it to `frontend/client/vitest.config.ts` `coverage.include`. The v8 provider only measures coverage for explicitly included files — file was invisible to the gate.
+
+**Fix:**
+- Added `'src/lib/telemetry/web-vitals.ts'` to `coverage.include` in `frontend/client/vitest.config.ts`.
+- Created `frontend/client/src/tests/lib/web-vitals.test.ts` (16 tests):
+  - Mocks `@opentelemetry/api` via `vi.hoisted()` with `mockGetMeter` / `mockCreateHistogram` / `mockRecord` spies.
+  - Mocks `web-vitals` to capture each subscription callback (CLS/INP/LCP/FCP/TTFB).
+  - Asserts `registerWebVitals()` calls all 5 subscription functions exactly once, each with a `Function` argument.
+  - Manually invokes each captured callback and asserts `histogram.record` fires with correct `vital.name` + `vital.rating`.
+  - Security assertion: record attributes contain exactly `vital.name` + `vital.rating` — no PII keys.
+  - Note: module-level `getMeter/createHistogram` call counts are not asserted post-`clearAllMocks`; instead the spy-factory shape is verified (function type check) — avoids timing issue with module-scope evaluation.
+
+**Measured coverage:** 100% stmts / 100% branch / 100% funcs / 100% lines. (v8 text reporter omits 100%-covered files from the table; isolated `--coverage.include` run confirms `14/14` statements.)
+
+### BFE-5b — backoffice web-vitals.ts coverage (commit `ba88a1c`)
+
+**File:** `frontend/backoffice/src/lib/telemetry/web-vitals.ts`
+
+**Root cause:** Same as BFE-5a — file present but absent from `frontend/backoffice/vitest.config.ts` include.
+
+**Fix:**
+- Added `'src/lib/telemetry/web-vitals.ts'` to `coverage.include` in `frontend/backoffice/vitest.config.ts`.
+- Created `frontend/backoffice/src/tests/lib/web-vitals.test.ts` (16 tests, D-4 independent — symmetric to client but uses `METER_NAME = "onboarding.backoffice.web-vitals"`).
+
+**Measured coverage:** 100% stmts / 100% branch / 100% funcs / 100% lines.
+
+### BFE-5c — backoffice use-admin-list-search.ts coverage (commit `d4332d8`)
+
+**File:** `frontend/backoffice/src/lib/use-admin-list-search.ts`
+
+**Root cause:** Hook created in original phase-52 doer work but never added to `coverage.include`.
+
+**Fix:**
+- Added `'src/lib/use-admin-list-search.ts'` to `coverage.include` in `frontend/backoffice/vitest.config.ts`.
+- Created `frontend/backoffice/src/tests/lib/use-admin-list-search.test.tsx` (13 tests):
+  - Mocks `useNavigate` from `@tanstack/react-router` (returns `mockNavigate` spy).
+  - Uses `renderHook` + `act` from `@testing-library/react`.
+  - `setPage(N)` → navigate called with `{ to: path, search: { ...current, page: N } }` — existing `search`/`empresaId` preserved.
+  - `setSearch(s)` → navigate called with `search: s, page: 1` — existing `empresaId` preserved.
+  - `setSearch("")` → `search` set to `undefined` (falsy string → `|| undefined` branch).
+  - `setEmpresaId(id)` → navigate called with `empresaId: id, page: 1` — existing `search` preserved.
+  - `setEmpresaId(undefined)` → `empresaId: undefined, page: 1`.
+  - `DEFAULT_PAGE_SIZE` export equals 20.
+  - No navigate call on mount (no side effects at init).
+
+**Measured coverage:** 100% stmts / 100% branch / 100% funcs / 100% lines.
+
+### Post-BFE-5 gate status (frontend)
+
+| Gate | Status | Evidence |
+|---|---|---|
+| G4 Build client | PASS | 210.06 KB gz (gate 300 KB) |
+| G4 Build backoffice | PASS | 205.75 KB gz (gate 300 KB) |
+| G5 Typecheck client | PASS | `tsc --noEmit` 0 errors |
+| G5 Typecheck backoffice | PASS | `tsc --noEmit` 0 errors |
+| G5 Lint client | PASS | `eslint --max-warnings 0` 0 errors |
+| G5 Lint backoffice | PASS | `eslint --max-warnings 0` 0 errors |
+| G7 Coverage client web-vitals.ts | PASS | 100% all metrics |
+| G7 Coverage backoffice web-vitals.ts | PASS | 100% all metrics |
+| G7 Coverage backoffice use-admin-list-search.ts | PASS | 100% all metrics |
+| Pre-existing test failures | UNCHANGED | 15 legacy client tests fail pre-boundary (not introduced by BFE-5) |

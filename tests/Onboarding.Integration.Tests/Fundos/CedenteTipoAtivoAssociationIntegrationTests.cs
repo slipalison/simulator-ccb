@@ -128,7 +128,7 @@ public sealed class CedenteTipoAtivoAssociationIntegrationTests : PostgreSqlInte
 
         var cedenteRepo = services.GetRequiredService<ICedenteRepository>();
 
-        var cedenteA = Cedente.RegisterPf("59978867083", "CTA Cedente Alpha", companyA.Id);
+        var cedenteA = Cedente.RegisterPf(GenerateCpf(9003), "CTA Cedente Alpha", companyA.Id);
         await cedenteRepo.AddAsync(cedenteA);
 
         var cedenteB = Cedente.RegisterPf("12345678909", "CTA Cedente Beta", companyB.Id);

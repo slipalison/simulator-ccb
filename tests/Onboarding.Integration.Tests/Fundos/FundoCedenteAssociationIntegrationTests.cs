@@ -141,11 +141,11 @@ public sealed class FundoCedenteAssociationIntegrationTests : PostgreSqlIntegrat
         var cedenteRepo = services.GetRequiredService<ICedenteRepository>();
 
         // Base cedente — used for cross-tenant probe and audit tests (no ATIVO association seeded)
-        var cedenteBase = Cedente.RegisterPf("74971027018", "FCA Cedente Base", companyA.Id);
+        var cedenteBase = Cedente.RegisterPf(GenerateCpf(9001), "FCA Cedente Base", companyA.Id);
         await cedenteRepo.AddAsync(cedenteBase);
 
         // Concurrent REL-09 race cedente — isolated to concurrent test only
-        var cedenteConcurrent = Cedente.RegisterPf("54896705091", "FCA Cedente Concurrent", companyA.Id);
+        var cedenteConcurrent = Cedente.RegisterPf(GenerateCpf(9002), "FCA Cedente Concurrent", companyA.Id);
         await cedenteRepo.AddAsync(cedenteConcurrent);
 
         // Isolation pool — FcPoolSize cedentes with deterministic unique CPFs

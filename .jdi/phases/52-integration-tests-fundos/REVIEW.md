@@ -1170,3 +1170,145 @@ The backend reviewer flags B3-iter3 as a functional blocker: `EF.Property<string
 - Semgrep: .jdi/cache/phase-52-security-iter3-semgrep.json (0 findings, 5 rules, 804 files, exit 0)
 - Trivy FS: not run (binary unavailable on host -- CI required)
 - Gitleaks: not run (binary unavailable on host); manual diff confirms 0 new production secrets in iter 3 diff
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-backend-csharp (iter 4)
+
+**Verdict:** BLOCKED
+
+---
+
+### Gates
+
+- [G1 Multi-tenant isolation] PASS
+- [G2 Endpoint AuthZ + audit] PASS
+- [G3 Secret + raw SQL] PASS
+- [G4 Telemetry (OTel+Serilog+W3C)] WARN (pre-existing carry-forward)
+- [G5 Performance hygiene] PASS
+- [G6 Index coverage] PASS
+- [G7 Build] PASS (0 errors, 0 warnings)
+- [G8 Lint] PASS (dotnet format exits 0)
+- [G9 DDD/Design] PASS
+- [G10 Tests] FAIL - BLOCKER (187/187 integration tests failing -- new EF Core model error from commit 274e0af)
+- [G11 Coverage] PARTIAL (Domain.Tests JanelaVigencia/LimiteExposicao/DuplicateActiveAssociationException all 100% PASS; integration-backed files blocked by G10)
+- [G12 Playwright regression] PASS (API liveness + auth enforcement confirmed via MCP)
+- [G13 Static scans] Not run (advisory)
+
+---
+
+### Blockers
+
+#### B4-iter4 -- G10 (NEW BLOCKER): Shadow CnpjRaw property causes EF Core 10 model validation failure (all 187 integration tests)
+
+Files:
+- src/Onboarding.Infrastructure/Persistence/Configurations/ConsultoriaFundoConfiguration.cs:57-64
+- src/Onboarding.Infrastructure/Persistence/Configurations/CustodianteConfiguration.cs:57-64
+- src/Onboarding.Infrastructure/Repositories/ConsultoriaFundoRepository.cs:63
+- src/Onboarding.Infrastructure/Repositories/CustodianteRepository.cs:62
+
+Root cause: Commit 274e0af declares builder.Property<string>("CnpjRaw").HasColumnName("cnpj") in both ConsultoriaFundoConfiguration and CustodianteConfiguration. This maps the shadow property to the same database column as the existing Cnpj VO property (also .HasColumnName("cnpj")). EF Core 10 model validation rejects two properties within the same entity hierarchy mapping to the same column.
+
+Evidence (actual exception from integration test run):
+  System.InvalidOperationException: 'ConsultoriaFundo.Cnpj' and 'ConsultoriaFundo.CnpjRaw' are both mapped to column 'cnpj' in 'consultoria_fundos', but the properties are contained within the same hierarchy.
+  Exception fires in PostgreSqlFixture.InitializeAsync() at db.Database.EnsureCreatedAsync() before any test body executes.
+  Result: All 187 integration tests fail with [The server has not been started or no web application was configured].
+  Same model error confirmed for CustodianteConfiguration (Custodiante.Cnpj + Custodiante.CnpjRaw).
+
+EF Core constraint: Two mapped properties (shadow or not) in the same flat entity type cannot share a column. This is documented EF Core behavior. The suggestion in iter 3 review that this pattern would work was incorrect.
+
+Note on production API: The running docker api container was built before commit 274e0af and is unaffected. If the API image were rebuilt from current HEAD, the service would also fail to start (EF Core model construction fails at IServiceProvider build time).
+
+Fix: Remove shadow property declarations from both Configuration files. Replace ILike CNPJ search with client-side predicate scoped by companyId. See Required fixes below.
+
+---
+
+### G11 Status -- DuplicateActiveAssociationException / JanelaVigencia / LimiteExposicao: RESOLVED
+
+Commit a504493 adds DuplicateActiveAssociationExceptionTests (3 new tests covering Key, AssociationType, DomainException inheritance).
+
+Domain.Tests coverage (coverlet.msbuild /p:CollectCoverage=true /p:Include=[Onboarding.Domain]*):
+  JanelaVigencia.cs: line=100% branch=100% -- PASS
+  LimiteExposicao.cs: line=100% branch=100% -- PASS
+  DuplicateActiveAssociationException.cs: line=100% branch=100% -- PASS
+  Domain aggregate: 95.95% line / 86.42% branch / 93.01% method
+
+Domain.Tests: 481/481 pass (478 pre-existing + 3 new from a504493).
+
+---
+
+### Progress vs iter 3
+
+| Blocker | Iter 3 | Iter 4 |
+|---|---|---|
+| B3-iter3: EF.Property CNPJ search (2 integration tests) | FAIL | REGRESSION -- shadow property causes 187/187 integration failures |
+| G11-iter3: JanelaVigencia/LimiteExposicao/DuplicateActiveAssociationException below 80% | FAIL (tooling gap) | RESOLVED -- all 3 at 100% |
+
+---
+
+### Test Summary (iter 4)
+
+| Suite | Total | Pass | Fail | Root cause |
+|---|---|---|---|---|
+| Domain.Tests | 481 | 481 | 0 | clean (3 new tests from a504493) |
+| Application.Tests | 150 | 150 | 0 | clean |
+| API.Tests | 382 | 378 | 0 | 4 pre-existing skips |
+| Integration.Tests | 187 | 0 | 187 | B4-iter4: EF Core model collision CnpjRaw shadow property |
+| **TOTAL** | **1200** | **809** | **187** | 1 new blocker |
+
+Target: 1200/1200 pass, 0 fail. Current: 809 pass, 187 fail.
+
+---
+
+### Coverage gaps (new files -- iter 4)
+
+| File | Coverage | Required | Status | Notes |
+|---|---|---|---|---|
+| JanelaVigencia.cs | 100% line | 80% | PASS | Domain.Tests confirmed |
+| LimiteExposicao.cs | 100% line | 80% | PASS | Domain.Tests confirmed |
+| DuplicateActiveAssociationException.cs | 100% line | 80% | PASS | a504493 resolves Key getter gap |
+| Integration-backed handlers/repos/controllers | BLOCKED | 80% | BLOCKED | Downstream of B4-iter4 |
+
+Domain.Tests aggregate: 95.95% line / 86.42% branch / 93.01% method.
+
+---
+
+### Regression captures (iter 4)
+
+- GET http://localhost:8080/healthz/live -> 200 Healthy (MCP verified)
+- GET http://localhost:8080/api/companies/me (no token) -> 401 Unauthorized (MCP verified)
+- GET http://localhost:8080/api/fundos/consultorias (no token) -> 401 Unauthorized (MCP verified)
+- GET http://localhost:8080/api/fundos/custodiantes (no token) -> 401 Unauthorized (MCP verified)
+- GET http://localhost:8080/api/fundos/tipos-ativo (no token) -> 401 Unauthorized (MCP verified)
+- Jaeger UI: http://localhost:16686 -> 200 (MCP verified)
+- Screenshot: .jdi/cache/phase-52-backend-iter4-health.png
+- Screenshot: .jdi/cache/phase-52-backend-iter4-jaeger.png
+- Console errors: 0 during regression run
+
+Note: Running docker API container was built before commit 274e0af. EF Core model error manifests only when Testcontainers integration tests call EnsureCreatedAsync against a fresh DB. If API image were rebuilt from current HEAD, it would also fail to start.
+
+---
+
+### Warnings (carry-forward from iter 3 -- unchanged)
+
+- W1 -- G4: PII scrubber class name (SensitiveDataDestructuringPolicy vs PiiScrubber) -- pre-existing.
+- W2 -- G4: TenantBaggageMiddleware not wired -- pre-existing.
+- W3 -- G4: TelemetryCommandHandlerDecorator not registered -- pre-existing.
+- W4 -- G12: run-uat.mjs targets /api/registration (legacy route) -- pre-existing.
+
+---
+
+### Required fixes before re-verify (iter 5)
+
+1. B4-iter4 (BLOCKING -- G10, 187 tests):
+
+   Step 1: Remove the CnpjRaw shadow property block from ConsultoriaFundoConfiguration.cs lines 57-64 and CustodianteConfiguration.cs lines 57-64:
+     builder.Property<string>("CnpjRaw").HasColumnName("cnpj").HasMaxLength(14).IsRequired();
+   These 4 lines must be deleted from both configuration files.
+
+   Step 2: In ConsultoriaFundoRepository.cs and CustodianteRepository.cs GetPagedByCompanyAsync, remove the EF.Property<string>(c, "CnpjRaw") ILike clause. Replace with a client-side CNPJ pre-fetch:
+     a) Build nameQuery using RazaoSocial / NomeFantasia ILike (server-side, these are translatable).
+     b) If digitsOnly is non-empty: await a .Select(c => new { c.Id, c.Cnpj }).ToListAsync(ct) from the already-companyId-filtered base query, then .Where(x => x.Cnpj.Value.Contains(digitsOnly)).Select(x => x.Id).ToHashSet() client-side, then query = nameQuery.Union(query.Where(c => cnpjIds.Contains(c.Id))).
+     c) The pre-fetch is scoped by .Where(c => c.ClienteId == companyId) -- only materializes that company records, not a full-table scan.
+
+   Step 3: Validate: ListConsultorias_SearchByName_FiltersResults and ListCustodiantes_SearchByName_FiltersResults return 200 OK with correct filtered results.
+
+   After fix: dotnet test targeting 0 fail (1200/1200 pass), coverage >= 80% all new files, then /jdi-verify iter 5.

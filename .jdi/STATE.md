@@ -9,8 +9,8 @@ specialists:
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
 current_phase: integration-tests-fundos
 current_phase_slug: integration-tests-fundos
-phase_status: executed
-phase_verdict: pending
+phase_status: blocked
+phase_verdict: BLOCKED
 prior_phase_slug: frontend-backoffice-fundos
 prior_phase_verdict: APPROVED
-next_step: /jdi-verify integration-tests-fundos (iter 4)
+next_step: /jdi-loop iter 5 — fix B4-iter4 regression (client-side projection for CNPJ search)

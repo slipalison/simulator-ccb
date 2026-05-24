@@ -2,8 +2,8 @@
 
 ## Status
 adopted: true
-current_phase: 54
-total_phases: 54
+current_phase: none
+total_phases: 53
 
 ## Context
 Projeto adotado em 2026-05-11. Vinha sendo desenvolvido com GSD (`.planning/`, milestones v1-v8). Phases 1-47 estao completas e documentadas em `.planning/phases/`. JDI continua daqui em diante, comecando em **Phase 48** que estava em flight (plans criados em commit `968eefb`, execucao nao iniciada).
@@ -67,11 +67,5 @@ Numeracao preservada pra alinhar com `.planning/` historico. Phases pre-48 nao s
 - **DoD G0 cumprido:** 1204 testes pass / 0 fail / 4 pre-existing skip; Integration.Tests 187 -> 195 com 8 novos GET-list happy-path; coverage D-2 dos 4 arquivos antes-bloqueados agora 100% (GetFundoCedentesQueryHandler, GetFundoTiposAtivosQueryHandler, GetCedenteTiposAtivosQueryHandler, AdminFundosController); Playwright regression on backend (health, auth-blocked, Jaeger UI) PASS; security audit zero src/ changes em diff iter 6.
 - **Carry-forward NÃO-phase-53 (pre-existing):** W1-W4 backend telemetry (PII scrubber naming, TenantBaggageMiddleware/TelemetryCommandHandlerDecorator unwired, run-uat.mjs legacy route), WFE-1-5 frontend (init-after-render backoffice telemetry, double-import Vite warning, pt-BR strings em main.tsx + D-2 JSX, VITE_OTEL_ENABLED missing em compose.yaml), SEC-W1-W7b cross-cutting (ROPC legado, password policy length, db.statement scrubber gap).
 
-### Phase 54: BFF h3 -> Hono migration (re-scoped 2026-05-24)
-- **Slug:** 53-vinxi-to-vinext-migration (slug legado mantido — multi-dev safe per JDI convention)
-- **Status:** discussed (CONTEXT.md + DECISIONS.md re-discussed 2026-05-24, pending /jdi-plan)
-- **Goal ORIGINAL (CANCELLED):** Migrar frontend/client + backoffice de Vinxi 0.5.11 para cloudflare/vinext.
-- **Cancellation reason (commit `45811ef` + `c4e2623` + `adbf7c3`):** Iter 1 do Ralph loop revelou que cloudflare/vinext é reimplementação Next.js sobre Vite (não fork do Vinxi). Análise honesta de ganhos vs perdas neste codebase concluiu Vinext não compensa (rewrite 17 rotas + 21 arquivos, drop TanStack Router, versão experimental 0.0.52, Phase 33 ACF+PKCE recém-estabilizado — risco regressão). Vinxi 0.5.11 mantido como runtime (D-47); aceito como debt até substituto razoável amadurecer (TanStack Start RC, ou Vinxi 0.6 se aparecer).
-- **Goal NOVO:** Migrar BFF (`frontend/client/server.ts` + `auth-server.ts`) de h3 para **Hono 4.12+**. Preserva token isolation (D-12), same-origin cookies, PKCE state correlation, realm-per-SPA, API contract decoupling. Multi-platform ready (Cloudflare Workers + Node + Bun + Deno). Ataca debt acumulada do BFF (D-39 revogada via D-44) sem mexer no runtime do bundler.
-- **Escopo:** `frontend/client/` somente (D-38). Backoffice em phase futura.
-- **Specialist responsavel:** jdi-doer-onboarding-keycloak-frontend-vinext
+<!-- Phase 54 (vinxi-to-vinext-migration) REMOVED 2026-05-24 via /jdi-remove-phase. Artifacts archived in .jdi/archive/removed-vinxi-to-vinext-migration/. Reason: runtime migration cancelled (D-47); user opted to drop entire phase. -->
+

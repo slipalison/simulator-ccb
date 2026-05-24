@@ -7,14 +7,14 @@ specialists:
   - jdi-doer-onboarding-keycloak-backend-csharp + jdi-reviewer-onboarding-keycloak-backend-csharp
   - jdi-doer-onboarding-keycloak-frontend-vinext + jdi-reviewer-onboarding-keycloak-frontend-vinext
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
-current_phase: vinxi-to-vinext-migration
-current_phase_slug: vinxi-to-vinext-migration
-phase_status: discussed
-phase_verdict: pending
+current_phase: none
+current_phase_slug: none
+phase_status: idle
+phase_verdict: n/a
 prior_phase_slug: integration-tests-fundos
 prior_phase_verdict: APPROVED_WITH_WARNINGS
 prior_phase_shipped_at: 2026-05-24
-decisions_locked: D-38, D-41, D-44 (kept); D-39, D-40, D-42 original, D-43, D-45, D-46 (REVOKED); D-47 (new — runtime migration cancelled, BFF Hono only)
-plan_tasks: pending (PLAN.md from iter 1 stale — re-plan with BFF-only scope)
-plan_waves: pending
-next_step: /jdi-plan vinxi-to-vinext-migration
+removed_phase: vinxi-to-vinext-migration (REMOVED 2026-05-24 via /jdi-remove-phase; artifacts archived in .jdi/archive/removed-vinxi-to-vinext-migration/; decisions D-38..D-47 retained in DECISIONS.md as history)
+plan_tasks: n/a
+plan_waves: n/a
+next_step: /jdi-add-phase "<slug>" --goal "<text>" (create new phase) OR /jdi-status (review project state)

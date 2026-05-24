@@ -123,6 +123,36 @@ vi.mock("@opentelemetry/auto-instrumentations-web", () => ({
   getWebAutoInstrumentations: vi.fn().mockReturnValue([]),
 }));
 
+// Mock @opentelemetry/instrumentation-fetch for BFE-4 type import
+vi.mock("@opentelemetry/instrumentation-fetch", () => ({
+  FetchInstrumentation: vi.fn(),
+}));
+
+// Mock web-vitals to prevent observer registration in unit tests (BFE-3)
+vi.mock("web-vitals", () => ({
+  onCLS: vi.fn(),
+  onINP: vi.fn(),
+  onLCP: vi.fn(),
+  onFCP: vi.fn(),
+  onTTFB: vi.fn(),
+}));
+
+// Mock @opentelemetry/api metrics to prevent errors when web-vitals adapter loads
+vi.mock("@opentelemetry/api", () => {
+  const mockHistogram = { record: vi.fn() };
+  const mockMeter = {
+    createHistogram: vi.fn().mockReturnValue(mockHistogram),
+    createCounter: vi.fn(),
+    createGauge: vi.fn(),
+  };
+  return {
+    metrics: { getMeter: vi.fn().mockReturnValue(mockMeter) },
+    trace: { getTracer: vi.fn() },
+    context: {},
+    propagation: {},
+  };
+});
+
 // ---------------------------------------------------------------------------
 // Import from real packages — vitest intercepts via vi.mock() above.
 // Imports from exact same packages as telemetry.ts dynamic imports.

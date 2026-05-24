@@ -37,6 +37,7 @@ export default defineConfig({
         'src/lib/query-client.ts',
         'src/lib/use-allowed-transitions.ts',
         'src/lib/telemetry/index.ts',
+        'src/lib/telemetry/web-vitals.ts',
         'src/locales/pt-BR/fundos.ts',
         'src/components/atoms/CedenteTipoToggle.tsx',
         'src/components/guards/AuthGuard.tsx',

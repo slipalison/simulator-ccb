@@ -1312,3 +1312,169 @@ Note: Running docker API container was built before commit 274e0af. EF Core mode
    Step 3: Validate: ListConsultorias_SearchByName_FiltersResults and ListCustodiantes_SearchByName_FiltersResults return 200 OK with correct filtered results.
 
    After fix: dotnet test targeting 0 fail (1200/1200 pass), coverage >= 80% all new files, then /jdi-verify iter 5.
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-backend-csharp (iter 5)
+
+**Verdict:** BLOCKED
+
+---
+
+### Gates
+
+- [G1 Multi-tenant isolation] PASS
+- [G2 Endpoint AuthZ + audit] PASS
+- [G3 Secret + raw SQL] PASS
+- [G4 Telemetry] WARN (pre-existing carry-forward)
+- [G5 Performance hygiene] PASS
+- [G6 Index coverage] PASS
+- [G7 Build] PASS (0 errors, 0 warnings)
+- [G8 Lint] PASS (exit 0)
+- [G9 DDD/Design] PASS
+- [G10 Tests] PASS -- 1196 pass, 0 fail, 4 pre-existing skips
+- [G11 Coverage] FAIL - BLOCKER (4 new files below 80%)
+- [G12 Playwright regression] PASS
+- [G13 Static scans] Not run (advisory)
+
+---
+
+### B4-iter4 Resolution: CONFIRMED
+
+Commit f19ecc0 removes CnpjRaw shadow property from ConsultoriaFundoConfiguration.cs and CustodianteConfiguration.cs. EF Core model error eliminated. Two-step CNPJ projection approach confirmed: SQL ILike for name (server-side) + client-side materialize and filter for CNPJ digits scoped to companyId.
+
+---
+
+### Critical saga blockers: ALL RESOLVED
+
+| Blocker | Status |
+|---|---|
+| ListConsultorias_SearchByName_FiltersResults | PASS -- 200 OK confirmed |
+| ListCustodiantes_SearchByName_FiltersResults | PASS -- 200 OK confirmed |
+| EF Core model init crash (shadow CnpjRaw) | RESOLVED -- 0 integration test failures |
+
+Isolated run: dotnet test --filter with both search test names -- 2/2 PASS in 12.7s.
+
+---
+
+### Blockers
+
+#### B5-iter5 -- G11: 4 new D-2 files below 80% coverage
+
+Measured by Integration.Tests coverlet run (first time running integration test coverage):
+
+| File | Lines | Coverage | Required | Status |
+|---|---|---|---|---|
+| GetFundoCedentesQueryHandler.cs | 4/18 | 22.2% | 80% | FAIL |
+| GetFundoTiposAtivosQueryHandler.cs | 4/18 | 22.2% | 80% | FAIL |
+| GetCedenteTiposAtivosQueryHandler.cs | 4/18 | 22.2% | 80% | FAIL |
+| AdminFundosController.cs | 102/152 | 67.1% | 80% | FAIL |
+
+Root cause: Iter 3/4 measured coverage only via API.Tests (NSubstitute mocks the IQueryHandler interface -- the concrete handler body is never called). Integration.Tests coverlet reveals concrete handler execution gaps.
+
+GetFundoCedentesQueryHandler.HandleAsync (lines 20-29): all existing GET-list integration tests return 404 (cross-tenant) or 401 (unauthenticated) before dispatch. No happy-path GET-list test exists.
+
+AdminFundosController: 5 of 11 list endpoint bodies uncovered -- ListFundos (140-144), ListCustodiantes (176-180), ListCedentes (195-199), ListFundoTiposAtivos (229-233), ListCedenteTiposAtivos (246-250). Only ListConsultorias and ListFundoCedentes are hit by integration tests.
+
+---
+
+### Progress vs iter 4
+
+| Blocker | Iter 4 | Iter 5 |
+|---|---|---|
+| B4-iter4: shadow CnpjRaw EF model crash (187 failures) | FAIL | RESOLVED |
+| ListConsultorias_SearchByName_FiltersResults | FAIL | PASS |
+| ListCustodiantes_SearchByName_FiltersResults | FAIL | PASS |
+| G11: JanelaVigencia/LimiteExposicao/DuplicateActiveAssociationException | PASS | PASS |
+| G11: GetFund*QueryHandler + AdminFundosController | NOT DETECTED | FAIL |
+
+---
+
+### Test Summary (iter 5)
+
+| Suite | Total | Pass | Fail | Skip |
+|---|---|---|---|---|
+| Domain.Tests | 481 | 481 | 0 | 0 |
+| Application.Tests | 150 | 150 | 0 | 0 |
+| API.Tests | 382 | 378 | 0 | 4 (pre-existing) |
+| Integration.Tests | 187 | 187 | 0 | 0 |
+| **TOTAL** | **1200** | **1196** | **0** | **4** |
+
+Doer claim 187/187 integration + 1196 total: VERIFIED. 1196 = pass count excluding 4 pre-existing skips.
+
+---
+
+### Coverage gaps (new files -- iter 5)
+
+| File | Coverage | Required | Status | Notes |
+|---|---|---|---|---|
+| GetFundoCedentesQueryHandler.cs | 22.2% | 80% | FAIL | HandleAsync body 0 hits |
+| GetFundoTiposAtivosQueryHandler.cs | 22.2% | 80% | FAIL | Same |
+| GetCedenteTiposAtivosQueryHandler.cs | 22.2% | 80% | FAIL | Same |
+| AdminFundosController.cs | 67.1% | 80% | FAIL | 5 list endpoint bodies uncovered |
+| FundosController.cs | 92.9% | 80% | PASS | |
+| FundoCedentesController.cs | 81.7% | 80% | PASS | |
+| FundoTiposAtivosController.cs | 81.2% | 80% | PASS | |
+| CedenteTiposAtivosController.cs | 81.2% | 80% | PASS | |
+| TransitionFundoStatusCommandHandler.cs | 100% | 80% | PASS | |
+| All N-N Create/Transition/Update handlers | 95-100% | 80% | PASS | |
+| JanelaVigencia.cs | 100% | 80% | PASS | Domain.Tests |
+| LimiteExposicao.cs | 100% | 80% | PASS | Domain.Tests |
+| DuplicateActiveAssociationException.cs | 100% | 80% | PASS | Domain.Tests |
+| FundoCedenteAggregate.cs | ~91% | 80% | PASS | |
+| CedenteTipoAtivoAggregate.cs | ~91% | 80% | PASS | |
+| FundoTipoAtivoAggregate.cs | ~91% | 80% | PASS | |
+| Infrastructure repositories | [ExcludeFromCodeCoverage] | -- | EXEMPT | |
+
+Domain.Tests aggregate: 95.95% line / 86.42% branch / 93.01% method.
+
+---
+
+### Warnings (carry-forward from iter 4)
+
+- W1 -- G4: PII scrubber class name (SensitiveDataDestructuringPolicy vs PiiScrubber) -- pre-existing.
+- W2 -- G4: TenantBaggageMiddleware not wired -- pre-existing.
+- W3 -- G4: TelemetryCommandHandlerDecorator not registered -- pre-existing.
+- W4 -- G12: run-uat.mjs targets /api/registration (legacy route) -- pre-existing.
+
+---
+
+### Regression captures (iter 5)
+
+- GET http://localhost:8080/healthz/live -> 200 Healthy (MCP verified)
+- GET http://localhost:8080/api/fundos (no token) -> 401 (MCP verified)
+- GET http://localhost:8080/api/fundos (malformed JWT) -> 401 (MCP verified)
+- GET http://localhost:8080/api/fundos/consultorias (no token) -> 401 (MCP verified)
+- GET http://localhost:8080/api/fundos/custodiantes (no token) -> 401 (MCP verified)
+- GET http://localhost:8080/api/fundos/tipos-ativo (no token) -> 401 (MCP verified)
+- GET http://localhost:8080/api/companies/me (no token) -> 401 (MCP verified)
+- W3C traceparent accepted (auth-only 401, no W3C rejection) (MCP verified)
+- Jaeger UI: 200, 6 services incl. onboarding-api + onboarding-client (MCP verified)
+- Screenshot: .jdi/cache/phase-52-backend-iter5-health.png
+- Screenshot: .jdi/cache/phase-52-backend-iter5-jaeger.png
+- HAR: .jdi/cache/phase-52-backend-iter5-network.json
+- Console errors: 0
+
+---
+
+### Required fixes before re-verify (iter 6)
+
+1. B5-iter5 (BLOCKING -- G11, 4 files below 80%):
+
+   Fix A -- Add 3 happy-path GET-list association integration tests:
+
+   FundoCedenteAssociationIntegrationTests.cs -- FundoCedente_GetList_AuthenticatedPjA_Returns200:
+     using var client = ClientPjA();
+     var response = await client.GetAsync("/api/fundos/{_fundoAId}/cedentes");
+     response.StatusCode.ShouldBe(HttpStatusCode.OK);
+     var result = await response.Content.ReadFromJsonAsync<JsonElement>();
+     result.GetProperty("totalCount").GetInt32().ShouldBeGreaterThanOrEqualTo(0);
+
+   Same pattern for FundoTipoAtivoAssociationIntegrationTests.cs (/api/fundos/{id}/tipos-ativos) and CedenteTipoAtivoAssociationIntegrationTests.cs (/api/cedentes/{id}/tipos-ativos).
+
+   Fix B -- Add 5 admin list endpoint integration tests (AdminFundosByIdIntegrationTests.cs or new):
+     - GET /api/admin/fundos?page=1&pageSize=10 -- admin client, assert 200
+     - GET /api/admin/fundos/custodiantes -- admin client, assert 200
+     - GET /api/admin/fundos/cedentes -- admin client, assert 200
+     - GET /api/admin/fundos/fundo-tipos-ativos -- admin client, assert 200
+     - GET /api/admin/fundos/cedente-tipos-ativos -- admin client, assert 200
+
+   After 8 new tests: dotnet test targeting 0 fail (1208+ total), all 4 failing files >= 80%, then /jdi-verify iter 6.

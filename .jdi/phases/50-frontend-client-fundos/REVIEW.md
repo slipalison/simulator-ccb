@@ -1631,3 +1631,279 @@ W-arch is CLEARED. Hardcoded accessGroup->permissions map removed from auth-serv
 - Backoffice /admin/login + ACF+PKCE S256 redirect: PASS
 - clientclaims.no_match log: confirmed on no-match sub -- PASS
 - Screenshots: .jdi/cache/phase-50-r4i1-fundos-admin-empresa.png, .jdi/cache/phase-50-r4i1-fundos-sidebar-verified.png, .jdi/cache/phase-50-r4i1-backoffice-pkce.png
+
+## Round 4 review iter 1 (total iter 12) -- backend
+
+Run: 2026-05-23
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Commits reviewed: 6704a0e (PermissionsController), 9b65dd6 + 4abbfbe (ClientClaimsMetrics + BFF update), c587ebb (seed script)
+
+### Verdict
+APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+- [G1 Multi-tenant isolation] PASS
+
+- [G2 Endpoint AuthZ + audit] PASS with WARNING -- [Authorize(AuthenticationSchemes = "BearerClient")] present, no Policy. Intentional: endpoint returns caller's own permissions; any authenticated BearerClient is valid. Inline class comment (lines 8-27) documents the decision. Authentication IS enforced; no lateral data access. No mutation commands; actor-capture N/A.
+
+- [G3 Secret + raw SQL hygiene] PASS -- No secrets in diff. Seed script escapes SQL via sed, uses parameterized psql calls. No FromSqlRaw in new files.
+
+- [G4 Telemetry] PASS with WARNING (G4.4) -- G4.1-G4.3 clean. G4.4 FINDING: ClientClaimsMiddleware.cs:42 introduces new Meter() inside static class ClientClaimsMetrics, which lives in Middleware/ not Telemetry/Metrics.cs. Gate G4.4 technically triggered. Downgraded to WARNING: no central Telemetry/ layer exists at boundary 968eefb (pre-existing gap; Phase 53 scope). Meter is in a dedicated static class, not ad-hoc; registered in Program.cs via .AddMeter(). G4.5-G4.9 carry-forward from prior iters (W3C propagator intact; PiiScrubbing/TenantBaggage/TelemetryDecorator absent as pre-existing W2).
+
+- [G5 Performance hygiene] PASS -- No new list endpoints, no unbounded queries. PermissionsController makes zero DB calls. Metric counter is O(1).
+
+- [G6 Index coverage] N/A -- No new migrations.
+
+- [G7 Build] PASS -- 0 errors, 0 warnings (6.41s).
+
+- [G8 Lint/format] NOT RUN -- Pre-existing violations in src/ (carry-forward W4). No new whitespace violations observed in round 4 diff.
+
+- [G9 DDD/Design] PASS -- PermissionsController is a 5-line read-only projection. ClientClaimsMetrics is a static infrastructure class appropriate to the middleware layer. No domain logic in API layer. No MediatR, no FluentAssertions, no public setters.
+
+- [G10 Tests] PASS -- 0 failures. Application 138, Domain 474, API 360 (4 skipped), Integration 43. Total 1015 passed / 4 skipped / 0 failed. +11 over round 3 iter 4 baseline.
+
+- [G11 Coverage on new files] PASS -- PermissionsController: 7 unit tests (PJ owner all-10, admin-empresa all-10, viewer 3, dashboard 1, custom 2, sub-not-in-DB empty, companyId null) + 2 integration tests (401 without Bearer, 200 with Bearer). Metric lines in ClientClaimsMiddleware: 2 MeterListener tests (NoMatch_IncrementCounter, Owner_DoesNotIncrement). All new code >80% estimated line coverage.
+
+- [G12 Playwright regression] PASS -- Docker stack all services healthy. UAT run-uat.mjs: 9 passed / 13 failed / 2 cascade / 8 ignored -- IDENTICAL to prior round baselines. All failures pre-existing (registration 404s, Keycloak onboarding realm absent). No new regressions. MCP Playwright probe: GET /api/auth/permissions without Bearer -> 401 confirmed.
+
+- [G13 Static scans] ADVISORY -- No Trivy/Semgrep re-run (no new NuGet/npm deps).
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+- W-G4.4 (new): src/Onboarding.API/Middleware/ClientClaimsMiddleware.cs:42 -- new Meter() outside Telemetry/Metrics.cs. No central Telemetry layer exists at boundary (Phase 53 scope). Migrate ClientClaimsMetrics when Phase 53 creates central metrics file.
+
+- W-G2 (new): src/Onboarding.API/Controllers/PermissionsController.cs:41 -- [Authorize] without Policy. Intentional design; inline comment present. Recommend adding explicit one-line justification comment directly above the [Authorize] attribute.
+
+- W2 (pre-existing): TenantBaggageMiddleware and TelemetryCommandHandlerDecorator absent. Phase 53 scope.
+
+- W3 (pre-existing): appsettings.json AdminClientSecret plaintext. Inject via env var in staging/prod.
+
+- W4 (pre-existing): 14 WHITESPACE lint errors in src/ pre-existing files.
+
+- W-arch RESOLVED: BFF auth-server.ts hardcoded permission map replaced by GET /api/auth/permissions call (commit 4abbfbe). Custom AccessGroup permissions now from DB. Warning closed.
+
+- W-data RESOLVED: seed-test-users.sh now syncs companies.keycloak_user_id after Keycloak user upsert (commit c587ebb). Idempotent; graceful on DB-down. Warning closed.
+
+---
+
+### Specific verifications
+
+- PermissionsController bearer-only: [Authorize(AuthenticationSchemes = "BearerClient")] at line 41. No cookie, no admin token. PASS.
+- Handler no DB call: _permissionsService.Permissions.ToArray() reads pre-populated service. PASS.
+- Response shape: { permissions, accessGroup, companyId } camelCase. Frontend reads permData.permissions. Alignment confirmed. PASS.
+- D-5 multi-tenant: tests cover owner (10), viewer (3), dashboard (1), custom (2), sub-not-in-DB (0). PASS.
+- Metric: counter fires only on no-match path; sub_prefix = first 8 chars; MeterListener tests use unique per-run subs. PASS (logic); WARNING (G4.4 placement).
+- Seed script: UPDATE after upsert; idempotent; graceful on DB-down. PASS.
+
+---
+
+### Coverage gaps (new files)
+
+| File | Coverage | Required | Status |
+|---|---|---|---|
+| PermissionsController.cs | ~100% (9 tests) | 80% | PASS |
+| ClientClaimsMiddleware.cs (metric lines) | >80% (2 tests) | 80% | PASS |
+| seed-test-users.sh | N/A | N/A | N/A |
+
+---
+
+### Regression captures
+
+- UAT run-uat.mjs: 9 pass / 13 fail / 2 cascade / 8 ignored (identical baseline -- no regression)
+- MCP probe: GET /api/auth/permissions -> 401 without Bearer (AuthZ confirmed)
+- API container: healthy at review time
+
+## Round 4 review iter 1 (total iter 12) -- backend
+
+Run: 2026-05-23
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Commits reviewed: 6704a0e (PermissionsController), 9b65dd6 + 4abbfbe (ClientClaimsMetrics + BFF update), c587ebb (seed script)
+
+### Verdict
+APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+- [G1 Multi-tenant isolation] PASS
+
+- [G2 Endpoint AuthZ + audit] PASS with WARNING -- [Authorize(AuthenticationSchemes = "BearerClient")] present, no Policy. Intentional: endpoint returns caller's own permissions; any authenticated BearerClient is valid. Inline class comment (lines 8-27) documents the decision. Authentication IS enforced; no lateral data access. No mutation commands; actor-capture N/A.
+
+- [G3 Secret + raw SQL hygiene] PASS -- No secrets in diff. Seed script escapes SQL via sed, uses parameterized psql calls. No FromSqlRaw in new files.
+
+- [G4 Telemetry] PASS with WARNING (G4.4) -- G4.1-G4.3 clean. G4.4 FINDING: ClientClaimsMiddleware.cs:42 introduces new Meter() inside static class ClientClaimsMetrics, which lives in Middleware/ not Telemetry/Metrics.cs. Gate G4.4 technically triggered. Downgraded to WARNING: no central Telemetry/ layer exists at boundary 968eefb (pre-existing gap; Phase 53 scope). Meter is in a dedicated static class, not ad-hoc; registered in Program.cs via .AddMeter(). G4.5-G4.9 carry-forward from prior iters (W3C propagator intact; PiiScrubbing/TenantBaggage/TelemetryDecorator absent as pre-existing W2).
+
+- [G5 Performance hygiene] PASS -- No new list endpoints, no unbounded queries. PermissionsController makes zero DB calls. Metric counter is O(1).
+
+- [G6 Index coverage] N/A -- No new migrations.
+
+- [G7 Build] PASS -- 0 errors, 0 warnings (6.41s).
+
+- [G8 Lint/format] NOT RUN -- Pre-existing violations in src/ (carry-forward W4). No new whitespace violations observed in round 4 diff.
+
+- [G9 DDD/Design] PASS -- PermissionsController is a 5-line read-only projection. ClientClaimsMetrics is a static infrastructure class appropriate to the middleware layer. No domain logic in API layer. No MediatR, no FluentAssertions, no public setters.
+
+- [G10 Tests] PASS -- 0 failures. Application 138, Domain 474, API 360 (4 skipped), Integration 43. Total 1015 passed / 4 skipped / 0 failed. +11 over round 3 iter 4 baseline.
+
+- [G11 Coverage on new files] PASS -- PermissionsController: 7 unit tests (PJ owner all-10, admin-empresa all-10, viewer 3, dashboard 1, custom 2, sub-not-in-DB empty, companyId null) + 2 integration tests (401 without Bearer, 200 with Bearer). Metric lines in ClientClaimsMiddleware: 2 MeterListener tests (NoMatch_IncrementCounter, Owner_DoesNotIncrement). All new code >80% estimated line coverage.
+
+- [G12 Playwright regression] PASS -- Docker stack all services healthy. UAT run-uat.mjs: 9 passed / 13 failed / 2 cascade / 8 ignored -- IDENTICAL to prior round baselines. All failures pre-existing (registration 404s, Keycloak onboarding realm absent). No new regressions. MCP Playwright probe: GET /api/auth/permissions without Bearer -> 401 confirmed.
+
+- [G13 Static scans] ADVISORY -- No Trivy/Semgrep re-run (no new NuGet/npm deps).
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+- W-G4.4 (new): src/Onboarding.API/Middleware/ClientClaimsMiddleware.cs:42 -- new Meter() outside Telemetry/Metrics.cs. No central Telemetry layer exists at boundary (Phase 53 scope). Migrate ClientClaimsMetrics when Phase 53 creates central metrics file.
+
+- W-G2 (new): src/Onboarding.API/Controllers/PermissionsController.cs:41 -- [Authorize] without Policy. Intentional design; inline comment present. Recommend adding explicit one-line justification comment directly above the [Authorize] attribute.
+
+- W2 (pre-existing): TenantBaggageMiddleware and TelemetryCommandHandlerDecorator absent. Phase 53 scope.
+
+- W3 (pre-existing): appsettings.json AdminClientSecret plaintext. Inject via env var in staging/prod.
+
+- W4 (pre-existing): 14 WHITESPACE lint errors in src/ pre-existing files.
+
+- W-arch RESOLVED: BFF auth-server.ts hardcoded permission map replaced by GET /api/auth/permissions call (commit 4abbfbe). Custom AccessGroup permissions now from DB. Warning closed.
+
+- W-data RESOLVED: seed-test-users.sh now syncs companies.keycloak_user_id after Keycloak user upsert (commit c587ebb). Idempotent; graceful on DB-down. Warning closed.
+
+---
+
+### Specific verifications
+
+- PermissionsController bearer-only: [Authorize(AuthenticationSchemes = "BearerClient")] at line 41. No cookie, no admin token. PASS.
+- Handler no DB call: _permissionsService.Permissions.ToArray() reads pre-populated service. PASS.
+- Response shape: { permissions, accessGroup, companyId } camelCase. Frontend reads permData.permissions. Alignment confirmed. PASS.
+- D-5 multi-tenant: tests cover owner (10), viewer (3), dashboard (1), custom (2), sub-not-in-DB (0). PASS.
+- Metric: counter fires only on no-match path; sub_prefix = first 8 chars; MeterListener tests use unique per-run subs. PASS (logic); WARNING (G4.4 placement).
+- Seed script: UPDATE after upsert; idempotent; graceful on DB-down. PASS.
+
+---
+
+### Coverage gaps (new files)
+
+| File | Coverage | Required | Status |
+|---|---|---|---|
+| PermissionsController.cs | ~100% (9 tests) | 80% | PASS |
+| ClientClaimsMiddleware.cs (metric lines) | >80% (2 tests) | 80% | PASS |
+| seed-test-users.sh | N/A | N/A | N/A |
+
+---
+
+### Regression captures
+
+- UAT run-uat.mjs: 9 pass / 13 fail / 2 cascade / 8 ignored (identical baseline -- no regression)
+- MCP probe: GET /api/auth/permissions -> 401 without Bearer (AuthZ confirmed)
+- API container: healthy at review time
+
+## Round 4 review iter 1 (total iter 12) -- backend
+
+Run: 2026-05-23
+Boundary: 968eefb19dba216d729723e8ffa6a9e166d7698c
+Commits reviewed: 6704a0e (PermissionsController), 9b65dd6 + 4abbfbe (ClientClaimsMetrics + BFF update), c587ebb (seed script)
+
+### Verdict
+APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+- [G1 Multi-tenant isolation] PASS
+
+- [G2 Endpoint AuthZ + audit] PASS with WARNING -- [Authorize(AuthenticationSchemes = "BearerClient")] present, no Policy. Intentional: endpoint returns caller's own permissions; any authenticated BearerClient is valid. Inline class comment (lines 8-27) documents the decision. Authentication IS enforced; no lateral data access. No mutation commands; actor-capture N/A.
+
+- [G3 Secret + raw SQL hygiene] PASS -- No secrets in diff. Seed script escapes SQL via sed, uses parameterized psql calls. No FromSqlRaw in new files.
+
+- [G4 Telemetry] PASS with WARNING (G4.4) -- G4.1-G4.3 clean. G4.4 FINDING: ClientClaimsMiddleware.cs:42 introduces new Meter() inside static class ClientClaimsMetrics, which lives in Middleware/ not Telemetry/Metrics.cs. Gate G4.4 technically triggered. Downgraded to WARNING: no central Telemetry/ layer exists at boundary 968eefb (pre-existing gap; Phase 53 scope). Meter is in a dedicated static class, not ad-hoc; registered in Program.cs via .AddMeter(). G4.5-G4.9 carry-forward from prior iters (W3C propagator intact; PiiScrubbing/TenantBaggage/TelemetryDecorator absent as pre-existing W2).
+
+- [G5 Performance hygiene] PASS -- No new list endpoints, no unbounded queries. PermissionsController makes zero DB calls. Metric counter is O(1).
+
+- [G6 Index coverage] N/A -- No new migrations.
+
+- [G7 Build] PASS -- 0 errors, 0 warnings (6.41s).
+
+- [G8 Lint/format] NOT RUN -- Pre-existing violations in src/ (carry-forward W4). No new whitespace violations observed in round 4 diff.
+
+- [G9 DDD/Design] PASS -- PermissionsController is a 5-line read-only projection. ClientClaimsMetrics is a static infrastructure class appropriate to the middleware layer. No domain logic in API layer. No MediatR, no FluentAssertions, no public setters.
+
+- [G10 Tests] PASS -- 0 failures. Application 138, Domain 474, API 360 (4 skipped), Integration 43. Total 1015 passed / 4 skipped / 0 failed. +11 over round 3 iter 4 baseline.
+
+- [G11 Coverage on new files] PASS -- PermissionsController: 7 unit tests (PJ owner all-10, admin-empresa all-10, viewer 3, dashboard 1, custom 2, sub-not-in-DB empty, companyId null) + 2 integration tests (401 without Bearer, 200 with Bearer). Metric lines in ClientClaimsMiddleware: 2 MeterListener tests (NoMatch_IncrementCounter, Owner_DoesNotIncrement). All new code >80% estimated line coverage.
+
+- [G12 Playwright regression] PASS -- Docker stack all services healthy. UAT run-uat.mjs: 9 passed / 13 failed / 2 cascade / 8 ignored -- IDENTICAL to prior round baselines. All failures pre-existing (registration 404s, Keycloak onboarding realm absent). No new regressions. MCP Playwright probe: GET /api/auth/permissions without Bearer -> 401 confirmed.
+
+- [G13 Static scans] ADVISORY -- No Trivy/Semgrep re-run (no new NuGet/npm deps).
+
+---
+
+### Blockers
+
+None.
+
+---
+
+### Warnings
+
+- W-G4.4 (new): src/Onboarding.API/Middleware/ClientClaimsMiddleware.cs:42 -- new Meter() outside Telemetry/Metrics.cs. No central Telemetry layer exists at boundary (Phase 53 scope). Migrate ClientClaimsMetrics when Phase 53 creates central metrics file.
+
+- W-G2 (new): src/Onboarding.API/Controllers/PermissionsController.cs:41 -- [Authorize] without Policy. Intentional design; inline comment present. Recommend adding explicit one-line justification comment directly above the [Authorize] attribute.
+
+- W2 (pre-existing): TenantBaggageMiddleware and TelemetryCommandHandlerDecorator absent. Phase 53 scope.
+
+- W3 (pre-existing): appsettings.json AdminClientSecret plaintext. Inject via env var in staging/prod.
+
+- W4 (pre-existing): 14 WHITESPACE lint errors in src/ pre-existing files.
+
+- W-arch RESOLVED: BFF auth-server.ts hardcoded permission map replaced by GET /api/auth/permissions call (commit 4abbfbe). Custom AccessGroup permissions now from DB. Warning closed.
+
+- W-data RESOLVED: seed-test-users.sh now syncs companies.keycloak_user_id after Keycloak user upsert (commit c587ebb). Idempotent; graceful on DB-down. Warning closed.
+
+---
+
+### Specific verifications
+
+- PermissionsController bearer-only: [Authorize(AuthenticationSchemes = "BearerClient")] at line 41. No cookie, no admin token. PASS.
+- Handler no DB call: _permissionsService.Permissions.ToArray() reads pre-populated service. PASS.
+- Response shape: { permissions, accessGroup, companyId } camelCase. Frontend reads permData.permissions. Alignment confirmed. PASS.
+- D-5 multi-tenant: tests cover owner (10), viewer (3), dashboard (1), custom (2), sub-not-in-DB (0). PASS.
+- Metric: counter fires only on no-match path; sub_prefix = first 8 chars; MeterListener tests use unique per-run subs. PASS (logic); WARNING (G4.4 placement).
+- Seed script: UPDATE after upsert; idempotent; graceful on DB-down. PASS.
+
+---
+
+### Coverage gaps (new files)
+
+| File | Coverage | Required | Status |
+|---|---|---|---|
+| PermissionsController.cs | ~100% (9 tests) | 80% | PASS |
+| ClientClaimsMiddleware.cs (metric lines) | >80% (2 tests) | 80% | PASS |
+| seed-test-users.sh | N/A | N/A | N/A |
+
+---
+
+### Regression captures
+
+- UAT run-uat.mjs: 9 pass / 13 fail / 2 cascade / 8 ignored (identical baseline -- no regression)
+- MCP probe: GET /api/auth/permissions -> 401 without Bearer (AuthZ confirmed)
+- API container: healthy at review time

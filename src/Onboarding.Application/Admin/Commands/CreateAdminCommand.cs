@@ -37,7 +37,7 @@ public sealed class CreateAdminCommandHandler : ICommandHandler<CreateAdminComma
         var temporaryPassword = GenerateTemporaryPassword();
 
         // Create admin user in Keycloak with temporary password and admin role
-        var keycloakUserId = await _keycloakUserService.CreateAdminUserAsync("backoffice", 
+        var keycloakUserId = await _keycloakUserService.CreateAdminUserAsync("backoffice",
             command.Email,
             temporaryPassword,
             command.FullName,

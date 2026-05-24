@@ -94,11 +94,11 @@ public sealed class ResetAdministratorPasswordCommandHandler
     private static string GenerateTemporaryPassword()
     {
         // Pools with ambiguous chars removed
-        const string upper   = "ABCDEFGHJKLMNPQRSTUVWXYZ";      // no O, I
-        const string lower   = "abcdefghjkmnpqrstuvwxyz";       // no l, o (mapped to 0)
-        const string digits  = "23456789";                       // no 0, 1
+        const string upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";      // no O, I
+        const string lower = "abcdefghjkmnpqrstuvwxyz";       // no l, o (mapped to 0)
+        const string digits = "23456789";                       // no 0, 1
         const string special = "!@#$%^&*";
-        const string all     = upper + lower + digits + special;
+        const string all = upper + lower + digits + special;
 
         const int length = 16;
         var chars = new char[length];

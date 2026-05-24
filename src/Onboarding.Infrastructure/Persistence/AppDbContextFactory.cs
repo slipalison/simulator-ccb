@@ -13,10 +13,10 @@ public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbConte
     public AppDbContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
-        
+
         // Use actual dev password — matches .env APP_DB_PASSWORD
         optionsBuilder.UseNpgsql("Host=localhost;Port=5432;Database=onboarding;Username=appuser;Password=dev_app_pass_2026");
-        
+
         return new AppDbContext(optionsBuilder.Options, new CurrentCompanyService());
     }
 }

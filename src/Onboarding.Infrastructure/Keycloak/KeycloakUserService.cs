@@ -27,12 +27,12 @@ public sealed class KeycloakUserService : IKeycloakUserService
 
     private HttpClient GetClient(string targetRealm)
     {
-        return targetRealm == "backoffice" 
+        return targetRealm == "backoffice"
             ? _httpClientFactory.CreateClient("keycloak-admin-backoffice")
             : _httpClientFactory.CreateClient("keycloak-admin-client");
     }
 
-    public async Task<string> CreateUserAsync(string targetRealm, 
+    public async Task<string> CreateUserAsync(string targetRealm,
         string username,
         string email,
         string password,
@@ -82,7 +82,7 @@ public sealed class KeycloakUserService : IKeycloakUserService
         return userId;
     }
 
-    public async Task<string> CreateAdminUserAsync(string targetRealm, 
+    public async Task<string> CreateAdminUserAsync(string targetRealm,
         string email,
         string temporaryPassword,
         string fullName,

@@ -496,3 +496,373 @@ E2E negative assertion (no traceparent on Keycloak) unconditional. PASS.
 - Semgrep: .jdi/cache/phase-52-security-semgrep.json (0 findings, exit 0)
 - Trivy FS: .jdi/cache/phase-52-security-trivy-fs.json (tool unavailable on Windows -- CI required)
 - Gitleaks: .jdi/cache/phase-52-security-gitleaks.json (manual scan -- gitleaks not installed)
+
+---
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-backend-csharp (iter 2)
+
+**Verdict:** BLOCKED
+
+---
+
+### Gates
+
+- [G1 Multi-tenant isolation] PASS -- B1/SEC-B1 tenant guard applied in TransitionFundoStatus; ClienteId check mirrors GetFundoById. IgnoreQueryFilters usage correct with Admin* prefix on admin queries.
+- [G2 Endpoint AuthZ + audit] PASS -- all new endpoints carry Authorize(Policy=Fund*); actor (sub+email) captured in all mutation commands.
+- [G3 Secret + raw SQL] PASS -- no new secrets; no FromSqlRaw interpolation or concatenation.
+- [G4 Telemetry (OTel+Serilog+W3C)] WARN (pre-existing carry-forward) -- W1/W2/W3 from iter 1 unchanged; no new regressions.
+- [G5 Performance hygiene] PASS -- no unbounded list endpoints; AsNoTracking on all read repo methods.
+- [G6 Index coverage] PASS -- no new migration in phase 52 diff.
+- [G7 Build] PASS -- 0 errors, 0 warnings (dotnet build clean).
+- [G8 Lint] PASS -- dotnet format --verify-no-changes exits 0 (B4 fix confirmed).
+- [G9 DDD/Design] PASS -- no anemic aggregates, no public setters on new domain code.
+- [G10 Tests] FAIL -- BLOCKER: 36 tests still failing (32 integration + 4 API unit).
+- [G11 Coverage] FAIL -- cascades from G10; 21 new files still below 80%.
+- [G12 Playwright regression] PASS -- auth gates confirmed via MCP; API liveness confirmed.
+- [G13 Static scans] Not run (advisory).
+
+---
+
+### Blockers
+
+#### B1-iter2 -- G10: B1 fix incomplete -- unit tests for TransitionFundoStatus now fail (4 tests)
+
+Files:
+- tests/Onboarding.API.Tests/Controllers/FundosControllerTests.cs:1027, 1048, 1071, 1087
+
+Root cause: The B1 security fix correctly added _fundoRepository.GetByIdAsync(id, ct) at the start of TransitionFundoStatus to enforce the tenant boundary before dispatching. However, the 4 unit tests do NOT stub _fundoRepo.GetByIdAsync(FundoId, ...). NSubstitute returns null by default. The controller then returns NotFound() before dispatching, causing all 4 tests to fail.
+
+Evidence:
+  TransitionFundoStatus_RascunhoToAtivo_ValidTransition_Returns200: expected OkObjectResult, got NotFoundResult
+  TransitionFundoStatus_EncerradoToAtivo_InvalidTransition_Returns400: expected BadRequestObjectResult, got NotFoundResult
+  TransitionFundoStatus_FundoNotFound_Returns404: expected NotFoundObjectResult, got NotFoundResult (controller returns bare NotFound() with no body)
+  TransitionFundoStatus_CapturesActorFromJwt: handler Received(0) -- NotFound returned before dispatch
+
+Fix:
+  Tests at lines 1027, 1048, 1087: add before action call:
+    _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(BuildFundo());
+  Test at line 1071 (NotFound case): leave mock returning null (NSubstitute default). Fix assertion at line 1083:
+    result.ShouldBeOfType<NotFoundResult>()  -- controller uses bare return NotFound() (no body).
+
+#### B2-iter2 -- G10: B2 fix incomplete -- CPF seeds for Cedente still invalid (30 T-4 tests)
+
+Files:
+- tests/Onboarding.Integration.Tests/Fundos/FundoCedenteAssociationIntegrationTests.cs:144, 148
+- tests/Onboarding.Integration.Tests/Fundos/CedenteTipoAtivoAssociationIntegrationTests.cs:131
+
+Root cause: B2 fixed the 6 Company CNPJ seeds. It did NOT fix 3 CPF seeds used in Cedente.RegisterPf calls:
+  - FCA line 144: Cedente.RegisterPf("74971027018") -- CPF check-digit invalid
+  - FCA line 148: Cedente.RegisterPf("54896705091") -- CPF check-digit invalid
+  - CTA line 131: Cedente.RegisterPf("59978867083") -- CPF check-digit invalid
+All 3 throw ArgumentException in InitializeAsync(), aborting all 30 T-4 tests before executing.
+
+Fix: Replace all 3 invalid CPF literals. Use GenerateCpf(9001), GenerateCpf(9002), GenerateCpf(9003) (counters outside existing range 1000-3000+). Validate via Cpf.IsValid() in src/Onboarding.Domain/ValueObjects/Cpf.cs before committing.
+
+#### B3-iter2 -- G10: B3 fix incomplete -- c.Cnpj.Value still untranslatable by EF Core 10 (2 search tests)
+
+Files:
+- src/Onboarding.Infrastructure/Repositories/ConsultoriaFundoRepository.cs:63
+- src/Onboarding.Infrastructure/Repositories/CustodianteRepository.cs:62
+
+Root cause: B3 replaced Contains() with ILike() but left c.Cnpj.Value as the expression argument. EF Core 10 cannot translate ValueObject.Property navigation in LINQ-to-SQL regardless of the operator. HasConversion does not propagate through property member access in expression trees.
+
+Evidence (runtime log):
+  InvalidOperationException: The LINQ expression
+    ILike(matchExpression: c.Cnpj.Value, pattern: @p) could not be translated.
+  HTTP 500 on GET /api/fundos/consultorias?search=term and GET /api/fundos/custodiantes?search=term
+  Both tests confirm: ListConsultorias_SearchByName_FiltersResults and ListCustodiantes_SearchByName_FiltersResults still fail with InternalServerError.
+
+Fix: Replace c.Cnpj.Value with EF.Property<string>(c, "cnpj") in both files:
+  ConsultoriaFundoRepository.cs:63:
+    (digitsOnly.Length > 0 && EF.Functions.ILike(EF.Property<string>(c, "cnpj"), "%" + digitsOnly + "%"))
+  CustodianteRepository.cs:62:
+    (digitsOnly.Length > 0 && EF.Functions.ILike(EF.Property<string>(c, "cnpj"), "%" + digitsOnly + "%"))
+  Column name "cnpj" confirmed via HasColumnName("cnpj") in CustodianteConfiguration.cs:50 and ConsultoriaFundoConfiguration.cs.
+
+---
+
+### Warnings (carry-forward from iter 1)
+
+- W1 -- G4 Telemetry: PII scrubber class name (SensitiveDataDestructuringPolicy vs PiiScrubber) -- pre-existing, telemetry phase action.
+- W2 -- G4 Telemetry: TenantBaggageMiddleware not wired -- pre-existing.
+- W3 -- G4 Telemetry: TelemetryCommandHandlerDecorator not registered -- pre-existing.
+- W4 -- G12 Playwright: run-uat.mjs targets /api/registration (legacy route) -- pre-existing.
+- SEC-W1 -- OTel/Jaeger images use :latest tag -- dev-only, low blast radius.
+
+---
+
+### Test Summary (iter 2)
+
+| Suite | Total | Pass | Fail | Root cause |
+|---|---|---|---|---|
+| Domain.Tests | 478 | 478 | 0 | clean |
+| Application.Tests | 150 | 150 | 0 | clean |
+| API.Tests | 382 | 374 | 4 | B1-iter2: fundoRepo mock not stubbed in TransitionFundoStatus unit tests |
+| Integration.Tests | 187 | 155 | 32 | B2-iter2 (CPF seeds, 30 tests) + B3-iter2 (EF.Property, 2 tests) |
+| **TOTAL** | **1197** | **1157** | **36** | 3 blockers remain |
+
+API.Tests ignored: 4 (pre-existing).
+
+---
+
+### Regression captures (iter 2)
+
+- GET /healthz/live -> 200 OK (MCP verified)
+- GET /api/fundos (no token) -> 403 (MCP verified)
+- GET /api/fundos (bad token) -> 401 (MCP verified)
+- GET /api/fundos/consultorias (no token) -> 403 (MCP verified)
+- GET /api/fundos/consultorias (bad token) -> 401 (MCP verified)
+- GET /api/fundos/custodiantes (no token) -> 403 (MCP verified)
+- GET /api/fundos/tipos-ativo (no token) -> 403 (MCP verified)
+- GET /api/fundos/cedentes (no token) -> 403 (MCP verified)
+- POST /api/fundos/{id}/status (no token) -> 403 (MCP verified -- B1 guard active, endpoint registered)
+- POST /api/fundos/{id}/status (bad token) -> 401 (MCP verified)
+- GET /api/fundos/{id}/cedentes (bad token) -> 401 (MCP verified)
+- Jaeger UI: http://localhost:16686 -> 200, services [onboarding-api, onboarding-client] confirmed
+- Network HAR: .jdi/cache/phase-52-backend-iter2-network.json
+- Screenshot: .jdi/cache/phase-52-backend-iter2-api-health.png
+- Console errors: 0 during regression run
+
+---
+
+### Coverage gaps (new files -- still blocked)
+
+Same 21 files as iter 1. All gaps downstream of B1-iter2/B2-iter2/B3-iter2.
+When all 3 blockers are resolved, T-4 (30 tests) and search (2 tests) will execute, recovering coverage above 80% on all 21 files.
+
+---
+
+### Required fixes before re-verify (iter 3)
+
+1. **B1-iter2**: Update 4 TransitionFundoStatus unit tests to stub _fundoRepo.GetByIdAsync:
+   - Lines 1027, 1048, 1087: add _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(BuildFundo()) before calling the action.
+   - Line 1071 (NotFound case): leave mock returning null. Fix assertion line 1083: ShouldBeOfType<NotFoundResult>() not ShouldBeOfType<NotFoundObjectResult>().
+
+2. **B2-iter2**: Replace 3 invalid CPF seeds in T-4 InitializeAsync:
+   - FundoCedenteAssociationIntegrationTests.cs:144 -- replace "74971027018"
+   - FundoCedenteAssociationIntegrationTests.cs:148 -- replace "54896705091"
+   - CedenteTipoAtivoAssociationIntegrationTests.cs:131 -- replace "59978867083"
+   Use GenerateCpf(9001), GenerateCpf(9002), GenerateCpf(9003).
+
+3. **B3-iter2**: Fix EF.Property in search predicates:
+   - ConsultoriaFundoRepository.cs:63: c.Cnpj.Value -> EF.Property<string>(c, "cnpj")
+   - CustodianteRepository.cs:62: c.Cnpj.Value -> EF.Property<string>(c, "cnpj")
+
+After all 3 fixes: dotnet test Onboarding.slnx targeting 0 failures, then /jdi-verify iter 3.
+
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-frontend-vinext (iter 2)
+
+**Verdict:** BLOCKED
+
+---
+
+### Gates
+
+- [G1 Security frontend] PASS -- no token storage violations; no dangerouslySetInnerHTML; no secrets in source; no cross-SPA imports (D-4 clean)
+- [G2 Telemetry (OTel JS + W3C)] PASS -- BFE-2/3/4 resolved: src/lib/telemetry/ directory exists both SPAs; FetchInstrumentation literal present both SPAs; web-vitals.ts created both SPAs; propagateTraceHeaderCorsUrls allowlist; ignoreUrls covers auth/keycloak/well-known/realms both SPAs; PII_REGEX/scrubAttributes both SPAs; W3C propagator only; no B3/Jaeger; no wildcard allowlist
+- [G3 Perf + bundle] PASS -- client 210.06 KB gz, backoffice 205.75 KB gz (gate 300 KB both pass)
+- [G4 Build] PASS -- client build clean (5.71s); backoffice build clean (4.78s); 0 errors both SPAs; WFE-2 double-import Vite warning persists in backoffice build (carry-forward)
+- [G5 Typecheck+Lint] PASS -- tsc 0 errors client; tsc 0 errors backoffice; eslint max-warnings 0 clean both SPAs
+- [G6 Code-design] WARN -- WFE-1/WFE-2/WFE-3 carry-forward; no new violations from iter-2 commits
+- [G7 Coverage] BLOCKED -- BFE-5: web-vitals.ts absent from coverage include both SPAs (0% measured); use-admin-list-search.ts absent from backoffice coverage include (0% measured)
+- [G8 Playwright client] PASS -- HTTP 200 at :5173; ACF+PKCE redirect confirmed (code_challenge_method=S256 in URL); /fundos renders; /profile renders; auth guard redirects unauthenticated to /auth/login; no 5xx; no application console errors
+- [G9 Playwright backoffice] PASS -- HTTP 200 at :5174; /admin/login renders custom Keycloak theme; ACF+PKCE chain confirmed (backoffice realm, S256); auth guard redirects /admin/companies to /admin/login; no 5xx; no CORS errors; no client-SPA code cross-refs
+- [G10 Accessibility] ADVISORY -- client button-name critical (TanStack devtools, pre-existing); backoffice landmark/heading moderate (pre-existing login page); no keyboard traps; no new phase-52 violations
+- [G11 Vinext debt] PASS -- no new Vinxi imports in telemetry files either SPA
+
+---
+
+### Blockers
+
+#### BFE-5 -- G7: web-vitals.ts (both SPAs) and use-admin-list-search.ts (backoffice) missing from coverage include
+
+Three new files added after boundary 968eefb are NOT in the vitest coverage include list, resulting in 0% measured coverage. G7 gate: < 80% on any new file = BLOCKED.
+
+Files:
+- frontend/client/src/lib/telemetry/web-vitals.ts (51 lines, new after boundary)
+- frontend/backoffice/src/lib/telemetry/web-vitals.ts (51 lines, new after boundary)
+- frontend/backoffice/src/lib/use-admin-list-search.ts (41 lines, new after boundary)
+
+Evidence: git diff --name-only --diff-filter=A 968eefb..HEAD confirms all 3 as newly created. Both vitest.config.ts coverage include arrays confirmed absent via grep. No dedicated test files exist for any of the 3.
+
+Root cause: BFE-2 fix updated coverage include for telemetry/index.ts but did not add web-vitals.ts to either SPA config. use-admin-list-search.ts was omitted when the hook was created in the original phase-52 doer work.
+
+Fix client (frontend/client/vitest.config.ts): add src/lib/telemetry/web-vitals.ts to include array.
+
+Fix backoffice (frontend/backoffice/vitest.config.ts): add src/lib/telemetry/web-vitals.ts and src/lib/use-admin-list-search.ts to include array.
+
+Tests required:
+- web-vitals.test.ts (both SPAs): mock @opentelemetry/api metrics.getMeter().createHistogram() and web-vitals onCLS/onINP/onLCP/onFCP/onTTFB; import registerWebVitals; call it; assert all 5 subscription functions called once; assert report callback fires histogram.record with correct vital.name and vital.rating.
+- use-admin-list-search.test.tsx (backoffice): mock useNavigate from @tanstack/react-router; call useAdminListSearch with currentSearch object and path; invoke setPage/setSearch/setEmpresaId; assert navigate called with expected search params.
+
+---
+
+### Warnings (carry-forward from iter 1)
+
+- WFE-1: initAdminTelemetry fires after React render in backoffice main.tsx (dynamic import resolves post-createRoot). Low severity. Fix: static import before createRoot.
+- WFE-2: Double-import of telemetry/index.ts in backoffice main.tsx. Vite build warns: dynamic import will not chunk-split. Fix: consolidate to single import path.
+- WFE-3: pt-BR string in client main.tsx (pre-existing, not phase-52).
+- WFE-4: VITE_OTEL_ENABLED absent from compose.yaml. OTel inactive in running stack. Positive traceparent test always skips.
+
+---
+
+### Coverage gaps (new files after boundary 968eefb)
+
+| File | Stmts | Branch | Funcs | Lines | Gate |
+|---|---|---|---|---|---|
+| client/src/lib/telemetry/index.ts | 96.96% | 80.64% | 83.33% | 96.66% | PASS |
+| backoffice/src/lib/telemetry/index.ts | 100% | 96.55% | 100% | 100% | PASS (BFE-1 resolved) |
+| client/src/lib/telemetry/web-vitals.ts | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | BLOCKED BFE-5 |
+| backoffice/src/lib/telemetry/web-vitals.ts | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | BLOCKED BFE-5 |
+| backoffice/src/lib/use-admin-list-search.ts | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | BLOCKED BFE-5 |
+| All other included new files | All >= 80% | All >= 80% | All >= 80% | All >= 80% | PASS |
+
+Aggregate covered backoffice files: 95.13% stmts / 90.8% branch / 93.6% funcs / 96.25% lines.
+Aggregate covered client files: 96.26% stmts / 85.35% branch / 97.17% funcs / 97.09% lines.
+
+---
+
+### Regression captures
+
+- Network HAR: .jdi/cache/phase-52-frontend-iter2-network.json
+- Client Keycloak ACF+PKCE: .jdi/cache/phase-52-frontend-iter2-client-keycloak-login.png
+- Client Fundos route: .jdi/cache/phase-52-frontend-iter2-client-fundos.png
+- Backoffice route guard: .jdi/cache/phase-52-frontend-iter2-backoffice-home.png
+- Backoffice Keycloak theme: .jdi/cache/phase-52-frontend-iter2-backoffice-keycloak-login.png
+- Console errors client (app-level): 0 (Vite HMR WebSocket + /auth/me 401 are container/auth artefacts)
+- Console errors backoffice (app-level): 0 (same artefacts)
+
+---
+
+### DoD G0 OTel JS checklist delta
+
+| Item | Iter 1 | Iter 2 | Evidence |
+|---|---|---|---|
+| src/lib/telemetry/ composition root both SPAs | FAIL BFE-2 | PASS | Directory + index.ts at correct path both SPAs |
+| web-vitals.ts adapter both SPAs | FAIL BFE-3 | PASS (file created) | Both SPAs registerWebVitals() wires onCLS/onINP/onLCP/onFCP/onTTFB |
+| FetchInstrumentation literal client | FAIL BFE-4 | PASS | Client: literal in comment + instrumentation-fetch config key; backoffice: explicit import |
+| backoffice telemetry coverage >= 80% | FAIL BFE-1 | PASS | 100% stmts / 96.55% branch / 100% funcs / 100% lines |
+| web-vitals.ts coverage >= 80% both SPAs | N/A | FAIL BFE-5 | Not in vitest include either SPA |
+| use-admin-list-search.ts coverage >= 80% | N/A | FAIL BFE-5 | Not in backoffice vitest include |
+
+---
+
+### Required fixes before re-verify (iter 3)
+
+1. BFE-5a: Add src/lib/telemetry/web-vitals.ts to frontend/client/vitest.config.ts coverage include. Create frontend/client/src/tests/lib/web-vitals.test.ts.
+
+2. BFE-5b: Add src/lib/telemetry/web-vitals.ts to frontend/backoffice/vitest.config.ts coverage include. Create frontend/backoffice/src/tests/lib/web-vitals.test.ts.
+
+3. BFE-5c: Add src/lib/use-admin-list-search.ts to frontend/backoffice/vitest.config.ts coverage include. Create frontend/backoffice/src/tests/lib/use-admin-list-search.test.tsx.
+
+After all 3 fixes: run pnpm test -- --coverage both SPAs; confirm >= 80% on all 3 new files; 0 new test failures. Then /jdi-verify iter 3.
+
+## Reviewer: jdi-reviewer-onboarding-keycloak-security (iter 2)
+
+**Verdict:** APPROVED_WITH_WARNINGS
+
+---
+
+### Gates
+
+- [G1 Multi-tenant filter] PASS -- SEC-B1 resolved. Tenant guard at FundosController.cs:760. Fix: load fundo via _fundoRepository.GetByIdAsync; return NotFound() if null OR fundo.ClienteId != _currentCompanyService.CompanyId. Mirrors GetFundoById:679 and all association controllers. HasQueryFilter confirmed on all 4 company-scoped aggregates. Junction aggregates documented as NO HasQueryFilter -- tenant scoping via parent. No EF configurations changed in iter 2. G1 CLEAN.
+- [G2 Permission policy coverage] PASS -- All changed controllers carry [Authorize] with explicit Policy. FundosController: BearerClient + FundRead/FundWrite/FundDelete/FundManage per endpoint. FundoCedentesController, FundoTiposAtivosController, CedenteTiposAtivosController: BearerClient class-level + FundRead/FundWrite per method. AdminFundosController: BearerBackoffice + CrossCompanyAccess class-level (11 admin GET endpoints). AdminUserController: same. Fund policies registered Program.cs:215-222. CrossCompanyAccess at Program.cs:225. No unprotected public HTTP endpoints.
+- [G3 Secrets + env hygiene] PASS with carry-forward WARNINGs -- No new production secrets in iter 2 diff. appsettings.json unchanged (AdminClientSecret pre-existing at D-2 boundary). compose.yaml diff: zero new secret literals. New E2E spec files carry hardcoded test passwords matching pre-existing pattern (SEC-W3). Gitleaks binary unavailable; manual diff scan: 0 new production secrets.
+- [G4 Semgrep] PASS -- 0 ERROR findings, 0 WARNING findings. 5 rules, 801 files scanned, exit 0. PartialParsing notice on IQuery.cs is a parse warning not a security finding. Artifacts: .jdi/cache/phase-52-security-iter2-semgrep.json.
+- [G5 Trivy FS + container] ADVISORY -- trivy binary not installed on host (same as iter 1). Dockerfile unchanged in phase 52 iter 2. No new container images. Formal Trivy scan required in CI before ship. Carry-forward SEC-W4.
+- [G6 Keycloak hardening drift] PASS with legacy WARNINGs -- client-realm.json: bruteForceProtected=true, failureFactor=5, ssoSessionIdleTimeout=1800. backoffice-realm.json: same. Phase 52 adds post.logout.redirect.uris (exact URIs) and clientProfiles/clientPolicies enforcing secure-redirect-uris-enforcer (allow-wildcard-in-redirect-uri: false, allow-open-redirect: false) -- posture improvement. ROPC on onboarding-app pre-existing at D-2 (SEC-W7). Password policy length(8) pre-existing (SEC-W7b).
+- [G7 Security headers + CSP] PASS (code-only) -- CORS Program.cs:258: WithOrigins exact two origins, no wildcard. OTel collector CORS: allowed_origins localhost:5173 + localhost:5174, no wildcard. Live header inspection not performed. Carry-forward advisory from iter 1.
+- [G8 Dependabot] NOT RUN -- gh CLI not available on host. No change from iter 1.
+- [G9 Audit log] PASS -- All 41 new mutation command files contain ActorSub. Spot-checked: TransitionFundoStatusCommandHandler.cs, TransitionFundoCedenteStatusHandler.cs, TransitionCedenteTipoAtivoStatusHandler.cs, CreateFundoCedenteHandler.cs, CreateCedenteTipoAtivoHandler.cs, UpdateFundoCedenteLimiteHandler.cs, UpdateCedenteTipoAtivoLimiteHandler.cs. All capture actorSub + actorEmail from JWT claims before dispatch.
+
+---
+
+### SEC-B1 Status: RESOLVED
+
+Commit 8a8978d -- fix(52-integration-tests-fundos): guard cross-tenant Fundo status mutation (B1/SEC-B1)
+
+The cross-tenant mutation vulnerability is closed.
+
+- FundosController.cs:757-761 loads fundo before dispatch; returns NotFound() if ClienteId does not match actor company.
+- Security comment documents intent: return NotFound not Forbid -- entity existence must not be leaked to other tenants.
+- Guard structurally identical to GetFundoById:679.
+- All 4 state-mutation endpoints now have ClienteId guards; TransitionFundoStatus was the sole gap.
+- No new G1 regressions introduced by iter 2 commits.
+
+---
+
+### Blockers
+
+None. SEC-B1 resolved. No new blockers from iter 2 changes.
+---
+
+### Warnings
+
+#### SEC-W1 -- G5: OTel + Jaeger images use :latest tag (carry-forward)
+
+compose.yaml -- otel/opentelemetry-collector-contrib:latest and jaegertracing/all-in-one:latest. Dev-only; low blast radius. Pin to semver tags before production.
+
+#### SEC-W2 -- G3 legacy: Dev secrets in Keycloak realm exports (carry-forward)
+
+keycloak/client-realm.json + backoffice-realm.json: placeholder client secrets committed. src/Onboarding.API/appsettings.json:18: AdminClientSecret hardcoded. All pre-exist at D-2 boundary. compose.yaml uses env overrides at runtime.
+
+#### SEC-W3 -- G3: E2E test credentials hardcoded in new Playwright spec files (expanded from iter 1)
+
+New files with hardcoded ADMIN_PASSWORD: admin-fundos-associations.spec.ts:13, admin-fundos-detail.spec.ts:14, admin-fundos-list.spec.ts:18, admin-fundos-permissions.spec.ts:13, admin-auth-flow.spec.ts:28 (frontend/backoffice/playwright/specs/). CLIENT_PASSWORD in frontend/client/playwright/specs/auth-flow.spec.ts:20. Pattern consistent with pre-existing E2E specs. Not production secrets. Recommended: extract to process.env.E2E_ADMIN_PASSWORD and process.env.E2E_CLIENT_PASSWORD.
+#### SEC-W4 -- G5: Trivy binary unavailable (carry-forward)
+
+Formal Trivy scan required in CI before ship. Dockerfile unchanged; no new container images.
+
+#### SEC-W5 -- G7: VITE_OTEL_ENABLED absent from compose.yaml (carry-forward)
+
+OTel browser instrumentation inactive in docker compose up. Positive traceparent test skips unconditionally.
+
+#### SEC-W6 -- OTel collector: db.statement not in key-drop list (carry-forward)
+
+infra/otel-collector-config.yaml: db.statement (SQL query text from npgsql spans) not key-dropped. Value-redaction regex provides partial coverage. Add to processor key-drop list for full PII coverage.
+
+#### SEC-W7 -- G6: ROPC enabled on non-legacy client (pre-existing, elevated)
+
+keycloak/client-realm.json: onboarding-app has directAccessGrantsEnabled=true. Pre-existing at D-2 boundary. Not the legacy-backoffice exemption defined in G6 gate. Review for removal -- ACF+PKCE is the active flow (D-feedback). Not blocking (pre-existing), tracked for next auth-hardening phase.
+
+#### SEC-W7b -- G6: Password policy length(8) not length(12) (pre-existing)
+
+Both realms use passwordPolicy length(8). G6 gate requires length(12). Pre-existing at D-2 boundary. Tighten in next Keycloak hardening phase.
+---
+
+### Phase-specific confirmations (iter 2)
+
+#### W3C propagator only (D-35)
+
+- client/src/lib/telemetry/index.ts:186 -- W3CTraceContextPropagator only. PASS.
+- backoffice/src/lib/telemetry/index.ts:36,141 -- W3CTraceContextPropagator only. PASS.
+- @opentelemetry/propagator-b3 absent from both package.json files (zero grep matches). PASS.
+
+#### CORS allowlist exact origins
+
+- API Program.cs:258: WithOrigins(http://localhost:5173, http://localhost:5174) -- exact, no wildcard. PASS.
+- OTel collector infra/otel-collector-config.yaml:21-22: allowed_origins localhost:5173 + localhost:5174 -- exact, no wildcard. PASS.
+
+#### Keycloak /realms/* excluded from traceparent (D-12)
+
+- client/src/lib/telemetry/index.ts:217 ignoreUrls confirmed in phase 52 diff. PASS.
+- backoffice/src/lib/telemetry/index.ts:158 SUPPRESS_URL_PATTERNS confirmed. PASS.
+
+#### TransitionFundoStatus tenant guard -- completeness across all state-mutation endpoints
+
+All 4 Fundo-module status transition endpoints now carry ClienteId guard before dispatch:
+  - POST /api/fundos/{id}/status (FundosController:760) -- ADDED commit 8a8978d (was the sole gap)
+  - POST /api/fundos/{fundoId}/cedentes/{id}/status (FundoCedentesController:228) -- pre-existing
+  - POST /api/fundos/{fundoId}/tipos-ativos/{id}/status (FundoTiposAtivosController) -- pre-existing
+  - POST /api/cedentes/{cedenteId}/tipos-ativos/{id}/status (CedenteTiposAtivosController:228) -- pre-existing
+
+No new G1 gaps introduced by iter 2 commits.
+
+---
+
+### Pipeline artifacts
+
+- Semgrep: .jdi/cache/phase-52-security-iter2-semgrep.json (0 findings, 5 rules, 801 files, exit 0)
+- Trivy FS: .jdi/cache/phase-52-security-iter2-trivy-fs.json (tool unavailable -- CI required)
+- Gitleaks: .jdi/cache/phase-52-security-iter2-gitleaks.json (binary unavailable; manual diff scan: 0 new production secrets)

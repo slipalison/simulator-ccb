@@ -9,9 +9,10 @@ specialists:
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
 current_phase: vinxi-to-vinext-migration
 current_phase_slug: vinxi-to-vinext-migration
-phase_status: ready
+phase_status: discussed
 phase_verdict: pending
 prior_phase_slug: integration-tests-fundos
 prior_phase_verdict: APPROVED_WITH_WARNINGS
 prior_phase_shipped_at: 2026-05-24
-next_step: /jdi-discuss vinxi-to-vinext-migration
+decisions_locked: D-38..D-42
+next_step: /jdi-plan vinxi-to-vinext-migration

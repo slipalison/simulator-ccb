@@ -401,3 +401,58 @@ Fix: Created `DuplicateActiveAssociationExceptionTests.cs` (3 tests) covering co
 | G11 JanelaVigencia.cs | PASS | 100% seq / 100% branch from Domain.Tests |
 | G11 LimiteExposicao.cs | PASS | 100% seq / 100% branch from Domain.Tests |
 | G11 DuplicateActiveAssociationException.cs | PASS | 100% seq / 100% branch from Domain.Tests (iter 4 test added) |
+
+---
+
+## Iter 5 fix (fix_blockers mode) — B4-iter4 shadow property regression
+
+### Root cause
+
+Commit `274e0af` added `Property<string>("CnpjRaw").HasColumnName("cnpj")` in both
+`ConsultoriaFundoConfiguration` and `CustodianteConfiguration`. EF Core 10 throws at model
+initialisation: `"ConsultoriaFundo.Cnpj and ConsultoriaFundo.CnpjRaw are both mapped to column
+'cnpj' in 'consultoria_fundos', but the properties are contained within the same hierarchy."`
+This crashed `PostgreSqlFixture.InitializeAsync` before any test body executed — all 187
+integration tests failed with model init errors. The assumption "EF allows multiple properties
+to the same column when only one has constraints" is incorrect in EF Core 10 for the same entity
+type (only valid for TPH/TPT hierarchies).
+
+### Fix (commit `f19ecc0`)
+
+Files changed:
+- `src/Onboarding.Infrastructure/Persistence/Configurations/ConsultoriaFundoConfiguration.cs`
+- `src/Onboarding.Infrastructure/Persistence/Configurations/CustodianteConfiguration.cs`
+- `src/Onboarding.Infrastructure/Repositories/ConsultoriaFundoRepository.cs`
+- `src/Onboarding.Infrastructure/Repositories/CustodianteRepository.cs`
+
+**Configurations:** Removed the `Property<string>("CnpjRaw")` shadow property block from both
+configurations (the 8-line block lines 57-64 in each file). The `Cnpj` VO property retains its
+single mapping to `HasColumnName("cnpj")` with `HasConversion`. No migration needed — no column
+change.
+
+**Repositories:** Replaced the untranslatable EF.Property ILike approach with client-side
+projection. The search method in both `ConsultoriaFundoRepository.GetPagedByCompanyAsync` and
+`CustodianteRepository.GetPagedByCompanyAsync` now uses two separate DB queries:
+
+1. **Name query (SQL):** `baseQuery.Where(ILike name/nomeFantasia).Select(c => c.Id).ToListAsync()`
+   — fully translatable, returns matching Ids.
+2. **CNPJ projection (SQL + client filter):** `baseQuery.Select(c => new { c.Id, c.Cnpj }).ToListAsync()`
+   — EF Core 10 applies `HasConversion` during materialisation (Select projection works; Where
+   expression trees do not). Client-side `.Value.Contains(digitsOnly)` then filters the result.
+   Combined via `HashSet<Guid> matchedIds` (union of both Id sets).
+3. **Final query:** `baseQuery.Where(c => matchedIds.Contains(c.Id))` — IN-list filter, translatable.
+
+Tenant isolation is preserved: `baseQuery` always scopes to `.Where(c => c.ClienteId == companyId)`
+before any projection. Only current-company records are ever materialised client-side.
+
+### Verification (run locally with Docker/Testcontainers)
+
+| Check | Result |
+|---|---|
+| `dotnet build Onboarding.slnx` | 0 errors, 0 warnings |
+| `dotnet format Onboarding.slnx --verify-no-changes` | exit 0 |
+| Integration tests — `PostgreSqlFixture.InitializeAsync` | No model init crash |
+| Integration tests total | **187/187 pass** |
+| Full suite | 150 + 481 + 187 + 378 = **1196 pass**, 4 pre-existing API.Tests skips |
+| `ListConsultorias_SearchByName_FiltersResults` | PASS |
+| `ListCustodiantes_SearchByName_FiltersResults` | PASS |

@@ -129,7 +129,8 @@ public sealed class AuthController : ControllerBase
         catch (KeycloakAuthException ex)
         {
             // D-13 + SEC-08: generic error — do not reveal if email exists or not
-            _logger.LogWarning(ex, "Login attempt failed for email {Email}", request.Email);
+            _logger.LogWarning(ex, "Login attempt failed for email {Email}",
+                Observability.SensitiveDataDestructuringPolicy.MaskEmail(request.Email ?? string.Empty));
             return Unauthorized(new ProblemDetails
             {
                 Title = "Authentication failed",

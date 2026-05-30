@@ -166,7 +166,8 @@ public sealed class CompaniesController : ControllerBase
         }
         catch (DuplicateKeycloakUserException ex)
         {
-            _logger.LogWarning(ex, "Duplicate Keycloak user during registration for {Email}", command.Email);
+            _logger.LogWarning(ex, "Duplicate Keycloak user during registration for {Email}",
+                Onboarding.API.Observability.SensitiveDataDestructuringPolicy.MaskEmail(command.Email ?? string.Empty));
             return Conflict(new ProblemDetails
             {
                 Title = "Conflict",
@@ -233,7 +234,8 @@ public sealed class CompaniesController : ControllerBase
         }
         catch (DuplicateKeycloakUserException ex)
         {
-            _logger.LogWarning(ex, "Duplicate Keycloak user during employee registration for {Email}", command.Email);
+            _logger.LogWarning(ex, "Duplicate Keycloak user during employee registration for {Email}",
+                Onboarding.API.Observability.SensitiveDataDestructuringPolicy.MaskEmail(command.Email ?? string.Empty));
             return Conflict(new ProblemDetails
             {
                 Title = "Conflict",

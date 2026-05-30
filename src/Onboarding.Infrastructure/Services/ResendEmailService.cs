@@ -44,6 +44,13 @@ public sealed class ResendEmailService : IEmailService
         var response = await _httpClient.PostAsJsonAsync("emails", payload, ct);
         response.EnsureSuccessStatusCode();
 
-        _logger.LogInformation("Password reset email sent to {Email}", email);
+        _logger.LogInformation("Password reset email sent to {Email}", MaskEmail(email));
+    }
+
+    // SEC-01: mask email for log output — preserves domain, hides local part after first char
+    private static string MaskEmail(string email)
+    {
+        var at = email.IndexOf('@');
+        return at > 0 ? email[0] + "***" + email[at..] : "***";
     }
 }

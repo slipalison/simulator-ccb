@@ -452,7 +452,8 @@ public sealed class AdminUserController : ControllerBase
         var keycloakUserId = await ResolveKeycloakUserIdAsync(adminEmail, ct);
 
         await _keycloakUserService.ClearFirstLoginFlagAsync("backoffice", keycloakUserId, ct);
-        _logger.LogInformation("Admin {AdminEmail} completed first login; isFirstLogin flag cleared.", adminEmail);
+        _logger.LogInformation("Admin {AdminEmail} completed first login; isFirstLogin flag cleared.",
+            Onboarding.API.Observability.SensitiveDataDestructuringPolicy.MaskEmail(adminEmail ?? string.Empty));
         return NoContent();
     }
 

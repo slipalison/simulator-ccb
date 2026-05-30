@@ -3,7 +3,7 @@
 ## Status
 adopted: true
 current_phase: none
-total_phases: 53
+total_phases: 54
 
 ## Context
 Projeto adotado em 2026-05-11. Vinha sendo desenvolvido com GSD (`.planning/`, milestones v1-v8). Phases 1-47 estao completas e documentadas em `.planning/phases/`. JDI continua daqui em diante, comecando em **Phase 48** que estava em flight (plans criados em commit `968eefb`, execucao nao iniciada).
@@ -68,4 +68,13 @@ Numeracao preservada pra alinhar com `.planning/` historico. Phases pre-48 nao s
 - **Carry-forward NÃO-phase-53 (pre-existing):** W1-W4 backend telemetry (PII scrubber naming, TenantBaggageMiddleware/TelemetryCommandHandlerDecorator unwired, run-uat.mjs legacy route), WFE-1-5 frontend (init-after-render backoffice telemetry, double-import Vite warning, pt-BR strings em main.tsx + D-2 JSX, VITE_OTEL_ENABLED missing em compose.yaml), SEC-W1-W7b cross-cutting (ROPC legado, password policy length, db.statement scrubber gap).
 
 <!-- Phase 54 (vinxi-to-vinext-migration) REMOVED 2026-05-24 via /jdi-remove-phase. Artifacts archived in .jdi/archive/removed-vinxi-to-vinext-migration/. Reason: runtime migration cancelled (D-47); user opted to drop entire phase. -->
+
+### Phase 54: Backend C# Quality & Refactor Audit
+- **Slug:** backend-csharp-quality-audit
+- **Status:** pending
+- **Goal:** Auditoria profunda do backend C#: segurança, performance, Clean Code / SOLID / DRY / KISS / YAGNI, cobertura de testes >80%, remoção de código morto, correção de violações de Clean Code (tamanho de método, comentários desnecessários, número de parâmetros, etc.) e aplicação de design patterns onde aplicável e necessário.
+- **Scope:** Código C# do backend — `Onboarding.API` + camadas Domain / Application / Infrastructure. Auditoria cross-cutting: roteia para `backend-csharp` + `security` specialists.
+- **Aberto pro /jdi-discuss:**
+  - **Tensão de cobertura:** usuário pediu >80% em código existente; D-2 hoje enforça 80% só em arquivos novos pós-boundary `968eefb`. Decidir se a phase eleva o gate retroativo para o backend legado ou mantém D-2.
+  - **Refactor vs. auditoria:** definir se a phase só reporta violações (SOLID/DRY/method-size/param-count/dead-code) ou também aplica as correções; e quais design patterns são candidatos.
 

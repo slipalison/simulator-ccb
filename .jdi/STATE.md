@@ -17,4 +17,4 @@ prior_phase_shipped_at: 2026-05-24
 removed_phase: vinxi-to-vinext-migration (REMOVED 2026-05-24 via /jdi-remove-phase; artifacts archived in .jdi/archive/removed-vinxi-to-vinext-migration/; decisions D-38..D-47 retained in DECISIONS.md as history)
 plan_tasks: n/a
 plan_waves: n/a
-next_step: /jdi-add-phase "<slug>" --goal "<text>" (create new phase) OR /jdi-status (review project state)
+next_step: /jdi-discuss backend-csharp-quality-audit (capture locked decisions for the newly registered phase)

@@ -54,11 +54,11 @@
     },
     {
       "position": 54,
-      "slug": "vinxi-to-vinext-migration",
-      "raw_slug": "53-vinxi-to-vinext-migration",
-      "folder": ".jdi/phases/53-vinxi-to-vinext-migration",
-      "status": "ready",
-      "legacy": true
+      "slug": "backend-csharp-quality-audit",
+      "raw_slug": "backend-csharp-quality-audit",
+      "folder": ".jdi/phases/backend-csharp-quality-audit",
+      "status": "pending",
+      "legacy": false
     }
   ]
 }

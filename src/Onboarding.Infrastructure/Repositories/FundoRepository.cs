@@ -48,20 +48,32 @@ public sealed class FundoRepository : IFundoRepository
     public async Task<(IReadOnlyList<Fundo> Items, int TotalCount)> GetPagedByCompanyAsync(
         Guid companyId, int page, int pageSize, string? search, CancellationToken ct = default)
     {
-        var query = _db.Fundos
-            .IgnoreQueryFilters()
-            .Where(f => f.ClienteId == companyId)
-            .AsNoTracking();
+        IQueryable<Fundo> query;
 
+        // cnpj is a value-converter column — opaque to LINQ (.Value cannot be translated at runtime).
+        // When search is present, use FromSqlInterpolated (parameterized, no injection) on the
+        // raw columns, then compose CompanyId/order/paging as LINQ. IgnoreQueryFilters() suppresses
+        // the HasQueryFilter (which captures ICurrentCompanyService.CompanyId = Guid.Empty at runtime).
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var normalized = search.Trim().ToLowerInvariant();
-            var digitsOnly = new string(normalized.Where(char.IsDigit).ToArray());
-
-            query = query.Where(f =>
-                EF.Functions.ILike(f.Nome, $"%{normalized}%") ||
-                (digitsOnly.Length > 0 && f.Cnpj.Value.Contains(digitsOnly)));
+            var like = $"%{search.Trim()}%";
+            var digits = new string(search.Where(char.IsDigit).ToArray());
+            var digitsLike = $"%{digits}%";
+            var hasDigits = digits.Length > 0;
+            query = _db.Fundos
+                .FromSqlInterpolated($@"
+                    SELECT * FROM fundos
+                    WHERE nome ILIKE {like}
+                       OR ({hasDigits} AND cnpj ILIKE {digitsLike})")
+                .IgnoreQueryFilters()
+                .AsNoTracking();
         }
+        else
+        {
+            query = _db.Fundos.IgnoreQueryFilters().AsNoTracking();
+        }
+
+        query = query.Where(f => f.ClienteId == companyId);
 
         var totalCount = await query.CountAsync(ct);
 

@@ -39,12 +39,18 @@ public sealed class CompanyRepositoryIntegrationTests : PostgreSqlIntegrationTes
     private const string SubBeta  = "crep-beta-sub-cr-002";
     private const string SubGamma = "crep-gamma-sub-cr-003";
 
-    // Hardcoded valid CNPJs distinct from all other test classes
-    private const string CnpjAlpha = "65527436000136";
-    private const string CnpjBeta  = "28536107000107";
-    private const string CnpjGamma = "54276337000161";
+    // Valid CNPJs generated at construction time — guarantees valid check digits + uniqueness
+    // within this fixture's lifetime.  Cannot be const because they require the generator.
+    private readonly string _cnpjAlpha;
+    private readonly string _cnpjBeta;
+    private readonly string _cnpjGamma;
 
-    public CompanyRepositoryIntegrationTests(PostgreSqlFixture fixture) : base(fixture) { }
+    public CompanyRepositoryIntegrationTests(PostgreSqlFixture fixture) : base(fixture)
+    {
+        _cnpjAlpha = GenerateCnpj(fixture.NextCnpjSlot());
+        _cnpjBeta  = GenerateCnpj(fixture.NextCnpjSlot());
+        _cnpjGamma = GenerateCnpj(fixture.NextCnpjSlot());
+    }
 
     // =========================================================================
     // Seed — runs once per class via EnsureSeedAsync guard
@@ -58,16 +64,20 @@ public sealed class CompanyRepositoryIntegrationTests : PostgreSqlIntegrationTes
         {
             using var scope = CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            await SeedAsync(db);
+            await SeedAsync(db, _cnpjAlpha, _cnpjBeta, _cnpjGamma);
         });
     }
 
-    private static async Task SeedAsync(AppDbContext db)
+    private static async Task SeedAsync(
+        AppDbContext db,
+        string cnpjAlpha,
+        string cnpjBeta,
+        string cnpjGamma)
     {
         // Alpha — active company, searchable by "Alpha Pesquisavel"
         var alpha = Company.Register(
             "Alpha Pesquisavel CRUD Ltda",
-            CnpjAlpha,
+            cnpjAlpha,
             "alpha.crep@test.com",
             "+5511000001001",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "10.0.0.1"));
@@ -76,7 +86,7 @@ public sealed class CompanyRepositoryIntegrationTests : PostgreSqlIntegrationTes
         // Beta — active company
         var beta = Company.Register(
             "Beta Empresa CRUD S.A.",
-            CnpjBeta,
+            cnpjBeta,
             "beta.crep@test.com",
             "+5511000001002",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "10.0.0.2"));
@@ -85,7 +95,7 @@ public sealed class CompanyRepositoryIntegrationTests : PostgreSqlIntegrationTes
         // Gamma — soft-deleted (anonymised)
         var gamma = Company.Register(
             "Gamma Empresa CRUD Ltda",
-            CnpjGamma,
+            cnpjGamma,
             "gamma.crep@test.com",
             "+5511000001003",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "10.0.0.3"));

@@ -84,26 +84,39 @@ public sealed class CompanyRepository : ICompanyRepository
     public async Task<(IReadOnlyList<Company> Items, int TotalCount)> GetPagedAsync(
         int page, int pageSize, string? search, string? status, CancellationToken ct = default)
     {
-        var query = _db.Companies.AsQueryable();
+        IQueryable<Company> query;
 
-        // Search filter: razaoSocial, CNPJ, or email
+        // Search filter: razaoSocial, email, or CNPJ.
+        // email/cnpj are value-converter columns — opaque to LINQ (`c.Email.Value` cannot be
+        // translated, threw at runtime). Use a parameterized SQL ILIKE over the raw columns;
+        // status/order/paging compose as normal LINQ. FromSqlInterpolated parameterizes every
+        // value (no SQL injection). Company has no global query filter, so D-5 is unaffected.
         if (!string.IsNullOrWhiteSpace(search))
         {
-            var searchLower = search.ToLowerInvariant();
-            query = query.Where(c =>
-                c.RazaoSocial.ToLower().Contains(searchLower) ||
-                c.Cnpj.Value.ToLower().Contains(searchLower) ||
-                c.Email.Value.ToLower().Contains(searchLower));
+            var like = $"%{search.Trim()}%";
+            var digits = new string(search.Where(char.IsDigit).ToArray());
+            var digitsLike = $"%{digits}%";
+            var hasDigits = digits.Length > 0;
+            query = _db.Companies.FromSqlInterpolated($@"
+                SELECT * FROM companies
+                WHERE razao_social ILIKE {like}
+                   OR email ILIKE {like}
+                   OR ({hasDigits} AND cnpj ILIKE {digitsLike})");
+        }
+        else
+        {
+            query = _db.Companies;
         }
 
-        // Status filter: active (not deleted), deleted
+        // Status filter: active (not deleted), deleted. Filter on the mapped deleted_at column —
+        // IsDeleted (=> DeletedAt.HasValue) is a computed property EF cannot translate.
         if (!string.IsNullOrWhiteSpace(status))
         {
             var statusLower = status.ToLowerInvariant();
             query = statusLower switch
             {
-                "active" => query.Where(c => !c.IsDeleted),
-                "deleted" => query.Where(c => c.IsDeleted),
+                "active" => query.Where(c => c.DeletedAt == null),
+                "deleted" => query.Where(c => c.DeletedAt != null),
                 _ => query
             };
         }

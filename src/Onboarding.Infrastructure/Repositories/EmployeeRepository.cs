@@ -63,13 +63,34 @@ public sealed class EmployeeRepository : IEmployeeRepository
         Guid companyId, int page, int pageSize, string? search, string? status,
         CancellationToken ct = default)
     {
-        // Explicit CompanyId filter is sufficient — controller validates companyId matches current user's company.
-        // IgnoreQueryFilters because HasQueryFilter captures ICurrentCompanyService at model-build time,
-        // which has CompanyId=Guid.Empty for all subsequent requests.
-        var query = _db.Employees
-            .IgnoreQueryFilters()
-            .Where(e => e.CompanyId == companyId)
-            .AsNoTracking();
+        // email/cpf are value-converter columns — opaque to LINQ (.Value cannot be translated).
+        // When search is present, use FromSqlInterpolated (parameterized, no injection) on raw
+        // columns, then compose CompanyId/status/order/paging as LINQ.
+        // IgnoreQueryFilters() suppresses HasQueryFilter (ICurrentCompanyService.CompanyId = Guid.Empty at runtime).
+        IQueryable<Employee> query;
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var like = $"%{search.Trim()}%";
+            var digits = new string(search.Where(char.IsDigit).ToArray());
+            var digitsLike = $"%{digits}%";
+            var hasDigits = digits.Length > 0;
+            query = _db.Employees
+                .FromSqlInterpolated($@"
+                    SELECT * FROM employees
+                    WHERE nome ILIKE {like}
+                       OR email ILIKE {like}
+                       OR ({hasDigits} AND cpf ILIKE {digitsLike})")
+                .IgnoreQueryFilters()
+                .AsNoTracking();
+        }
+        else
+        {
+            query = _db.Employees.IgnoreQueryFilters().AsNoTracking();
+        }
+
+        // Explicit CompanyId filter — controller validates companyId matches current user's company.
+        query = query.Where(e => e.CompanyId == companyId);
 
         // Status filter
         if (!string.IsNullOrWhiteSpace(status))
@@ -84,18 +105,6 @@ public sealed class EmployeeRepository : IEmployeeRepository
         {
             // Default: show only active employees
             query = query.Where(e => !e.DeletedAt.HasValue);
-        }
-
-        // Search filter — nome, email, cpf
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var normalized = search.Trim().ToLowerInvariant();
-            var digitsOnly = new string(normalized.Where(char.IsDigit).ToArray());
-
-            query = query.Where(e =>
-                EF.Functions.ILike(e.Nome, $"%{normalized}%") ||
-                EF.Functions.ILike(e.Email.Value, $"%{normalized}%") ||
-                (digitsOnly.Length > 0 && e.Cpf != null && e.Cpf.Value.Contains(digitsOnly)));
         }
 
         var totalCount = await query.CountAsync(ct);
@@ -117,10 +126,30 @@ public sealed class EmployeeRepository : IEmployeeRepository
         int page, int pageSize, string? search, string? status,
         CancellationToken ct = default)
     {
-        // Admin endpoint — bypasses HasQueryFilter to see all companies' employees
-        var query = _db.Employees
-            .IgnoreQueryFilters()
-            .AsNoTracking();
+        // Admin endpoint — bypasses HasQueryFilter to see all companies' employees.
+        // email/cpf are value-converter columns — opaque to LINQ (.Value cannot be translated).
+        // When search is present, use FromSqlInterpolated (parameterized, no injection) on raw columns.
+        IQueryable<Employee> query;
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var like = $"%{search.Trim()}%";
+            var digits = new string(search.Where(char.IsDigit).ToArray());
+            var digitsLike = $"%{digits}%";
+            var hasDigits = digits.Length > 0;
+            query = _db.Employees
+                .FromSqlInterpolated($@"
+                    SELECT * FROM employees
+                    WHERE nome ILIKE {like}
+                       OR email ILIKE {like}
+                       OR ({hasDigits} AND cpf ILIKE {digitsLike})")
+                .IgnoreQueryFilters()
+                .AsNoTracking();
+        }
+        else
+        {
+            query = _db.Employees.IgnoreQueryFilters().AsNoTracking();
+        }
 
         // Status filter
         if (!string.IsNullOrWhiteSpace(status))
@@ -135,18 +164,6 @@ public sealed class EmployeeRepository : IEmployeeRepository
         {
             // Default: show only active employees
             query = query.Where(e => !e.DeletedAt.HasValue);
-        }
-
-        // Search filter — nome, email, cpf
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var normalized = search.Trim().ToLowerInvariant();
-            var digitsOnly = new string(normalized.Where(char.IsDigit).ToArray());
-
-            query = query.Where(e =>
-                EF.Functions.ILike(e.Nome, $"%{normalized}%") ||
-                EF.Functions.ILike(e.Email.Value, $"%{normalized}%") ||
-                (digitsOnly.Length > 0 && e.Cpf != null && e.Cpf.Value.Contains(digitsOnly)));
         }
 
         var totalCount = await query.CountAsync(ct);

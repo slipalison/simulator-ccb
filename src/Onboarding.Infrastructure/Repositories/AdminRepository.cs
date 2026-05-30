@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Domain.Repositories;
-using Onboarding.Domain.ValueObjects;
 using Onboarding.Infrastructure.Persistence;
 
 namespace Onboarding.Infrastructure.Repositories;
@@ -19,21 +18,40 @@ public sealed class AdminRepository : IAdminRepository
     public async Task<(IReadOnlyList<Company> Items, int TotalCount)> GetPagedAsync(
         int page, int pageSize, string? search, string? status, CancellationToken ct = default)
     {
-        var query = _db.Companies.AsNoTracking();
+        IQueryable<Company> query;
 
-        // Status filter: deleted
+        // Search filter: razaoSocial, email, or CNPJ (digits-only).
+        // email/cnpj are value-converter columns — opaque to LINQ (.Value cannot be translated).
+        // FromSqlInterpolated parameterizes every value (no injection risk).
+        // This is cross-company admin — no global query filter applies here (IgnoreQueryFilters
+        // is not needed because Companies has no HasQueryFilter).
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var like = $"%{search.Trim()}%";
+            var digits = new string(search.Where(char.IsDigit).ToArray());
+            var digitsLike = $"%{digits}%";
+            var hasDigits = digits.Length > 0;
+            query = _db.Companies.FromSqlInterpolated($@"
+                SELECT * FROM companies
+                WHERE razao_social ILIKE {like}
+                   OR email ILIKE {like}
+                   OR ({hasDigits} AND cnpj ILIKE {digitsLike})");
+        }
+        else
+        {
+            query = _db.Companies;
+        }
+
+        // Status filter on mapped column (DeletedAt); IsDeleted is a computed prop EF cannot translate.
         if (status?.ToLowerInvariant() == "deleted")
             query = query.Where(c => c.DeletedAt.HasValue);
         else
             query = query.Where(c => !c.DeletedAt.HasValue);
 
-        // Search filter
-        if (!string.IsNullOrWhiteSpace(search))
-            query = ApplySearch(query, search);
-
         var totalCount = await query.CountAsync(ct);
 
         var items = await query
+            .AsNoTracking()
             .OrderBy(c => c.RazaoSocial)
             .ThenBy(c => c.Id)
             .Skip((page - 1) * pageSize)
@@ -52,16 +70,4 @@ public sealed class AdminRepository : IAdminRepository
     public async Task SaveChangesAsync(CancellationToken ct = default)
         => await _db.SaveChangesAsync(ct);
 
-    private static IQueryable<Company> ApplySearch(IQueryable<Company> query, string search)
-    {
-        var normalized = search.Trim().ToLowerInvariant();
-        var digitsOnly = new string(normalized.Where(char.IsDigit).ToArray());
-
-        return query.Where(c =>
-            EF.Functions.ILike(c.RazaoSocial, $"%{normalized}%") ||
-            EF.Functions.ILike(c.Email.Value, $"%{normalized}%") ||
-            (c.Cnpj != null && c.Cnpj.Value.Contains(normalized)) ||
-            (digitsOnly.Length > 0 && c.Cnpj != null && c.Cnpj.Value.Contains(digitsOnly))
-        );
-    }
 }

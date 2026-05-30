@@ -39,11 +39,15 @@ public sealed class ListAdminConsultoriaIntegrationTests : PostgreSqlIntegration
     private const string SubPjA = "lac-pja-sub-010";
     private const string SubPjB = "lac-pjb-sub-011";
 
-    // Hardcoded valid CNPJs — distinct from all other test classes in the project
-    private const string CnpjCompanyA = "72628966000101";
-    private const string CnpjCompanyB = "41773248000131";
+    // Valid CNPJs generated at construction time — guarantees valid check digits + uniqueness.
+    private readonly string _cnpjCompanyA;
+    private readonly string _cnpjCompanyB;
 
-    public ListAdminConsultoriaIntegrationTests(PostgreSqlFixture fixture) : base(fixture) { }
+    public ListAdminConsultoriaIntegrationTests(PostgreSqlFixture fixture) : base(fixture)
+    {
+        _cnpjCompanyA = GenerateCnpj(fixture.NextCnpjSlot());
+        _cnpjCompanyB = GenerateCnpj(fixture.NextCnpjSlot());
+    }
 
     // =========================================================================
     // IAsyncLifetime — per-class seed (guarded against re-seeding per test)
@@ -57,7 +61,7 @@ public sealed class ListAdminConsultoriaIntegrationTests : PostgreSqlIntegration
         {
             using var scope = CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            await SeedAsync(db);
+            await SeedAsync(db, _cnpjCompanyA, _cnpjCompanyB);
         });
 
         // Re-read company IDs after seed
@@ -69,12 +73,12 @@ public sealed class ListAdminConsultoriaIntegrationTests : PostgreSqlIntegration
             .Where(c => c.KeycloakUserId == SubPjB).Select(c => c.Id).First();
     }
 
-    private static async Task SeedAsync(AppDbContext db)
+    private static async Task SeedAsync(AppDbContext db, string cnpjCompanyA, string cnpjCompanyB)
     {
         // PJ-A
         var companyA = Company.Register(
             "Empresa Alpha LAC Ltda",
-            CnpjCompanyA,
+            cnpjCompanyA,
             "alpha.lac@test.com",
             "+5511000002001",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "10.0.1.1"));
@@ -83,7 +87,7 @@ public sealed class ListAdminConsultoriaIntegrationTests : PostgreSqlIntegration
         // PJ-B
         var companyB = Company.Register(
             "Empresa Beta LAC S.A.",
-            CnpjCompanyB,
+            cnpjCompanyB,
             "beta.lac@test.com",
             "+5511000002002",
             TermsAcceptance.Create(TermsAcceptance.CurrentVersion, "10.0.1.2"));
@@ -324,6 +328,6 @@ public sealed class ListAdminConsultoriaIntegrationTests : PostgreSqlIntegration
         public string Cnpj { get; set; } = string.Empty;
         public string? Email { get; set; }
         public string? Telefone { get; set; }
-        public int Status { get; set; }
+        public string Status { get; set; } = string.Empty;
     }
 }

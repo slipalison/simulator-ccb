@@ -153,13 +153,14 @@ public sealed class AdminRepositoryIntegrationTests : PostgreSqlIntegrationTestB
         var db = await BeginTransactionAsync();
         var repo = new AdminRepository(db);
 
-        // Active company whose name matches the search — must NOT appear in deleted filter
+        // Active company — must NOT appear in deleted filter
         var active = CreateCompany(
             $"Shared Name Prefix Active {TestId}",
             GenerateCnpj(Fixture.NextCnpjSlot()),
             $"active.shared.{TestId}@test.com",
             deleted: false);
-        // Deleted company with matching name — must appear
+        // Deleted company — after Anonymize(), RazaoSocial becomes "Empresa Excluída"
+        // and email becomes "deleted-{Id}@internal.local".  The original name is gone.
         var deleted = CreateCompany(
             $"Deleted Empresa StatusTest {TestId}",
             GenerateCnpj(Fixture.NextCnpjSlot()),
@@ -168,13 +169,13 @@ public sealed class AdminRepositoryIntegrationTests : PostgreSqlIntegrationTestB
         db.Companies.AddRange(active, deleted);
         await db.SaveChangesAsync();
 
-        // Act — status=deleted + search by the unique TestId
-        var (items, total) = await repo.GetPagedAsync(1, 50, $"StatusTest {TestId}", "deleted");
+        // Act — status=deleted + search by "Empresa Excluída" (the anonymized RazaoSocial).
+        // The original name is overwritten by Anonymize(), so we must search the post-anonymization
+        // value.  Within this rolled-back transaction exactly one deleted company exists.
+        var (items, total) = await repo.GetPagedAsync(1, 50, "Empresa Excluída", "deleted");
 
-        // Assert — only the deleted company matches
+        // Assert — the one deleted company seeded above appears; the active one does not.
         total.ShouldBe(1);
-        items.ShouldContain(c => c.IsDeleted);
-        // The returned name is anonymized by Anonymize() → "Empresa Excluída"
         items.ShouldAllBe(c => c.IsDeleted);
     }
 

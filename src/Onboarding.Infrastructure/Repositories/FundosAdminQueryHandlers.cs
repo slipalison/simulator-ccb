@@ -1,6 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Onboarding.Application.Common;
 using Onboarding.Application.Fundos.Queries.Admin;
+using Onboarding.Domain.Aggregates.CedenteAggregate;
+using Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate;
+using Onboarding.Domain.Aggregates.CustodianteAggregate;
+using Onboarding.Domain.Aggregates.FundoAggregate;
 using Onboarding.Infrastructure.Persistence;
 
 namespace Onboarding.Infrastructure.Repositories;
@@ -23,10 +27,31 @@ public sealed class ListAdminFundoQueryHandler
         ListAdminFundoQuery query, CancellationToken ct = default)
     {
         // IgnoreQueryFilters — cross-company admin read (D-8, D-12).
-        // Explicit Join with Companies exposes EmpresaNome without materializing aggregates.
-        var baseQuery = _db.Fundos
-            .IgnoreQueryFilters()
-            .AsNoTracking()
+        // cnpj is a value-converter column — opaque to LINQ (.Value cannot be translated at runtime).
+        // When search is present, use FromSqlInterpolated on fundos first (parameterized, no injection),
+        // then Join with Companies. IgnoreQueryFilters() suppresses the HasQueryFilter on the FromSql result.
+        IQueryable<Fundo> fundoBase;
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var like = $"%{query.Search.Trim()}%";
+            var digits = new string(query.Search.Where(char.IsDigit).ToArray());
+            var digitsLike = $"%{digits}%";
+            var hasDigits = digits.Length > 0;
+            fundoBase = _db.Fundos
+                .FromSqlInterpolated($@"
+                    SELECT * FROM fundos
+                    WHERE nome ILIKE {like}
+                       OR ({hasDigits} AND cnpj ILIKE {digitsLike})")
+                .IgnoreQueryFilters()
+                .AsNoTracking();
+        }
+        else
+        {
+            fundoBase = _db.Fundos.IgnoreQueryFilters().AsNoTracking();
+        }
+
+        var baseQuery = fundoBase
             .Join(
                 _db.Companies.AsNoTracking(),
                 f => f.ClienteId,
@@ -36,15 +61,6 @@ public sealed class ListAdminFundoQueryHandler
 
         if (query.CompanyId.HasValue)
             baseQuery = baseQuery.Where(x => x.Fundo.ClienteId == query.CompanyId.Value);
-
-        if (!string.IsNullOrWhiteSpace(query.Search))
-        {
-            var normalized = query.Search.Trim().ToLowerInvariant();
-            var digitsOnly = new string(normalized.Where(char.IsDigit).ToArray());
-            baseQuery = baseQuery.Where(x =>
-                EF.Functions.ILike(x.Fundo.Nome, $"%{normalized}%") ||
-                (digitsOnly.Length > 0 && x.Fundo.Cnpj.Value.Contains(digitsOnly)));
-        }
 
         var totalCount = await baseQuery.CountAsync(ct).ConfigureAwait(false);
 
@@ -88,9 +104,32 @@ public sealed class ListAdminConsultoriaQueryHandler
     public async Task<PaginatedResult<AdminConsultoriaFundoDto>> HandleAsync(
         ListAdminConsultoriaQuery query, CancellationToken ct = default)
     {
-        var baseQuery = _db.ConsultoriasFundo
-            .IgnoreQueryFilters()
-            .AsNoTracking()
+        // cnpj is a value-converter column — opaque to LINQ (.Value cannot be translated at runtime).
+        // When search is present, use FromSqlInterpolated on consultoria_fundos first (parameterized,
+        // no injection), then Join with Companies. IgnoreQueryFilters() suppresses HasQueryFilter.
+        IQueryable<ConsultoriaFundo> consultoriaBase;
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var like = $"%{query.Search.Trim()}%";
+            var digits = new string(query.Search.Where(char.IsDigit).ToArray());
+            var digitsLike = $"%{digits}%";
+            var hasDigits = digits.Length > 0;
+            consultoriaBase = _db.ConsultoriasFundo
+                .FromSqlInterpolated($@"
+                    SELECT * FROM consultoria_fundos
+                    WHERE razao_social ILIKE {like}
+                       OR (nome_fantasia IS NOT NULL AND nome_fantasia ILIKE {like})
+                       OR ({hasDigits} AND cnpj ILIKE {digitsLike})")
+                .IgnoreQueryFilters()
+                .AsNoTracking();
+        }
+        else
+        {
+            consultoriaBase = _db.ConsultoriasFundo.IgnoreQueryFilters().AsNoTracking();
+        }
+
+        var baseQuery = consultoriaBase
             .Join(
                 _db.Companies.AsNoTracking(),
                 c => c.ClienteId,
@@ -100,17 +139,6 @@ public sealed class ListAdminConsultoriaQueryHandler
 
         if (query.CompanyId.HasValue)
             baseQuery = baseQuery.Where(x => x.Consultoria.ClienteId == query.CompanyId.Value);
-
-        if (!string.IsNullOrWhiteSpace(query.Search))
-        {
-            var normalized = query.Search.Trim().ToLowerInvariant();
-            var digitsOnly = new string(normalized.Where(char.IsDigit).ToArray());
-            baseQuery = baseQuery.Where(x =>
-                EF.Functions.ILike(x.Consultoria.RazaoSocial, $"%{normalized}%") ||
-                (x.Consultoria.NomeFantasia != null &&
-                 EF.Functions.ILike(x.Consultoria.NomeFantasia, $"%{normalized}%")) ||
-                (digitsOnly.Length > 0 && x.Consultoria.Cnpj.Value.Contains(digitsOnly)));
-        }
 
         var totalCount = await baseQuery.CountAsync(ct).ConfigureAwait(false);
 
@@ -151,9 +179,31 @@ public sealed class ListAdminCustodianteQueryHandler
     public async Task<PaginatedResult<AdminCustodianteDto>> HandleAsync(
         ListAdminCustodianteQuery query, CancellationToken ct = default)
     {
-        var baseQuery = _db.Custodiantes
-            .IgnoreQueryFilters()
-            .AsNoTracking()
+        // cnpj is a value-converter column — opaque to LINQ (.Value cannot be translated at runtime).
+        // When search is present, use FromSqlInterpolated on custodiantes first (parameterized,
+        // no injection), then Join with Companies. IgnoreQueryFilters() suppresses HasQueryFilter.
+        IQueryable<Custodiante> custodianteBase;
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var like = $"%{query.Search.Trim()}%";
+            var digits = new string(query.Search.Where(char.IsDigit).ToArray());
+            var digitsLike = $"%{digits}%";
+            var hasDigits = digits.Length > 0;
+            custodianteBase = _db.Custodiantes
+                .FromSqlInterpolated($@"
+                    SELECT * FROM custodiantes
+                    WHERE razao_social ILIKE {like}
+                       OR ({hasDigits} AND cnpj ILIKE {digitsLike})")
+                .IgnoreQueryFilters()
+                .AsNoTracking();
+        }
+        else
+        {
+            custodianteBase = _db.Custodiantes.IgnoreQueryFilters().AsNoTracking();
+        }
+
+        var baseQuery = custodianteBase
             .Join(
                 _db.Companies.AsNoTracking(),
                 cu => cu.ClienteId,
@@ -163,15 +213,6 @@ public sealed class ListAdminCustodianteQueryHandler
 
         if (query.CompanyId.HasValue)
             baseQuery = baseQuery.Where(x => x.Custodiante.ClienteId == query.CompanyId.Value);
-
-        if (!string.IsNullOrWhiteSpace(query.Search))
-        {
-            var normalized = query.Search.Trim().ToLowerInvariant();
-            var digitsOnly = new string(normalized.Where(char.IsDigit).ToArray());
-            baseQuery = baseQuery.Where(x =>
-                EF.Functions.ILike(x.Custodiante.RazaoSocial, $"%{normalized}%") ||
-                (digitsOnly.Length > 0 && x.Custodiante.Cnpj.Value.Contains(digitsOnly)));
-        }
 
         var totalCount = await baseQuery.CountAsync(ct).ConfigureAwait(false);
 
@@ -214,9 +255,33 @@ public sealed class ListAdminCedenteQueryHandler
     public async Task<PaginatedResult<AdminCedenteDto>> HandleAsync(
         ListAdminCedenteQuery query, CancellationToken ct = default)
     {
-        var baseQuery = _db.Cedentes
-            .IgnoreQueryFilters()
-            .AsNoTracking()
+        // cpf / cnpj_cedente are shadow-property columns (D-09/CR-03).
+        // EF.Property<string> after a Join produces an anonymous type where shadow property
+        // access is unreliable. Use FromSqlInterpolated on cedentes directly (parameterized,
+        // no injection), then Join with Companies. IgnoreQueryFilters() suppresses HasQueryFilter.
+        IQueryable<Cedente> cedenteBase;
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var like = $"%{query.Search.Trim()}%";
+            var digits = new string(query.Search.Where(char.IsDigit).ToArray());
+            var digitsLike = $"%{digits}%";
+            var hasDigits = digits.Length > 0;
+            cedenteBase = _db.Cedentes
+                .FromSqlInterpolated($@"
+                    SELECT * FROM cedentes
+                    WHERE nome ILIKE {like}
+                       OR ({hasDigits} AND cpf ILIKE {digitsLike})
+                       OR ({hasDigits} AND cnpj_cedente ILIKE {digitsLike})")
+                .IgnoreQueryFilters()
+                .AsNoTracking();
+        }
+        else
+        {
+            cedenteBase = _db.Cedentes.IgnoreQueryFilters().AsNoTracking();
+        }
+
+        var baseQuery = cedenteBase
             .Join(
                 _db.Companies.AsNoTracking(),
                 ce => ce.ClienteId,
@@ -226,17 +291,6 @@ public sealed class ListAdminCedenteQueryHandler
 
         if (query.CompanyId.HasValue)
             baseQuery = baseQuery.Where(x => x.Cedente.ClienteId == query.CompanyId.Value);
-
-        if (!string.IsNullOrWhiteSpace(query.Search))
-        {
-            var normalized = query.Search.Trim().ToLowerInvariant();
-            var digitsOnly = new string(normalized.Where(char.IsDigit).ToArray());
-            baseQuery = baseQuery.Where(x =>
-                EF.Functions.ILike(x.Cedente.Nome, $"%{normalized}%") ||
-                (digitsOnly.Length > 0 &&
-                    (EF.Property<string>(x.Cedente, "CpfValue").Contains(digitsOnly) ||
-                     EF.Property<string>(x.Cedente, "CnpjCedenteValue").Contains(digitsOnly))));
-        }
 
         var totalCount = await baseQuery.CountAsync(ct).ConfigureAwait(false);
 

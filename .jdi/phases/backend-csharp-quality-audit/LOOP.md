@@ -1,14 +1,14 @@
 ---
 phase_slug: backend-csharp-quality-audit
 phase_position: 54
-iter: 1
+iter: 4
 total_resets: 0
-status: running
+status: converged
 max_iter_per_round: 5
 max_resets: 3
 created_at: 2026-05-30T12:16:59-03:00
 last_iter_completed: 2026-05-30
-last_task: T-1 (coverage baseline + violation inventory)
+last_task: /jdi-verify — APPROVED_WITH_WARNINGS (all 13 gates pass)
 ---
 
 ## Hard constraint (user, /jdi-loop invocation)
@@ -32,3 +32,4 @@ Reforça D-54: zero mudança de contrato HTTP da API, rotas, shape de payload, c
 - iter 4 W4 coverage (W4-1/2/A/B/C): Domain 98%, API 95.3%, Application 98.2%, Infrastructure 95.3% via merged measurement (D-57 methodology fix — per-project undercounted). Removed [ExcludeFromCodeCoverage] 21 repos + 200 InMemory tests + Keycloak svc tests. commits cefde9a/40f0e46/c0d5b3e/b5284ed/f0fa891.
 - iter 4 W4 BUG FOUND+FIXED (D-58): coverage integration tests EXPOSED real prod bug — admin search by name/email/CNPJ returned 500 (value-converter columns email/cnpj opaque to LINQ; neither .Value, ILike(.Value), nor EF.Property<string> translate). Fixed via FromSqlInterpolated across 7 sites. Integration 217/0 green. 3 tested sites (Company/Admin/ListAdminConsultoria) >80%; 4 latent (Custodiante/Fundo/ListAdminFundo/Employee) 72-76% need follow-up search tests (task W4-D). commit=a63c258.
 - iter 4 FULL VERIFY (main-thread, 5 suites fresh): Domain 513 + Application 222 + API 504(+4skip) + Infrastructure.Tests 200 + Integration 217 = 1656 pass / 0 fail. Merged coverage 96.6%. Only 4 files <80% (the latent search sites). ts=2026-05-30T19:04:36-03:00
+- iter 4 W5 (T-8 + verify): COVERAGE-FINAL + WARNINGS written (commit 62d4856); dotnet format test files (cda883f); live backend stack up (api+keycloak), reviewer /jdi-verify ran 13 gates → REVIEW.md. Playwright/HTTP regression PASS (healthz 200, protected 401, validation 422 not 500). >>> VERDICT: APPROVED_WITH_WARNINGS. Loop CONVERGED. Warnings: W-LINT(fixed), telemetry carry-forward, Fundos split, password policy.

@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Onboarding.Application.Common;
 using Onboarding.Application.Fundos.Queries.Admin;
@@ -13,7 +12,6 @@ namespace Onboarding.Infrastructure.Repositories;
 /// SECURITY: These handlers MUST only be consumed by AdminFundosController
 /// which requires Policy = CrossCompanyAccess (BearerBackoffice).
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class ListAdminFundoQueryHandler
     : IQueryHandler<ListAdminFundoQuery, PaginatedResult<AdminFundoDto>>
 {
@@ -80,7 +78,6 @@ public sealed class ListAdminFundoQueryHandler
 /// <summary>
 /// Cross-company admin query handler for ConsultoriaFundo listing (D-8, D-12).
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class ListAdminConsultoriaQueryHandler
     : IQueryHandler<ListAdminConsultoriaQuery, PaginatedResult<AdminConsultoriaFundoDto>>
 {
@@ -144,7 +141,6 @@ public sealed class ListAdminConsultoriaQueryHandler
 /// <summary>
 /// Cross-company admin query handler for Custodiante listing (D-8, D-12).
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class ListAdminCustodianteQueryHandler
     : IQueryHandler<ListAdminCustodianteQuery, PaginatedResult<AdminCustodianteDto>>
 {
@@ -208,7 +204,6 @@ public sealed class ListAdminCustodianteQueryHandler
 /// Cedente document type (PF/PJ) is read from shadow property "DocumentoTipo" (D-09/CR-03).
 /// The admin view shows the raw document value (CPF or CNPJ string) and CedenteTipo enum.
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class ListAdminCedenteQueryHandler
     : IQueryHandler<ListAdminCedenteQuery, PaginatedResult<AdminCedenteDto>>
 {

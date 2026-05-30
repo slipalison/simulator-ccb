@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Onboarding.Application.Common;
 using Onboarding.Application.Fundos.Queries.Admin;
@@ -12,7 +11,6 @@ namespace Onboarding.Infrastructure.Repositories;
 /// SECURITY: These handlers MUST only be consumed by AdminFundosController
 /// which requires Policy = CrossCompanyAccess (BearerBackoffice).
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class ListAdminFundoCedenteQueryHandler
     : IQueryHandler<ListAdminFundoCedenteQuery, PaginatedResult<AdminRelFundoCedenteDto>>
 {
@@ -74,7 +72,6 @@ public sealed class ListAdminFundoCedenteQueryHandler
 /// <summary>
 /// Cross-company admin query handler for CedenteTipoAtivo relationship listing (D-8, D-12).
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class ListAdminCedenteTipoAtivoQueryHandler
     : IQueryHandler<ListAdminCedenteTipoAtivoQuery, PaginatedResult<AdminRelCedenteTipoAtivoDto>>
 {
@@ -134,7 +131,6 @@ public sealed class ListAdminCedenteTipoAtivoQueryHandler
 /// <summary>
 /// Cross-company admin query handler for FundoTipoAtivo relationship listing (D-8, D-12).
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class ListAdminFundoTipoAtivoQueryHandler
     : IQueryHandler<ListAdminFundoTipoAtivoQuery, PaginatedResult<AdminRelFundoTipoAtivoDto>>
 {

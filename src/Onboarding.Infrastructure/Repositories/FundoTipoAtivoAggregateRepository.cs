@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Onboarding.Domain.Aggregates.FundoCedenteAggregate;
 using Onboarding.Domain.Aggregates.FundoTipoAtivoAggregate;
@@ -10,7 +9,6 @@ namespace Onboarding.Infrastructure.Repositories;
 /// <summary>
 /// EF Core repository for FundoTipoAtivoAggregate — tested via integration tests.
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class FundoTipoAtivoAggregateRepository : IFundoTipoAtivoAggregateRepository
 {
     private readonly AppDbContext _db;

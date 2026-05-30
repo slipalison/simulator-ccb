@@ -18,5 +18,6 @@
     <Project Path="tests/Onboarding.Domain.Tests/Onboarding.Domain.Tests.csproj" />
     <Project Path="tests/Onboarding.API.Tests/Onboarding.API.Tests.csproj" />
     <Project Path="tests/Onboarding.Integration.Tests/Onboarding.Integration.Tests.csproj" />
+    <Project Path="tests/Onboarding.Infrastructure.Tests/Onboarding.Infrastructure.Tests.csproj" />
   </Folder>
 </Solution>

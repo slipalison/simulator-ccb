@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Domain.Repositories;
@@ -8,7 +7,6 @@ using Onboarding.Infrastructure.Persistence;
 namespace Onboarding.Infrastructure.Repositories;
 
 /// <summary>Thin EF Core repository — tested via integration tests.</summary>
-[ExcludeFromCodeCoverage]
 public sealed class AdminRepository : IAdminRepository
 {
     private readonly AppDbContext _db;

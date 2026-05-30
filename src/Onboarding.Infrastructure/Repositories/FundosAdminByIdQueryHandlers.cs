@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Onboarding.Application.Common;
 using Onboarding.Application.Fundos.Queries.Admin;
@@ -17,7 +16,6 @@ namespace Onboarding.Infrastructure.Repositories;
 /// <summary>
 /// Returns a single AdminFundoDto for any company. Returns null if not found.
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class GetAdminFundoByIdQueryHandler
     : IQueryHandler<GetAdminFundoByIdQuery, AdminFundoDto?>
 {
@@ -59,7 +57,6 @@ public sealed class GetAdminFundoByIdQueryHandler
 /// <summary>
 /// Returns a single AdminConsultoriaFundoDto for any company. Returns null if not found.
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class GetAdminConsultoriaFundoByIdQueryHandler
     : IQueryHandler<GetAdminConsultoriaFundoByIdQuery, AdminConsultoriaFundoDto?>
 {
@@ -97,7 +94,6 @@ public sealed class GetAdminConsultoriaFundoByIdQueryHandler
 /// <summary>
 /// Returns a single AdminCustodianteDto for any company. Returns null if not found.
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class GetAdminCustodianteByIdQueryHandler
     : IQueryHandler<GetAdminCustodianteByIdQuery, AdminCustodianteDto?>
 {
@@ -136,7 +132,6 @@ public sealed class GetAdminCustodianteByIdQueryHandler
 /// Returns a single AdminCedenteDto for any company. Returns null if not found.
 /// Cedente document type (PF/PJ) is read from shadow property "DocumentoTipo" (D-09/CR-03).
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class GetAdminCedenteByIdQueryHandler
     : IQueryHandler<GetAdminCedenteByIdQuery, AdminCedenteDto?>
 {

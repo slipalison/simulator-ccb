@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Onboarding.Domain.Aggregates.FundoAggregate;
 using Onboarding.Domain.Repositories;
@@ -12,7 +11,6 @@ namespace Onboarding.Infrastructure.Repositories;
 /// HasQueryFilter on FundoConfiguration ensures company isolation (D-01).
 /// IgnoreQueryFilters for uniqueness checks and direct lookups (D-12).
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class FundoRepository : IFundoRepository
 {
     private readonly AppDbContext _db;

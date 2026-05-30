@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Onboarding.Domain.Aggregates.FundoCedenteAggregate;
 using Onboarding.Domain.Repositories;
@@ -10,7 +9,6 @@ namespace Onboarding.Infrastructure.Repositories;
 /// EF Core repository for FundoCedenteAggregate — tested via integration tests.
 /// Tenant scoping enforced by parent Fundo HasQueryFilter; no global filter here (D-5).
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class FundoCedenteAggregateRepository : IFundoCedenteAggregateRepository
 {
     private readonly AppDbContext _db;

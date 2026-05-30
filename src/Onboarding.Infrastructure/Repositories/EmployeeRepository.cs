@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Onboarding.Domain.Aggregates.EmployeeAggregate;
 using Onboarding.Domain.Repositories;
@@ -11,7 +10,6 @@ namespace Onboarding.Infrastructure.Repositories;
 /// Thin EF Core repository wrapper — tested via integration tests.
 /// HasQueryFilter on EmployeeConfiguration ensures company isolation (D-17).
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class EmployeeRepository : IEmployeeRepository
 {
     private readonly AppDbContext _db;

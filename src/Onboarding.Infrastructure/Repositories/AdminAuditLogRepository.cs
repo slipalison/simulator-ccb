@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Onboarding.Domain.Aggregates.Audit;
 using Onboarding.Domain.Repositories;
@@ -9,7 +8,6 @@ namespace Onboarding.Infrastructure.Repositories;
 /// <summary>
 /// Admin audit log repository — append-only. NO Update or Delete methods.
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class AdminAuditLogRepository : IAdminAuditLogRepository
 {
     private readonly AppDbContext _db;

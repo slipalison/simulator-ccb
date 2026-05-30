@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Onboarding.Domain.Aggregates.TipoAtivoAggregate;
 using Onboarding.Domain.Repositories;
@@ -11,7 +10,6 @@ namespace Onboarding.Infrastructure.Repositories;
 /// Global scope — no HasQueryFilter, no company filter (D-03/TEN-03).
 /// TipoAtivo is a shared CVM catalog accessible to all companies.
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class TipoAtivoRepository : ITipoAtivoRepository
 {
     private readonly AppDbContext _db;

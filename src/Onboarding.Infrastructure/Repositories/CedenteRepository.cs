@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.EntityFrameworkCore;
 using Onboarding.Domain.Aggregates.CedenteAggregate;
 using Onboarding.Domain.Repositories;
@@ -13,7 +12,6 @@ namespace Onboarding.Infrastructure.Repositories;
 /// IgnoreQueryFilters for uniqueness checks and direct lookups (D-12).
 /// Shadow properties for CedenteDocumento DU persistence (D-09).
 /// </summary>
-[ExcludeFromCodeCoverage]
 public sealed class CedenteRepository : ICedenteRepository
 {
     private readonly AppDbContext _db;

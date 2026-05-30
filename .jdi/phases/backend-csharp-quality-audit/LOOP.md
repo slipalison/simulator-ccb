@@ -18,3 +18,4 @@ Reforça D-54: zero mudança de contrato HTTP da API, rotas, shape de payload, c
 
 ## History
 
+- iter 1 (T-1 foundation, report-only): baseline measured; total src ~60-65% line; Application Admin/Companies/Auth at 0%; D-49 viability=TIERED-RECOMMENDED → user reaffirmed LITERAL via D-56; commit=cac26d4, ts=2026-05-30T12:40:07-03:00

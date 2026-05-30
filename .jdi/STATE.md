@@ -9,7 +9,7 @@ specialists:
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
 current_phase: 54
 current_phase_slug: backend-csharp-quality-audit
-phase_status: planned
+phase_status: in_progress
 phase_verdict: n/a
 prior_phase_slug: integration-tests-fundos
 prior_phase_verdict: APPROVED_WITH_WARNINGS
@@ -17,4 +17,4 @@ prior_phase_shipped_at: 2026-05-24
 removed_phase: vinxi-to-vinext-migration (REMOVED 2026-05-24 via /jdi-remove-phase; artifacts archived in .jdi/archive/removed-vinxi-to-vinext-migration/; decisions D-38..D-47 retained in DECISIONS.md as history)
 plan_tasks: 8
 plan_waves: 5
-next_step: /jdi-do backend-csharp-quality-audit
+next_step: (loop running) iter 1 T-1 done; D-49 reaffirmed literal (D-56); next W2 sequential refactor + main-thread regression

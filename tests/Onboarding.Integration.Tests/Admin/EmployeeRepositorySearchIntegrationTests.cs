@@ -63,9 +63,9 @@ public sealed class EmployeeRepositorySearchIntegrationTests : PostgreSqlIntegra
         _cnpjCompanyA = GenerateCnpj(fixture.NextCnpjSlot());
         _cnpjCompanyB = GenerateCnpj(fixture.NextCnpjSlot());
         // CPF slots — use NextCnpjSlot() for the counter (fixture provides a single shared counter)
-        _cpfActiveA   = GenerateCpf(fixture.NextCnpjSlot());
-        _cpfDeletedA  = GenerateCpf(fixture.NextCnpjSlot());
-        _cpfActiveB   = GenerateCpf(fixture.NextCnpjSlot());
+        _cpfActiveA = GenerateCpf(fixture.NextCnpjSlot());
+        _cpfDeletedA = GenerateCpf(fixture.NextCnpjSlot());
+        _cpfActiveB = GenerateCpf(fixture.NextCnpjSlot());
     }
 
     // =========================================================================

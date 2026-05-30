@@ -36,7 +36,7 @@ public sealed class CompanyRepositoryIntegrationTests : PostgreSqlIntegrationTes
 {
     // Unique subs to avoid conflict with other test classes sharing the same container
     private const string SubAlpha = "crep-alpha-sub-cr-001";
-    private const string SubBeta  = "crep-beta-sub-cr-002";
+    private const string SubBeta = "crep-beta-sub-cr-002";
     private const string SubGamma = "crep-gamma-sub-cr-003";
 
     // Valid CNPJs generated at construction time — guarantees valid check digits + uniqueness
@@ -48,7 +48,7 @@ public sealed class CompanyRepositoryIntegrationTests : PostgreSqlIntegrationTes
     public CompanyRepositoryIntegrationTests(PostgreSqlFixture fixture) : base(fixture)
     {
         _cnpjAlpha = GenerateCnpj(fixture.NextCnpjSlot());
-        _cnpjBeta  = GenerateCnpj(fixture.NextCnpjSlot());
+        _cnpjBeta = GenerateCnpj(fixture.NextCnpjSlot());
         _cnpjGamma = GenerateCnpj(fixture.NextCnpjSlot());
     }
 

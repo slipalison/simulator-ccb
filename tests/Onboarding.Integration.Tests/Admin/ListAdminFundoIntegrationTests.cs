@@ -48,8 +48,8 @@ public sealed class ListAdminFundoIntegrationTests : PostgreSqlIntegrationTestBa
 
     public ListAdminFundoIntegrationTests(PostgreSqlFixture fixture) : base(fixture)
     {
-        _cnpjCompanyA   = GenerateCnpj(fixture.NextCnpjSlot());
-        _cnpjCompanyB   = GenerateCnpj(fixture.NextCnpjSlot());
+        _cnpjCompanyA = GenerateCnpj(fixture.NextCnpjSlot());
+        _cnpjCompanyB = GenerateCnpj(fixture.NextCnpjSlot());
         _cnpjConsultoria = GenerateCnpj(fixture.NextCnpjSlot());
         _cnpjCustodiante = GenerateCnpj(fixture.NextCnpjSlot());
     }

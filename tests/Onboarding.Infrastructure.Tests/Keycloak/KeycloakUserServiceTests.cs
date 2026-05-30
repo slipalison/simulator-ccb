@@ -978,7 +978,8 @@ internal sealed class FlexMockHttpHandler : HttpMessageHandler
             var r = new HttpResponseMessage(status);
             if (body is not null) r.Content = JsonContent.Create(body);
             return r;
-        }));
+        }
+        ));
     }
 
     /// <summary>
@@ -991,7 +992,8 @@ internal sealed class FlexMockHttpHandler : HttpMessageHandler
             var r = new HttpResponseMessage(status);
             r.Content = new StringContent(rawJson, System.Text.Encoding.UTF8, "application/json");
             return r;
-        }));
+        }
+        ));
     }
 
     public int GetRequestCount(HttpMethod method, string pathContains)

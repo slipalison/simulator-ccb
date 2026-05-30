@@ -1,5 +1,7 @@
 # Coverage Baseline — Phase 54 (backend-csharp-quality-audit)
 
+> **⚠️ CORRIGIDO 2026-05-30 (D-57):** Os números por-projeto abaixo SUBCONTAM. Medição **merged** das 4 suites (incl. Integration.Tests full-stack) = **91.1% line** real (Domain 98 / Application **96.7** / API 86.8 / Infrastructure 79), só 710 linhas descobertas. O "Application 45.58% / 93 arquivos a 0%" é artefato de medir Application.Tests isolado — Integration.Tests cobrem esses handlers via HTTP. Gate D-49 = por-arquivo >80%. Ver COVERAGE-FINAL.md (T-8) pros números autoritativos.
+
 Measured: 2026-05-30. Tool: coverlet.msbuild (Domain, API) + coverlet.collector XPlat (Application). Infrastructure: cached iter6 XML (integration tests require Docker; noted below).
 
 ## Summary table (layer × %line × %branch)

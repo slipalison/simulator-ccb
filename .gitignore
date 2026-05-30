@@ -339,6 +339,12 @@ coverage/
 *.coverage
 *.coveragexml
 *.trx
+# Coverlet output artifacts — not source; generated during test runs
+tests/**/coverage-iter*.xml
+tests/**/coverage.cobertura.xml
+tests/**/coverage.xml
+.jdi/phases/**/coverage-*.xml
+.jdi/phases/**/app-coverage/
 
 #################################################
 # Rider (JetBrains)

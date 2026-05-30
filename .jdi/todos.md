@@ -18,3 +18,11 @@ Items fora do escopo de phases atuais. Cada item pode virar phase futura via `/j
 - **Frontend quality audit (espelho de Phase 54 no client/backoffice SPAs)** — esta phase é backend-only. Auditoria equivalente de qualidade nos 2 SPAs React fica para phase futura.
 - ~~Re-negociar D-49 / Migrations no denominador~~ **RESOLVIDO 2026-05-30 (D-56):** D-49 mantido literal sem tier; `[ExcludeFromCodeCoverage]` removido dos repos EF + InMemory; Migrations EF = única exclusão. Verificação integration/Playwright via main thread.
 - **Repos EF: `[ExcludeFromCodeCoverage]` removido + InMemory tests (D-56)** — trade-off aceito: InMemory é menos fiel que Testcontainers. Se algum repo tiver lógica SQL-específica não exercível em InMemory, manter Integration.Tests como cobertura primária e documentar no WARNINGS.
+
+### Deferidos da auditoria (ver phases/backend-csharp-quality-audit/WARNINGS.md)
+- **Split completo do `FundosController`** (god class 1100 LoC) — sub-phase dedicada (muda route discovery, exige Playwright regression).
+- **`AuthController` SOLID-04 (DIP) + layering** — refactor da extração de permissões pra Application handler; Keycloak-crítico, exige auth regression completa.
+- **`CompaniesController` RegisterEmployee/RegisterCompany >20 LoC** — reduzir via middleware de actor/IP ou guard na Application.
+- **SEC-02/04 IdempotencyFilter** typed response; **password policy min 12** (Keycloak); **remover ROPC `onboarding-app`** (D-11).
+- **W-SEARCH-CLIENTSIDE** — migrar `ConsultoriaFundoRepository`/`CustodianteRepository` GetPagedByCompany pro pattern FromSql (D-58) por consistência/perf.
+- **Frontend quality audit** (espelho desta phase nos 2 SPAs) — phase futura.

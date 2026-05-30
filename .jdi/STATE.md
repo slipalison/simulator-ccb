@@ -17,4 +17,4 @@ prior_phase_shipped_at: 2026-05-24
 removed_phase: vinxi-to-vinext-migration (REMOVED 2026-05-24 via /jdi-remove-phase; artifacts archived in .jdi/archive/removed-vinxi-to-vinext-migration/; decisions D-38..D-47 retained in DECISIONS.md as history)
 plan_tasks: 8
 plan_waves: 5
-next_step: (loop running) W1+W2 done & verified (1212 green, contract intact); next W3/T-5 security 13-tool + multi-tenant D-5 audit; then W4 coverage (BIG: ~250+ tests, D-49 literal) + remove [ExcludeFromCodeCoverage]; live Playwright E2E at final verify
+next_step: (loop running) W1-W3 done+verified; W4 coverage merged 96.6%; W4 EXPOSED + FIXED real prod bug (admin search 500, value-converter cols, FromSql 7 sites, D-58, commit a63c258, Integration 217/0). REMAINING: 4 latent search sites need integration tests (Custodiante/Fundo/ListAdminFundo/Employee 72-76%) → then T-8 consolidation (COVERAGE-FINAL+WARNINGS) + live Playwright E2E + /jdi-verify

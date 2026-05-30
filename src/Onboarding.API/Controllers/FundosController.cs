@@ -1,12 +1,13 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Onboarding.API.Extensions;
+using Onboarding.API.Security;
 using Onboarding.Application.Common;
 using Onboarding.Application.Fundos.Commands;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries;
 using Onboarding.Application.Fundos.Queries.GetFundoAllowedTransitions;
-using Onboarding.API.Security;
 using Onboarding.Domain.Aggregates.CedenteAggregate;
 using Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate;
 using Onboarding.Domain.Aggregates.CustodianteAggregate;
@@ -200,8 +201,7 @@ public sealed class FundosController : ControllerBase
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
 
         var command = new RegisterConsultoriaFundoCommand(
             RazaoSocial: request.RazaoSocial ?? string.Empty,
@@ -290,8 +290,7 @@ public sealed class FundosController : ControllerBase
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
 
         var command = new UpdateConsultoriaFundoCommand(
             Id: id,
@@ -341,8 +340,7 @@ public sealed class FundosController : ControllerBase
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
 
         var command = new RegisterCustodianteCommand(
             RazaoSocial: request.RazaoSocial ?? string.Empty,
@@ -431,8 +429,7 @@ public sealed class FundosController : ControllerBase
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
 
         var command = new UpdateCustodianteCommand(
             Id: id,
@@ -483,8 +480,7 @@ public sealed class FundosController : ControllerBase
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
         // TipoAtivo is global — actor captured from JWT only (no ICurrentCompanyService for company scope)
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
 
         var command = new CreateTipoAtivoCommand(
             Codigo: request.Codigo ?? string.Empty,
@@ -569,8 +565,7 @@ public sealed class FundosController : ControllerBase
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
 
         var command = new UpdateTipoAtivoCommand(
             Id: id,
@@ -615,8 +610,7 @@ public sealed class FundosController : ControllerBase
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
 
         var command = new RegisterFundoCommand(
             Nome: request.Nome ?? string.Empty,
@@ -710,8 +704,7 @@ public sealed class FundosController : ControllerBase
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
 
         var command = new UpdateFundoCommand(
             Id: id,
@@ -760,8 +753,7 @@ public sealed class FundosController : ControllerBase
         if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
 
         var command = new TransitionFundoStatusCommand(
             FundoId: id,
@@ -832,8 +824,7 @@ public sealed class FundosController : ControllerBase
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
 
         var command = new RegisterCedentePfCommand(
             Cpf: request.Cpf ?? string.Empty,
@@ -874,8 +865,7 @@ public sealed class FundosController : ControllerBase
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
 
         var command = new RegisterCedentePjCommand(
             Cnpj: request.Cnpj ?? string.Empty,
@@ -962,8 +952,7 @@ public sealed class FundosController : ControllerBase
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
 
         var command = new UpdateCedenteCommand(
             Id: id,
@@ -994,13 +983,17 @@ public sealed class FundosController : ControllerBase
     // Helpers
     // =========================================================================
 
+    /// <summary>Extracts ActorSub and ActorEmail from the authenticated JWT for audit trail.</summary>
+    private (string ActorSub, string ActorEmail) GetActorContext()
+        => (User.FindFirst("sub")?.Value ?? string.Empty,
+            User.FindFirst("email")?.Value ?? string.Empty);
+
     /// <summary>
-    /// Converts FluentValidation results to 422 ValidationProblemDetails — matches pattern used across all controllers.
+    /// Converts FluentValidation results to 422 ValidationProblemDetails.
+    /// Delegates to shared <see cref="ValidationExtensions.ToValidationProblem"/> (DRY-01).
     /// </summary>
     private static ValidationProblemDetails ToValidationProblem(FluentValidation.Results.ValidationResult result)
-        => new(result.Errors
-            .GroupBy(e => e.PropertyName)
-            .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()));
+        => result.ToValidationProblem();
 }
 
 // =========================================================================

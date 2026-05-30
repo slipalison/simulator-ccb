@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using Onboarding.API.Extensions;
 using Onboarding.Application.Auth.Commands;
 using Onboarding.Application.Auth.DTOs;
 using Onboarding.Application.Common;
@@ -100,12 +101,7 @@ public sealed class AuthController : ControllerBase
 
         var validation = await _loginValidator.ValidateAsync(command, ct);
         if (!validation.IsValid)
-        {
-            return UnprocessableEntity(new ValidationProblemDetails(
-                validation.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
-        }
+            return UnprocessableEntity(validation.ToValidationProblem());
 
         try
         {
@@ -165,12 +161,7 @@ public sealed class AuthController : ControllerBase
 
         var validation = await _refreshValidator.ValidateAsync(command, ct);
         if (!validation.IsValid)
-        {
-            return UnprocessableEntity(new ValidationProblemDetails(
-                validation.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
-        }
+            return UnprocessableEntity(validation.ToValidationProblem());
 
         try
         {
@@ -302,12 +293,7 @@ public sealed class AuthController : ControllerBase
 
         var validation = await validator.ValidateAsync(command, ct);
         if (!validation.IsValid)
-        {
-            return BadRequest(new ValidationProblemDetails(
-                validation.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
-        }
+            return BadRequest(validation.ToValidationProblem());
 
         try
         {
@@ -343,12 +329,7 @@ public sealed class AuthController : ControllerBase
 
         var validation = await validator.ValidateAsync(command, ct);
         if (!validation.IsValid)
-        {
-            return UnprocessableEntity(new ValidationProblemDetails(
-                validation.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
-        }
+            return UnprocessableEntity(validation.ToValidationProblem());
 
         try
         {

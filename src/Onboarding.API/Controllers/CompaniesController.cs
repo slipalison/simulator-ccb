@@ -1,11 +1,12 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Onboarding.API.Extensions;
+using Onboarding.API.Security;
 using Onboarding.Application.Common;
 using Onboarding.Application.Companies.Commands;
 using Onboarding.Application.Companies.DTOs;
 using Onboarding.Application.Companies.Queries;
-using Onboarding.API.Security;
 using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Domain.Aggregates.EmployeeAggregate;
 using Onboarding.Domain.Exceptions;
@@ -131,11 +132,7 @@ public sealed class CompaniesController : ControllerBase
                 Detail = "Request body is required."
             });
 
-        // Extract IP address from connection + X-Forwarded-For
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-        if (!string.IsNullOrEmpty(forwardedFor))
-            ipAddress = forwardedFor.Split(',')[0].Trim();
+        var ipAddress = ResolveClientIpAddress();
 
         // Map request to command
         var command = new RegisterCompanyCommand(
@@ -151,12 +148,7 @@ public sealed class CompaniesController : ControllerBase
         // Validate
         var validation = await _registerValidator.ValidateAsync(command, ct);
         if (!validation.IsValid)
-        {
-            return UnprocessableEntity(new ValidationProblemDetails(
-                validation.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
-        }
+            return UnprocessableEntity(validation.ToValidationProblem());
 
         try
         {
@@ -207,12 +199,8 @@ public sealed class CompaniesController : ControllerBase
                 Detail = "Request body is required."
             });
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-        if (!string.IsNullOrEmpty(forwardedFor))
-            ipAddress = forwardedFor.Split(',')[0].Trim();
+        var (actorSub, actorEmail) = GetActorContext();
+        var ipAddress = ResolveClientIpAddress();
 
         var command = new RegisterEmployeeCommand(
             CompanyId: companyId,
@@ -227,12 +215,7 @@ public sealed class CompaniesController : ControllerBase
 
         var validation = await _registerEmployeeValidator.ValidateAsync(command, ct);
         if (!validation.IsValid)
-        {
-            return UnprocessableEntity(new ValidationProblemDetails(
-                validation.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
-        }
+            return UnprocessableEntity(validation.ToValidationProblem());
 
         try
         {
@@ -290,12 +273,8 @@ public sealed class CompaniesController : ControllerBase
         if (companyId != _currentCompanyService.CompanyId)
             return Forbid();
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-        if (!string.IsNullOrEmpty(forwardedFor))
-            ipAddress = forwardedFor.Split(',')[0].Trim();
+        var (actorSub, actorEmail) = GetActorContext();
+        var ipAddress = ResolveClientIpAddress();
 
         var command = new ToggleEmployeeStatusCommand(id, companyId, request.Activate, actorSub, actorEmail, ipAddress);
 
@@ -322,12 +301,8 @@ public sealed class CompaniesController : ControllerBase
         if (companyId != _currentCompanyService.CompanyId)
             return Forbid();
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-        if (!string.IsNullOrEmpty(forwardedFor))
-            ipAddress = forwardedFor.Split(',')[0].Trim();
+        var (actorSub, actorEmail) = GetActorContext();
+        var ipAddress = ResolveClientIpAddress();
 
         var command = new ResetEmployeePasswordCommand(id, companyId, actorSub, actorEmail, ipAddress);
 
@@ -354,12 +329,8 @@ public sealed class CompaniesController : ControllerBase
         if (companyId != _currentCompanyService.CompanyId)
             return Forbid();
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-        if (!string.IsNullOrEmpty(forwardedFor))
-            ipAddress = forwardedFor.Split(',')[0].Trim();
+        var (actorSub, actorEmail) = GetActorContext();
+        var ipAddress = ResolveClientIpAddress();
 
         var command = new UpdateEmployeeCommand(id, companyId, request.Nome ?? string.Empty, request.Email ?? string.Empty, request.Phone ?? string.Empty, actorSub, actorEmail, ipAddress);
 
@@ -386,12 +357,8 @@ public sealed class CompaniesController : ControllerBase
         if (companyId != _currentCompanyService.CompanyId)
             return Forbid();
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-        if (!string.IsNullOrEmpty(forwardedFor))
-            ipAddress = forwardedFor.Split(',')[0].Trim();
+        var (actorSub, actorEmail) = GetActorContext();
+        var ipAddress = ResolveClientIpAddress();
 
         var command = new DeleteEmployeeCommand(id, companyId, actorSub, actorEmail, ipAddress);
 
@@ -418,12 +385,8 @@ public sealed class CompaniesController : ControllerBase
         if (companyId != _currentCompanyService.CompanyId)
             return Forbid();
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
-        var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
-        if (!string.IsNullOrEmpty(forwardedFor))
-            ipAddress = forwardedFor.Split(',')[0].Trim();
+        var (actorSub, actorEmail) = GetActorContext();
+        var ipAddress = ResolveClientIpAddress();
 
         var command = new ChangeEmployeeAccessGroupCommand(id, companyId, request.AccessGroupId, actorSub, actorEmail, ipAddress);
 
@@ -464,8 +427,7 @@ public sealed class CompaniesController : ControllerBase
         if (companyId != _currentCompanyService.CompanyId)
             return Forbid();
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
 
         var command = new CreateAccessGroupCommand(companyId, request.Name, request.Permissions, actorSub, actorEmail, ipAddress);
@@ -497,8 +459,7 @@ public sealed class CompaniesController : ControllerBase
         if (companyId != _currentCompanyService.CompanyId)
             return Forbid();
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
 
         var command = new UpdateAccessGroupCommand(companyId, id, request.Name, request.Permissions, actorSub, actorEmail, ipAddress);
@@ -530,8 +491,7 @@ public sealed class CompaniesController : ControllerBase
         if (companyId != _currentCompanyService.CompanyId)
             return Forbid();
 
-        var actorSub = User.FindFirst("sub")?.Value ?? string.Empty;
-        var actorEmail = User.FindFirst("email")?.Value ?? string.Empty;
+        var (actorSub, actorEmail) = GetActorContext();
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
 
         var command = new DeleteAccessGroupCommand(companyId, id, actorSub, actorEmail, ipAddress);
@@ -549,6 +509,26 @@ public sealed class CompaniesController : ControllerBase
         {
             return NotFound();
         }
+    }
+
+    // =========================================================================
+    // Helpers
+    // =========================================================================
+
+    /// <summary>Extracts ActorSub and ActorEmail from the authenticated JWT for audit trail (DRY-02).</summary>
+    private (string ActorSub, string ActorEmail) GetActorContext()
+        => (User.FindFirst("sub")?.Value ?? string.Empty,
+            User.FindFirst("email")?.Value ?? string.Empty);
+
+    /// <summary>
+    /// Resolves the caller IP address, preferring the first value from X-Forwarded-For when present.
+    /// </summary>
+    private string? ResolveClientIpAddress()
+    {
+        var forwardedFor = HttpContext.Request.Headers["X-Forwarded-For"].FirstOrDefault();
+        if (!string.IsNullOrEmpty(forwardedFor))
+            return forwardedFor.Split(',')[0].Trim();
+        return HttpContext.Connection.RemoteIpAddress?.ToString();
     }
 
     private static CompanyProfileDto MapToDto(Company company) => new(

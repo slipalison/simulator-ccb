@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Onboarding.API.Extensions;
 using Onboarding.API.Security;
 using Onboarding.Application.Admin.Commands;
 using Onboarding.Application.Admin.DTOs;
@@ -239,12 +240,7 @@ public sealed class AdminUserController : ControllerBase
 
         var validation = await _createAdminValidator.ValidateAsync(command, ct);
         if (!validation.IsValid)
-        {
-            return UnprocessableEntity(new ValidationProblemDetails(
-                validation.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
-        }
+            return UnprocessableEntity(validation.ToValidationProblem());
 
         try
         {
@@ -433,26 +429,15 @@ public sealed class AdminUserController : ControllerBase
         [FromBody] ForcePasswordChangeRequest request,
         CancellationToken ct = default)
     {
-        var adminEmail = HttpContext.Items["AdminEmail"] as string
-            ?? User.FindFirst("email")?.Value
-            ?? User.FindFirst("preferred_username")?.Value
-            ?? throw new InvalidOperationException("Missing admin email context.");
+        var adminEmail = ResolveAdminEmail();
+        var keycloakUserId = await ResolveKeycloakUserIdAsync(adminEmail, ct);
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-
-        var keycloakUser = await _keycloakUserService.GetUserByEmailAsync("backoffice", adminEmail, ct)
-            ?? throw new InvalidOperationException($"Keycloak user not found for email: {adminEmail}");
-        var keycloakUserId = keycloakUser.Id;
 
         var command = new ForcePasswordChangeCommand(keycloakUserId, adminEmail, request.NewPassword, ipAddress);
 
         var validation = await _forcePasswordChangeValidator.ValidateAsync(command, ct);
         if (!validation.IsValid)
-        {
-            return UnprocessableEntity(new ValidationProblemDetails(
-                validation.Errors
-                    .GroupBy(e => e.PropertyName)
-                    .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray())));
-        }
+            return UnprocessableEntity(validation.ToValidationProblem());
 
         await _forcePasswordChangeHandler.HandleAsync(command, ct);
         return NoContent();
@@ -463,15 +448,10 @@ public sealed class AdminUserController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> CompleteFirstLogin(CancellationToken ct = default)
     {
-        var adminEmail = HttpContext.Items["AdminEmail"] as string
-            ?? User.FindFirst("email")?.Value
-            ?? User.FindFirst("preferred_username")?.Value
-            ?? throw new InvalidOperationException("Missing admin email context.");
+        var adminEmail = ResolveAdminEmail();
+        var keycloakUserId = await ResolveKeycloakUserIdAsync(adminEmail, ct);
 
-        var keycloakUser = await _keycloakUserService.GetUserByEmailAsync("backoffice", adminEmail, ct)
-            ?? throw new InvalidOperationException($"Keycloak user not found for email: {adminEmail}");
-
-        await _keycloakUserService.ClearFirstLoginFlagAsync("backoffice", keycloakUser.Id, ct);
+        await _keycloakUserService.ClearFirstLoginFlagAsync("backoffice", keycloakUserId, ct);
         _logger.LogInformation("Admin {AdminEmail} completed first login; isFirstLogin flag cleared.", adminEmail);
         return NoContent();
     }
@@ -521,11 +501,30 @@ public sealed class AdminUserController : ControllerBase
         return (sub, email);
     }
 
-    /// <summary>Converts a FluentValidation result into a ValidationProblemDetails response body.</summary>
+    /// <summary>Resolves the current admin's email from HttpContext items or JWT claims.</summary>
+    private string ResolveAdminEmail()
+        => HttpContext.Items["AdminEmail"] as string
+            ?? User.FindFirst("email")?.Value
+            ?? User.FindFirst("preferred_username")?.Value
+            ?? throw new InvalidOperationException("Missing admin email context.");
+
+    /// <summary>
+    /// Looks up the Keycloak user ID for the given email in the backoffice realm.
+    /// Throws <see cref="InvalidOperationException"/> if no user is found.
+    /// </summary>
+    private async Task<string> ResolveKeycloakUserIdAsync(string adminEmail, CancellationToken ct)
+    {
+        var user = await _keycloakUserService.GetUserByEmailAsync("backoffice", adminEmail, ct)
+            ?? throw new InvalidOperationException($"Keycloak user not found for email: {adminEmail}");
+        return user.Id;
+    }
+
+    /// <summary>
+    /// Converts a FluentValidation result into a ValidationProblemDetails response body.
+    /// Delegates to shared <see cref="ValidationExtensions.ToValidationProblem"/> (DRY-01).
+    /// </summary>
     private static ValidationProblemDetails ToValidationProblem(FluentValidation.Results.ValidationResult result)
-        => new(result.Errors
-            .GroupBy(e => e.PropertyName)
-            .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()));
+        => result.ToValidationProblem();
 }
 
 /// <summary>PUT request body for updating a company (Phase 37 — D-19).</summary>

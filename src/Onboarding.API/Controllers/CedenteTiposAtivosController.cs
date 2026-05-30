@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Onboarding.API.Extensions;
 using Onboarding.API.Security;
 using Onboarding.Application.Common;
 using Onboarding.Application.Fundos.Commands.CreateCedenteTipoAtivo;
@@ -280,10 +281,12 @@ public sealed class CedenteTiposAtivosController : ControllerBase
         a.Janela.DataInicio, a.Janela.DataFim,
         a.Status, a.CreatedAt);
 
+    /// <summary>
+    /// Converts a <see cref="FluentValidation.ValidationException"/> to 422 ValidationProblemDetails.
+    /// Delegates to shared <see cref="ValidationExtensions.ToValidationProblem"/> (DRY-01).
+    /// </summary>
     private static ValidationProblemDetails ToValidationProblem(FluentValidation.ValidationException ex)
-        => new(ex.Errors
-            .GroupBy(e => e.PropertyName)
-            .ToDictionary(g => g.Key, g => g.Select(e => e.ErrorMessage).ToArray()));
+        => ex.ToValidationProblem();
 }
 
 // =========================================================================

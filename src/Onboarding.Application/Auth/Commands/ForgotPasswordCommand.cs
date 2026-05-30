@@ -61,13 +61,12 @@ public sealed class ForgotPasswordCommandHandler : ICommandHandler<ForgotPasswor
             var resetLink = $"{frontendBaseUrl}/reset-password?token={token.Token}";
             await _emailService.SendPasswordResetEmailAsync(command.Email, resetLink, ct);
 
-            _logger.LogInformation("Password reset email sent to {Email}", command.Email);
+            _logger.LogInformation("Password reset email sent (user exists)");
         }
         else
         {
-            // Same log for non-existing email (no info disclosure)
-            _logger.LogInformation(
-                "Password reset requested for non-existing email: {Email}", command.Email);
+            // Same log level for non-existing email (no info disclosure)
+            _logger.LogInformation("Password reset requested (user not found)");
         }
 
         // Always return success (no info disclosure)

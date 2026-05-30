@@ -113,7 +113,7 @@ public sealed class CedenteTipoAtivoAggregate : Entity<Guid>
     /// </summary>
     public IReadOnlyList<string> GetAllowedNextStates()
     {
-        var all = (RelationshipStatus[])Enum.GetValues(typeof(RelationshipStatus));
+        var all = Enum.GetValues<RelationshipStatus>();
         var result = new List<string>(all.Length);
         foreach (var candidate in all)
         {

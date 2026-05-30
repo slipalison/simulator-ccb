@@ -84,8 +84,8 @@ public sealed class RegisterEmployeeCommandHandler
 
         // 7. Persist employee to DB
         await _employeeRepository.AddAsync(employee, ct);
-        _logger.LogInformation("Employee {EmployeeId} created with email {Email} for company {CompanyId}",
-            employee.Id, command.Email, command.CompanyId);
+        _logger.LogInformation("Employee {EmployeeId} created for company {CompanyId}",
+            employee.Id, command.CompanyId);
 
         // 8. Create Keycloak user in realm "client" — compensation on failure (T-38-05)
         string keycloakUserId;
@@ -96,8 +96,8 @@ public sealed class RegisterEmployeeCommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Keycloak user creation failed for {Email}. Removing employee {EmployeeId} from DB.",
-                command.Email, employee.Id);
+            _logger.LogError(ex, "Keycloak user creation failed. Removing employee {EmployeeId} from DB.",
+                employee.Id);
             await _employeeRepository.DeleteAsync(employee.Id, ct);
             throw;
         }

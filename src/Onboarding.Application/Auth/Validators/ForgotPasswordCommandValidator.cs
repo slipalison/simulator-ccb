@@ -3,7 +3,7 @@ using Onboarding.Application.Auth.Commands;
 
 namespace Onboarding.Application.Auth.Validators;
 
-public class ForgotPasswordCommandValidator : AbstractValidator<ForgotPasswordCommand>
+public sealed class ForgotPasswordCommandValidator : AbstractValidator<ForgotPasswordCommand>
 {
     public ForgotPasswordCommandValidator()
     {

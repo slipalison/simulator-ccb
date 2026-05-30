@@ -27,7 +27,7 @@ public sealed class LoginCommandHandler : ICommandHandler<LoginCommand, TokenRes
     {
         // IKeycloakTokenService throws KeycloakAuthException on failure — caller (AuthController) maps to 401
         var tokens = await _tokenService.ExchangePasswordAsync(command.Email, command.Password, ct);
-        _logger.LogInformation("Login successful for {Email}", command.Email);
+        _logger.LogInformation("Login successful");
         return tokens;
     }
 }

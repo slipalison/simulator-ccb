@@ -73,8 +73,8 @@ public sealed class RegisterCompanyCommandHandler
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Keycloak user creation failed for {Email}. Removing company {CompanyId} from DB.",
-                command.Email, company.Id);
+            _logger.LogError(ex, "Keycloak user creation failed. Removing company {CompanyId} from DB.",
+                company.Id);
             await _companyRepository.DeleteAsync(company.Id, ct);
             throw;
         }

@@ -79,7 +79,7 @@ public sealed class Fundo : Entity<Guid>
     /// </summary>
     public IReadOnlyList<string> GetAllowedNextStates()
     {
-        var all = (FundoStatus[])Enum.GetValues(typeof(FundoStatus));
+        var all = Enum.GetValues<FundoStatus>();
         var result = new List<string>(all.Length);
         foreach (var candidate in all)
         {

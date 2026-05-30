@@ -8,7 +8,7 @@ namespace Onboarding.Domain.Aggregates.FundoAggregate;
 /// a Fundo and a Cedente, with exposure limits and date ranges.
 /// Managed via Fundo.AddCedente/UpdateCedente/RemoveCedente (D-08).
 /// </summary>
-public class FundoCedente : Entity<Guid>
+public sealed class FundoCedente : Entity<Guid>
 {
     public Guid FundoId { get; private set; }
     public Guid CedenteId { get; private set; }

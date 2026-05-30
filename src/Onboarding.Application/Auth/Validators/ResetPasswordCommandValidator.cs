@@ -3,7 +3,7 @@ using Onboarding.Application.Auth.Commands;
 
 namespace Onboarding.Application.Auth.Validators;
 
-public class ResetPasswordCommandValidator : AbstractValidator<ResetPasswordCommand>
+public sealed class ResetPasswordCommandValidator : AbstractValidator<ResetPasswordCommand>
 {
     public ResetPasswordCommandValidator()
     {

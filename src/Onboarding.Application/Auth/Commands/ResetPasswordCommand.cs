@@ -31,16 +31,12 @@ public sealed class ResetPasswordCommandHandler : ICommandHandler<ResetPasswordC
     {
         // 1. Validate token
         var resetToken = await _tokenRepo.GetByTokenAsync(command.Token, ct);
-        if (resetToken == null)
+        if (resetToken is null)
             throw new BadRequestException("Token invalido.");
-
-        if (!resetToken.IsValid)
-        {
-            if (resetToken.IsExpired)
-                throw new BadRequestException("Token expirado.");
-            if (resetToken.IsUsed)
-                throw new BadRequestException("Token ja utilizado.");
-        }
+        if (resetToken.IsExpired)
+            throw new BadRequestException("Token expirado.");
+        if (resetToken.IsUsed)
+            throw new BadRequestException("Token ja utilizado.");
 
         // 2. Validate password policy
         if (!IsValidPassword(command.NewPassword))
@@ -59,7 +55,7 @@ public sealed class ResetPasswordCommandHandler : ICommandHandler<ResetPasswordC
         resetToken.MarkAsUsed();
         await _tokenRepo.UpdateAsync(resetToken, ct);
 
-        _logger.LogInformation("Password reset successful for {Email}", resetToken.Email);
+        _logger.LogInformation("Password reset successful");
 
         return Unit.Value;
     }

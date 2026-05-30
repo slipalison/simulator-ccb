@@ -6,7 +6,7 @@ namespace Onboarding.Domain.Aggregates.FundoAggregate;
 /// Simple join entity inside Fundo aggregate linking Fundo to TipoAtivo.
 /// No payload — just the FK relationship. Managed via Fundo.AddTipoAtivo/RemoveTipoAtivo.
 /// </summary>
-public class FundoTipoAtivo : Entity<Guid>
+public sealed class FundoTipoAtivo : Entity<Guid>
 {
     public Guid FundoId { get; private set; }
     public Guid TipoAtivoId { get; private set; }

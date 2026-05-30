@@ -4,7 +4,7 @@ namespace Onboarding.Domain.Aggregates.PasswordReset;
 /// Represents a password reset token issued during forgot-password flow.
 /// Tokens are single-use and expire after 15 minutes.
 /// </summary>
-public class PasswordResetToken
+public sealed class PasswordResetToken
 {
     public Guid Id { get; private set; }
     public string Email { get; private set; } = string.Empty;

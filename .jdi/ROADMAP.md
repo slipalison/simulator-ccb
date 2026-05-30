@@ -3,7 +3,7 @@
 ## Status
 adopted: true
 current_phase: none
-total_phases: 54
+total_phases: 55
 
 ## Context
 Projeto adotado em 2026-05-11. Vinha sendo desenvolvido com GSD (`.planning/`, milestones v1-v8). Phases 1-47 estao completas e documentadas em `.planning/phases/`. JDI continua daqui em diante, comecando em **Phase 48** que estava em flight (plans criados em commit `968eefb`, execucao nao iniciada).
@@ -77,4 +77,14 @@ Numeracao preservada pra alinhar com `.planning/` historico. Phases pre-48 nao s
 - **Aberto pro /jdi-discuss:**
   - **Tensão de cobertura:** usuário pediu >80% em código existente; D-2 hoje enforça 80% só em arquivos novos pós-boundary `968eefb`. Decidir se a phase eleva o gate retroativo para o backend legado ou mantém D-2.
   - **Refactor vs. auditoria:** definir se a phase só reporta violações (SOLID/DRY/method-size/param-count/dead-code) ou também aplica as correções; e quais design patterns são candidatos.
+
+### Phase 55: Controller Dependency Reduction
+- **Slug:** controller-di-reduction
+- **Status:** pending
+- **Goal:** Eliminar a explosão de parâmetros de construtor nos controllers — `FundosController` **37** deps injetadas, `AdminUserController` **23**, `CompaniesController` **17** (god class / violação SRP-SOLID). Passou no Phase 54 porque o gate D-52 (`params ≤ 3`) só mediu parâmetros de **método**, nunca **injeção de construtor**. Reduzir cada controller a um número saudável de deps **SEM** mudar rotas / contrato HTTP / fluxo de auth (constraint herdado de D-54).
+- **Scope:** `Onboarding.API/Controllers/*` + infra de dispatch (Application/Infrastructure) se necessário. **Subsume o `W-FUNDOS-SPLIT` diferido** do Phase 54.
+- **Aberto pro /jdi-discuss:**
+  - **Abordagem:** (a) **dispatcher manual** — 1 `ICommandDispatcher`/`IQueryDispatcher` resolve handler+validator via `IServiceProvider`, colapsa 37→~2 deps, **sem split de rota, sem MediatR** (CQRS manual, OSS-only); (b) **split** do FundosController em 5 controllers por sub-domínio (muda route discovery → exige Playwright regression); (c) ambos. Decidir.
+  - **Gate de ctor-params:** definir o threshold que o reviewer enforça (ex.: ≤ 5 deps por controller) — fecha o gap do Phase 54.
+  - **Sem MediatR** (D-3 OSS-only): qualquer dispatcher é implementação manual.
 

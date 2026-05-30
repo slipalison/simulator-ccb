@@ -59,6 +59,14 @@
       "folder": ".jdi/phases/backend-csharp-quality-audit",
       "status": "pending",
       "legacy": false
+    },
+    {
+      "position": 55,
+      "slug": "controller-di-reduction",
+      "raw_slug": "controller-di-reduction",
+      "folder": ".jdi/phases/controller-di-reduction",
+      "status": "pending",
+      "legacy": false
     }
   ]
 }

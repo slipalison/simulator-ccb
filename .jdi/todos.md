@@ -9,3 +9,10 @@ Items fora do escopo de phases atuais. Cada item pode virar phase futura via `/j
 - **Idempotency-Key header** — retry-safe POSTs (Fundo/Cedente register). Hoje POST com mesmo CNPJ retorna 409. Pra clientes que retentam apos timeout, suportar header `Idempotency-Key` retornaria resposta original em vez de 409. Backlog.
 - **Audit drill-down em AdminFundosController** — `GET /admin/fundos/{id}/audit-history` agregando AdminAuditLog entries filtrados por entity_id + tipo. Decisao D-8 manteve admin apenas List. Backlog.
 - **Detail-by-id em AdminFundosController** — `GET /admin/fundos/{id}` mostrando entity completa cross-company. Decisao D-8 manteve apenas List. Backlog.
+
+## De Phase 54 (/jdi-discuss backend-csharp-quality-audit, 2026-05-30)
+
+- **Split completo do `FundosController`** (god class 1100 LoC, warning W2 de Phase 48) — D-53 só faz extração segura sem mexer em rotas. Quebrar em múltiplos controllers / feature-folders (com regressão Playwright pesada) fica como sub-phase dedicada.
+- **Re-negociar D-49 (cobertura 80% retroativa) se o esforço estourar** — 18.3k LoC src com cobertura legada desconhecida pode dominar a phase. Se inviável, candidato a tier por camada (Domain+Application estritos, Infra+API via integration) ou voltar ao D-2. Decisão durante `/jdi-plan` se a baseline mostrar esforço proibitivo.
+- **Migrations EF no denominador de cobertura** — D-49 assume Migrations excluídas (geradas, não autorais). Confirmar com usuário; se incluídas, exige integration tests específicos ou exclusão por atributo `[ExcludeFromCodeCoverage]`.
+- **Frontend quality audit (espelho de Phase 54 no client/backoffice SPAs)** — esta phase é backend-only. Auditoria equivalente de qualidade nos 2 SPAs React fica para phase futura.

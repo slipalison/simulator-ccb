@@ -20,3 +20,5 @@ Reforça D-54: zero mudança de contrato HTTP da API, rotas, shape de payload, c
 
 - iter 1 (T-1 foundation, report-only): baseline measured; total src ~60-65% line; Application Admin/Companies/Auth at 0%; D-49 viability=TIERED-RECOMMENDED → user reaffirmed LITERAL via D-56; commit=cac26d4, ts=2026-05-30T12:40:07-03:00
 - iter 2a (W2/T-3 Domain+Application): 13 fixes (5 SEC log-PII, 4 PERF enum-alloc, sealed/guard-clause), 0 contract change, build 0/0, Domain.Tests 481 + Application.Tests 150 green; deferred cross-layer PERF-03 → T-4, API items → T-2; commit=197a11c, ts=2026-05-30T12:52:13-03:00
+- iter 2b (W2/T-4 Infrastructure): PERF-02 AsNoTracking 6 repos + PERF-03 N+1 batch (atomic cross-layer GetByIdsAsync), D-5 multi-tenant preserved, build 0/0, Domain.Tests 481 + Application.Tests 150 green; commit=e9f68b3, ts=2026-05-30T13:07:02-03:00
+- iter 2 VERIFY (main-thread, Docker): build 0/0; API.Tests 378pass/4skip; Integration.Tests 195pass/0fail via Testcontainers (44s). T-3+T-4 ZERO integration regression. Total 1204 pass = baseline. Playwright deferred to post-T-2. ts=2026-05-30T13:07:02-03:00

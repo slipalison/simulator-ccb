@@ -32,6 +32,7 @@ public sealed class TipoAtivoRepository : ITipoAtivoRepository
 
     public async Task<TipoAtivo?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await _db.TiposAtivo
+            .AsNoTracking()
             .FirstOrDefaultAsync(t => t.Id == id, ct);
 
     public async Task<bool> ExistsByCodigoAsync(string codigo, CancellationToken ct = default)

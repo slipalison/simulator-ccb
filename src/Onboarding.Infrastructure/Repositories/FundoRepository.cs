@@ -34,6 +34,7 @@ public sealed class FundoRepository : IFundoRepository
     public async Task<Fundo?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await _db.Fundos
             .IgnoreQueryFilters()
+            .AsNoTracking()
             .Include(f => f.Cedentes)
             .Include(f => f.TiposAtivo)
             .FirstOrDefaultAsync(f => f.Id == id, ct);

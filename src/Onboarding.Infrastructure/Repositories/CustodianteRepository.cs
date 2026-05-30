@@ -34,6 +34,7 @@ public sealed class CustodianteRepository : ICustodianteRepository
     public async Task<Custodiante?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await _db.Custodiantes
             .IgnoreQueryFilters()
+            .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == id, ct);
 
     public async Task<bool> ExistsByCnpjAsync(string cnpj, Guid companyId, CancellationToken ct = default)

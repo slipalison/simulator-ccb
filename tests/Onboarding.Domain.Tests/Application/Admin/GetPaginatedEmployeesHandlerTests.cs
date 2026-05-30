@@ -102,15 +102,18 @@ public class GetPaginatedEmployeesHandlerTests
     [Fact]
     public async Task HandleAsync_IncludesCompanyRazaoSocial_InDto()
     {
-        // Arrange
-        var companyId = Guid.NewGuid();
+        // Arrange — batch fetch path (PERF-03: GetByIdsAsync replaces per-row GetByIdAsync).
+        // Employee's CompanyId must match the returned Company's Id for the lookup to resolve.
         var company = Company.Register("Empresa Alpha", "11444777000161", "alpha@empresa.com", "11999999999",
             TermsAcceptance.Create("1.0", "127.0.0.1"));
-        var employee = CreateTestEmployee(nome: "João", companyId: companyId);
+        var employee = CreateTestEmployee(nome: "João", companyId: company.Id);
 
         _employeeRepository.GetPagedAllAsync(1, 20, null, null, Arg.Any<CancellationToken>())
             .Returns((new List<Employee> { employee }.AsReadOnly(), 1));
-        _companyRepository.GetByIdAsync(companyId, Arg.Any<CancellationToken>()).Returns(company);
+        _companyRepository.GetByIdsAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Company> { company }.AsReadOnly());
+        _accessGroupRepository.GetByIdsAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new List<AccessGroup>().AsReadOnly());
 
         var query = new GetPaginatedEmployeesQuery(Page: 1, PageSize: 20);
 

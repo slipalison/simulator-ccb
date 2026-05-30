@@ -50,23 +50,14 @@ public sealed class GetPaginatedEmployeesHandler
                 query.Page, query.PageSize, query.Search, query.Status, ct);
         }
 
-        var companyIds = employees.Select(e => e.CompanyId).Distinct().ToList();
-        var companies = new Dictionary<Guid, string>();
-        foreach (var cid in companyIds)
-        {
-            var company = await _companyRepository.GetByIdAsync(cid, ct);
-            if (company is not null)
-                companies[cid] = company.RazaoSocial;
-        }
+        // Batch-load companies and access groups in two single queries instead of N per-row lookups (PERF-03).
+        var companyIds = employees.Select(e => e.CompanyId).Distinct();
+        var companyList = await _companyRepository.GetByIdsAsync(companyIds, ct).ConfigureAwait(false);
+        var companies = companyList.ToDictionary(c => c.Id, c => c.RazaoSocial);
 
-        var accessGroupIds = employees.Select(e => e.AccessGroupId).Distinct().ToList();
-        var accessGroups = new Dictionary<Guid, string>();
-        foreach (var agId in accessGroupIds)
-        {
-            var ag = await _accessGroupRepository.GetByIdAsync(agId, ct);
-            if (ag is not null)
-                accessGroups[agId] = ag.Name;
-        }
+        var accessGroupIds = employees.Select(e => e.AccessGroupId).Distinct();
+        var accessGroupList = await _accessGroupRepository.GetByIdsAsync(accessGroupIds, ct).ConfigureAwait(false);
+        var accessGroups = accessGroupList.ToDictionary(ag => ag.Id, ag => ag.Name);
 
         var dtos = employees.Select(e => new EmployeeSummaryDto(
             Id: e.Id,

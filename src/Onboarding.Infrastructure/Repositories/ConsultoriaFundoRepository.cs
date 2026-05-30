@@ -34,6 +34,7 @@ public sealed class ConsultoriaFundoRepository : IConsultoriaFundoRepository
     public async Task<ConsultoriaFundo?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await _db.ConsultoriasFundo
             .IgnoreQueryFilters()
+            .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Id == id, ct);
 
     public async Task<bool> ExistsByCnpjAsync(string cnpj, Guid companyId, CancellationToken ct = default)

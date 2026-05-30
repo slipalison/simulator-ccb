@@ -27,6 +27,12 @@ public interface ICompanyRepository
     Task DeleteAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
+    /// Batch fetch by IDs — single query, AsNoTracking (PERF-03).
+    /// Used by paginated employee listing to avoid N sequential GetByIdAsync calls.
+    /// </summary>
+    Task<IReadOnlyList<Company>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
+
+    /// <summary>
     /// Paginated query for admin listing (ADMIN-01).
     /// </summary>
     Task<(IReadOnlyList<Company> Items, int TotalCount)> GetPagedAsync(

@@ -31,7 +31,22 @@ public sealed class CompanyRepository : ICompanyRepository
     }
 
     public async Task<Company?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await _db.Companies.FindAsync([id], ct);
+        => await _db.Companies
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id, ct);
+
+    public async Task<IReadOnlyList<Company>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default)
+    {
+        var idList = ids as ICollection<Guid> ?? ids.ToList();
+        if (idList.Count == 0)
+            return [];
+
+        return await _db.Companies
+            .AsNoTracking()
+            .Where(c => idList.Contains(c.Id))
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
 
     public async Task<bool> ExistsByCnpjAsync(string cnpj, CancellationToken ct = default)
     {

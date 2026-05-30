@@ -38,19 +38,36 @@ public sealed class AccessGroupRepository : IAccessGroupRepository
     public async Task<AccessGroup?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await _db.AccessGroups
             .IgnoreQueryFilters()
+            .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == id, ct);
 
     public async Task<AccessGroup?> GetByCompanyAndNameAsync(Guid companyId, string name, CancellationToken ct = default)
         => await _db.AccessGroups
             .IgnoreQueryFilters()
+            .AsNoTracking()
             .FirstOrDefaultAsync(a => a.CompanyId == companyId && a.Name == name, ct);
 
     public async Task<IReadOnlyList<AccessGroup>> GetByCompanyIdAsync(Guid companyId, CancellationToken ct = default)
         => await _db.AccessGroups
             .IgnoreQueryFilters()
+            .AsNoTracking()
             .Where(a => a.CompanyId == companyId)
             .OrderBy(a => a.Name)
             .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<AccessGroup>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken ct = default)
+    {
+        var idList = ids as ICollection<Guid> ?? ids.ToList();
+        if (idList.Count == 0)
+            return [];
+
+        return await _db.AccessGroups
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(a => idList.Contains(a.Id))
+            .ToListAsync(ct)
+            .ConfigureAwait(false);
+    }
 
     public async Task DeleteAsync(Guid id, CancellationToken ct = default)
     {

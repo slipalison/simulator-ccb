@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="Duende.AccessTokenManagement" Version="4.2.0" />
-    <PackageReference Include="Keycloak.AuthServices.Sdk" Version="2.9.0" />
+    <PackageReference Include="Keycloak.AuthServices.Sdk" Version="3.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.7" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.7" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.7">

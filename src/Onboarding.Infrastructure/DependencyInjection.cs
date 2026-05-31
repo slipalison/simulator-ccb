@@ -8,6 +8,7 @@ using Onboarding.Application.Common;
 using Onboarding.Application.Fundos.Queries.Admin;
 using Onboarding.Application.Services;
 using Onboarding.Domain.Repositories;
+using Onboarding.Infrastructure.Dispatch;
 using Onboarding.Infrastructure.Services;
 using Onboarding.Infrastructure.Keycloak;
 using Onboarding.Infrastructure.Persistence;
@@ -28,6 +29,12 @@ public static class InfrastructureServiceExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // Dispatcher infrastructure (D-60, D-61, D-63 — Phase 55 controller-di-reduction)
+        // Scoped so they share the same IServiceProvider scope as the repositories/handlers they resolve.
+        services.AddScoped<ICommandDispatcher, CommandDispatcher>();
+        services.AddScoped<IQueryDispatcher, QueryDispatcher>();
+        services.AddScoped<IValidationRunner, ValidationRunner>();
+
         // EF Core — PostgreSQL (REG-05, REG-06)
         services.AddDbContext<AppDbContext>(options =>
             options.UseNpgsql(

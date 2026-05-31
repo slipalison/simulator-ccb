@@ -24,9 +24,10 @@
       "position": 50,
       "slug": "fundo-cedente-relationships",
       "raw_slug": "49-fundo-cedente-relationships",
-      "folder": ".jdi/phases/49-fundo-cedente-relationships",
+      "folder": ".jdi/archive/49-fundo-cedente-relationships",
       "status": "done",
-      "legacy": true
+      "legacy": true,
+      "archived": true
     },
     {
       "position": 51,
@@ -57,7 +58,7 @@
       "slug": "backend-csharp-quality-audit",
       "raw_slug": "backend-csharp-quality-audit",
       "folder": ".jdi/phases/backend-csharp-quality-audit",
-      "status": "pending",
+      "status": "done",
       "legacy": false
     },
     {

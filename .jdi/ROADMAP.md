@@ -71,7 +71,7 @@ Numeracao preservada pra alinhar com `.planning/` historico. Phases pre-48 nao s
 
 ### Phase 54: Backend C# Quality & Refactor Audit
 - **Slug:** backend-csharp-quality-audit
-- **Status:** pending
+- **Status:** done
 - **Goal:** Auditoria profunda do backend C#: segurança, performance, Clean Code / SOLID / DRY / KISS / YAGNI, cobertura de testes >80%, remoção de código morto, correção de violações de Clean Code (tamanho de método, comentários desnecessários, número de parâmetros, etc.) e aplicação de design patterns onde aplicável e necessário.
 - **Scope:** Código C# do backend — `Onboarding.API` + camadas Domain / Application / Infrastructure. Auditoria cross-cutting: roteia para `backend-csharp` + `security` specialists.
 - **Aberto pro /jdi-discuss:**

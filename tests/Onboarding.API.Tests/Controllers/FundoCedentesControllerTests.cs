@@ -4,7 +4,6 @@ using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using Onboarding.API.Controllers;
@@ -15,7 +14,6 @@ using Onboarding.Application.Fundos.Commands.TransitionFundoCedenteStatus;
 using Onboarding.Application.Fundos.Commands.UpdateFundoCedenteLimite;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries.GetFundoCedentes;
-using Onboarding.Application.Fundos.Queries.GetFundoCedenteAllowedTransitions;
 using Onboarding.Domain.Aggregates.FundoCedenteAggregate;
 using Onboarding.Domain.Aggregates.FundoAggregate;
 using Onboarding.Domain.Exceptions;
@@ -26,10 +24,9 @@ using Shouldly;
 namespace Onboarding.API.Tests.Controllers;
 
 /// <summary>
-/// Unit tests for FundoCedentesController — 5 endpoints.
-/// Security: [Authorize(Policy = FundRead|FundWrite)] via reflection.
-/// Tenant guard: cross-tenant Fundo → 404.
-/// Error paths: null body → 400, ValidationException → 422, Duplicate → 409, InvalidState → 400.
+/// Unit tests for FundoCedentesController — Phase 55 refactor (D-60..D-63).
+/// Uses ICommandDispatcher + IQueryDispatcher + IValidationRunner.
+/// Repos passed directly to [FromServices] action params.
 /// </summary>
 public class FundoCedentesControllerTests
 {
@@ -38,18 +35,13 @@ public class FundoCedentesControllerTests
     private static readonly Guid AssocId = Guid.NewGuid();
     private static readonly DateTimeOffset FixedAt = new(2026, 5, 1, 0, 0, 0, TimeSpan.Zero);
 
-    private readonly ICommandHandler<CreateFundoCedenteCommand, RelFundoCedenteDto> _createHandler =
-        Substitute.For<ICommandHandler<CreateFundoCedenteCommand, RelFundoCedenteDto>>();
-    private readonly ICommandHandler<UpdateFundoCedenteLimiteCommand, RelFundoCedenteDto> _updateHandler =
-        Substitute.For<ICommandHandler<UpdateFundoCedenteLimiteCommand, RelFundoCedenteDto>>();
-    private readonly ICommandHandler<TransitionFundoCedenteStatusCommand, RelFundoCedenteDto> _transitionHandler =
-        Substitute.For<ICommandHandler<TransitionFundoCedenteStatusCommand, RelFundoCedenteDto>>();
-    private readonly IQueryHandler<GetFundoCedentesQuery, PaginatedResult<RelFundoCedenteDto>> _listHandler =
-        Substitute.For<IQueryHandler<GetFundoCedentesQuery, PaginatedResult<RelFundoCedenteDto>>>();
-    private readonly IFundoCedenteAggregateRepository _repo =
-        Substitute.For<IFundoCedenteAggregateRepository>();
-    private readonly IFundoRepository _fundoRepo = Substitute.For<IFundoRepository>();
+    private readonly ICommandDispatcher _commands = Substitute.For<ICommandDispatcher>();
+    private readonly IQueryDispatcher _queries = Substitute.For<IQueryDispatcher>();
+    private readonly IValidationRunner _validation = Substitute.For<IValidationRunner>();
     private readonly ICurrentCompanyService _company = Substitute.For<ICurrentCompanyService>();
+
+    private readonly IFundoRepository _fundoRepo = Substitute.For<IFundoRepository>();
+    private readonly IFundoCedenteAggregateRepository _repo = Substitute.For<IFundoCedenteAggregateRepository>();
 
     private readonly FundoCedentesController _sut;
 
@@ -60,10 +52,12 @@ public class FundoCedentesControllerTests
     {
         _company.CompanyId.Returns(CompanyId);
 
+        // Default: validation passes
+        _validation.Validate(Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(new FluentValidation.Results.ValidationResult());
+
         _sut = new FundoCedentesController(
-            _createHandler, _updateHandler, _transitionHandler, _listHandler,
-            Substitute.For<IQueryHandler<GetFundoCedenteAllowedTransitionsQuery, IReadOnlyList<string>?>>(),
-            _repo, _fundoRepo, _company);
+            _commands, _queries, _validation, _company);
 
         _sut.ControllerContext = new ControllerContext
         {
@@ -121,7 +115,7 @@ public class FundoCedentesControllerTests
     [Fact]
     public async Task CreateFundoCedente_NullBody_Returns400()
     {
-        var result = await _sut.CreateFundoCedente(FundoId, null, CancellationToken.None);
+        var result = await _sut.CreateFundoCedente(FundoId, null, _fundoRepo, CancellationToken.None);
         result.ShouldBeOfType<BadRequestObjectResult>();
     }
 
@@ -132,7 +126,7 @@ public class FundoCedentesControllerTests
             .Returns(MakeFundo(Guid.NewGuid())); // different company
 
         var request = new CreateFundoCedenteRequest(Guid.NewGuid(), 50m, null, DateTimeOffset.UtcNow, null);
-        var result = await _sut.CreateFundoCedente(FundoId, request, CancellationToken.None);
+        var result = await _sut.CreateFundoCedente(FundoId, request, _fundoRepo, CancellationToken.None);
 
         result.ShouldBeOfType<NotFoundResult>();
     }
@@ -143,7 +137,7 @@ public class FundoCedentesControllerTests
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns((Fundo?)null);
 
         var request = new CreateFundoCedenteRequest(Guid.NewGuid(), 50m, null, DateTimeOffset.UtcNow, null);
-        var result = await _sut.CreateFundoCedente(FundoId, request, CancellationToken.None);
+        var result = await _sut.CreateFundoCedente(FundoId, request, _fundoRepo, CancellationToken.None);
 
         result.ShouldBeOfType<NotFoundResult>();
     }
@@ -152,12 +146,11 @@ public class FundoCedentesControllerTests
     public async Task CreateFundoCedente_ValidationException_Returns422()
     {
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
-        _createHandler
-            .HandleAsync(Arg.Any<CreateFundoCedenteCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelFundoCedenteDto>(Arg.Any<CreateFundoCedenteCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ValidationException(new[] { new ValidationFailure("LimitePercentual", "Required.") }));
 
         var request = new CreateFundoCedenteRequest(Guid.NewGuid(), null, null, DateTimeOffset.UtcNow, null);
-        var result = await _sut.CreateFundoCedente(FundoId, request, CancellationToken.None);
+        var result = await _sut.CreateFundoCedente(FundoId, request, _fundoRepo, CancellationToken.None);
 
         result.ShouldBeOfType<UnprocessableEntityObjectResult>();
     }
@@ -166,12 +159,11 @@ public class FundoCedentesControllerTests
     public async Task CreateFundoCedente_DuplicateActive_Returns409()
     {
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
-        _createHandler
-            .HandleAsync(Arg.Any<CreateFundoCedenteCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelFundoCedenteDto>(Arg.Any<CreateFundoCedenteCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new DuplicateActiveAssociationException("FundoCedente", "FundoId+CedenteId already active."));
 
         var request = new CreateFundoCedenteRequest(Guid.NewGuid(), 50m, null, DateTimeOffset.UtcNow, null);
-        var result = await _sut.CreateFundoCedente(FundoId, request, CancellationToken.None);
+        var result = await _sut.CreateFundoCedente(FundoId, request, _fundoRepo, CancellationToken.None);
 
         result.ShouldBeOfType<ConflictObjectResult>();
     }
@@ -180,12 +172,11 @@ public class FundoCedentesControllerTests
     public async Task CreateFundoCedente_HappyPath_Returns201()
     {
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
-        _createHandler
-            .HandleAsync(Arg.Any<CreateFundoCedenteCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelFundoCedenteDto>(Arg.Any<CreateFundoCedenteCommand>(), Arg.Any<CancellationToken>())
             .Returns(SampleDto);
 
         var request = new CreateFundoCedenteRequest(Guid.NewGuid(), 50m, null, DateTimeOffset.UtcNow, null);
-        var result = await _sut.CreateFundoCedente(FundoId, request, CancellationToken.None);
+        var result = await _sut.CreateFundoCedente(FundoId, request, _fundoRepo, CancellationToken.None);
 
         var created = result.ShouldBeOfType<CreatedAtActionResult>();
         created.Value.ShouldBe(SampleDto);
@@ -202,7 +193,7 @@ public class FundoCedentesControllerTests
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>())
             .Returns(MakeFundo(Guid.NewGuid()));
 
-        var result = await _sut.ListFundoCedentes(FundoId, ct: CancellationToken.None);
+        var result = await _sut.ListFundoCedentes(FundoId, _fundoRepo, ct: CancellationToken.None);
         result.ShouldBeOfType<NotFoundResult>();
     }
 
@@ -211,11 +202,10 @@ public class FundoCedentesControllerTests
     {
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
         var paged = new PaginatedResult<RelFundoCedenteDto>(new[] { SampleDto }, 1, 1, 20);
-        _listHandler
-            .HandleAsync(Arg.Any<GetFundoCedentesQuery>(), Arg.Any<CancellationToken>())
+        _queries.Query<PaginatedResult<RelFundoCedenteDto>>(Arg.Any<GetFundoCedentesQuery>(), Arg.Any<CancellationToken>())
             .Returns(paged);
 
-        var result = await _sut.ListFundoCedentes(FundoId, ct: CancellationToken.None);
+        var result = await _sut.ListFundoCedentes(FundoId, _fundoRepo, ct: CancellationToken.None);
 
         var ok = result.ShouldBeOfType<OkObjectResult>();
         ok.Value.ShouldBe(paged);
@@ -231,7 +221,7 @@ public class FundoCedentesControllerTests
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>())
             .Returns(MakeFundo(Guid.NewGuid()));
 
-        var result = await _sut.GetFundoCedenteById(FundoId, AssocId, CancellationToken.None);
+        var result = await _sut.GetFundoCedenteById(FundoId, AssocId, _fundoRepo, _repo, CancellationToken.None);
         result.ShouldBeOfType<NotFoundResult>();
     }
 
@@ -241,7 +231,7 @@ public class FundoCedentesControllerTests
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
         _repo.GetByIdAsync(AssocId, Arg.Any<CancellationToken>()).Returns((FundoCedenteAggregate?)null);
 
-        var result = await _sut.GetFundoCedenteById(FundoId, AssocId, CancellationToken.None);
+        var result = await _sut.GetFundoCedenteById(FundoId, AssocId, _fundoRepo, _repo, CancellationToken.None);
         result.ShouldBeOfType<NotFoundResult>();
     }
 
@@ -254,7 +244,7 @@ public class FundoCedentesControllerTests
             LimiteExposicao.Create(50m, null), JanelaVigencia.Create(DateTimeOffset.UtcNow));
         _repo.GetByIdAsync(AssocId, Arg.Any<CancellationToken>()).Returns(assoc);
 
-        var result = await _sut.GetFundoCedenteById(FundoId, AssocId, CancellationToken.None);
+        var result = await _sut.GetFundoCedenteById(FundoId, AssocId, _fundoRepo, _repo, CancellationToken.None);
         result.ShouldBeOfType<NotFoundResult>();
     }
 
@@ -266,7 +256,7 @@ public class FundoCedentesControllerTests
             LimiteExposicao.Create(50m, null), JanelaVigencia.Create(DateTimeOffset.UtcNow));
         _repo.GetByIdAsync(AssocId, Arg.Any<CancellationToken>()).Returns(assoc);
 
-        var result = await _sut.GetFundoCedenteById(FundoId, AssocId, CancellationToken.None);
+        var result = await _sut.GetFundoCedenteById(FundoId, AssocId, _fundoRepo, _repo, CancellationToken.None);
 
         var ok = result.ShouldBeOfType<OkObjectResult>();
         var dto = ok.Value.ShouldBeOfType<RelFundoCedenteDto>();
@@ -280,7 +270,7 @@ public class FundoCedentesControllerTests
     [Fact]
     public async Task UpdateFundoCedenteLimits_NullBody_Returns400()
     {
-        var result = await _sut.UpdateFundoCedenteLimits(FundoId, AssocId, null, CancellationToken.None);
+        var result = await _sut.UpdateFundoCedenteLimits(FundoId, AssocId, null, _fundoRepo, CancellationToken.None);
         result.ShouldBeOfType<BadRequestObjectResult>();
     }
 
@@ -291,7 +281,7 @@ public class FundoCedentesControllerTests
             .Returns(MakeFundo(Guid.NewGuid()));
 
         var request = new UpdateRelationshipLimitsRequest(50m, null);
-        var result = await _sut.UpdateFundoCedenteLimits(FundoId, AssocId, request, CancellationToken.None);
+        var result = await _sut.UpdateFundoCedenteLimits(FundoId, AssocId, request, _fundoRepo, CancellationToken.None);
         result.ShouldBeOfType<NotFoundResult>();
     }
 
@@ -299,12 +289,11 @@ public class FundoCedentesControllerTests
     public async Task UpdateFundoCedenteLimits_InvalidStateTransition_Returns400()
     {
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
-        _updateHandler
-            .HandleAsync(Arg.Any<UpdateFundoCedenteLimiteCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelFundoCedenteDto>(Arg.Any<UpdateFundoCedenteLimiteCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidStateTransitionException("Cannot update HISTORICO association."));
 
         var request = new UpdateRelationshipLimitsRequest(50m, null);
-        var result = await _sut.UpdateFundoCedenteLimits(FundoId, AssocId, request, CancellationToken.None);
+        var result = await _sut.UpdateFundoCedenteLimits(FundoId, AssocId, request, _fundoRepo, CancellationToken.None);
 
         result.ShouldBeOfType<BadRequestObjectResult>();
     }
@@ -313,12 +302,11 @@ public class FundoCedentesControllerTests
     public async Task UpdateFundoCedenteLimits_HappyPath_Returns200()
     {
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
-        _updateHandler
-            .HandleAsync(Arg.Any<UpdateFundoCedenteLimiteCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelFundoCedenteDto>(Arg.Any<UpdateFundoCedenteLimiteCommand>(), Arg.Any<CancellationToken>())
             .Returns(SampleDto);
 
         var request = new UpdateRelationshipLimitsRequest(50m, null);
-        var result = await _sut.UpdateFundoCedenteLimits(FundoId, AssocId, request, CancellationToken.None);
+        var result = await _sut.UpdateFundoCedenteLimits(FundoId, AssocId, request, _fundoRepo, CancellationToken.None);
 
         var ok = result.ShouldBeOfType<OkObjectResult>();
         ok.Value.ShouldBe(SampleDto);
@@ -331,7 +319,7 @@ public class FundoCedentesControllerTests
     [Fact]
     public async Task TransitionFundoCedenteStatus_NullBody_Returns400()
     {
-        var result = await _sut.TransitionFundoCedenteStatus(FundoId, AssocId, null, CancellationToken.None);
+        var result = await _sut.TransitionFundoCedenteStatus(FundoId, AssocId, null, _fundoRepo, CancellationToken.None);
         result.ShouldBeOfType<BadRequestObjectResult>();
     }
 
@@ -342,7 +330,7 @@ public class FundoCedentesControllerTests
             .Returns(MakeFundo(Guid.NewGuid()));
 
         var request = new TransitionRelationshipStatusRequest(RelationshipStatus.INATIVO);
-        var result = await _sut.TransitionFundoCedenteStatus(FundoId, AssocId, request, CancellationToken.None);
+        var result = await _sut.TransitionFundoCedenteStatus(FundoId, AssocId, request, _fundoRepo, CancellationToken.None);
         result.ShouldBeOfType<NotFoundResult>();
     }
 
@@ -350,12 +338,11 @@ public class FundoCedentesControllerTests
     public async Task TransitionFundoCedenteStatus_InvalidTransition_Returns400()
     {
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
-        _transitionHandler
-            .HandleAsync(Arg.Any<TransitionFundoCedenteStatusCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelFundoCedenteDto>(Arg.Any<TransitionFundoCedenteStatusCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidStateTransitionException("Cannot transition from HISTORICO."));
 
         var request = new TransitionRelationshipStatusRequest(RelationshipStatus.ATIVO);
-        var result = await _sut.TransitionFundoCedenteStatus(FundoId, AssocId, request, CancellationToken.None);
+        var result = await _sut.TransitionFundoCedenteStatus(FundoId, AssocId, request, _fundoRepo, CancellationToken.None);
 
         result.ShouldBeOfType<BadRequestObjectResult>();
     }
@@ -364,12 +351,11 @@ public class FundoCedentesControllerTests
     public async Task TransitionFundoCedenteStatus_HappyPath_Returns200()
     {
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
-        _transitionHandler
-            .HandleAsync(Arg.Any<TransitionFundoCedenteStatusCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelFundoCedenteDto>(Arg.Any<TransitionFundoCedenteStatusCommand>(), Arg.Any<CancellationToken>())
             .Returns(SampleDto with { Status = RelationshipStatus.INATIVO });
 
         var request = new TransitionRelationshipStatusRequest(RelationshipStatus.INATIVO);
-        var result = await _sut.TransitionFundoCedenteStatus(FundoId, AssocId, request, CancellationToken.None);
+        var result = await _sut.TransitionFundoCedenteStatus(FundoId, AssocId, request, _fundoRepo, CancellationToken.None);
 
         var ok = result.ShouldBeOfType<OkObjectResult>();
         var dto = ok.Value.ShouldBeOfType<RelFundoCedenteDto>();

@@ -6,34 +6,33 @@ using Shouldly;
 
 namespace Onboarding.Infrastructure.Tests.Dispatch;
 
+// --- Test queries and handlers at namespace level so dynamic binder can access them ---
+
+public sealed record QryDispatcherTestQuery(string Filter);
+public sealed record QryDispatcherAnotherQuery(Guid Id);
+
+public sealed class QryDispatcherTestHandler : IQueryHandler<QryDispatcherTestQuery, string[]>
+{
+    public Task<string[]> HandleAsync(QryDispatcherTestQuery query, CancellationToken ct = default)
+        => Task.FromResult(new[] { query.Filter });
+}
+
 /// <summary>
 /// Unit tests for <see cref="QueryDispatcher"/>.
+/// Test types are at namespace level so dynamic binder can invoke them.
 /// </summary>
 public sealed class QueryDispatcherTests
 {
-    // --- Test queries and handlers ---
-
-    private sealed record TestQuery(string Filter);
-    private sealed record AnotherQuery(Guid Id);
-
-    private sealed class TestQueryHandler : IQueryHandler<TestQuery, string[]>
-    {
-        public Task<string[]> HandleAsync(TestQuery query, CancellationToken ct = default)
-            => Task.FromResult(new[] { query.Filter });
-    }
-
-    // --- Tests ---
-
     [Fact]
     public async Task Query_RegisteredHandler_InvokesHandlerAndReturnsResult()
     {
         // Arrange
         var sp = BuildProvider(sc =>
-            sc.AddScoped<IQueryHandler<TestQuery, string[]>, TestQueryHandler>());
+            sc.AddScoped<IQueryHandler<QryDispatcherTestQuery, string[]>, QryDispatcherTestHandler>());
         var dispatcher = new QueryDispatcher(sp);
 
         // Act
-        var result = await dispatcher.Query<string[]>(new TestQuery("abc"));
+        var result = await dispatcher.Query<string[]>(new QryDispatcherTestQuery("abc"));
 
         // Assert
         result.ShouldBe(new[] { "abc" });
@@ -43,15 +42,15 @@ public sealed class QueryDispatcherTests
     public async Task Query_SubstituteHandler_InvokedWithCorrectQuery()
     {
         // Arrange
-        var handler = Substitute.For<IQueryHandler<TestQuery, string[]>>();
-        handler.HandleAsync(Arg.Any<TestQuery>(), Arg.Any<CancellationToken>())
+        var handler = Substitute.For<IQueryHandler<QryDispatcherTestQuery, string[]>>();
+        handler.HandleAsync(Arg.Any<QryDispatcherTestQuery>(), Arg.Any<CancellationToken>())
             .Returns(new[] { "sub" });
 
         var sp = BuildProvider(sc =>
-            sc.AddScoped<IQueryHandler<TestQuery, string[]>>(_ => handler));
+            sc.AddScoped<IQueryHandler<QryDispatcherTestQuery, string[]>>(_ => handler));
         var dispatcher = new QueryDispatcher(sp);
 
-        var qry = new TestQuery("xyz");
+        var qry = new QryDispatcherTestQuery("xyz");
 
         // Act
         var result = await dispatcher.Query<string[]>(qry);
@@ -59,7 +58,7 @@ public sealed class QueryDispatcherTests
         // Assert
         result.ShouldBe(new[] { "sub" });
         await handler.Received(1).HandleAsync(
-            Arg.Is<TestQuery>(q => q.Filter == "xyz"),
+            Arg.Is<QryDispatcherTestQuery>(q => q.Filter == "xyz"),
             Arg.Any<CancellationToken>());
     }
 
@@ -72,7 +71,7 @@ public sealed class QueryDispatcherTests
 
         // Act & Assert
         await Should.ThrowAsync<InvalidOperationException>(
-            () => dispatcher.Query<string>(new AnotherQuery(Guid.NewGuid())));
+            () => dispatcher.Query<string>(new QryDispatcherAnotherQuery(Guid.NewGuid())));
     }
 
     [Fact]
@@ -91,21 +90,21 @@ public sealed class QueryDispatcherTests
     public async Task Query_CancellationTokenPropagated_HandlerReceivesToken()
     {
         // Arrange
-        var handler = Substitute.For<IQueryHandler<TestQuery, string[]>>();
-        handler.HandleAsync(Arg.Any<TestQuery>(), Arg.Any<CancellationToken>())
+        var handler = Substitute.For<IQueryHandler<QryDispatcherTestQuery, string[]>>();
+        handler.HandleAsync(Arg.Any<QryDispatcherTestQuery>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<string>());
 
         var sp = BuildProvider(sc =>
-            sc.AddScoped<IQueryHandler<TestQuery, string[]>>(_ => handler));
+            sc.AddScoped<IQueryHandler<QryDispatcherTestQuery, string[]>>(_ => handler));
         var dispatcher = new QueryDispatcher(sp);
         using var cts = new CancellationTokenSource();
 
         // Act
-        await dispatcher.Query<string[]>(new TestQuery("t"), cts.Token);
+        await dispatcher.Query<string[]>(new QryDispatcherTestQuery("t"), cts.Token);
 
         // Assert
         await handler.Received(1).HandleAsync(
-            Arg.Any<TestQuery>(),
+            Arg.Any<QryDispatcherTestQuery>(),
             Arg.Is<CancellationToken>(ct => ct == cts.Token));
     }
 
@@ -114,13 +113,22 @@ public sealed class QueryDispatcherTests
     {
         // Validates ConcurrentDictionary cache path on second call.
         var sp = BuildProvider(sc =>
-            sc.AddScoped<IQueryHandler<TestQuery, string[]>, TestQueryHandler>());
+            sc.AddScoped<IQueryHandler<QryDispatcherTestQuery, string[]>, QryDispatcherTestHandler>());
         var dispatcher = new QueryDispatcher(sp);
 
-        var r1 = await dispatcher.Query<string[]>(new TestQuery("first"));
-        var r2 = await dispatcher.Query<string[]>(new TestQuery("second"));
+        var r1 = await dispatcher.Query<string[]>(new QryDispatcherTestQuery("first"));
+        var r2 = await dispatcher.Query<string[]>(new QryDispatcherTestQuery("second"));
 
         r1.ShouldBe(new[] { "first" });
         r2.ShouldBe(new[] { "second" });
+    }
+
+    // --- Helpers ---
+
+    private static IServiceProvider BuildProvider(Action<IServiceCollection> configure)
+    {
+        var sc = new ServiceCollection();
+        configure(sc);
+        return sc.BuildServiceProvider();
     }
 }

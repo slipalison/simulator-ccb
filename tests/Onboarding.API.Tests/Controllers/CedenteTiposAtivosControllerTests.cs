@@ -14,7 +14,6 @@ using Onboarding.Application.Fundos.Commands.TransitionCedenteTipoAtivoStatus;
 using Onboarding.Application.Fundos.Commands.UpdateCedenteTipoAtivoLimite;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries.GetCedenteTiposAtivos;
-using Onboarding.Application.Fundos.Queries.GetCedenteTipoAtivoAllowedTransitions;
 using Onboarding.Domain.Aggregates.CedenteAggregate;
 using Onboarding.Domain.Aggregates.CedenteTipoAtivoAggregate;
 using Onboarding.Domain.Aggregates.FundoCedenteAggregate;
@@ -26,9 +25,9 @@ using Shouldly;
 namespace Onboarding.API.Tests.Controllers;
 
 /// <summary>
-/// Unit tests for CedenteTiposAtivosController — 5 endpoints.
-/// Security: [Authorize(Policy = FundRead|FundWrite)] via reflection.
-/// Tenant guard: cross-tenant Cedente → 404.
+/// Unit tests for CedenteTiposAtivosController — Phase 55 refactor (D-60..D-63).
+/// Uses ICommandDispatcher + IQueryDispatcher + IValidationRunner.
+/// Repos passed directly to [FromServices] action params.
 /// </summary>
 public class CedenteTiposAtivosControllerTests
 {
@@ -37,18 +36,13 @@ public class CedenteTiposAtivosControllerTests
     private static readonly Guid AssocId = Guid.NewGuid();
     private static readonly DateTimeOffset FixedAt = new(2026, 5, 1, 0, 0, 0, TimeSpan.Zero);
 
-    private readonly ICommandHandler<CreateCedenteTipoAtivoCommand, RelCedenteTipoAtivoDto> _createHandler =
-        Substitute.For<ICommandHandler<CreateCedenteTipoAtivoCommand, RelCedenteTipoAtivoDto>>();
-    private readonly ICommandHandler<UpdateCedenteTipoAtivoLimiteCommand, RelCedenteTipoAtivoDto> _updateHandler =
-        Substitute.For<ICommandHandler<UpdateCedenteTipoAtivoLimiteCommand, RelCedenteTipoAtivoDto>>();
-    private readonly ICommandHandler<TransitionCedenteTipoAtivoStatusCommand, RelCedenteTipoAtivoDto> _transitionHandler =
-        Substitute.For<ICommandHandler<TransitionCedenteTipoAtivoStatusCommand, RelCedenteTipoAtivoDto>>();
-    private readonly IQueryHandler<GetCedenteTiposAtivosQuery, PaginatedResult<RelCedenteTipoAtivoDto>> _listHandler =
-        Substitute.For<IQueryHandler<GetCedenteTiposAtivosQuery, PaginatedResult<RelCedenteTipoAtivoDto>>>();
-    private readonly ICedenteTipoAtivoAggregateRepository _repo =
-        Substitute.For<ICedenteTipoAtivoAggregateRepository>();
-    private readonly ICedenteRepository _cedenteRepo = Substitute.For<ICedenteRepository>();
+    private readonly ICommandDispatcher _commands = Substitute.For<ICommandDispatcher>();
+    private readonly IQueryDispatcher _queries = Substitute.For<IQueryDispatcher>();
+    private readonly IValidationRunner _validation = Substitute.For<IValidationRunner>();
     private readonly ICurrentCompanyService _company = Substitute.For<ICurrentCompanyService>();
+
+    private readonly ICedenteRepository _cedenteRepo = Substitute.For<ICedenteRepository>();
+    private readonly ICedenteTipoAtivoAggregateRepository _repo = Substitute.For<ICedenteTipoAtivoAggregateRepository>();
 
     private readonly CedenteTiposAtivosController _sut;
 
@@ -59,10 +53,11 @@ public class CedenteTiposAtivosControllerTests
     {
         _company.CompanyId.Returns(CompanyId);
 
+        _validation.Validate(Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(new FluentValidation.Results.ValidationResult());
+
         _sut = new CedenteTiposAtivosController(
-            _createHandler, _updateHandler, _transitionHandler, _listHandler,
-            Substitute.For<IQueryHandler<GetCedenteTipoAtivoAllowedTransitionsQuery, IReadOnlyList<string>?>>(),
-            _repo, _cedenteRepo, _company);
+            _commands, _queries, _validation, _company);
 
         _sut.ControllerContext = new ControllerContext
         {
@@ -115,7 +110,7 @@ public class CedenteTiposAtivosControllerTests
     [Fact]
     public async Task CreateCedenteTipoAtivo_NullBody_Returns400()
     {
-        var result = await _sut.CreateCedenteTipoAtivo(CedenteId, null, CancellationToken.None);
+        var result = await _sut.CreateCedenteTipoAtivo(CedenteId, null, _cedenteRepo, CancellationToken.None);
         result.ShouldBeOfType<BadRequestObjectResult>();
     }
 
@@ -126,7 +121,7 @@ public class CedenteTiposAtivosControllerTests
             .Returns(MakeCedente(Guid.NewGuid())); // different company
 
         var request = new CreateCedenteTipoAtivoRequest(Guid.NewGuid(), 30m, null, DateTimeOffset.UtcNow, null);
-        var result = await _sut.CreateCedenteTipoAtivo(CedenteId, request, CancellationToken.None);
+        var result = await _sut.CreateCedenteTipoAtivo(CedenteId, request, _cedenteRepo, CancellationToken.None);
 
         result.ShouldBeOfType<NotFoundResult>();
     }
@@ -137,7 +132,7 @@ public class CedenteTiposAtivosControllerTests
         _cedenteRepo.GetByIdAsync(CedenteId, Arg.Any<CancellationToken>()).Returns((Cedente?)null);
 
         var request = new CreateCedenteTipoAtivoRequest(Guid.NewGuid(), 30m, null, DateTimeOffset.UtcNow, null);
-        var result = await _sut.CreateCedenteTipoAtivo(CedenteId, request, CancellationToken.None);
+        var result = await _sut.CreateCedenteTipoAtivo(CedenteId, request, _cedenteRepo, CancellationToken.None);
 
         result.ShouldBeOfType<NotFoundResult>();
     }
@@ -146,12 +141,11 @@ public class CedenteTiposAtivosControllerTests
     public async Task CreateCedenteTipoAtivo_DuplicateActive_Returns409()
     {
         _cedenteRepo.GetByIdAsync(CedenteId, Arg.Any<CancellationToken>()).Returns(MakeCedente());
-        _createHandler
-            .HandleAsync(Arg.Any<CreateCedenteTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelCedenteTipoAtivoDto>(Arg.Any<CreateCedenteTipoAtivoCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new DuplicateActiveAssociationException("CedenteTipoAtivo", "pair already active."));
 
         var request = new CreateCedenteTipoAtivoRequest(Guid.NewGuid(), 30m, null, DateTimeOffset.UtcNow, null);
-        var result = await _sut.CreateCedenteTipoAtivo(CedenteId, request, CancellationToken.None);
+        var result = await _sut.CreateCedenteTipoAtivo(CedenteId, request, _cedenteRepo, CancellationToken.None);
 
         result.ShouldBeOfType<ConflictObjectResult>();
     }
@@ -160,12 +154,11 @@ public class CedenteTiposAtivosControllerTests
     public async Task CreateCedenteTipoAtivo_ValidationException_Returns422()
     {
         _cedenteRepo.GetByIdAsync(CedenteId, Arg.Any<CancellationToken>()).Returns(MakeCedente());
-        _createHandler
-            .HandleAsync(Arg.Any<CreateCedenteTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelCedenteTipoAtivoDto>(Arg.Any<CreateCedenteTipoAtivoCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new ValidationException(new[] { new ValidationFailure("LimitePercentual", "Required.") }));
 
         var request = new CreateCedenteTipoAtivoRequest(Guid.NewGuid(), null, null, DateTimeOffset.UtcNow, null);
-        var result = await _sut.CreateCedenteTipoAtivo(CedenteId, request, CancellationToken.None);
+        var result = await _sut.CreateCedenteTipoAtivo(CedenteId, request, _cedenteRepo, CancellationToken.None);
 
         result.ShouldBeOfType<UnprocessableEntityObjectResult>();
     }
@@ -174,12 +167,11 @@ public class CedenteTiposAtivosControllerTests
     public async Task CreateCedenteTipoAtivo_HappyPath_Returns201()
     {
         _cedenteRepo.GetByIdAsync(CedenteId, Arg.Any<CancellationToken>()).Returns(MakeCedente());
-        _createHandler
-            .HandleAsync(Arg.Any<CreateCedenteTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelCedenteTipoAtivoDto>(Arg.Any<CreateCedenteTipoAtivoCommand>(), Arg.Any<CancellationToken>())
             .Returns(SampleDto);
 
         var request = new CreateCedenteTipoAtivoRequest(Guid.NewGuid(), 30m, null, DateTimeOffset.UtcNow, null);
-        var result = await _sut.CreateCedenteTipoAtivo(CedenteId, request, CancellationToken.None);
+        var result = await _sut.CreateCedenteTipoAtivo(CedenteId, request, _cedenteRepo, CancellationToken.None);
 
         var created = result.ShouldBeOfType<CreatedAtActionResult>();
         created.Value.ShouldBe(SampleDto);
@@ -196,7 +188,7 @@ public class CedenteTiposAtivosControllerTests
         _cedenteRepo.GetByIdAsync(CedenteId, Arg.Any<CancellationToken>())
             .Returns(MakeCedente(Guid.NewGuid()));
 
-        var result = await _sut.ListCedenteTiposAtivos(CedenteId, ct: CancellationToken.None);
+        var result = await _sut.ListCedenteTiposAtivos(CedenteId, _cedenteRepo, ct: CancellationToken.None);
         result.ShouldBeOfType<NotFoundResult>();
     }
 
@@ -205,11 +197,10 @@ public class CedenteTiposAtivosControllerTests
     {
         _cedenteRepo.GetByIdAsync(CedenteId, Arg.Any<CancellationToken>()).Returns(MakeCedente());
         var paged = new PaginatedResult<RelCedenteTipoAtivoDto>(new[] { SampleDto }, 1, 1, 20);
-        _listHandler
-            .HandleAsync(Arg.Any<GetCedenteTiposAtivosQuery>(), Arg.Any<CancellationToken>())
+        _queries.Query<PaginatedResult<RelCedenteTipoAtivoDto>>(Arg.Any<GetCedenteTiposAtivosQuery>(), Arg.Any<CancellationToken>())
             .Returns(paged);
 
-        var result = await _sut.ListCedenteTiposAtivos(CedenteId, ct: CancellationToken.None);
+        var result = await _sut.ListCedenteTiposAtivos(CedenteId, _cedenteRepo, ct: CancellationToken.None);
 
         var ok = result.ShouldBeOfType<OkObjectResult>();
         ok.Value.ShouldBe(paged);
@@ -225,7 +216,7 @@ public class CedenteTiposAtivosControllerTests
         _cedenteRepo.GetByIdAsync(CedenteId, Arg.Any<CancellationToken>())
             .Returns(MakeCedente(Guid.NewGuid()));
 
-        var result = await _sut.GetCedenteTipoAtivoById(CedenteId, AssocId, CancellationToken.None);
+        var result = await _sut.GetCedenteTipoAtivoById(CedenteId, AssocId, _cedenteRepo, _repo, CancellationToken.None);
         result.ShouldBeOfType<NotFoundResult>();
     }
 
@@ -237,7 +228,7 @@ public class CedenteTiposAtivosControllerTests
             LimiteExposicao.Create(30m, null), JanelaVigencia.Create(DateTimeOffset.UtcNow));
         _repo.GetByIdAsync(AssocId, Arg.Any<CancellationToken>()).Returns(assoc);
 
-        var result = await _sut.GetCedenteTipoAtivoById(CedenteId, AssocId, CancellationToken.None);
+        var result = await _sut.GetCedenteTipoAtivoById(CedenteId, AssocId, _cedenteRepo, _repo, CancellationToken.None);
         result.ShouldBeOfType<NotFoundResult>();
     }
 
@@ -249,7 +240,7 @@ public class CedenteTiposAtivosControllerTests
             LimiteExposicao.Create(30m, null), JanelaVigencia.Create(DateTimeOffset.UtcNow));
         _repo.GetByIdAsync(AssocId, Arg.Any<CancellationToken>()).Returns(assoc);
 
-        var result = await _sut.GetCedenteTipoAtivoById(CedenteId, AssocId, CancellationToken.None);
+        var result = await _sut.GetCedenteTipoAtivoById(CedenteId, AssocId, _cedenteRepo, _repo, CancellationToken.None);
 
         var ok = result.ShouldBeOfType<OkObjectResult>();
         var dto = ok.Value.ShouldBeOfType<RelCedenteTipoAtivoDto>();
@@ -263,7 +254,7 @@ public class CedenteTiposAtivosControllerTests
     [Fact]
     public async Task UpdateCedenteTipoAtivoLimits_NullBody_Returns400()
     {
-        var result = await _sut.UpdateCedenteTipoAtivoLimits(CedenteId, AssocId, null, CancellationToken.None);
+        var result = await _sut.UpdateCedenteTipoAtivoLimits(CedenteId, AssocId, null, _cedenteRepo, CancellationToken.None);
         result.ShouldBeOfType<BadRequestObjectResult>();
     }
 
@@ -271,12 +262,11 @@ public class CedenteTiposAtivosControllerTests
     public async Task UpdateCedenteTipoAtivoLimits_HappyPath_Returns200()
     {
         _cedenteRepo.GetByIdAsync(CedenteId, Arg.Any<CancellationToken>()).Returns(MakeCedente());
-        _updateHandler
-            .HandleAsync(Arg.Any<UpdateCedenteTipoAtivoLimiteCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelCedenteTipoAtivoDto>(Arg.Any<UpdateCedenteTipoAtivoLimiteCommand>(), Arg.Any<CancellationToken>())
             .Returns(SampleDto);
 
         var request = new UpdateRelationshipLimitsRequest(30m, null);
-        var result = await _sut.UpdateCedenteTipoAtivoLimits(CedenteId, AssocId, request, CancellationToken.None);
+        var result = await _sut.UpdateCedenteTipoAtivoLimits(CedenteId, AssocId, request, _cedenteRepo, CancellationToken.None);
 
         var ok = result.ShouldBeOfType<OkObjectResult>();
         ok.Value.ShouldBe(SampleDto);
@@ -289,7 +279,7 @@ public class CedenteTiposAtivosControllerTests
     [Fact]
     public async Task TransitionCedenteTipoAtivoStatus_NullBody_Returns400()
     {
-        var result = await _sut.TransitionCedenteTipoAtivoStatus(CedenteId, AssocId, null, CancellationToken.None);
+        var result = await _sut.TransitionCedenteTipoAtivoStatus(CedenteId, AssocId, null, _cedenteRepo, CancellationToken.None);
         result.ShouldBeOfType<BadRequestObjectResult>();
     }
 
@@ -300,7 +290,7 @@ public class CedenteTiposAtivosControllerTests
             .Returns(MakeCedente(Guid.NewGuid()));
 
         var request = new TransitionRelationshipStatusRequest(RelationshipStatus.INATIVO);
-        var result = await _sut.TransitionCedenteTipoAtivoStatus(CedenteId, AssocId, request, CancellationToken.None);
+        var result = await _sut.TransitionCedenteTipoAtivoStatus(CedenteId, AssocId, request, _cedenteRepo, CancellationToken.None);
 
         result.ShouldBeOfType<NotFoundResult>();
     }
@@ -309,12 +299,11 @@ public class CedenteTiposAtivosControllerTests
     public async Task TransitionCedenteTipoAtivoStatus_HappyPath_Returns200()
     {
         _cedenteRepo.GetByIdAsync(CedenteId, Arg.Any<CancellationToken>()).Returns(MakeCedente());
-        _transitionHandler
-            .HandleAsync(Arg.Any<TransitionCedenteTipoAtivoStatusCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelCedenteTipoAtivoDto>(Arg.Any<TransitionCedenteTipoAtivoStatusCommand>(), Arg.Any<CancellationToken>())
             .Returns(SampleDto with { Status = RelationshipStatus.INATIVO });
 
         var request = new TransitionRelationshipStatusRequest(RelationshipStatus.INATIVO);
-        var result = await _sut.TransitionCedenteTipoAtivoStatus(CedenteId, AssocId, request, CancellationToken.None);
+        var result = await _sut.TransitionCedenteTipoAtivoStatus(CedenteId, AssocId, request, _cedenteRepo, CancellationToken.None);
 
         var ok = result.ShouldBeOfType<OkObjectResult>();
         var dto = ok.Value.ShouldBeOfType<RelCedenteTipoAtivoDto>();

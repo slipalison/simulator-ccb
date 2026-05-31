@@ -1,4 +1,3 @@
-using FluentValidation.Results;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Onboarding.Application.Common;
@@ -7,36 +6,34 @@ using Shouldly;
 
 namespace Onboarding.Infrastructure.Tests.Dispatch;
 
+// --- Test commands and handlers at namespace level so dynamic binder can access them ---
+
+public sealed record CmdDispatcherTestCommand(string Value);
+public sealed record CmdDispatcherAnotherCommand(int Number);
+
+public sealed class CmdDispatcherTestHandler : ICommandHandler<CmdDispatcherTestCommand, string>
+{
+    public Task<string> HandleAsync(CmdDispatcherTestCommand command, CancellationToken ct = default)
+        => Task.FromResult($"handled:{command.Value}");
+}
+
 /// <summary>
 /// Unit tests for <see cref="CommandDispatcher"/>.
 /// Uses a real <see cref="ServiceCollection"/> / <see cref="IServiceProvider"/> to verify
-/// handler resolution (mock IServiceProvider is not idiomatic for DI containers).
+/// handler resolution. Test types are at namespace level so dynamic binder can invoke them.
 /// </summary>
 public sealed class CommandDispatcherTests
 {
-    // --- Test commands and handlers ---
-
-    private sealed record TestCommand(string Value);
-    private sealed record AnotherCommand(int Number);
-
-    private sealed class TestCommandHandler : ICommandHandler<TestCommand, string>
-    {
-        public Task<string> HandleAsync(TestCommand command, CancellationToken ct = default)
-            => Task.FromResult($"handled:{command.Value}");
-    }
-
-    // --- Tests ---
-
     [Fact]
     public async Task Send_RegisteredHandler_InvokesHandlerAndReturnsResult()
     {
         // Arrange
         var sp = BuildProvider(sc =>
-            sc.AddScoped<ICommandHandler<TestCommand, string>, TestCommandHandler>());
+            sc.AddScoped<ICommandHandler<CmdDispatcherTestCommand, string>, CmdDispatcherTestHandler>());
         var dispatcher = new CommandDispatcher(sp);
 
         // Act
-        var result = await dispatcher.Send<string>(new TestCommand("hello"));
+        var result = await dispatcher.Send<string>(new CmdDispatcherTestCommand("hello"));
 
         // Assert
         result.ShouldBe("handled:hello");
@@ -46,22 +43,22 @@ public sealed class CommandDispatcherTests
     public async Task Send_SubstituteHandler_InvokedWithCorrectCommand()
     {
         // Arrange
-        var handler = Substitute.For<ICommandHandler<TestCommand, string>>();
-        handler.HandleAsync(Arg.Any<TestCommand>(), Arg.Any<CancellationToken>())
+        var handler = Substitute.For<ICommandHandler<CmdDispatcherTestCommand, string>>();
+        handler.HandleAsync(Arg.Any<CmdDispatcherTestCommand>(), Arg.Any<CancellationToken>())
             .Returns("substituted");
 
         var sp = BuildProvider(sc =>
-            sc.AddScoped<ICommandHandler<TestCommand, string>>(_ => handler));
+            sc.AddScoped<ICommandHandler<CmdDispatcherTestCommand, string>>(_ => handler));
         var dispatcher = new CommandDispatcher(sp);
 
-        var cmd = new TestCommand("world");
+        var cmd = new CmdDispatcherTestCommand("world");
 
         // Act
         var result = await dispatcher.Send<string>(cmd);
 
         // Assert
         result.ShouldBe("substituted");
-        await handler.Received(1).HandleAsync(Arg.Is<TestCommand>(c => c.Value == "world"), Arg.Any<CancellationToken>());
+        await handler.Received(1).HandleAsync(Arg.Is<CmdDispatcherTestCommand>(c => c.Value == "world"), Arg.Any<CancellationToken>());
     }
 
     [Fact]
@@ -73,7 +70,7 @@ public sealed class CommandDispatcherTests
 
         // Act & Assert
         await Should.ThrowAsync<InvalidOperationException>(
-            () => dispatcher.Send<int>(new AnotherCommand(42)));
+            () => dispatcher.Send<int>(new CmdDispatcherAnotherCommand(42)));
     }
 
     [Fact]
@@ -92,21 +89,21 @@ public sealed class CommandDispatcherTests
     public async Task Send_CancellationTokenPropagated_HandlerReceivesToken()
     {
         // Arrange
-        var handler = Substitute.For<ICommandHandler<TestCommand, string>>();
-        handler.HandleAsync(Arg.Any<TestCommand>(), Arg.Any<CancellationToken>())
+        var handler = Substitute.For<ICommandHandler<CmdDispatcherTestCommand, string>>();
+        handler.HandleAsync(Arg.Any<CmdDispatcherTestCommand>(), Arg.Any<CancellationToken>())
             .Returns("ok");
 
         var sp = BuildProvider(sc =>
-            sc.AddScoped<ICommandHandler<TestCommand, string>>(_ => handler));
+            sc.AddScoped<ICommandHandler<CmdDispatcherTestCommand, string>>(_ => handler));
         var dispatcher = new CommandDispatcher(sp);
         using var cts = new CancellationTokenSource();
 
         // Act
-        await dispatcher.Send<string>(new TestCommand("x"), cts.Token);
+        await dispatcher.Send<string>(new CmdDispatcherTestCommand("x"), cts.Token);
 
         // Assert
         await handler.Received(1).HandleAsync(
-            Arg.Any<TestCommand>(),
+            Arg.Any<CmdDispatcherTestCommand>(),
             Arg.Is<CancellationToken>(ct => ct == cts.Token));
     }
 
@@ -115,12 +112,12 @@ public sealed class CommandDispatcherTests
     {
         // Validates the ConcurrentDictionary type-cache path is hit on the second call.
         var sp = BuildProvider(sc =>
-            sc.AddScoped<ICommandHandler<TestCommand, string>, TestCommandHandler>());
+            sc.AddScoped<ICommandHandler<CmdDispatcherTestCommand, string>, CmdDispatcherTestHandler>());
         var dispatcher = new CommandDispatcher(sp);
 
         // Act — two calls, second goes through cache
-        var r1 = await dispatcher.Send<string>(new TestCommand("first"));
-        var r2 = await dispatcher.Send<string>(new TestCommand("second"));
+        var r1 = await dispatcher.Send<string>(new CmdDispatcherTestCommand("first"));
+        var r2 = await dispatcher.Send<string>(new CmdDispatcherTestCommand("second"));
 
         // Assert
         r1.ShouldBe("handled:first");

@@ -14,7 +14,6 @@ using Onboarding.Application.Fundos.Commands.TransitionFundoTipoAtivoStatus;
 using Onboarding.Application.Fundos.Commands.UpdateFundoTipoAtivoLimite;
 using Onboarding.Application.Fundos.DTOs;
 using Onboarding.Application.Fundos.Queries.GetFundoTiposAtivos;
-using Onboarding.Application.Fundos.Queries.GetFundoTipoAtivoAllowedTransitions;
 using Onboarding.Domain.Aggregates.FundoCedenteAggregate;
 using Onboarding.Domain.Aggregates.FundoAggregate;
 using Onboarding.Domain.Aggregates.FundoTipoAtivoAggregate;
@@ -26,9 +25,9 @@ using Shouldly;
 namespace Onboarding.API.Tests.Controllers;
 
 /// <summary>
-/// Unit tests for FundoTiposAtivosController — 5 endpoints.
-/// Security: [Authorize(Policy = FundRead|FundWrite)] via reflection.
-/// Tenant guard: cross-tenant Fundo → 404.
+/// Unit tests for FundoTiposAtivosController — Phase 55 refactor (D-60..D-63).
+/// Uses ICommandDispatcher + IQueryDispatcher + IValidationRunner.
+/// Repos passed directly to [FromServices] action params.
 /// </summary>
 public class FundoTiposAtivosControllerTests
 {
@@ -37,18 +36,13 @@ public class FundoTiposAtivosControllerTests
     private static readonly Guid AssocId = Guid.NewGuid();
     private static readonly DateTimeOffset FixedAt = new(2026, 5, 1, 0, 0, 0, TimeSpan.Zero);
 
-    private readonly ICommandHandler<CreateFundoTipoAtivoCommand, RelFundoTipoAtivoDto> _createHandler =
-        Substitute.For<ICommandHandler<CreateFundoTipoAtivoCommand, RelFundoTipoAtivoDto>>();
-    private readonly ICommandHandler<UpdateFundoTipoAtivoLimiteCommand, RelFundoTipoAtivoDto> _updateHandler =
-        Substitute.For<ICommandHandler<UpdateFundoTipoAtivoLimiteCommand, RelFundoTipoAtivoDto>>();
-    private readonly ICommandHandler<TransitionFundoTipoAtivoStatusCommand, RelFundoTipoAtivoDto> _transitionHandler =
-        Substitute.For<ICommandHandler<TransitionFundoTipoAtivoStatusCommand, RelFundoTipoAtivoDto>>();
-    private readonly IQueryHandler<GetFundoTiposAtivosQuery, PaginatedResult<RelFundoTipoAtivoDto>> _listHandler =
-        Substitute.For<IQueryHandler<GetFundoTiposAtivosQuery, PaginatedResult<RelFundoTipoAtivoDto>>>();
-    private readonly IFundoTipoAtivoAggregateRepository _repo =
-        Substitute.For<IFundoTipoAtivoAggregateRepository>();
-    private readonly IFundoRepository _fundoRepo = Substitute.For<IFundoRepository>();
+    private readonly ICommandDispatcher _commands = Substitute.For<ICommandDispatcher>();
+    private readonly IQueryDispatcher _queries = Substitute.For<IQueryDispatcher>();
+    private readonly IValidationRunner _validation = Substitute.For<IValidationRunner>();
     private readonly ICurrentCompanyService _company = Substitute.For<ICurrentCompanyService>();
+
+    private readonly IFundoRepository _fundoRepo = Substitute.For<IFundoRepository>();
+    private readonly IFundoTipoAtivoAggregateRepository _repo = Substitute.For<IFundoTipoAtivoAggregateRepository>();
 
     private readonly FundoTiposAtivosController _sut;
 
@@ -59,10 +53,11 @@ public class FundoTiposAtivosControllerTests
     {
         _company.CompanyId.Returns(CompanyId);
 
+        _validation.Validate(Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(new FluentValidation.Results.ValidationResult());
+
         _sut = new FundoTiposAtivosController(
-            _createHandler, _updateHandler, _transitionHandler, _listHandler,
-            Substitute.For<IQueryHandler<GetFundoTipoAtivoAllowedTransitionsQuery, IReadOnlyList<string>?>>(),
-            _repo, _fundoRepo, _company);
+            _commands, _queries, _validation, _company);
 
         _sut.ControllerContext = new ControllerContext
         {
@@ -116,7 +111,7 @@ public class FundoTiposAtivosControllerTests
     [Fact]
     public async Task CreateFundoTipoAtivo_NullBody_Returns400()
     {
-        var result = await _sut.CreateFundoTipoAtivo(FundoId, null, CancellationToken.None);
+        var result = await _sut.CreateFundoTipoAtivo(FundoId, null, _fundoRepo, CancellationToken.None);
         result.ShouldBeOfType<BadRequestObjectResult>();
     }
 
@@ -127,7 +122,7 @@ public class FundoTiposAtivosControllerTests
             .Returns(MakeFundo(Guid.NewGuid()));
 
         var request = new CreateFundoTipoAtivoRequest(Guid.NewGuid(), 30m, null, DateTimeOffset.UtcNow, null);
-        var result = await _sut.CreateFundoTipoAtivo(FundoId, request, CancellationToken.None);
+        var result = await _sut.CreateFundoTipoAtivo(FundoId, request, _fundoRepo, CancellationToken.None);
 
         result.ShouldBeOfType<NotFoundResult>();
     }
@@ -136,12 +131,11 @@ public class FundoTiposAtivosControllerTests
     public async Task CreateFundoTipoAtivo_DuplicateActive_Returns409()
     {
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
-        _createHandler
-            .HandleAsync(Arg.Any<CreateFundoTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelFundoTipoAtivoDto>(Arg.Any<CreateFundoTipoAtivoCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new DuplicateActiveAssociationException("FundoTipoAtivo", "pair already active."));
 
         var request = new CreateFundoTipoAtivoRequest(Guid.NewGuid(), 30m, null, DateTimeOffset.UtcNow, null);
-        var result = await _sut.CreateFundoTipoAtivo(FundoId, request, CancellationToken.None);
+        var result = await _sut.CreateFundoTipoAtivo(FundoId, request, _fundoRepo, CancellationToken.None);
 
         result.ShouldBeOfType<ConflictObjectResult>();
     }
@@ -150,12 +144,11 @@ public class FundoTiposAtivosControllerTests
     public async Task CreateFundoTipoAtivo_HappyPath_Returns201()
     {
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
-        _createHandler
-            .HandleAsync(Arg.Any<CreateFundoTipoAtivoCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelFundoTipoAtivoDto>(Arg.Any<CreateFundoTipoAtivoCommand>(), Arg.Any<CancellationToken>())
             .Returns(SampleDto);
 
         var request = new CreateFundoTipoAtivoRequest(Guid.NewGuid(), 30m, null, DateTimeOffset.UtcNow, null);
-        var result = await _sut.CreateFundoTipoAtivo(FundoId, request, CancellationToken.None);
+        var result = await _sut.CreateFundoTipoAtivo(FundoId, request, _fundoRepo, CancellationToken.None);
 
         var created = result.ShouldBeOfType<CreatedAtActionResult>();
         created.Value.ShouldBe(SampleDto);
@@ -172,7 +165,7 @@ public class FundoTiposAtivosControllerTests
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>())
             .Returns(MakeFundo(Guid.NewGuid()));
 
-        var result = await _sut.ListFundoTiposAtivos(FundoId, ct: CancellationToken.None);
+        var result = await _sut.ListFundoTiposAtivos(FundoId, _fundoRepo, ct: CancellationToken.None);
         result.ShouldBeOfType<NotFoundResult>();
     }
 
@@ -181,11 +174,10 @@ public class FundoTiposAtivosControllerTests
     {
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
         var paged = new PaginatedResult<RelFundoTipoAtivoDto>(new[] { SampleDto }, 1, 1, 20);
-        _listHandler
-            .HandleAsync(Arg.Any<GetFundoTiposAtivosQuery>(), Arg.Any<CancellationToken>())
+        _queries.Query<PaginatedResult<RelFundoTipoAtivoDto>>(Arg.Any<GetFundoTiposAtivosQuery>(), Arg.Any<CancellationToken>())
             .Returns(paged);
 
-        var result = await _sut.ListFundoTiposAtivos(FundoId, ct: CancellationToken.None);
+        var result = await _sut.ListFundoTiposAtivos(FundoId, _fundoRepo, ct: CancellationToken.None);
 
         var ok = result.ShouldBeOfType<OkObjectResult>();
         ok.Value.ShouldBe(paged);
@@ -201,7 +193,7 @@ public class FundoTiposAtivosControllerTests
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>())
             .Returns(MakeFundo(Guid.NewGuid()));
 
-        var result = await _sut.GetFundoTipoAtivoById(FundoId, AssocId, CancellationToken.None);
+        var result = await _sut.GetFundoTipoAtivoById(FundoId, AssocId, _fundoRepo, _repo, CancellationToken.None);
         result.ShouldBeOfType<NotFoundResult>();
     }
 
@@ -213,7 +205,7 @@ public class FundoTiposAtivosControllerTests
             LimiteExposicao.Create(30m, null), JanelaVigencia.Create(DateTimeOffset.UtcNow));
         _repo.GetByIdAsync(AssocId, Arg.Any<CancellationToken>()).Returns(assoc);
 
-        var result = await _sut.GetFundoTipoAtivoById(FundoId, AssocId, CancellationToken.None);
+        var result = await _sut.GetFundoTipoAtivoById(FundoId, AssocId, _fundoRepo, _repo, CancellationToken.None);
         result.ShouldBeOfType<NotFoundResult>();
     }
 
@@ -225,7 +217,7 @@ public class FundoTiposAtivosControllerTests
             LimiteExposicao.Create(30m, null), JanelaVigencia.Create(DateTimeOffset.UtcNow));
         _repo.GetByIdAsync(AssocId, Arg.Any<CancellationToken>()).Returns(assoc);
 
-        var result = await _sut.GetFundoTipoAtivoById(FundoId, AssocId, CancellationToken.None);
+        var result = await _sut.GetFundoTipoAtivoById(FundoId, AssocId, _fundoRepo, _repo, CancellationToken.None);
 
         var ok = result.ShouldBeOfType<OkObjectResult>();
         var dto = ok.Value.ShouldBeOfType<RelFundoTipoAtivoDto>();
@@ -239,7 +231,7 @@ public class FundoTiposAtivosControllerTests
     [Fact]
     public async Task UpdateFundoTipoAtivoLimits_NullBody_Returns400()
     {
-        var result = await _sut.UpdateFundoTipoAtivoLimits(FundoId, AssocId, null, CancellationToken.None);
+        var result = await _sut.UpdateFundoTipoAtivoLimits(FundoId, AssocId, null, _fundoRepo, CancellationToken.None);
         result.ShouldBeOfType<BadRequestObjectResult>();
     }
 
@@ -247,12 +239,11 @@ public class FundoTiposAtivosControllerTests
     public async Task UpdateFundoTipoAtivoLimits_InvalidStateTransition_Returns400()
     {
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
-        _updateHandler
-            .HandleAsync(Arg.Any<UpdateFundoTipoAtivoLimiteCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelFundoTipoAtivoDto>(Arg.Any<UpdateFundoTipoAtivoLimiteCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidStateTransitionException("Cannot update HISTORICO."));
 
         var request = new UpdateRelationshipLimitsRequest(30m, null);
-        var result = await _sut.UpdateFundoTipoAtivoLimits(FundoId, AssocId, request, CancellationToken.None);
+        var result = await _sut.UpdateFundoTipoAtivoLimits(FundoId, AssocId, request, _fundoRepo, CancellationToken.None);
 
         result.ShouldBeOfType<BadRequestObjectResult>();
     }
@@ -261,12 +252,11 @@ public class FundoTiposAtivosControllerTests
     public async Task UpdateFundoTipoAtivoLimits_HappyPath_Returns200()
     {
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
-        _updateHandler
-            .HandleAsync(Arg.Any<UpdateFundoTipoAtivoLimiteCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelFundoTipoAtivoDto>(Arg.Any<UpdateFundoTipoAtivoLimiteCommand>(), Arg.Any<CancellationToken>())
             .Returns(SampleDto);
 
         var request = new UpdateRelationshipLimitsRequest(30m, null);
-        var result = await _sut.UpdateFundoTipoAtivoLimits(FundoId, AssocId, request, CancellationToken.None);
+        var result = await _sut.UpdateFundoTipoAtivoLimits(FundoId, AssocId, request, _fundoRepo, CancellationToken.None);
 
         var ok = result.ShouldBeOfType<OkObjectResult>();
         ok.Value.ShouldBe(SampleDto);
@@ -279,7 +269,7 @@ public class FundoTiposAtivosControllerTests
     [Fact]
     public async Task TransitionFundoTipoAtivoStatus_NullBody_Returns400()
     {
-        var result = await _sut.TransitionFundoTipoAtivoStatus(FundoId, AssocId, null, CancellationToken.None);
+        var result = await _sut.TransitionFundoTipoAtivoStatus(FundoId, AssocId, null, _fundoRepo, CancellationToken.None);
         result.ShouldBeOfType<BadRequestObjectResult>();
     }
 
@@ -290,7 +280,7 @@ public class FundoTiposAtivosControllerTests
             .Returns(MakeFundo(Guid.NewGuid()));
 
         var request = new TransitionRelationshipStatusRequest(RelationshipStatus.INATIVO);
-        var result = await _sut.TransitionFundoTipoAtivoStatus(FundoId, AssocId, request, CancellationToken.None);
+        var result = await _sut.TransitionFundoTipoAtivoStatus(FundoId, AssocId, request, _fundoRepo, CancellationToken.None);
 
         result.ShouldBeOfType<NotFoundResult>();
     }
@@ -299,12 +289,11 @@ public class FundoTiposAtivosControllerTests
     public async Task TransitionFundoTipoAtivoStatus_HappyPath_Returns200()
     {
         _fundoRepo.GetByIdAsync(FundoId, Arg.Any<CancellationToken>()).Returns(MakeFundo());
-        _transitionHandler
-            .HandleAsync(Arg.Any<TransitionFundoTipoAtivoStatusCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RelFundoTipoAtivoDto>(Arg.Any<TransitionFundoTipoAtivoStatusCommand>(), Arg.Any<CancellationToken>())
             .Returns(SampleDto with { Status = RelationshipStatus.INATIVO });
 
         var request = new TransitionRelationshipStatusRequest(RelationshipStatus.INATIVO);
-        var result = await _sut.TransitionFundoTipoAtivoStatus(FundoId, AssocId, request, CancellationToken.None);
+        var result = await _sut.TransitionFundoTipoAtivoStatus(FundoId, AssocId, request, _fundoRepo, CancellationToken.None);
 
         var ok = result.ShouldBeOfType<OkObjectResult>();
         var dto = ok.Value.ShouldBeOfType<RelFundoTipoAtivoDto>();

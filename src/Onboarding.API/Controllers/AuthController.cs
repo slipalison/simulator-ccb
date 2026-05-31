@@ -1,11 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
-using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using Onboarding.API.Extensions;
+using Onboarding.API.Security;
 using Onboarding.Application.Auth.Commands;
+using Onboarding.Domain.Aggregates.EmployeeAggregate;
 using Onboarding.Application.Auth.DTOs;
 using Onboarding.Application.Common;
-using Onboarding.Domain.Aggregates.EmployeeAggregate;
 using Onboarding.Domain.Exceptions;
 using Onboarding.Domain.Repositories;
 using Onboarding.Infrastructure.Keycloak;
@@ -17,42 +17,31 @@ namespace Onboarding.API.Controllers;
 /// POST /api/auth/login — D-01: ROPC token exchange via IKeycloakTokenService
 /// POST /api/auth/refresh — D-02: token refresh via IKeycloakTokenService
 /// GET  /api/auth/me     — session validation + resolved permissions (frontend-client-fundos)
+///
+/// D-62: 3 ctor deps (was 8): ICommandDispatcher + IValidationRunner + ILogger.
+/// Repos used only in GetMe (permission resolution) moved to [FromServices].
+/// ForgotPassword and ResetPassword already used [FromServices] (unchanged).
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public sealed class AuthController : ControllerBase
 {
-    private readonly ICommandHandler<LoginCommand, TokenResponse> _loginHandler;
-    private readonly ICommandHandler<RefreshTokenCommand, TokenResponse> _refreshHandler;
-    private readonly IValidator<LoginCommand> _loginValidator;
-    private readonly IValidator<RefreshTokenCommand> _refreshValidator;
+    private readonly ICommandDispatcher _commands;
+    private readonly IValidationRunner _validation;
     private readonly ILogger<AuthController> _logger;
-    private readonly ICompanyRepository _companyRepository;
-    private readonly IEmployeeRepository _employeeRepository;
-    private readonly IAccessGroupRepository _accessGroupRepository;
 
     // Handler reads JWT without signature validation — token was issued moments ago by Keycloak
     // via the refresh flow and is not user-supplied. This is intentional (no extra round-trip to JWKS).
     private static readonly JwtSecurityTokenHandler _jwtHandler = new();
 
     public AuthController(
-        ICommandHandler<LoginCommand, TokenResponse> loginHandler,
-        ICommandHandler<RefreshTokenCommand, TokenResponse> refreshHandler,
-        IValidator<LoginCommand> loginValidator,
-        IValidator<RefreshTokenCommand> refreshValidator,
-        ILogger<AuthController> logger,
-        ICompanyRepository companyRepository,
-        IEmployeeRepository employeeRepository,
-        IAccessGroupRepository accessGroupRepository)
+        ICommandDispatcher commands,
+        IValidationRunner validation,
+        ILogger<AuthController> logger)
     {
-        _loginHandler = loginHandler;
-        _refreshHandler = refreshHandler;
-        _loginValidator = loginValidator;
-        _refreshValidator = refreshValidator;
+        _commands = commands;
+        _validation = validation;
         _logger = logger;
-        _companyRepository = companyRepository;
-        _employeeRepository = employeeRepository;
-        _accessGroupRepository = accessGroupRepository;
     }
 
     /// <summary>
@@ -60,8 +49,12 @@ public sealed class AuthController : ControllerBase
     /// ClientClaimsMiddleware lookup: Company owner → all permissions; Employee → AccessGroup permissions.
     /// Token is decoded without signature validation because it was just issued by Keycloak.
     /// </summary>
-    private async Task<IReadOnlyList<string>> ResolvePermissionsFromAccessTokenAsync(
-        string accessToken, CancellationToken ct)
+    private static async Task<IReadOnlyList<string>> ResolvePermissionsFromAccessTokenAsync(
+        string accessToken,
+        ICompanyRepository companyRepository,
+        IEmployeeRepository employeeRepository,
+        IAccessGroupRepository accessGroupRepository,
+        CancellationToken ct)
     {
         if (!_jwtHandler.CanReadToken(accessToken))
             return Array.Empty<string>();
@@ -73,15 +66,15 @@ public sealed class AuthController : ControllerBase
             return Array.Empty<string>();
 
         // Mirror ClientClaimsMiddleware: Company owner → all permissions
-        var company = await _companyRepository.GetByKeycloakSubAsync(sub, ct).ConfigureAwait(false);
+        var company = await companyRepository.GetByKeycloakSubAsync(sub, ct).ConfigureAwait(false);
         if (company != null)
             return Permissions.All;
 
         // Employee → AccessGroup permissions
-        var employee = await _employeeRepository.GetByKeycloakSubAsync(sub, ct).ConfigureAwait(false);
+        var employee = await employeeRepository.GetByKeycloakSubAsync(sub, ct).ConfigureAwait(false);
         if (employee != null)
         {
-            var accessGroup = await _accessGroupRepository.GetByIdAsync(employee.AccessGroupId, ct).ConfigureAwait(false);
+            var accessGroup = await accessGroupRepository.GetByIdAsync(employee.AccessGroupId, ct).ConfigureAwait(false);
             return accessGroup?.Permissions.ToArray() ?? Array.Empty<string>();
         }
 
@@ -99,13 +92,13 @@ public sealed class AuthController : ControllerBase
     {
         var command = new LoginCommand(request.Email ?? string.Empty, request.Password ?? string.Empty);
 
-        var validation = await _loginValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(validation.ToValidationProblem());
 
         try
         {
-            var tokens = await _loginHandler.HandleAsync(command, ct);
+            var tokens = await _commands.Send<TokenResponse>(command, ct);
 
             // Set refresh token as httpOnly cookie (secure against XSS)
             Response.Cookies.Append("refreshToken", tokens.RefreshToken, new CookieOptions
@@ -160,13 +153,13 @@ public sealed class AuthController : ControllerBase
 
         var command = new RefreshTokenCommand(refreshToken);
 
-        var validation = await _refreshValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(validation.ToValidationProblem());
 
         try
         {
-            var tokens = await _refreshHandler.HandleAsync(command, ct);
+            var tokens = await _commands.Send<TokenResponse>(command, ct);
 
             // Update refresh token cookie with new token
             Response.Cookies.Append("refreshToken", tokens.RefreshToken, new CookieOptions
@@ -221,11 +214,15 @@ public sealed class AuthController : ControllerBase
     /// Permissions are resolved from the freshly issued access token (sub → DB lookup),
     /// mirroring the ClientClaimsMiddleware logic. Frontend uses the flat permissions[]
     /// array to gate menu items such as the Fundos NavGroup (frontend-client-fundos, iter 6).
+    /// Repos injected via [FromServices] — only used in this endpoint (SOLID-04 deferred D-63).
     /// </remarks>
     [HttpGet("me")]
     [ProducesResponseType(typeof(MeResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMe(
+        [FromServices] ICompanyRepository companyRepository,
+        [FromServices] IEmployeeRepository employeeRepository,
+        [FromServices] IAccessGroupRepository accessGroupRepository,
         CancellationToken ct)
     {
         // Read refresh token from cookie to validate session
@@ -243,7 +240,7 @@ public sealed class AuthController : ControllerBase
         try
         {
             var command = new RefreshTokenCommand(refreshToken);
-            var tokens = await _refreshHandler.HandleAsync(command, ct);
+            var tokens = await _commands.Send<TokenResponse>(command, ct);
 
             // Update cookie with new tokens
             Response.Cookies.Append("refreshToken", tokens.RefreshToken, new CookieOptions
@@ -256,7 +253,8 @@ public sealed class AuthController : ControllerBase
             });
 
             // Resolve permissions from the freshly issued access token (sub → DB lookup)
-            var permissions = await ResolvePermissionsFromAccessTokenAsync(tokens.AccessToken, ct);
+            var permissions = await ResolvePermissionsFromAccessTokenAsync(
+                tokens.AccessToken, companyRepository, employeeRepository, accessGroupRepository, ct);
 
             return Ok(new MeResponse(
                 tokens.AccessToken,
@@ -287,12 +285,11 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> ForgotPassword(
         [FromBody] ForgotPasswordRequest request,
         [FromServices] ICommandHandler<ForgotPasswordCommand, Unit> handler,
-        [FromServices] IValidator<ForgotPasswordCommand> validator,
         CancellationToken ct)
     {
         var command = new ForgotPasswordCommand(request.Email ?? string.Empty);
 
-        var validation = await validator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return BadRequest(validation.ToValidationProblem());
 
@@ -321,14 +318,13 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> ResetPassword(
         [FromBody] ResetPasswordRequest request,
         [FromServices] ICommandHandler<ResetPasswordCommand, Unit> handler,
-        [FromServices] IValidator<ResetPasswordCommand> validator,
         CancellationToken ct)
     {
         var command = new ResetPasswordCommand(
             request.Token ?? string.Empty,
             request.NewPassword ?? string.Empty);
 
-        var validation = await validator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(validation.ToValidationProblem());
 

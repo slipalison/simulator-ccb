@@ -23,38 +23,29 @@ namespace Onboarding.API.Controllers;
 /// GET    /api/fundos/{fundoId}/tipos-ativos/{id}             — get by id
 /// PATCH  /api/fundos/{fundoId}/tipos-ativos/{id}/limits      — update exposure limits
 /// POST   /api/fundos/{fundoId}/tipos-ativos/{id}/status      — transition status (D-22)
+///
+/// D-62: 4 ctor deps (was 8): ICommandDispatcher + IQueryDispatcher + IValidationRunner +
+///       ICurrentCompanyService. Repos used for tenant guards are [FromServices] per action.
 /// </summary>
 [ApiController]
 [Route("api/fundos/{fundoId:guid}/tipos-ativos")]
 [Authorize(AuthenticationSchemes = "BearerClient")]
 public sealed class FundoTiposAtivosController : ControllerBase
 {
-    private readonly ICommandHandler<CreateFundoTipoAtivoCommand, RelFundoTipoAtivoDto> _createHandler;
-    private readonly ICommandHandler<UpdateFundoTipoAtivoLimiteCommand, RelFundoTipoAtivoDto> _updateLimiteHandler;
-    private readonly ICommandHandler<TransitionFundoTipoAtivoStatusCommand, RelFundoTipoAtivoDto> _transitionHandler;
-    private readonly IQueryHandler<GetFundoTiposAtivosQuery, PaginatedResult<RelFundoTipoAtivoDto>> _listHandler;
-    private readonly IQueryHandler<GetFundoTipoAtivoAllowedTransitionsQuery, IReadOnlyList<string>?> _allowedTransitionsHandler;
-    private readonly IFundoTipoAtivoAggregateRepository _repository;
-    private readonly IFundoRepository _fundoRepository;
+    private readonly ICommandDispatcher _commands;
+    private readonly IQueryDispatcher _queries;
+    private readonly IValidationRunner _validation;
     private readonly ICurrentCompanyService _currentCompanyService;
 
     public FundoTiposAtivosController(
-        ICommandHandler<CreateFundoTipoAtivoCommand, RelFundoTipoAtivoDto> createHandler,
-        ICommandHandler<UpdateFundoTipoAtivoLimiteCommand, RelFundoTipoAtivoDto> updateLimiteHandler,
-        ICommandHandler<TransitionFundoTipoAtivoStatusCommand, RelFundoTipoAtivoDto> transitionHandler,
-        IQueryHandler<GetFundoTiposAtivosQuery, PaginatedResult<RelFundoTipoAtivoDto>> listHandler,
-        IQueryHandler<GetFundoTipoAtivoAllowedTransitionsQuery, IReadOnlyList<string>?> allowedTransitionsHandler,
-        IFundoTipoAtivoAggregateRepository repository,
-        IFundoRepository fundoRepository,
+        ICommandDispatcher commands,
+        IQueryDispatcher queries,
+        IValidationRunner validation,
         ICurrentCompanyService currentCompanyService)
     {
-        _createHandler = createHandler;
-        _updateLimiteHandler = updateLimiteHandler;
-        _transitionHandler = transitionHandler;
-        _listHandler = listHandler;
-        _allowedTransitionsHandler = allowedTransitionsHandler;
-        _repository = repository;
-        _fundoRepository = fundoRepository;
+        _commands = commands;
+        _queries = queries;
+        _validation = validation;
         _currentCompanyService = currentCompanyService;
     }
 
@@ -71,13 +62,14 @@ public sealed class FundoTiposAtivosController : ControllerBase
     public async Task<IActionResult> CreateFundoTipoAtivo(
         Guid fundoId,
         [FromBody] CreateFundoTipoAtivoRequest? request,
+        [FromServices] IFundoRepository fundoRepository,
         CancellationToken ct)
     {
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
         // Security: tenant guard — caller must own this Fundo
-        var fundo = await _fundoRepository.GetByIdAsync(fundoId, ct);
+        var fundo = await fundoRepository.GetByIdAsync(fundoId, ct);
         if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
@@ -96,7 +88,7 @@ public sealed class FundoTiposAtivosController : ControllerBase
 
         try
         {
-            var result = await _createHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<RelFundoTipoAtivoDto>(command, ct);
             return CreatedAtAction(nameof(GetFundoTipoAtivoById),
                 new { fundoId, id = result.Id }, result);
         }
@@ -123,17 +115,18 @@ public sealed class FundoTiposAtivosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ListFundoTiposAtivos(
         Guid fundoId,
+        [FromServices] IFundoRepository fundoRepository,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
         // Security: tenant guard — caller must own this Fundo
-        var fundo = await _fundoRepository.GetByIdAsync(fundoId, ct);
+        var fundo = await fundoRepository.GetByIdAsync(fundoId, ct);
         if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
         var query = new GetFundoTiposAtivosQuery(fundoId, page, pageSize);
-        var result = await _listHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<RelFundoTipoAtivoDto>>(query, ct);
         return Ok(result);
     }
 
@@ -145,14 +138,18 @@ public sealed class FundoTiposAtivosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetFundoTipoAtivoById(
-        Guid fundoId, Guid id, CancellationToken ct)
+        Guid fundoId,
+        Guid id,
+        [FromServices] IFundoRepository fundoRepository,
+        [FromServices] IFundoTipoAtivoAggregateRepository repository,
+        CancellationToken ct)
     {
         // Security: tenant guard — caller must own this Fundo
-        var fundo = await _fundoRepository.GetByIdAsync(fundoId, ct);
+        var fundo = await fundoRepository.GetByIdAsync(fundoId, ct);
         if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
-        var association = await _repository.GetByIdAsync(id, ct);
+        var association = await repository.GetByIdAsync(id, ct);
         if (association is null || association.FundoId != fundoId)
             return NotFound();
 
@@ -169,15 +166,17 @@ public sealed class FundoTiposAtivosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> UpdateFundoTipoAtivoLimits(
-        Guid fundoId, Guid id,
+        Guid fundoId,
+        Guid id,
         [FromBody] UpdateRelationshipLimitsRequest? request,
+        [FromServices] IFundoRepository fundoRepository,
         CancellationToken ct)
     {
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
         // Security: tenant guard — caller must own this Fundo
-        var fundo = await _fundoRepository.GetByIdAsync(fundoId, ct);
+        var fundo = await fundoRepository.GetByIdAsync(fundoId, ct);
         if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
@@ -193,7 +192,7 @@ public sealed class FundoTiposAtivosController : ControllerBase
 
         try
         {
-            var result = await _updateLimiteHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<RelFundoTipoAtivoDto>(command, ct);
             return Ok(result);
         }
         catch (FluentValidation.ValidationException ex)
@@ -219,15 +218,17 @@ public sealed class FundoTiposAtivosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> TransitionFundoTipoAtivoStatus(
-        Guid fundoId, Guid id,
+        Guid fundoId,
+        Guid id,
         [FromBody] TransitionRelationshipStatusRequest? request,
+        [FromServices] IFundoRepository fundoRepository,
         CancellationToken ct)
     {
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
         // Security: tenant guard — caller must own this Fundo
-        var fundo = await _fundoRepository.GetByIdAsync(fundoId, ct);
+        var fundo = await fundoRepository.GetByIdAsync(fundoId, ct);
         if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
@@ -242,7 +243,7 @@ public sealed class FundoTiposAtivosController : ControllerBase
 
         try
         {
-            var result = await _transitionHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<RelFundoTipoAtivoDto>(command, ct);
             return Ok(result);
         }
         catch (InvalidStateTransitionException ex)
@@ -257,7 +258,6 @@ public sealed class FundoTiposAtivosController : ControllerBase
 
     /// <summary>
     /// GET /api/fundos/{fundoId}/tipos-ativos/{id}/allowed-transitions — Returns valid next statuses (D-25).
-    /// 200 OK with string[]; 404 if not found or cross-tenant.
     /// </summary>
     [HttpGet("{id:guid}/allowed-transitions")]
     [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
@@ -269,7 +269,7 @@ public sealed class FundoTiposAtivosController : ControllerBase
         Guid fundoId, Guid id, CancellationToken ct)
     {
         var query = new GetFundoTipoAtivoAllowedTransitionsQuery(fundoId, id);
-        var result = await _allowedTransitionsHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<IReadOnlyList<string>?>(query, ct);
         if (result is null)
             return NotFound();
         return Ok(result);

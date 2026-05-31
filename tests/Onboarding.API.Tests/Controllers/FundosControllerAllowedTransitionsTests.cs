@@ -234,14 +234,23 @@ public class FundosControllerAllowedTransitionsTests
     {
         var company = Substitute.For<ICurrentCompanyService>();
         company.CompanyId.Returns(Guid.NewGuid());
+
+        var queries = Substitute.For<IQueryDispatcher>();
+        if (handler != null)
+        {
+            queries.Query<IReadOnlyList<string>?>(Arg.Any<GetFundoCedenteAllowedTransitionsQuery>(), Arg.Any<CancellationToken>())
+                .Returns(ci => handler.HandleAsync(
+                    ci.ArgAt<GetFundoCedenteAllowedTransitionsQuery>(0), ci.ArgAt<CancellationToken>(1)));
+        }
+
+        var validation = Substitute.For<IValidationRunner>();
+        validation.Validate(Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(new FluentValidation.Results.ValidationResult());
+
         var ctrl = new FundoCedentesController(
-            Substitute.For<ICommandHandler<Application.Fundos.Commands.CreateFundoCedente.CreateFundoCedenteCommand, RelFundoCedenteDto>>(),
-            Substitute.For<ICommandHandler<Application.Fundos.Commands.UpdateFundoCedenteLimite.UpdateFundoCedenteLimiteCommand, RelFundoCedenteDto>>(),
-            Substitute.For<ICommandHandler<Application.Fundos.Commands.TransitionFundoCedenteStatus.TransitionFundoCedenteStatusCommand, RelFundoCedenteDto>>(),
-            Substitute.For<IQueryHandler<Application.Fundos.Queries.GetFundoCedentes.GetFundoCedentesQuery, PaginatedResult<RelFundoCedenteDto>>>(),
-            handler ?? Substitute.For<IQueryHandler<GetFundoCedenteAllowedTransitionsQuery, IReadOnlyList<string>?>>(),
-            Substitute.For<IFundoCedenteAggregateRepository>(),
-            Substitute.For<IFundoRepository>(),
+            Substitute.For<ICommandDispatcher>(),
+            queries,
+            validation,
             company);
         ctrl.ControllerContext = MakeControllerContext();
         return ctrl;
@@ -252,14 +261,23 @@ public class FundosControllerAllowedTransitionsTests
     {
         var company = Substitute.For<ICurrentCompanyService>();
         company.CompanyId.Returns(Guid.NewGuid());
+
+        var queries = Substitute.For<IQueryDispatcher>();
+        if (handler != null)
+        {
+            queries.Query<IReadOnlyList<string>?>(Arg.Any<GetFundoTipoAtivoAllowedTransitionsQuery>(), Arg.Any<CancellationToken>())
+                .Returns(ci => handler.HandleAsync(
+                    ci.ArgAt<GetFundoTipoAtivoAllowedTransitionsQuery>(0), ci.ArgAt<CancellationToken>(1)));
+        }
+
+        var validation = Substitute.For<IValidationRunner>();
+        validation.Validate(Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(new FluentValidation.Results.ValidationResult());
+
         var ctrl = new FundoTiposAtivosController(
-            Substitute.For<ICommandHandler<Application.Fundos.Commands.CreateFundoTipoAtivo.CreateFundoTipoAtivoCommand, RelFundoTipoAtivoDto>>(),
-            Substitute.For<ICommandHandler<Application.Fundos.Commands.UpdateFundoTipoAtivoLimite.UpdateFundoTipoAtivoLimiteCommand, RelFundoTipoAtivoDto>>(),
-            Substitute.For<ICommandHandler<Application.Fundos.Commands.TransitionFundoTipoAtivoStatus.TransitionFundoTipoAtivoStatusCommand, RelFundoTipoAtivoDto>>(),
-            Substitute.For<IQueryHandler<Application.Fundos.Queries.GetFundoTiposAtivos.GetFundoTiposAtivosQuery, PaginatedResult<RelFundoTipoAtivoDto>>>(),
-            handler ?? Substitute.For<IQueryHandler<GetFundoTipoAtivoAllowedTransitionsQuery, IReadOnlyList<string>?>>(),
-            Substitute.For<IFundoTipoAtivoAggregateRepository>(),
-            Substitute.For<IFundoRepository>(),
+            Substitute.For<ICommandDispatcher>(),
+            queries,
+            validation,
             company);
         ctrl.ControllerContext = MakeControllerContext();
         return ctrl;
@@ -270,14 +288,23 @@ public class FundosControllerAllowedTransitionsTests
     {
         var company = Substitute.For<ICurrentCompanyService>();
         company.CompanyId.Returns(Guid.NewGuid());
+
+        var queries = Substitute.For<IQueryDispatcher>();
+        if (handler != null)
+        {
+            queries.Query<IReadOnlyList<string>?>(Arg.Any<GetCedenteTipoAtivoAllowedTransitionsQuery>(), Arg.Any<CancellationToken>())
+                .Returns(ci => handler.HandleAsync(
+                    ci.ArgAt<GetCedenteTipoAtivoAllowedTransitionsQuery>(0), ci.ArgAt<CancellationToken>(1)));
+        }
+
+        var validation = Substitute.For<IValidationRunner>();
+        validation.Validate(Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(new FluentValidation.Results.ValidationResult());
+
         var ctrl = new CedenteTiposAtivosController(
-            Substitute.For<ICommandHandler<Application.Fundos.Commands.CreateCedenteTipoAtivo.CreateCedenteTipoAtivoCommand, RelCedenteTipoAtivoDto>>(),
-            Substitute.For<ICommandHandler<Application.Fundos.Commands.UpdateCedenteTipoAtivoLimite.UpdateCedenteTipoAtivoLimiteCommand, RelCedenteTipoAtivoDto>>(),
-            Substitute.For<ICommandHandler<Application.Fundos.Commands.TransitionCedenteTipoAtivoStatus.TransitionCedenteTipoAtivoStatusCommand, RelCedenteTipoAtivoDto>>(),
-            Substitute.For<IQueryHandler<Application.Fundos.Queries.GetCedenteTiposAtivos.GetCedenteTiposAtivosQuery, PaginatedResult<RelCedenteTipoAtivoDto>>>(),
-            handler ?? Substitute.For<IQueryHandler<GetCedenteTipoAtivoAllowedTransitionsQuery, IReadOnlyList<string>?>>(),
-            Substitute.For<ICedenteTipoAtivoAggregateRepository>(),
-            Substitute.For<ICedenteRepository>(),
+            Substitute.For<ICommandDispatcher>(),
+            queries,
+            validation,
             company);
         ctrl.ControllerContext = MakeControllerContext();
         return ctrl;

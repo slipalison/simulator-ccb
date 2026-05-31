@@ -22,38 +22,29 @@ namespace Onboarding.API.Controllers;
 /// GET    /api/fundos/{fundoId}/cedentes/{id}             — REL-02b: get by id
 /// PATCH  /api/fundos/{fundoId}/cedentes/{id}/limits      — REL-03: update exposure limits
 /// POST   /api/fundos/{fundoId}/cedentes/{id}/status      — REL-04: transition status (D-22)
+///
+/// D-62: 4 ctor deps (was 8): ICommandDispatcher + IQueryDispatcher + IValidationRunner +
+///       ICurrentCompanyService. Repos used for tenant guards are [FromServices] per action.
 /// </summary>
 [ApiController]
 [Route("api/fundos/{fundoId:guid}/cedentes")]
 [Authorize(AuthenticationSchemes = "BearerClient")]
 public sealed class FundoCedentesController : ControllerBase
 {
-    private readonly ICommandHandler<CreateFundoCedenteCommand, RelFundoCedenteDto> _createHandler;
-    private readonly ICommandHandler<UpdateFundoCedenteLimiteCommand, RelFundoCedenteDto> _updateLimiteHandler;
-    private readonly ICommandHandler<TransitionFundoCedenteStatusCommand, RelFundoCedenteDto> _transitionHandler;
-    private readonly IQueryHandler<GetFundoCedentesQuery, PaginatedResult<RelFundoCedenteDto>> _listHandler;
-    private readonly IQueryHandler<GetFundoCedenteAllowedTransitionsQuery, IReadOnlyList<string>?> _allowedTransitionsHandler;
-    private readonly IFundoCedenteAggregateRepository _repository;
-    private readonly IFundoRepository _fundoRepository;
+    private readonly ICommandDispatcher _commands;
+    private readonly IQueryDispatcher _queries;
+    private readonly IValidationRunner _validation;
     private readonly ICurrentCompanyService _currentCompanyService;
 
     public FundoCedentesController(
-        ICommandHandler<CreateFundoCedenteCommand, RelFundoCedenteDto> createHandler,
-        ICommandHandler<UpdateFundoCedenteLimiteCommand, RelFundoCedenteDto> updateLimiteHandler,
-        ICommandHandler<TransitionFundoCedenteStatusCommand, RelFundoCedenteDto> transitionHandler,
-        IQueryHandler<GetFundoCedentesQuery, PaginatedResult<RelFundoCedenteDto>> listHandler,
-        IQueryHandler<GetFundoCedenteAllowedTransitionsQuery, IReadOnlyList<string>?> allowedTransitionsHandler,
-        IFundoCedenteAggregateRepository repository,
-        IFundoRepository fundoRepository,
+        ICommandDispatcher commands,
+        IQueryDispatcher queries,
+        IValidationRunner validation,
         ICurrentCompanyService currentCompanyService)
     {
-        _createHandler = createHandler;
-        _updateLimiteHandler = updateLimiteHandler;
-        _transitionHandler = transitionHandler;
-        _listHandler = listHandler;
-        _allowedTransitionsHandler = allowedTransitionsHandler;
-        _repository = repository;
-        _fundoRepository = fundoRepository;
+        _commands = commands;
+        _queries = queries;
+        _validation = validation;
         _currentCompanyService = currentCompanyService;
     }
 
@@ -70,13 +61,14 @@ public sealed class FundoCedentesController : ControllerBase
     public async Task<IActionResult> CreateFundoCedente(
         Guid fundoId,
         [FromBody] CreateFundoCedenteRequest? request,
+        [FromServices] IFundoRepository fundoRepository,
         CancellationToken ct)
     {
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
         // Security: tenant guard — caller must own this Fundo
-        var fundo = await _fundoRepository.GetByIdAsync(fundoId, ct);
+        var fundo = await fundoRepository.GetByIdAsync(fundoId, ct);
         if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
@@ -95,7 +87,7 @@ public sealed class FundoCedentesController : ControllerBase
 
         try
         {
-            var result = await _createHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<RelFundoCedenteDto>(command, ct);
             return CreatedAtAction(nameof(GetFundoCedenteById),
                 new { fundoId, id = result.Id }, result);
         }
@@ -122,17 +114,18 @@ public sealed class FundoCedentesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ListFundoCedentes(
         Guid fundoId,
+        [FromServices] IFundoRepository fundoRepository,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
         // Security: tenant guard — caller must own this Fundo
-        var fundo = await _fundoRepository.GetByIdAsync(fundoId, ct);
+        var fundo = await fundoRepository.GetByIdAsync(fundoId, ct);
         if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
         var query = new GetFundoCedentesQuery(fundoId, page, pageSize);
-        var result = await _listHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<RelFundoCedenteDto>>(query, ct);
         return Ok(result);
     }
 
@@ -144,14 +137,18 @@ public sealed class FundoCedentesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetFundoCedenteById(
-        Guid fundoId, Guid id, CancellationToken ct)
+        Guid fundoId,
+        Guid id,
+        [FromServices] IFundoRepository fundoRepository,
+        [FromServices] IFundoCedenteAggregateRepository repository,
+        CancellationToken ct)
     {
         // Security: tenant guard — caller must own this Fundo
-        var fundo = await _fundoRepository.GetByIdAsync(fundoId, ct);
+        var fundo = await fundoRepository.GetByIdAsync(fundoId, ct);
         if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
-        var association = await _repository.GetByIdAsync(id, ct);
+        var association = await repository.GetByIdAsync(id, ct);
         // Also verify the association belongs to this Fundo (prevents cross-fundo enumeration)
         if (association is null || association.FundoId != fundoId)
             return NotFound();
@@ -169,15 +166,17 @@ public sealed class FundoCedentesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> UpdateFundoCedenteLimits(
-        Guid fundoId, Guid id,
+        Guid fundoId,
+        Guid id,
         [FromBody] UpdateRelationshipLimitsRequest? request,
+        [FromServices] IFundoRepository fundoRepository,
         CancellationToken ct)
     {
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
         // Security: tenant guard — caller must own this Fundo
-        var fundo = await _fundoRepository.GetByIdAsync(fundoId, ct);
+        var fundo = await fundoRepository.GetByIdAsync(fundoId, ct);
         if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
@@ -193,7 +192,7 @@ public sealed class FundoCedentesController : ControllerBase
 
         try
         {
-            var result = await _updateLimiteHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<RelFundoCedenteDto>(command, ct);
             return Ok(result);
         }
         catch (FluentValidation.ValidationException ex)
@@ -219,15 +218,17 @@ public sealed class FundoCedentesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> TransitionFundoCedenteStatus(
-        Guid fundoId, Guid id,
+        Guid fundoId,
+        Guid id,
         [FromBody] TransitionRelationshipStatusRequest? request,
+        [FromServices] IFundoRepository fundoRepository,
         CancellationToken ct)
     {
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
         // Security: tenant guard — caller must own this Fundo
-        var fundo = await _fundoRepository.GetByIdAsync(fundoId, ct);
+        var fundo = await fundoRepository.GetByIdAsync(fundoId, ct);
         if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
@@ -242,7 +243,7 @@ public sealed class FundoCedentesController : ControllerBase
 
         try
         {
-            var result = await _transitionHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<RelFundoCedenteDto>(command, ct);
             return Ok(result);
         }
         catch (InvalidStateTransitionException ex)
@@ -269,7 +270,7 @@ public sealed class FundoCedentesController : ControllerBase
         Guid fundoId, Guid id, CancellationToken ct)
     {
         var query = new GetFundoCedenteAllowedTransitionsQuery(fundoId, id);
-        var result = await _allowedTransitionsHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<IReadOnlyList<string>?>(query, ct);
         if (result is null)
             return NotFound();
         return Ok(result);

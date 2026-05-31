@@ -21,113 +21,71 @@ namespace Onboarding.API.Controllers;
 /// GET /api/admin/fundos/fundo-cedentes       — paginated list of all FundoCedente associations
 /// GET /api/admin/fundos/fundo-tipos-ativos   — paginated list of all FundoTipoAtivo associations
 /// GET /api/admin/fundos/cedente-tipos-ativos — paginated list of all CedenteTipoAtivo associations
+///
+/// D-62: 1 ctor dep (IQueryDispatcher) — was 11. All query-only, no mutations.
 /// </summary>
 [ApiController]
 [Route("api/admin/fundos")]
 [Authorize(AuthenticationSchemes = "BearerBackoffice", Policy = PermissionPolicies.CrossCompanyAccess)]
 public sealed class AdminFundosController : ControllerBase
 {
-    private readonly IQueryHandler<ListAdminFundoQuery, PaginatedResult<AdminFundoDto>> _listFundoHandler;
-    private readonly IQueryHandler<ListAdminConsultoriaQuery, PaginatedResult<AdminConsultoriaFundoDto>> _listConsultoriaHandler;
-    private readonly IQueryHandler<ListAdminCustodianteQuery, PaginatedResult<AdminCustodianteDto>> _listCustodianteHandler;
-    private readonly IQueryHandler<ListAdminCedenteQuery, PaginatedResult<AdminCedenteDto>> _listCedenteHandler;
+    private readonly IQueryDispatcher _queries;
 
-    // Phase 51 — admin GET-by-id handlers (D-8 fix — backoffice detail pages)
-    private readonly IQueryHandler<GetAdminFundoByIdQuery, AdminFundoDto?> _getFundoByIdHandler;
-    private readonly IQueryHandler<GetAdminConsultoriaFundoByIdQuery, AdminConsultoriaFundoDto?> _getConsultoriaByIdHandler;
-    private readonly IQueryHandler<GetAdminCustodianteByIdQuery, AdminCustodianteDto?> _getCustodianteByIdHandler;
-    private readonly IQueryHandler<GetAdminCedenteByIdQuery, AdminCedenteDto?> _getCedenteByIdHandler;
-
-    // Phase 50 — relationship aggregate admin queries (D-8, D-21)
-    private readonly IQueryHandler<ListAdminFundoCedenteQuery, PaginatedResult<AdminRelFundoCedenteDto>> _listFundoCedenteHandler;
-    private readonly IQueryHandler<ListAdminFundoTipoAtivoQuery, PaginatedResult<AdminRelFundoTipoAtivoDto>> _listFundoTipoAtivoHandler;
-    private readonly IQueryHandler<ListAdminCedenteTipoAtivoQuery, PaginatedResult<AdminRelCedenteTipoAtivoDto>> _listCedenteTipoAtivoHandler;
-
-    public AdminFundosController(
-        IQueryHandler<ListAdminFundoQuery, PaginatedResult<AdminFundoDto>> listFundoHandler,
-        IQueryHandler<ListAdminConsultoriaQuery, PaginatedResult<AdminConsultoriaFundoDto>> listConsultoriaHandler,
-        IQueryHandler<ListAdminCustodianteQuery, PaginatedResult<AdminCustodianteDto>> listCustodianteHandler,
-        IQueryHandler<ListAdminCedenteQuery, PaginatedResult<AdminCedenteDto>> listCedenteHandler,
-        IQueryHandler<GetAdminFundoByIdQuery, AdminFundoDto?> getFundoByIdHandler,
-        IQueryHandler<GetAdminConsultoriaFundoByIdQuery, AdminConsultoriaFundoDto?> getConsultoriaByIdHandler,
-        IQueryHandler<GetAdminCustodianteByIdQuery, AdminCustodianteDto?> getCustodianteByIdHandler,
-        IQueryHandler<GetAdminCedenteByIdQuery, AdminCedenteDto?> getCedenteByIdHandler,
-        IQueryHandler<ListAdminFundoCedenteQuery, PaginatedResult<AdminRelFundoCedenteDto>> listFundoCedenteHandler,
-        IQueryHandler<ListAdminFundoTipoAtivoQuery, PaginatedResult<AdminRelFundoTipoAtivoDto>> listFundoTipoAtivoHandler,
-        IQueryHandler<ListAdminCedenteTipoAtivoQuery, PaginatedResult<AdminRelCedenteTipoAtivoDto>> listCedenteTipoAtivoHandler)
+    public AdminFundosController(IQueryDispatcher queries)
     {
-        _listFundoHandler = listFundoHandler;
-        _listConsultoriaHandler = listConsultoriaHandler;
-        _listCustodianteHandler = listCustodianteHandler;
-        _listCedenteHandler = listCedenteHandler;
-        _getFundoByIdHandler = getFundoByIdHandler;
-        _getConsultoriaByIdHandler = getConsultoriaByIdHandler;
-        _getCustodianteByIdHandler = getCustodianteByIdHandler;
-        _getCedenteByIdHandler = getCedenteByIdHandler;
-        _listFundoCedenteHandler = listFundoCedenteHandler;
-        _listFundoTipoAtivoHandler = listFundoTipoAtivoHandler;
-        _listCedenteTipoAtivoHandler = listCedenteTipoAtivoHandler;
+        _queries = queries;
     }
 
     /// <summary>
     /// GET /api/admin/fundos/{id} — Single Fundo by Id, cross-company (D-8 fix).
-    /// Returns 200 with AdminFundoDto including ClienteId + EmpresaNome.
-    /// Returns 404 if not found (no entity with that Id exists in any company).
     /// </summary>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(AdminFundoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetFundoById(Guid id, CancellationToken ct = default)
     {
-        var result = await _getFundoByIdHandler.HandleAsync(new GetAdminFundoByIdQuery(id), ct);
+        var result = await _queries.Query<AdminFundoDto?>(new GetAdminFundoByIdQuery(id), ct);
         return result is null ? NotFound() : Ok(result);
     }
 
     /// <summary>
-    /// GET /api/admin/fundos/consultorias/{id} — Single ConsultoriaFundo by Id, cross-company (D-8 fix).
-    /// Returns 200 with AdminConsultoriaFundoDto including ClienteId + EmpresaNome.
-    /// Returns 404 if not found.
+    /// GET /api/admin/fundos/consultorias/{id} — Single ConsultoriaFundo by Id, cross-company.
     /// </summary>
     [HttpGet("consultorias/{id:guid}")]
     [ProducesResponseType(typeof(AdminConsultoriaFundoDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetConsultoriaById(Guid id, CancellationToken ct = default)
     {
-        var result = await _getConsultoriaByIdHandler.HandleAsync(new GetAdminConsultoriaFundoByIdQuery(id), ct);
+        var result = await _queries.Query<AdminConsultoriaFundoDto?>(new GetAdminConsultoriaFundoByIdQuery(id), ct);
         return result is null ? NotFound() : Ok(result);
     }
 
     /// <summary>
-    /// GET /api/admin/fundos/custodiantes/{id} — Single Custodiante by Id, cross-company (D-8 fix).
-    /// Returns 200 with AdminCustodianteDto including ClienteId + EmpresaNome.
-    /// Returns 404 if not found.
+    /// GET /api/admin/fundos/custodiantes/{id} — Single Custodiante by Id, cross-company.
     /// </summary>
     [HttpGet("custodiantes/{id:guid}")]
     [ProducesResponseType(typeof(AdminCustodianteDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCustodianteById(Guid id, CancellationToken ct = default)
     {
-        var result = await _getCustodianteByIdHandler.HandleAsync(new GetAdminCustodianteByIdQuery(id), ct);
+        var result = await _queries.Query<AdminCustodianteDto?>(new GetAdminCustodianteByIdQuery(id), ct);
         return result is null ? NotFound() : Ok(result);
     }
 
     /// <summary>
-    /// GET /api/admin/fundos/cedentes/{id} — Single Cedente by Id, cross-company (D-8 fix).
-    /// Returns 200 with AdminCedenteDto including ClienteId + EmpresaNome.
-    /// Returns 404 if not found.
+    /// GET /api/admin/fundos/cedentes/{id} — Single Cedente by Id, cross-company.
     /// </summary>
     [HttpGet("cedentes/{id:guid}")]
     [ProducesResponseType(typeof(AdminCedenteDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCedenteById(Guid id, CancellationToken ct = default)
     {
-        var result = await _getCedenteByIdHandler.HandleAsync(new GetAdminCedenteByIdQuery(id), ct);
+        var result = await _queries.Query<AdminCedenteDto?>(new GetAdminCedenteByIdQuery(id), ct);
         return result is null ? NotFound() : Ok(result);
     }
 
     /// <summary>
     /// GET /api/admin/fundos — Paginated cross-company list of all Fundos.
-    /// Each item includes ClienteId + EmpresaNome (from Company join) for tenant identification.
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(PaginatedResult<AdminFundoDto>), StatusCodes.Status200OK)]
@@ -139,13 +97,12 @@ public sealed class AdminFundosController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new ListAdminFundoQuery(page, pageSize, search, companyId);
-        var result = await _listFundoHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<AdminFundoDto>>(query, ct);
         return Ok(result);
     }
 
     /// <summary>
     /// GET /api/admin/fundos/consultorias — Paginated cross-company list of all ConsultoriaFundo.
-    /// Each item includes ClienteId + EmpresaNome (from Company join) for tenant identification.
     /// </summary>
     [HttpGet("consultorias")]
     [ProducesResponseType(typeof(PaginatedResult<AdminConsultoriaFundoDto>), StatusCodes.Status200OK)]
@@ -157,13 +114,12 @@ public sealed class AdminFundosController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new ListAdminConsultoriaQuery(page, pageSize, search, companyId);
-        var result = await _listConsultoriaHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<AdminConsultoriaFundoDto>>(query, ct);
         return Ok(result);
     }
 
     /// <summary>
     /// GET /api/admin/fundos/custodiantes — Paginated cross-company list of all Custodiante.
-    /// Each item includes ClienteId + EmpresaNome (from Company join) for tenant identification.
     /// </summary>
     [HttpGet("custodiantes")]
     [ProducesResponseType(typeof(PaginatedResult<AdminCustodianteDto>), StatusCodes.Status200OK)]
@@ -175,14 +131,12 @@ public sealed class AdminFundosController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new ListAdminCustodianteQuery(page, pageSize, search, companyId);
-        var result = await _listCustodianteHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<AdminCustodianteDto>>(query, ct);
         return Ok(result);
     }
 
     /// <summary>
     /// GET /api/admin/fundos/cedentes — Paginated cross-company list of all Cedente.
-    /// Each item includes ClienteId + EmpresaNome (from Company join) for tenant identification.
-    /// Documento field contains CPF (PF) or CNPJ (PJ) string; CedenteTipo indicates which.
     /// </summary>
     [HttpGet("cedentes")]
     [ProducesResponseType(typeof(PaginatedResult<AdminCedenteDto>), StatusCodes.Status200OK)]
@@ -194,13 +148,12 @@ public sealed class AdminFundosController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new ListAdminCedenteQuery(page, pageSize, search, companyId);
-        var result = await _listCedenteHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<AdminCedenteDto>>(query, ct);
         return Ok(result);
     }
 
     /// <summary>
-    /// GET /api/admin/fundos/fundo-cedentes — Paginated cross-company list of all FundoCedente associations (D-21).
-    /// Each item includes ClienteId + EmpresaNome from Fundo→Company join.
+    /// GET /api/admin/fundos/fundo-cedentes — Paginated cross-company FundoCedente associations.
     /// </summary>
     [HttpGet("fundo-cedentes")]
     [ProducesResponseType(typeof(PaginatedResult<AdminRelFundoCedenteDto>), StatusCodes.Status200OK)]
@@ -211,13 +164,12 @@ public sealed class AdminFundosController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new ListAdminFundoCedenteQuery(page, pageSize, companyId);
-        var result = await _listFundoCedenteHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<AdminRelFundoCedenteDto>>(query, ct);
         return Ok(result);
     }
 
     /// <summary>
-    /// GET /api/admin/fundos/fundo-tipos-ativos — Paginated cross-company list of all FundoTipoAtivo associations (D-21).
-    /// Each item includes ClienteId + EmpresaNome from Fundo→Company join.
+    /// GET /api/admin/fundos/fundo-tipos-ativos — Paginated cross-company FundoTipoAtivo associations.
     /// </summary>
     [HttpGet("fundo-tipos-ativos")]
     [ProducesResponseType(typeof(PaginatedResult<AdminRelFundoTipoAtivoDto>), StatusCodes.Status200OK)]
@@ -228,13 +180,12 @@ public sealed class AdminFundosController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new ListAdminFundoTipoAtivoQuery(page, pageSize, companyId);
-        var result = await _listFundoTipoAtivoHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<AdminRelFundoTipoAtivoDto>>(query, ct);
         return Ok(result);
     }
 
     /// <summary>
-    /// GET /api/admin/fundos/cedente-tipos-ativos — Paginated cross-company list of all CedenteTipoAtivo associations (D-21).
-    /// Each item includes ClienteId + EmpresaNome from Cedente→Company join.
+    /// GET /api/admin/fundos/cedente-tipos-ativos — Paginated cross-company CedenteTipoAtivo associations.
     /// </summary>
     [HttpGet("cedente-tipos-ativos")]
     [ProducesResponseType(typeof(PaginatedResult<AdminRelCedenteTipoAtivoDto>), StatusCodes.Status200OK)]
@@ -245,7 +196,7 @@ public sealed class AdminFundosController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new ListAdminCedenteTipoAtivoQuery(page, pageSize, companyId);
-        var result = await _listCedenteTipoAtivoHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<AdminRelCedenteTipoAtivoDto>>(query, ct);
         return Ok(result);
     }
 }

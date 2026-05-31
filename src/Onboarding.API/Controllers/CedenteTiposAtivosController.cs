@@ -23,38 +23,29 @@ namespace Onboarding.API.Controllers;
 /// GET    /api/cedentes/{cedenteId}/tipos-ativos/{id}             — get by id
 /// PATCH  /api/cedentes/{cedenteId}/tipos-ativos/{id}/limits      — update exposure limits
 /// POST   /api/cedentes/{cedenteId}/tipos-ativos/{id}/status      — transition status (D-22)
+///
+/// D-62: 4 ctor deps (was 8): ICommandDispatcher + IQueryDispatcher + IValidationRunner +
+///       ICurrentCompanyService. Repos used for tenant guards are [FromServices] per action.
 /// </summary>
 [ApiController]
 [Route("api/cedentes/{cedenteId:guid}/tipos-ativos")]
 [Authorize(AuthenticationSchemes = "BearerClient")]
 public sealed class CedenteTiposAtivosController : ControllerBase
 {
-    private readonly ICommandHandler<CreateCedenteTipoAtivoCommand, RelCedenteTipoAtivoDto> _createHandler;
-    private readonly ICommandHandler<UpdateCedenteTipoAtivoLimiteCommand, RelCedenteTipoAtivoDto> _updateLimiteHandler;
-    private readonly ICommandHandler<TransitionCedenteTipoAtivoStatusCommand, RelCedenteTipoAtivoDto> _transitionHandler;
-    private readonly IQueryHandler<GetCedenteTiposAtivosQuery, PaginatedResult<RelCedenteTipoAtivoDto>> _listHandler;
-    private readonly IQueryHandler<GetCedenteTipoAtivoAllowedTransitionsQuery, IReadOnlyList<string>?> _allowedTransitionsHandler;
-    private readonly ICedenteTipoAtivoAggregateRepository _repository;
-    private readonly ICedenteRepository _cedenteRepository;
+    private readonly ICommandDispatcher _commands;
+    private readonly IQueryDispatcher _queries;
+    private readonly IValidationRunner _validation;
     private readonly ICurrentCompanyService _currentCompanyService;
 
     public CedenteTiposAtivosController(
-        ICommandHandler<CreateCedenteTipoAtivoCommand, RelCedenteTipoAtivoDto> createHandler,
-        ICommandHandler<UpdateCedenteTipoAtivoLimiteCommand, RelCedenteTipoAtivoDto> updateLimiteHandler,
-        ICommandHandler<TransitionCedenteTipoAtivoStatusCommand, RelCedenteTipoAtivoDto> transitionHandler,
-        IQueryHandler<GetCedenteTiposAtivosQuery, PaginatedResult<RelCedenteTipoAtivoDto>> listHandler,
-        IQueryHandler<GetCedenteTipoAtivoAllowedTransitionsQuery, IReadOnlyList<string>?> allowedTransitionsHandler,
-        ICedenteTipoAtivoAggregateRepository repository,
-        ICedenteRepository cedenteRepository,
+        ICommandDispatcher commands,
+        IQueryDispatcher queries,
+        IValidationRunner validation,
         ICurrentCompanyService currentCompanyService)
     {
-        _createHandler = createHandler;
-        _updateLimiteHandler = updateLimiteHandler;
-        _transitionHandler = transitionHandler;
-        _listHandler = listHandler;
-        _allowedTransitionsHandler = allowedTransitionsHandler;
-        _repository = repository;
-        _cedenteRepository = cedenteRepository;
+        _commands = commands;
+        _queries = queries;
+        _validation = validation;
         _currentCompanyService = currentCompanyService;
     }
 
@@ -71,13 +62,14 @@ public sealed class CedenteTiposAtivosController : ControllerBase
     public async Task<IActionResult> CreateCedenteTipoAtivo(
         Guid cedenteId,
         [FromBody] CreateCedenteTipoAtivoRequest? request,
+        [FromServices] ICedenteRepository cedenteRepository,
         CancellationToken ct)
     {
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
         // Security: tenant guard — caller must own this Cedente
-        var cedente = await _cedenteRepository.GetByIdAsync(cedenteId, ct);
+        var cedente = await cedenteRepository.GetByIdAsync(cedenteId, ct);
         if (cedente is null || cedente.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
@@ -96,7 +88,7 @@ public sealed class CedenteTiposAtivosController : ControllerBase
 
         try
         {
-            var result = await _createHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<RelCedenteTipoAtivoDto>(command, ct);
             return CreatedAtAction(nameof(GetCedenteTipoAtivoById),
                 new { cedenteId, id = result.Id }, result);
         }
@@ -123,17 +115,18 @@ public sealed class CedenteTiposAtivosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ListCedenteTiposAtivos(
         Guid cedenteId,
+        [FromServices] ICedenteRepository cedenteRepository,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
         // Security: tenant guard — caller must own this Cedente
-        var cedente = await _cedenteRepository.GetByIdAsync(cedenteId, ct);
+        var cedente = await cedenteRepository.GetByIdAsync(cedenteId, ct);
         if (cedente is null || cedente.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
         var query = new GetCedenteTiposAtivosQuery(cedenteId, page, pageSize);
-        var result = await _listHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<RelCedenteTipoAtivoDto>>(query, ct);
         return Ok(result);
     }
 
@@ -145,14 +138,18 @@ public sealed class CedenteTiposAtivosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCedenteTipoAtivoById(
-        Guid cedenteId, Guid id, CancellationToken ct)
+        Guid cedenteId,
+        Guid id,
+        [FromServices] ICedenteRepository cedenteRepository,
+        [FromServices] ICedenteTipoAtivoAggregateRepository repository,
+        CancellationToken ct)
     {
         // Security: tenant guard — caller must own this Cedente
-        var cedente = await _cedenteRepository.GetByIdAsync(cedenteId, ct);
+        var cedente = await cedenteRepository.GetByIdAsync(cedenteId, ct);
         if (cedente is null || cedente.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
-        var association = await _repository.GetByIdAsync(id, ct);
+        var association = await repository.GetByIdAsync(id, ct);
         if (association is null || association.CedenteId != cedenteId)
             return NotFound();
 
@@ -169,15 +166,17 @@ public sealed class CedenteTiposAtivosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
     public async Task<IActionResult> UpdateCedenteTipoAtivoLimits(
-        Guid cedenteId, Guid id,
+        Guid cedenteId,
+        Guid id,
         [FromBody] UpdateRelationshipLimitsRequest? request,
+        [FromServices] ICedenteRepository cedenteRepository,
         CancellationToken ct)
     {
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
         // Security: tenant guard — caller must own this Cedente
-        var cedente = await _cedenteRepository.GetByIdAsync(cedenteId, ct);
+        var cedente = await cedenteRepository.GetByIdAsync(cedenteId, ct);
         if (cedente is null || cedente.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
@@ -193,7 +192,7 @@ public sealed class CedenteTiposAtivosController : ControllerBase
 
         try
         {
-            var result = await _updateLimiteHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<RelCedenteTipoAtivoDto>(command, ct);
             return Ok(result);
         }
         catch (FluentValidation.ValidationException ex)
@@ -219,15 +218,17 @@ public sealed class CedenteTiposAtivosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> TransitionCedenteTipoAtivoStatus(
-        Guid cedenteId, Guid id,
+        Guid cedenteId,
+        Guid id,
         [FromBody] TransitionRelationshipStatusRequest? request,
+        [FromServices] ICedenteRepository cedenteRepository,
         CancellationToken ct)
     {
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
         // Security: tenant guard — caller must own this Cedente
-        var cedente = await _cedenteRepository.GetByIdAsync(cedenteId, ct);
+        var cedente = await cedenteRepository.GetByIdAsync(cedenteId, ct);
         if (cedente is null || cedente.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
@@ -242,7 +243,7 @@ public sealed class CedenteTiposAtivosController : ControllerBase
 
         try
         {
-            var result = await _transitionHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<RelCedenteTipoAtivoDto>(command, ct);
             return Ok(result);
         }
         catch (InvalidStateTransitionException ex)
@@ -257,7 +258,6 @@ public sealed class CedenteTiposAtivosController : ControllerBase
 
     /// <summary>
     /// GET /api/cedentes/{cedenteId}/tipos-ativos/{id}/allowed-transitions — Returns valid next statuses (D-25).
-    /// 200 OK with string[]; 404 if not found or cross-tenant.
     /// </summary>
     [HttpGet("{id:guid}/allowed-transitions")]
     [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.FundRead)]
@@ -269,7 +269,7 @@ public sealed class CedenteTiposAtivosController : ControllerBase
         Guid cedenteId, Guid id, CancellationToken ct)
     {
         var query = new GetCedenteTipoAtivoAllowedTransitionsQuery(cedenteId, id);
-        var result = await _allowedTransitionsHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<IReadOnlyList<string>?>(query, ct);
         if (result is null)
             return NotFound();
         return Ok(result);

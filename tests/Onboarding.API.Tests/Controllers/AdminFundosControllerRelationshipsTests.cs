@@ -11,8 +11,8 @@ using Shouldly;
 namespace Onboarding.API.Tests.Controllers;
 
 /// <summary>
-/// Tests for AdminFundosController Phase 50 relationship aggregate endpoints (T-6, D-21).
-/// Verifies cross-company isolation: handler returns rows from multiple ClientIds (no tenant filter).
+/// Tests for AdminFundosController Phase 50 relationship aggregate endpoints.
+/// Phase 55 refactor: uses IQueryDispatcher (D-62, was 11 ctor deps).
 /// </summary>
 public class AdminFundosControllerRelationshipsTests
 {
@@ -20,16 +20,9 @@ public class AdminFundosControllerRelationshipsTests
     private static readonly Guid CompanyB = Guid.NewGuid();
     private static readonly DateTimeOffset FixedTs = new(2026, 5, 1, 0, 0, 0, TimeSpan.Zero);
 
-    private readonly IQueryHandler<ListAdminFundoCedenteQuery, PaginatedResult<AdminRelFundoCedenteDto>> _fundoCedenteHandler =
-        Substitute.For<IQueryHandler<ListAdminFundoCedenteQuery, PaginatedResult<AdminRelFundoCedenteDto>>>();
-    private readonly IQueryHandler<ListAdminFundoTipoAtivoQuery, PaginatedResult<AdminRelFundoTipoAtivoDto>> _fundoTipoAtivoHandler =
-        Substitute.For<IQueryHandler<ListAdminFundoTipoAtivoQuery, PaginatedResult<AdminRelFundoTipoAtivoDto>>>();
-    private readonly IQueryHandler<ListAdminCedenteTipoAtivoQuery, PaginatedResult<AdminRelCedenteTipoAtivoDto>> _cedenteTipoAtivoHandler =
-        Substitute.For<IQueryHandler<ListAdminCedenteTipoAtivoQuery, PaginatedResult<AdminRelCedenteTipoAtivoDto>>>();
-
+    private readonly IQueryDispatcher _queries = Substitute.For<IQueryDispatcher>();
     private readonly AdminFundosController _sut;
 
-    // Sample DTOs — one from each company to prove cross-company
     private static readonly AdminRelFundoCedenteDto FundoCedenteFromA =
         new(Guid.NewGuid(), CompanyA, "Empresa Alpha", Guid.NewGuid(), "Fundo Alpha",
             Guid.NewGuid(), 50m, null, FixedTs, null, RelationshipStatus.ATIVO, FixedTs);
@@ -48,18 +41,7 @@ public class AdminFundosControllerRelationshipsTests
 
     public AdminFundosControllerRelationshipsTests()
     {
-        _sut = new AdminFundosController(
-            Substitute.For<IQueryHandler<ListAdminFundoQuery, PaginatedResult<AdminFundoDto>>>(),
-            Substitute.For<IQueryHandler<ListAdminConsultoriaQuery, PaginatedResult<AdminConsultoriaFundoDto>>>(),
-            Substitute.For<IQueryHandler<ListAdminCustodianteQuery, PaginatedResult<AdminCustodianteDto>>>(),
-            Substitute.For<IQueryHandler<ListAdminCedenteQuery, PaginatedResult<AdminCedenteDto>>>(),
-            Substitute.For<IQueryHandler<GetAdminFundoByIdQuery, AdminFundoDto?>>(),
-            Substitute.For<IQueryHandler<GetAdminConsultoriaFundoByIdQuery, AdminConsultoriaFundoDto?>>(),
-            Substitute.For<IQueryHandler<GetAdminCustodianteByIdQuery, AdminCustodianteDto?>>(),
-            Substitute.For<IQueryHandler<GetAdminCedenteByIdQuery, AdminCedenteDto?>>(),
-            _fundoCedenteHandler,
-            _fundoTipoAtivoHandler,
-            _cedenteTipoAtivoHandler);
+        _sut = new AdminFundosController(_queries);
 
         _sut.ControllerContext = new ControllerContext
         {
@@ -83,9 +65,7 @@ public class AdminFundosControllerRelationshipsTests
     {
         var crossCompanyResult = new PaginatedResult<AdminRelFundoCedenteDto>(
             [FundoCedenteFromA, FundoCedenteFromB], 2, 1, 20);
-
-        _fundoCedenteHandler
-            .HandleAsync(Arg.Any<ListAdminFundoCedenteQuery>(), Arg.Any<CancellationToken>())
+        _queries.Query<PaginatedResult<AdminRelFundoCedenteDto>>(Arg.Any<ListAdminFundoCedenteQuery>(), Arg.Any<CancellationToken>())
             .Returns(crossCompanyResult);
 
         var result = await _sut.ListFundoCedentes(ct: CancellationToken.None);
@@ -98,24 +78,24 @@ public class AdminFundosControllerRelationshipsTests
     }
 
     [Fact]
-    public async Task ListFundoCedentes_WithCompanyFilter_PassesFilterToHandler()
+    public async Task ListFundoCedentes_WithCompanyFilter_PassesFilterToDispatcher()
     {
-        _fundoCedenteHandler
-            .HandleAsync(Arg.Any<ListAdminFundoCedenteQuery>(), Arg.Any<CancellationToken>())
+        ListAdminFundoCedenteQuery? captured = null;
+        _queries.Query<PaginatedResult<AdminRelFundoCedenteDto>>(
+            Arg.Do<object>(q => captured = q as ListAdminFundoCedenteQuery),
+            Arg.Any<CancellationToken>())
             .Returns(new PaginatedResult<AdminRelFundoCedenteDto>([], 0, 1, 20));
 
         await _sut.ListFundoCedentes(companyId: CompanyA, ct: CancellationToken.None);
 
-        await _fundoCedenteHandler.Received(1).HandleAsync(
-            Arg.Is<ListAdminFundoCedenteQuery>(q => q.CompanyId == CompanyA),
-            Arg.Any<CancellationToken>());
+        captured.ShouldNotBeNull();
+        captured!.CompanyId.ShouldBe(CompanyA);
     }
 
     [Fact]
     public async Task ListFundoCedentes_EmptyResult_Returns200WithEmptyList()
     {
-        _fundoCedenteHandler
-            .HandleAsync(Arg.Any<ListAdminFundoCedenteQuery>(), Arg.Any<CancellationToken>())
+        _queries.Query<PaginatedResult<AdminRelFundoCedenteDto>>(Arg.Any<ListAdminFundoCedenteQuery>(), Arg.Any<CancellationToken>())
             .Returns(new PaginatedResult<AdminRelFundoCedenteDto>([], 0, 1, 20));
 
         var result = await _sut.ListFundoCedentes(ct: CancellationToken.None);
@@ -134,9 +114,7 @@ public class AdminFundosControllerRelationshipsTests
     {
         var crossCompanyResult = new PaginatedResult<AdminRelFundoTipoAtivoDto>(
             [FundoTipoAtivoFromA], 1, 1, 20);
-
-        _fundoTipoAtivoHandler
-            .HandleAsync(Arg.Any<ListAdminFundoTipoAtivoQuery>(), Arg.Any<CancellationToken>())
+        _queries.Query<PaginatedResult<AdminRelFundoTipoAtivoDto>>(Arg.Any<ListAdminFundoTipoAtivoQuery>(), Arg.Any<CancellationToken>())
             .Returns(crossCompanyResult);
 
         var result = await _sut.ListFundoTiposAtivos(ct: CancellationToken.None);
@@ -147,17 +125,18 @@ public class AdminFundosControllerRelationshipsTests
     }
 
     [Fact]
-    public async Task ListFundoTiposAtivos_WithCompanyFilter_PassesFilterToHandler()
+    public async Task ListFundoTiposAtivos_WithCompanyFilter_PassesFilterToDispatcher()
     {
-        _fundoTipoAtivoHandler
-            .HandleAsync(Arg.Any<ListAdminFundoTipoAtivoQuery>(), Arg.Any<CancellationToken>())
+        ListAdminFundoTipoAtivoQuery? captured = null;
+        _queries.Query<PaginatedResult<AdminRelFundoTipoAtivoDto>>(
+            Arg.Do<object>(q => captured = q as ListAdminFundoTipoAtivoQuery),
+            Arg.Any<CancellationToken>())
             .Returns(new PaginatedResult<AdminRelFundoTipoAtivoDto>([], 0, 1, 20));
 
         await _sut.ListFundoTiposAtivos(companyId: CompanyB, ct: CancellationToken.None);
 
-        await _fundoTipoAtivoHandler.Received(1).HandleAsync(
-            Arg.Is<ListAdminFundoTipoAtivoQuery>(q => q.CompanyId == CompanyB),
-            Arg.Any<CancellationToken>());
+        captured.ShouldNotBeNull();
+        captured!.CompanyId.ShouldBe(CompanyB);
     }
 
     // =========================================================================
@@ -169,9 +148,7 @@ public class AdminFundosControllerRelationshipsTests
     {
         var crossCompanyResult = new PaginatedResult<AdminRelCedenteTipoAtivoDto>(
             [CedenteTipoAtivoFromB], 1, 1, 20);
-
-        _cedenteTipoAtivoHandler
-            .HandleAsync(Arg.Any<ListAdminCedenteTipoAtivoQuery>(), Arg.Any<CancellationToken>())
+        _queries.Query<PaginatedResult<AdminRelCedenteTipoAtivoDto>>(Arg.Any<ListAdminCedenteTipoAtivoQuery>(), Arg.Any<CancellationToken>())
             .Returns(crossCompanyResult);
 
         var result = await _sut.ListCedenteTiposAtivos(ct: CancellationToken.None);
@@ -182,16 +159,17 @@ public class AdminFundosControllerRelationshipsTests
     }
 
     [Fact]
-    public async Task ListCedenteTiposAtivos_WithCompanyFilter_PassesFilterToHandler()
+    public async Task ListCedenteTiposAtivos_WithCompanyFilter_PassesFilterToDispatcher()
     {
-        _cedenteTipoAtivoHandler
-            .HandleAsync(Arg.Any<ListAdminCedenteTipoAtivoQuery>(), Arg.Any<CancellationToken>())
+        ListAdminCedenteTipoAtivoQuery? captured = null;
+        _queries.Query<PaginatedResult<AdminRelCedenteTipoAtivoDto>>(
+            Arg.Do<object>(q => captured = q as ListAdminCedenteTipoAtivoQuery),
+            Arg.Any<CancellationToken>())
             .Returns(new PaginatedResult<AdminRelCedenteTipoAtivoDto>([], 0, 1, 20));
 
         await _sut.ListCedenteTiposAtivos(companyId: CompanyA, ct: CancellationToken.None);
 
-        await _cedenteTipoAtivoHandler.Received(1).HandleAsync(
-            Arg.Is<ListAdminCedenteTipoAtivoQuery>(q => q.CompanyId == CompanyA),
-            Arg.Any<CancellationToken>());
+        captured.ShouldNotBeNull();
+        captured!.CompanyId.ShouldBe(CompanyA);
     }
 }

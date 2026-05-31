@@ -1,4 +1,3 @@
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Onboarding.API.Extensions;
@@ -11,6 +10,7 @@ using Onboarding.Domain.Aggregates.CompanyAggregate;
 using Onboarding.Domain.Aggregates.EmployeeAggregate;
 using Onboarding.Domain.Exceptions;
 using Onboarding.Domain.Repositories;
+using CompaniesDeleteEmployeeCommand = Onboarding.Application.Companies.Commands.DeleteEmployeeCommand;
 
 namespace Onboarding.API.Controllers;
 
@@ -20,64 +20,30 @@ namespace Onboarding.API.Controllers;
 /// POST /api/companies/registration — REG-01: PJ company registration with Keycloak user creation.
 /// POST /api/companies/{companyId}/employees — REG-03: PJ registers employee (PF) with temp password.
 /// GET /api/companies/{companyId}/employees — MGMT-02: PJ lists employees with pagination/filters.
+/// D-62: 5 ctor deps (was 17): ICommandDispatcher + IQueryDispatcher + IValidationRunner
+///       + ICurrentCompanyService + ILogger. Repos used only in specific actions are [FromServices].
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public sealed class CompaniesController : ControllerBase
 {
-    private readonly ICompanyRepository _repository;
-    private readonly ICommandHandler<RegisterCompanyCommand, RegisterCompanyResult> _registerHandler;
-    private readonly IValidator<RegisterCompanyCommand> _registerValidator;
-    private readonly ICommandHandler<RegisterEmployeeCommand, RegisterEmployeeResult> _registerEmployeeHandler;
-    private readonly IValidator<RegisterEmployeeCommand> _registerEmployeeValidator;
-    private readonly IQueryHandler<GetCompanyEmployeesQuery, PaginatedResult<EmployeeListItemDto>> _getEmployeesHandler;
-    private readonly ICommandHandler<ToggleEmployeeStatusCommand, Unit> _toggleStatusHandler;
-    private readonly ICommandHandler<ResetEmployeePasswordCommand, ResetEmployeePasswordResult> _resetPasswordHandler;
-    private readonly ICommandHandler<UpdateEmployeeCommand, Unit> _updateEmployeeHandler;
-    private readonly ICommandHandler<DeleteEmployeeCommand, Unit> _deleteEmployeeHandler;
-    private readonly ICommandHandler<ChangeEmployeeAccessGroupCommand, Unit> _changeAccessGroupHandler;
-    private readonly ICommandHandler<CreateAccessGroupCommand, AccessGroupDto> _createAccessGroupHandler;
-    private readonly ICommandHandler<UpdateAccessGroupCommand, AccessGroupDto> _updateAccessGroupHandler;
-    private readonly ICommandHandler<DeleteAccessGroupCommand, Unit> _deleteAccessGroupHandler;
+    private readonly ICommandDispatcher _commands;
+    private readonly IQueryDispatcher _queries;
+    private readonly IValidationRunner _validation;
     private readonly ICurrentCompanyService _currentCompanyService;
-    private readonly IAccessGroupRepository _accessGroupRepository;
     private readonly ILogger<CompaniesController> _logger;
 
     public CompaniesController(
-        ICompanyRepository repository,
-        ICommandHandler<RegisterCompanyCommand, RegisterCompanyResult> registerHandler,
-        IValidator<RegisterCompanyCommand> registerValidator,
-        ICommandHandler<RegisterEmployeeCommand, RegisterEmployeeResult> registerEmployeeHandler,
-        IValidator<RegisterEmployeeCommand> registerEmployeeValidator,
-        IQueryHandler<GetCompanyEmployeesQuery, PaginatedResult<EmployeeListItemDto>> getEmployeesHandler,
-        ICommandHandler<ToggleEmployeeStatusCommand, Unit> toggleStatusHandler,
-        ICommandHandler<ResetEmployeePasswordCommand, ResetEmployeePasswordResult> resetPasswordHandler,
-        ICommandHandler<UpdateEmployeeCommand, Unit> updateEmployeeHandler,
-        ICommandHandler<DeleteEmployeeCommand, Unit> deleteEmployeeHandler,
-        ICommandHandler<ChangeEmployeeAccessGroupCommand, Unit> changeAccessGroupHandler,
-        ICommandHandler<CreateAccessGroupCommand, AccessGroupDto> createAccessGroupHandler,
-        ICommandHandler<UpdateAccessGroupCommand, AccessGroupDto> updateAccessGroupHandler,
-        ICommandHandler<DeleteAccessGroupCommand, Unit> deleteAccessGroupHandler,
+        ICommandDispatcher commands,
+        IQueryDispatcher queries,
+        IValidationRunner validation,
         ICurrentCompanyService currentCompanyService,
-        IAccessGroupRepository accessGroupRepository,
         ILogger<CompaniesController> logger)
     {
-        _repository = repository;
-        _registerHandler = registerHandler;
-        _registerValidator = registerValidator;
-        _registerEmployeeHandler = registerEmployeeHandler;
-        _registerEmployeeValidator = registerEmployeeValidator;
-        _getEmployeesHandler = getEmployeesHandler;
-        _toggleStatusHandler = toggleStatusHandler;
-        _resetPasswordHandler = resetPasswordHandler;
-        _updateEmployeeHandler = updateEmployeeHandler;
-        _deleteEmployeeHandler = deleteEmployeeHandler;
-        _changeAccessGroupHandler = changeAccessGroupHandler;
-        _createAccessGroupHandler = createAccessGroupHandler;
-        _updateAccessGroupHandler = updateAccessGroupHandler;
-        _deleteAccessGroupHandler = deleteAccessGroupHandler;
+        _commands = commands;
+        _queries = queries;
+        _validation = validation;
         _currentCompanyService = currentCompanyService;
-        _accessGroupRepository = accessGroupRepository;
         _logger = logger;
     }
 
@@ -91,7 +57,9 @@ public sealed class CompaniesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetMe(CancellationToken ct)
+    public async Task<IActionResult> GetMe(
+        [FromServices] ICompanyRepository repository,
+        CancellationToken ct)
     {
         var keycloakSub = User.FindFirst("sub")?.Value;
         if (string.IsNullOrEmpty(keycloakSub))
@@ -101,14 +69,14 @@ public sealed class CompaniesController : ControllerBase
         }
 
         // Try PJ owner lookup first (sub matches Company.KeycloakUserId)
-        var company = await _repository.GetByKeycloakSubAsync(keycloakSub, ct);
+        var company = await repository.GetByKeycloakSubAsync(keycloakSub, ct);
         if (company is not null) return Ok(MapToDto(company));
 
         // PF employee: ClientClaimsMiddleware already resolved CompanyId from employee lookup
         var companyId = _currentCompanyService.CompanyId;
         if (companyId != Guid.Empty)
         {
-            company = await _repository.GetByIdAsync(companyId, ct);
+            company = await repository.GetByIdAsync(companyId, ct);
             if (company is not null) return Ok(MapToDto(company));
         }
 
@@ -146,13 +114,13 @@ public sealed class CompaniesController : ControllerBase
             IpAddress: ipAddress);
 
         // Validate
-        var validation = await _registerValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(validation.ToValidationProblem());
 
         try
         {
-            var result = await _registerHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<RegisterCompanyResult>(command, ct);
             return CreatedAtAction(nameof(GetMe), null, result);
         }
         catch (DuplicateCompanyException ex)
@@ -214,13 +182,13 @@ public sealed class CompaniesController : ControllerBase
             ActorEmail: actorEmail,
             IpAddress: ipAddress);
 
-        var validation = await _registerEmployeeValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(validation.ToValidationProblem());
 
         try
         {
-            var result = await _registerEmployeeHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<RegisterEmployeeResult>(command, ct);
             return CreatedAtAction(nameof(GetMe), new { companyId }, result);
         }
         catch (BadRequestException ex)
@@ -259,7 +227,7 @@ public sealed class CompaniesController : ControllerBase
             return Forbid();
 
         var query = new GetCompanyEmployeesQuery(companyId, page, pageSize, search, status);
-        var result = await _getEmployeesHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<EmployeeListItemDto>>(query, ct);
         return Ok(result);
     }
 
@@ -282,7 +250,7 @@ public sealed class CompaniesController : ControllerBase
 
         try
         {
-            await _toggleStatusHandler.HandleAsync(command, ct);
+            await _commands.Send<Unit>(command, ct);
             return Ok();
         }
         catch (KeyNotFoundException)
@@ -310,7 +278,7 @@ public sealed class CompaniesController : ControllerBase
 
         try
         {
-            var result = await _resetPasswordHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<ResetEmployeePasswordResult>(command, ct);
             return Ok(result);
         }
         catch (KeyNotFoundException)
@@ -338,7 +306,7 @@ public sealed class CompaniesController : ControllerBase
 
         try
         {
-            await _updateEmployeeHandler.HandleAsync(command, ct);
+            await _commands.Send<Unit>(command, ct);
             return Ok();
         }
         catch (KeyNotFoundException)
@@ -362,11 +330,11 @@ public sealed class CompaniesController : ControllerBase
         var (actorSub, actorEmail) = GetActorContext();
         var ipAddress = ResolveClientIpAddress();
 
-        var command = new DeleteEmployeeCommand(id, companyId, actorSub, actorEmail, ipAddress);
+        var command = new CompaniesDeleteEmployeeCommand(id, companyId, actorSub, actorEmail, ipAddress);
 
         try
         {
-            await _deleteEmployeeHandler.HandleAsync(command, ct);
+            await _commands.Send<Unit>(command, ct);
             return Ok();
         }
         catch (KeyNotFoundException)
@@ -394,7 +362,7 @@ public sealed class CompaniesController : ControllerBase
 
         try
         {
-            await _changeAccessGroupHandler.HandleAsync(command, ct);
+            await _commands.Send<Unit>(command, ct);
             return Ok();
         }
         catch (KeyNotFoundException)
@@ -408,12 +376,15 @@ public sealed class CompaniesController : ControllerBase
     [Authorize(AuthenticationSchemes = "BearerClient", Policy = PermissionPolicies.EmployeeRead)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> GetAccessGroups(Guid companyId, CancellationToken ct)
+    public async Task<IActionResult> GetAccessGroups(
+        Guid companyId,
+        [FromServices] IAccessGroupRepository accessGroupRepository,
+        CancellationToken ct)
     {
         if (companyId != _currentCompanyService.CompanyId)
             return Forbid();
 
-        var groups = await _accessGroupRepository.GetByCompanyIdAsync(companyId, ct);
+        var groups = await accessGroupRepository.GetByCompanyIdAsync(companyId, ct);
         var dtos = groups.Select(g => new AccessGroupDto(g.Id, g.Name, (IReadOnlyList<string>)g.Permissions, g.IsDefault)).ToList();
         return Ok(dtos);
     }
@@ -436,7 +407,7 @@ public sealed class CompaniesController : ControllerBase
 
         try
         {
-            var result = await _createAccessGroupHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<AccessGroupDto>(command, ct);
             return CreatedAtAction(nameof(GetAccessGroups), new { companyId }, result);
         }
         catch (BadRequestException ex)
@@ -468,7 +439,7 @@ public sealed class CompaniesController : ControllerBase
 
         try
         {
-            var result = await _updateAccessGroupHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<AccessGroupDto>(command, ct);
             return Ok(result);
         }
         catch (BadRequestException ex)
@@ -500,7 +471,7 @@ public sealed class CompaniesController : ControllerBase
 
         try
         {
-            await _deleteAccessGroupHandler.HandleAsync(command, ct);
+            await _commands.Send<Unit>(command, ct);
             return NoContent();
         }
         catch (BadRequestException ex)

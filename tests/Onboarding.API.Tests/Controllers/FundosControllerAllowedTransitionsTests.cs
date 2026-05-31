@@ -1,6 +1,6 @@
 using System.Reflection;
 using System.Security.Claims;
-using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -8,19 +8,12 @@ using NSubstitute;
 using Onboarding.API.Controllers;
 using Onboarding.API.Security;
 using Onboarding.Application.Common;
-using Onboarding.Application.Fundos.Commands;
 using Onboarding.Application.Fundos.DTOs;
-using Onboarding.Application.Fundos.Queries;
 using Onboarding.Application.Fundos.Queries.GetCedenteTipoAtivoAllowedTransitions;
 using Onboarding.Application.Fundos.Queries.GetFundoCedenteAllowedTransitions;
 using Onboarding.Application.Fundos.Queries.GetFundoAllowedTransitions;
 using Onboarding.Application.Fundos.Queries.GetFundoTipoAtivoAllowedTransitions;
-using Onboarding.Domain.Aggregates.CedenteAggregate;
-using Onboarding.Domain.Aggregates.ConsultoriaFundoAggregate;
-using Onboarding.Domain.Aggregates.CustodianteAggregate;
 using Onboarding.Domain.Aggregates.FundoCedenteAggregate;
-using Onboarding.Domain.Aggregates.FundoAggregate;
-using Onboarding.Domain.Aggregates.TipoAtivoAggregate;
 using Onboarding.Domain.Repositories;
 using Shouldly;
 
@@ -211,45 +204,26 @@ public class FundosControllerAllowedTransitionsTests
     {
         var company = Substitute.For<ICurrentCompanyService>();
         company.CompanyId.Returns(Guid.NewGuid());
+
+        // D-60/D-62: 4-dep ctor (dispatchers + company service)
+        var queries = Substitute.For<IQueryDispatcher>();
+
+        if (allowedTransitionsHandler != null)
+        {
+            queries.Query<IReadOnlyList<string>?>(Arg.Any<GetFundoAllowedTransitionsQuery>(), Arg.Any<CancellationToken>())
+                .Returns(ci => allowedTransitionsHandler.HandleAsync(
+                    ci.ArgAt<GetFundoAllowedTransitionsQuery>(0), ci.ArgAt<CancellationToken>(1)));
+        }
+
+        var validation = Substitute.For<IValidationRunner>();
+        validation.Validate(Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(new ValidationResult());
+
         var ctrl = new FundosController(
-            Substitute.For<ICommandHandler<RegisterConsultoriaFundoCommand, ConsultoriaFundoDto>>(),
-            Substitute.For<IValidator<RegisterConsultoriaFundoCommand>>(),
-            Substitute.For<ICommandHandler<UpdateConsultoriaFundoCommand, ConsultoriaFundoDto>>(),
-            Substitute.For<IValidator<UpdateConsultoriaFundoCommand>>(),
-            Substitute.For<IQueryHandler<ListConsultoriaFundoQuery, PaginatedResult<ConsultoriaFundoDto>>>(),
-            Substitute.For<IConsultoriaFundoRepository>(),
-            Substitute.For<ICommandHandler<RegisterCustodianteCommand, CustodianteDto>>(),
-            Substitute.For<IValidator<RegisterCustodianteCommand>>(),
-            Substitute.For<ICommandHandler<UpdateCustodianteCommand, CustodianteDto>>(),
-            Substitute.For<IValidator<UpdateCustodianteCommand>>(),
-            Substitute.For<IQueryHandler<ListCustodianteQuery, PaginatedResult<CustodianteDto>>>(),
-            Substitute.For<ICustodianteRepository>(),
-            Substitute.For<ICommandHandler<CreateTipoAtivoCommand, TipoAtivoDto>>(),
-            Substitute.For<IValidator<CreateTipoAtivoCommand>>(),
-            Substitute.For<ICommandHandler<UpdateTipoAtivoCommand, TipoAtivoDto>>(),
-            Substitute.For<IValidator<UpdateTipoAtivoCommand>>(),
-            Substitute.For<IQueryHandler<ListTipoAtivoQuery, PaginatedResult<TipoAtivoDto>>>(),
-            Substitute.For<ITipoAtivoRepository>(),
-            Substitute.For<ICommandHandler<RegisterFundoCommand, FundoDto>>(),
-            Substitute.For<IValidator<RegisterFundoCommand>>(),
-            Substitute.For<ICommandHandler<UpdateFundoCommand, FundoDto>>(),
-            Substitute.For<IValidator<UpdateFundoCommand>>(),
-            Substitute.For<ICommandHandler<TransitionFundoStatusCommand, FundoDto>>(),
-            Substitute.For<IValidator<TransitionFundoStatusCommand>>(),
-            Substitute.For<IQueryHandler<ListFundoQuery, PaginatedResult<FundoDto>>>(),
-            Substitute.For<IFundoRepository>(),
-            Substitute.For<ICommandHandler<RegisterCedentePfCommand, CedenteDto>>(),
-            Substitute.For<IValidator<RegisterCedentePfCommand>>(),
-            Substitute.For<ICommandHandler<RegisterCedentePjCommand, CedenteDto>>(),
-            Substitute.For<IValidator<RegisterCedentePjCommand>>(),
-            Substitute.For<ICommandHandler<UpdateCedenteCommand, CedenteDto>>(),
-            Substitute.For<IValidator<UpdateCedenteCommand>>(),
-            Substitute.For<IQueryHandler<ListCedenteQuery, PaginatedResult<CedenteDto>>>(),
-            Substitute.For<ICedenteRepository>(),
-            allowedTransitionsHandler ??
-                Substitute.For<IQueryHandler<GetFundoAllowedTransitionsQuery, IReadOnlyList<string>?>>(),
-            company,
-            Substitute.For<ILogger<FundosController>>());
+            Substitute.For<ICommandDispatcher>(),
+            queries,
+            validation,
+            company);
 
         ctrl.ControllerContext = MakeControllerContext();
         return ctrl;

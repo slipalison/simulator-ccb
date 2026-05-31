@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -20,51 +19,27 @@ using Shouldly;
 namespace Onboarding.API.Tests.Controllers;
 
 /// <summary>
-/// Unit tests for CompaniesController — covers all endpoints:
-/// GET /me, POST /registration, POST/GET/PUT/DELETE employees,
-/// POST/GET/PUT/DELETE access-groups, toggle-status, reset-password, change-access-group.
-///
-/// Strategy: direct controller instantiation with mocked dependencies (no WebApplicationFactory).
-/// HTTP context is set via ControllerContext with a fake ClaimsPrincipal for auth-required paths.
-/// Company isolation (companyId mismatch → 403) tested on every guarded endpoint.
+/// Unit tests for CompaniesController — covers all endpoints.
+/// Refactored for Phase 55 (D-60..D-63): controller now uses ICommandDispatcher / IQueryDispatcher /
+/// IValidationRunner / ICurrentCompanyService. Repos used in specific actions are [FromServices] and
+/// passed directly in test method calls (GetMe: ICompanyRepository, GetAccessGroups: IAccessGroupRepository).
 /// </summary>
 [Trait("Category", "Unit")]
 public sealed class CompaniesControllerTests
 {
     // =========================================================================
-    // Mocks
+    // Dispatcher + validation mocks
     // =========================================================================
 
-    private readonly ICompanyRepository _companyRepo = Substitute.For<ICompanyRepository>();
-    private readonly ICommandHandler<RegisterCompanyCommand, RegisterCompanyResult> _registerCompanyHandler =
-        Substitute.For<ICommandHandler<RegisterCompanyCommand, RegisterCompanyResult>>();
-    private readonly IValidator<RegisterCompanyCommand> _registerCompanyValidator =
-        Substitute.For<IValidator<RegisterCompanyCommand>>();
-    private readonly ICommandHandler<RegisterEmployeeCommand, RegisterEmployeeResult> _registerEmployeeHandler =
-        Substitute.For<ICommandHandler<RegisterEmployeeCommand, RegisterEmployeeResult>>();
-    private readonly IValidator<RegisterEmployeeCommand> _registerEmployeeValidator =
-        Substitute.For<IValidator<RegisterEmployeeCommand>>();
-    private readonly IQueryHandler<GetCompanyEmployeesQuery, PaginatedResult<EmployeeListItemDto>> _getEmployeesHandler =
-        Substitute.For<IQueryHandler<GetCompanyEmployeesQuery, PaginatedResult<EmployeeListItemDto>>>();
-    private readonly ICommandHandler<ToggleEmployeeStatusCommand, Unit> _toggleStatusHandler =
-        Substitute.For<ICommandHandler<ToggleEmployeeStatusCommand, Unit>>();
-    private readonly ICommandHandler<ResetEmployeePasswordCommand, ResetEmployeePasswordResult> _resetPasswordHandler =
-        Substitute.For<ICommandHandler<ResetEmployeePasswordCommand, ResetEmployeePasswordResult>>();
-    private readonly ICommandHandler<UpdateEmployeeCommand, Unit> _updateEmployeeHandler =
-        Substitute.For<ICommandHandler<UpdateEmployeeCommand, Unit>>();
-    private readonly ICommandHandler<DeleteEmployeeCommand, Unit> _deleteEmployeeHandler =
-        Substitute.For<ICommandHandler<DeleteEmployeeCommand, Unit>>();
-    private readonly ICommandHandler<ChangeEmployeeAccessGroupCommand, Unit> _changeAccessGroupHandler =
-        Substitute.For<ICommandHandler<ChangeEmployeeAccessGroupCommand, Unit>>();
-    private readonly ICommandHandler<CreateAccessGroupCommand, AccessGroupDto> _createAccessGroupHandler =
-        Substitute.For<ICommandHandler<CreateAccessGroupCommand, AccessGroupDto>>();
-    private readonly ICommandHandler<UpdateAccessGroupCommand, AccessGroupDto> _updateAccessGroupHandler =
-        Substitute.For<ICommandHandler<UpdateAccessGroupCommand, AccessGroupDto>>();
-    private readonly ICommandHandler<DeleteAccessGroupCommand, Unit> _deleteAccessGroupHandler =
-        Substitute.For<ICommandHandler<DeleteAccessGroupCommand, Unit>>();
+    private readonly ICommandDispatcher _commands = Substitute.For<ICommandDispatcher>();
+    private readonly IQueryDispatcher _queries = Substitute.For<IQueryDispatcher>();
+    private readonly IValidationRunner _validation = Substitute.For<IValidationRunner>();
     private readonly ICurrentCompanyService _currentCompanyService = Substitute.For<ICurrentCompanyService>();
-    private readonly IAccessGroupRepository _accessGroupRepo = Substitute.For<IAccessGroupRepository>();
     private readonly ILogger<CompaniesController> _logger = Substitute.For<ILogger<CompaniesController>>();
+
+    // Per-repo mocks — passed directly to [FromServices] actions
+    private readonly ICompanyRepository _companyRepo = Substitute.For<ICompanyRepository>();
+    private readonly IAccessGroupRepository _accessGroupRepo = Substitute.For<IAccessGroupRepository>();
 
     private static readonly Guid CompanyId = Guid.Parse("aaaaaaaa-0000-0000-0000-000000000001");
     private const string ActorSub = "actor-sub-001";
@@ -78,23 +53,15 @@ public sealed class CompaniesControllerTests
     {
         _currentCompanyService.CompanyId.Returns(currentCompanyId ?? CompanyId);
 
+        // Default: validation passes
+        _validation.Validate(Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(new ValidationResult());
+
         var controller = new CompaniesController(
-            _companyRepo,
-            _registerCompanyHandler,
-            _registerCompanyValidator,
-            _registerEmployeeHandler,
-            _registerEmployeeValidator,
-            _getEmployeesHandler,
-            _toggleStatusHandler,
-            _resetPasswordHandler,
-            _updateEmployeeHandler,
-            _deleteEmployeeHandler,
-            _changeAccessGroupHandler,
-            _createAccessGroupHandler,
-            _updateAccessGroupHandler,
-            _deleteAccessGroupHandler,
+            _commands,
+            _queries,
+            _validation,
             _currentCompanyService,
-            _accessGroupRepo,
             _logger);
 
         var claims = new List<Claim>();
@@ -132,7 +99,7 @@ public sealed class CompaniesControllerTests
             .Returns(company);
 
         // Act
-        var result = await sut.GetMe(CancellationToken.None);
+        var result = await sut.GetMe(_companyRepo, CancellationToken.None);
 
         // Assert
         var ok = result.ShouldBeOfType<OkObjectResult>();
@@ -153,7 +120,7 @@ public sealed class CompaniesControllerTests
             .Returns(company);
 
         // Act
-        var result = await sut.GetMe(CancellationToken.None);
+        var result = await sut.GetMe(_companyRepo, CancellationToken.None);
 
         // Assert
         result.ShouldBeOfType<OkObjectResult>().StatusCode.ShouldBe(200);
@@ -168,7 +135,7 @@ public sealed class CompaniesControllerTests
             .Returns((Company?)null);
 
         // Act
-        var result = await sut.GetMe(CancellationToken.None);
+        var result = await sut.GetMe(_companyRepo, CancellationToken.None);
 
         // Assert
         result.ShouldBeOfType<NotFoundResult>();
@@ -181,7 +148,7 @@ public sealed class CompaniesControllerTests
         var sut = BuildSut(includeAuthClaims: false);
 
         // Act
-        var result = await sut.GetMe(CancellationToken.None);
+        var result = await sut.GetMe(_companyRepo, CancellationToken.None);
 
         // Assert
         result.ShouldBeOfType<UnauthorizedResult>();
@@ -198,7 +165,7 @@ public sealed class CompaniesControllerTests
             .Returns((Company?)null);
 
         // Act
-        var result = await sut.GetMe(CancellationToken.None);
+        var result = await sut.GetMe(_companyRepo, CancellationToken.None);
 
         // Assert
         result.ShouldBeOfType<NotFoundResult>();
@@ -227,8 +194,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _registerCompanyValidator
-            .ValidateAsync(Arg.Any<RegisterCompanyCommand>(), Arg.Any<CancellationToken>())
+        _validation.Validate(Arg.Any<RegisterCompanyCommand>(), Arg.Any<CancellationToken>())
             .Returns(FailValidation("RazaoSocial", "Required"));
 
         var request = new RegisterCompanyRequest("", "", "", "", "", false);
@@ -245,11 +211,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _registerCompanyValidator
-            .ValidateAsync(Arg.Any<RegisterCompanyCommand>(), Arg.Any<CancellationToken>())
-            .Returns(PassValidation());
-        _registerCompanyHandler
-            .HandleAsync(Arg.Any<RegisterCompanyCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RegisterCompanyResult>(Arg.Any<RegisterCompanyCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new DuplicateCompanyException("CNPJ already registered."));
 
         var request = new RegisterCompanyRequest("Empresa X", "11222333000181", "e@test.com", "11999999999", "S3cr3t!", true);
@@ -266,11 +228,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _registerCompanyValidator
-            .ValidateAsync(Arg.Any<RegisterCompanyCommand>(), Arg.Any<CancellationToken>())
-            .Returns(PassValidation());
-        _registerCompanyHandler
-            .HandleAsync(Arg.Any<RegisterCompanyCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RegisterCompanyResult>(Arg.Any<RegisterCompanyCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new DuplicateKeycloakUserException("Email already in use."));
 
         var request = new RegisterCompanyRequest("Empresa X", "11222333000181", "e@test.com", "11999999999", "S3cr3t!", true);
@@ -287,12 +245,8 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _registerCompanyValidator
-            .ValidateAsync(Arg.Any<RegisterCompanyCommand>(), Arg.Any<CancellationToken>())
-            .Returns(PassValidation());
         var registrationResult = new RegisterCompanyResult(Guid.NewGuid(), "kc-user-001");
-        _registerCompanyHandler
-            .HandleAsync(Arg.Any<RegisterCompanyCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RegisterCompanyResult>(Arg.Any<RegisterCompanyCommand>(), Arg.Any<CancellationToken>())
             .Returns(registrationResult);
 
         var request = new RegisterCompanyRequest("Empresa X", "11222333000181", "e@test.com", "11999999999", "S3cr3t!", true);
@@ -310,16 +264,12 @@ public sealed class CompaniesControllerTests
         // Arrange — exercise the X-Forwarded-For header path in ResolveClientIpAddress
         var sut = BuildSut();
         sut.ControllerContext.HttpContext.Request.Headers["X-Forwarded-For"] = "192.168.1.1, 10.0.0.1";
-        _registerCompanyValidator
-            .ValidateAsync(Arg.Any<RegisterCompanyCommand>(), Arg.Any<CancellationToken>())
-            .Returns(PassValidation());
-        _registerCompanyHandler
-            .HandleAsync(Arg.Any<RegisterCompanyCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RegisterCompanyResult>(Arg.Any<RegisterCompanyCommand>(), Arg.Any<CancellationToken>())
             .Returns(new RegisterCompanyResult(Guid.NewGuid(), "kc-002"));
 
         var request = new RegisterCompanyRequest("Empresa Y", "22333444000195", "y@test.com", "11988888888", "S3cr3t!", true);
 
-        // Act — verifies no exception is thrown and 201 is returned
+        // Act
         var result = await sut.RegisterCompany(request, CancellationToken.None);
 
         result.ShouldBeOfType<CreatedAtActionResult>().StatusCode.ShouldBe(201);
@@ -332,7 +282,7 @@ public sealed class CompaniesControllerTests
     [Fact]
     public async Task RegisterEmployee_WhenCompanyIdMismatch_Returns403()
     {
-        // Arrange — route companyId differs from currentCompanyService.CompanyId
+        // Arrange
         var sut = BuildSut();
         var differentCompanyId = Guid.NewGuid();
 
@@ -361,8 +311,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _registerEmployeeValidator
-            .ValidateAsync(Arg.Any<RegisterEmployeeCommand>(), Arg.Any<CancellationToken>())
+        _validation.Validate(Arg.Any<RegisterEmployeeCommand>(), Arg.Any<CancellationToken>())
             .Returns(FailValidation("Cpf", "Invalid"));
 
         var request = new RegisterEmployeeRequest("", "", "", "", null);
@@ -379,11 +328,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _registerEmployeeValidator
-            .ValidateAsync(Arg.Any<RegisterEmployeeCommand>(), Arg.Any<CancellationToken>())
-            .Returns(PassValidation());
-        _registerEmployeeHandler
-            .HandleAsync(Arg.Any<RegisterEmployeeCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RegisterEmployeeResult>(Arg.Any<RegisterEmployeeCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new BadRequestException("Access group not found."));
 
         var request = new RegisterEmployeeRequest("João", "12345678909", "jo@test.com", "11999999999", Guid.NewGuid());
@@ -400,11 +345,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _registerEmployeeValidator
-            .ValidateAsync(Arg.Any<RegisterEmployeeCommand>(), Arg.Any<CancellationToken>())
-            .Returns(PassValidation());
-        _registerEmployeeHandler
-            .HandleAsync(Arg.Any<RegisterEmployeeCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RegisterEmployeeResult>(Arg.Any<RegisterEmployeeCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new DuplicateKeycloakUserException("Email in use."));
 
         var request = new RegisterEmployeeRequest("João", "12345678909", "jo@test.com", "11999999999", null);
@@ -421,11 +362,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _registerEmployeeValidator
-            .ValidateAsync(Arg.Any<RegisterEmployeeCommand>(), Arg.Any<CancellationToken>())
-            .Returns(PassValidation());
-        _registerEmployeeHandler
-            .HandleAsync(Arg.Any<RegisterEmployeeCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<RegisterEmployeeResult>(Arg.Any<RegisterEmployeeCommand>(), Arg.Any<CancellationToken>())
             .Returns(new RegisterEmployeeResult(Guid.NewGuid(), "Temp@1234"));
 
         var request = new RegisterEmployeeRequest("João", "12345678909", "jo@test.com", "11999999999", null);
@@ -460,8 +397,7 @@ public sealed class CompaniesControllerTests
         // Arrange
         var sut = BuildSut();
         var paged = new PaginatedResult<EmployeeListItemDto>([], 0, 1, 20);
-        _getEmployeesHandler
-            .HandleAsync(Arg.Any<GetCompanyEmployeesQuery>(), Arg.Any<CancellationToken>())
+        _queries.Query<PaginatedResult<EmployeeListItemDto>>(Arg.Any<GetCompanyEmployeesQuery>(), Arg.Any<CancellationToken>())
             .Returns(paged);
 
         // Act
@@ -476,21 +412,27 @@ public sealed class CompaniesControllerTests
     [Fact]
     public async Task GetEmployees_WhenSuccessWithSearchAndStatus_Returns200()
     {
-        // Arrange — exercise optional query params path
+        // Arrange
         var sut = BuildSut();
-        _getEmployeesHandler
-            .HandleAsync(Arg.Any<GetCompanyEmployeesQuery>(), Arg.Any<CancellationToken>())
+        _queries.Query<PaginatedResult<EmployeeListItemDto>>(Arg.Any<GetCompanyEmployeesQuery>(), Arg.Any<CancellationToken>())
             .Returns(new PaginatedResult<EmployeeListItemDto>([], 0, 1, 20));
+
+        GetCompanyEmployeesQuery? captured = null;
+        _queries.Query<PaginatedResult<EmployeeListItemDto>>(
+            Arg.Do<object>(q => captured = q as GetCompanyEmployeesQuery),
+            Arg.Any<CancellationToken>())
+            .Returns(new PaginatedResult<EmployeeListItemDto>([], 0, 2, 10));
 
         // Act
         var result = await sut.GetEmployees(CompanyId, page: 2, pageSize: 10, search: "João", status: "active", ct: CancellationToken.None);
 
         // Assert
         result.ShouldBeOfType<OkObjectResult>().StatusCode.ShouldBe(200);
-        await _getEmployeesHandler.Received(1)
-            .HandleAsync(Arg.Is<GetCompanyEmployeesQuery>(q =>
-                q.Page == 2 && q.PageSize == 10 && q.Search == "João" && q.Status == "active"),
-                Arg.Any<CancellationToken>());
+        captured.ShouldNotBeNull();
+        captured!.Page.ShouldBe(2);
+        captured.PageSize.ShouldBe(10);
+        captured.Search.ShouldBe("João");
+        captured.Status.ShouldBe("active");
     }
 
     // =========================================================================
@@ -515,8 +457,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _toggleStatusHandler
-            .HandleAsync(Arg.Any<ToggleEmployeeStatusCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<Unit>(Arg.Any<ToggleEmployeeStatusCommand>(), Arg.Any<CancellationToken>())
             .Returns(Unit.Value);
 
         // Act
@@ -531,8 +472,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _toggleStatusHandler
-            .HandleAsync(Arg.Any<ToggleEmployeeStatusCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<Unit>(Arg.Any<ToggleEmployeeStatusCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new KeyNotFoundException("Employee not found."));
 
         // Act
@@ -545,10 +485,10 @@ public sealed class CompaniesControllerTests
     [Fact]
     public async Task ToggleEmployeeStatus_WithDeactivate_PassesActivateFalseToCommand()
     {
-        // Arrange — exercises ToggleStatusRequest(Activate=false) branch
+        // Arrange
         var sut = BuildSut();
-        _toggleStatusHandler
-            .HandleAsync(Arg.Any<ToggleEmployeeStatusCommand>(), Arg.Any<CancellationToken>())
+        ToggleEmployeeStatusCommand? captured = null;
+        _commands.Send<Unit>(Arg.Do<object>(c => captured = c as ToggleEmployeeStatusCommand), Arg.Any<CancellationToken>())
             .Returns(Unit.Value);
         var employeeId = Guid.NewGuid();
 
@@ -557,8 +497,8 @@ public sealed class CompaniesControllerTests
 
         // Assert
         result.ShouldBeOfType<OkResult>();
-        await _toggleStatusHandler.Received(1)
-            .HandleAsync(Arg.Is<ToggleEmployeeStatusCommand>(c => !c.Activate), Arg.Any<CancellationToken>());
+        captured.ShouldNotBeNull();
+        captured!.Activate.ShouldBeFalse();
     }
 
     // =========================================================================
@@ -583,8 +523,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _resetPasswordHandler
-            .HandleAsync(Arg.Any<ResetEmployeePasswordCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<ResetEmployeePasswordResult>(Arg.Any<ResetEmployeePasswordCommand>(), Arg.Any<CancellationToken>())
             .Returns(new ResetEmployeePasswordResult("Temp@5678"));
 
         // Act
@@ -602,8 +541,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _resetPasswordHandler
-            .HandleAsync(Arg.Any<ResetEmployeePasswordCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<ResetEmployeePasswordResult>(Arg.Any<ResetEmployeePasswordCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new KeyNotFoundException("Employee not found."));
 
         // Act
@@ -635,8 +573,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _updateEmployeeHandler
-            .HandleAsync(Arg.Any<UpdateEmployeeCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<Unit>(Arg.Any<UpdateEmployeeCommand>(), Arg.Any<CancellationToken>())
             .Returns(Unit.Value);
 
         // Act
@@ -651,8 +588,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _updateEmployeeHandler
-            .HandleAsync(Arg.Any<UpdateEmployeeCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<Unit>(Arg.Any<UpdateEmployeeCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new KeyNotFoundException("Employee not found."));
 
         // Act
@@ -665,10 +601,10 @@ public sealed class CompaniesControllerTests
     [Fact]
     public async Task UpdateEmployee_WithNullFieldsInRequest_PassesEmptyStringsToCommand()
     {
-        // Arrange — exercises nullable fields via UpdateEmployeeRequest(null, null, null) → string.Empty
+        // Arrange
         var sut = BuildSut();
-        _updateEmployeeHandler
-            .HandleAsync(Arg.Any<UpdateEmployeeCommand>(), Arg.Any<CancellationToken>())
+        UpdateEmployeeCommand? captured = null;
+        _commands.Send<Unit>(Arg.Do<object>(c => captured = c as UpdateEmployeeCommand), Arg.Any<CancellationToken>())
             .Returns(Unit.Value);
 
         // Act
@@ -676,10 +612,10 @@ public sealed class CompaniesControllerTests
 
         // Assert
         result.ShouldBeOfType<OkResult>();
-        await _updateEmployeeHandler.Received(1)
-            .HandleAsync(Arg.Is<UpdateEmployeeCommand>(c =>
-                c.Nome == string.Empty && c.Email == string.Empty && c.Phone == string.Empty),
-                Arg.Any<CancellationToken>());
+        captured.ShouldNotBeNull();
+        captured!.Nome.ShouldBe(string.Empty);
+        captured.Email.ShouldBe(string.Empty);
+        captured.Phone.ShouldBe(string.Empty);
     }
 
     // =========================================================================
@@ -704,8 +640,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _deleteEmployeeHandler
-            .HandleAsync(Arg.Any<DeleteEmployeeCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<Unit>(Arg.Any<DeleteEmployeeCommand>(), Arg.Any<CancellationToken>())
             .Returns(Unit.Value);
 
         // Act
@@ -720,8 +655,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _deleteEmployeeHandler
-            .HandleAsync(Arg.Any<DeleteEmployeeCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<Unit>(Arg.Any<DeleteEmployeeCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new KeyNotFoundException("Employee not found."));
 
         // Act
@@ -753,8 +687,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _changeAccessGroupHandler
-            .HandleAsync(Arg.Any<ChangeEmployeeAccessGroupCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<Unit>(Arg.Any<ChangeEmployeeAccessGroupCommand>(), Arg.Any<CancellationToken>())
             .Returns(Unit.Value);
 
         // Act
@@ -769,8 +702,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _changeAccessGroupHandler
-            .HandleAsync(Arg.Any<ChangeEmployeeAccessGroupCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<Unit>(Arg.Any<ChangeEmployeeAccessGroupCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new KeyNotFoundException("Employee or access group not found."));
 
         // Act
@@ -783,10 +715,10 @@ public sealed class CompaniesControllerTests
     [Fact]
     public async Task ChangeEmployeeAccessGroup_PassesCorrectAccessGroupIdToCommand()
     {
-        // Arrange — exercises ChangeAccessGroupRequest.AccessGroupId wiring
+        // Arrange
         var sut = BuildSut();
-        _changeAccessGroupHandler
-            .HandleAsync(Arg.Any<ChangeEmployeeAccessGroupCommand>(), Arg.Any<CancellationToken>())
+        ChangeEmployeeAccessGroupCommand? captured = null;
+        _commands.Send<Unit>(Arg.Do<object>(c => captured = c as ChangeEmployeeAccessGroupCommand), Arg.Any<CancellationToken>())
             .Returns(Unit.Value);
         var newGroupId = Guid.NewGuid();
         var employeeId = Guid.NewGuid();
@@ -795,10 +727,9 @@ public sealed class CompaniesControllerTests
         await sut.ChangeEmployeeAccessGroup(CompanyId, employeeId, new ChangeAccessGroupRequest(newGroupId), CancellationToken.None);
 
         // Assert
-        await _changeAccessGroupHandler.Received(1)
-            .HandleAsync(Arg.Is<ChangeEmployeeAccessGroupCommand>(c =>
-                c.NewAccessGroupId == newGroupId && c.EmployeeId == employeeId),
-                Arg.Any<CancellationToken>());
+        captured.ShouldNotBeNull();
+        captured!.NewAccessGroupId.ShouldBe(newGroupId);
+        captured.EmployeeId.ShouldBe(employeeId);
     }
 
     // =========================================================================
@@ -811,8 +742,8 @@ public sealed class CompaniesControllerTests
         // Arrange
         var sut = BuildSut();
 
-        // Act
-        var result = await sut.GetAccessGroups(Guid.NewGuid(), CancellationToken.None);
+        // Act — pass repo but company id won't match
+        var result = await sut.GetAccessGroups(Guid.NewGuid(), _accessGroupRepo, CancellationToken.None);
 
         // Assert
         result.ShouldBeOfType<ForbidResult>();
@@ -832,7 +763,7 @@ public sealed class CompaniesControllerTests
             .Returns(groups);
 
         // Act
-        var result = await sut.GetAccessGroups(CompanyId, CancellationToken.None);
+        var result = await sut.GetAccessGroups(CompanyId, _accessGroupRepo, CancellationToken.None);
 
         // Assert
         var ok = result.ShouldBeOfType<OkObjectResult>();
@@ -864,8 +795,7 @@ public sealed class CompaniesControllerTests
         // Arrange
         var sut = BuildSut();
         var dto = new AccessGroupDto(Guid.NewGuid(), "custom", new[] { Permissions.FundsRead });
-        _createAccessGroupHandler
-            .HandleAsync(Arg.Any<CreateAccessGroupCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<AccessGroupDto>(Arg.Any<CreateAccessGroupCommand>(), Arg.Any<CancellationToken>())
             .Returns(dto);
 
         // Act
@@ -880,8 +810,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _createAccessGroupHandler
-            .HandleAsync(Arg.Any<CreateAccessGroupCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<AccessGroupDto>(Arg.Any<CreateAccessGroupCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new BadRequestException("Invalid permissions."));
 
         // Act
@@ -896,8 +825,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _createAccessGroupHandler
-            .HandleAsync(Arg.Any<CreateAccessGroupCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<AccessGroupDto>(Arg.Any<CreateAccessGroupCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new KeyNotFoundException("Company not found."));
 
         // Act
@@ -910,22 +838,21 @@ public sealed class CompaniesControllerTests
     [Fact]
     public async Task CreateAccessGroup_PassesCorrectCommandFields()
     {
-        // Arrange — exercises CreateAccessGroupRequest wiring
+        // Arrange
         var sut = BuildSut();
         var permissions = new[] { Permissions.FundsRead, Permissions.EmployeesRead };
         var dto = new AccessGroupDto(Guid.NewGuid(), "reader", permissions);
-        _createAccessGroupHandler
-            .HandleAsync(Arg.Any<CreateAccessGroupCommand>(), Arg.Any<CancellationToken>())
+        CreateAccessGroupCommand? captured = null;
+        _commands.Send<AccessGroupDto>(Arg.Do<object>(c => captured = c as CreateAccessGroupCommand), Arg.Any<CancellationToken>())
             .Returns(dto);
 
         // Act
         await sut.CreateAccessGroup(CompanyId, new CreateAccessGroupRequest("reader", permissions), CancellationToken.None);
 
         // Assert
-        await _createAccessGroupHandler.Received(1)
-            .HandleAsync(Arg.Is<CreateAccessGroupCommand>(c =>
-                c.CompanyId == CompanyId && c.Name == "reader"),
-                Arg.Any<CancellationToken>());
+        captured.ShouldNotBeNull();
+        captured!.CompanyId.ShouldBe(CompanyId);
+        captured.Name.ShouldBe("reader");
     }
 
     // =========================================================================
@@ -952,8 +879,7 @@ public sealed class CompaniesControllerTests
         var sut = BuildSut();
         var groupId = Guid.NewGuid();
         var dto = new AccessGroupDto(groupId, "updated", new[] { Permissions.FundsRead });
-        _updateAccessGroupHandler
-            .HandleAsync(Arg.Any<UpdateAccessGroupCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<AccessGroupDto>(Arg.Any<UpdateAccessGroupCommand>(), Arg.Any<CancellationToken>())
             .Returns(dto);
 
         // Act
@@ -970,8 +896,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _updateAccessGroupHandler
-            .HandleAsync(Arg.Any<UpdateAccessGroupCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<AccessGroupDto>(Arg.Any<UpdateAccessGroupCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new BadRequestException("Cannot update default group."));
 
         // Act
@@ -986,8 +911,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _updateAccessGroupHandler
-            .HandleAsync(Arg.Any<UpdateAccessGroupCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<AccessGroupDto>(Arg.Any<UpdateAccessGroupCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new KeyNotFoundException("Group not found."));
 
         // Act
@@ -1000,11 +924,11 @@ public sealed class CompaniesControllerTests
     [Fact]
     public async Task UpdateAccessGroup_PassesNullNameAndPermissionsToCommand()
     {
-        // Arrange — exercises UpdateAccessGroupRequest(null, null) branch
+        // Arrange
         var sut = BuildSut();
         var dto = new AccessGroupDto(Guid.NewGuid(), "existing", new[] { Permissions.FundsRead });
-        _updateAccessGroupHandler
-            .HandleAsync(Arg.Any<UpdateAccessGroupCommand>(), Arg.Any<CancellationToken>())
+        UpdateAccessGroupCommand? captured = null;
+        _commands.Send<AccessGroupDto>(Arg.Do<object>(c => captured = c as UpdateAccessGroupCommand), Arg.Any<CancellationToken>())
             .Returns(dto);
         var groupId = Guid.NewGuid();
 
@@ -1012,10 +936,10 @@ public sealed class CompaniesControllerTests
         await sut.UpdateAccessGroup(CompanyId, groupId, new UpdateAccessGroupRequest(null, null), CancellationToken.None);
 
         // Assert
-        await _updateAccessGroupHandler.Received(1)
-            .HandleAsync(Arg.Is<UpdateAccessGroupCommand>(c =>
-                c.AccessGroupId == groupId && c.Name == null && c.Permissions == null),
-                Arg.Any<CancellationToken>());
+        captured.ShouldNotBeNull();
+        captured!.AccessGroupId.ShouldBe(groupId);
+        captured.Name.ShouldBeNull();
+        captured.Permissions.ShouldBeNull();
     }
 
     // =========================================================================
@@ -1040,8 +964,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _deleteAccessGroupHandler
-            .HandleAsync(Arg.Any<DeleteAccessGroupCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<Unit>(Arg.Any<DeleteAccessGroupCommand>(), Arg.Any<CancellationToken>())
             .Returns(Unit.Value);
 
         // Act
@@ -1056,8 +979,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _deleteAccessGroupHandler
-            .HandleAsync(Arg.Any<DeleteAccessGroupCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<Unit>(Arg.Any<DeleteAccessGroupCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new BadRequestException("Cannot delete default group."));
 
         // Act
@@ -1072,8 +994,7 @@ public sealed class CompaniesControllerTests
     {
         // Arrange
         var sut = BuildSut();
-        _deleteAccessGroupHandler
-            .HandleAsync(Arg.Any<DeleteAccessGroupCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<Unit>(Arg.Any<DeleteAccessGroupCommand>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new KeyNotFoundException("Group not found."));
 
         // Act
@@ -1084,17 +1005,15 @@ public sealed class CompaniesControllerTests
     }
 
     // =========================================================================
-    // Request DTO coverage — instantiation tests (ensures records are covered)
+    // Request DTO coverage — instantiation tests
     // =========================================================================
 
     [Fact]
     public void RegisterEmployeeRequest_Properties_AreReadable()
     {
-        // Arrange + Act
         var groupId = Guid.NewGuid();
         var r = new RegisterEmployeeRequest("João", "12345678909", "jo@t.com", "11999999999", groupId);
 
-        // Assert
         r.Nome.ShouldBe("João");
         r.Cpf.ShouldBe("12345678909");
         r.Email.ShouldBe("jo@t.com");

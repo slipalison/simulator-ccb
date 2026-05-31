@@ -1,9 +1,10 @@
 using System.Security.Claims;
-using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using Onboarding.API.Controllers;
 using Onboarding.Application.Admin.Commands;
 using Onboarding.Application.Admin.DTOs;
@@ -13,49 +14,32 @@ using Shouldly;
 
 namespace Onboarding.API.Tests.Admin;
 
+/// <summary>
+/// Unit tests for AdminUserController — refactored for Phase 55 (D-60..D-63).
+/// Controller now uses ICommandDispatcher / IQueryDispatcher / IValidationRunner.
+/// </summary>
 public class AdminUserControllerTests
 {
-    private readonly IQueryHandler<GetPaginatedCompaniesQuery, PaginatedResult<CompanySummaryDto>> _paginatedCompaniesHandler;
-    private readonly ICommandHandler<CreateAdminCommand, CreateAdminResult> _createAdminHandler;
-    private readonly IValidator<CreateAdminCommand> _createAdminValidator;
+    private readonly ICommandDispatcher _commands = Substitute.For<ICommandDispatcher>();
+    private readonly IQueryDispatcher _queries = Substitute.For<IQueryDispatcher>();
+    private readonly IValidationRunner _validation = Substitute.For<IValidationRunner>();
+    private readonly IKeycloakUserService _keycloakUserService = Substitute.For<IKeycloakUserService>();
+    private readonly ILogger<AdminUserController> _logger = Substitute.For<ILogger<AdminUserController>>();
+
     private readonly AdminUserController _sut;
 
     public AdminUserControllerTests()
     {
-        _paginatedCompaniesHandler = Substitute.For<IQueryHandler<GetPaginatedCompaniesQuery, PaginatedResult<CompanySummaryDto>>>();
-        _createAdminHandler = Substitute.For<ICommandHandler<CreateAdminCommand, CreateAdminResult>>();
-        _createAdminValidator = Substitute.For<IValidator<CreateAdminCommand>>();
-
-        var logger = Substitute.For<ILogger<AdminUserController>>();
+        // Default: validation passes
+        _validation.Validate(Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(new ValidationResult());
 
         _sut = new AdminUserController(
-            // Company/Employee handlers (Phase 37)
-            _paginatedCompaniesHandler,
-            Substitute.For<IQueryHandler<GetCompanyDetailsQuery, CompanySummaryDto>>(),
-            Substitute.For<IQueryHandler<GetPaginatedEmployeesQuery, PaginatedResult<EmployeeSummaryDto>>>(),
-            Substitute.For<IQueryHandler<GetEmployeeDetailsQuery, EmployeeSummaryDto>>(),
-            Substitute.For<ICommandHandler<UpdateCompanyCommand, Unit>>(),
-            Substitute.For<ICommandHandler<DeleteEmployeeCommand, Unit>>(),
-            Substitute.For<ICommandHandler<BlockEmployeeCommand, Unit>>(),
-            Substitute.For<ICommandHandler<UnblockEmployeeCommand, Unit>>(),
-            // Phase 29 — Admin management
-            _createAdminHandler,
-            Substitute.For<ICommandHandler<ForcePasswordChangeCommand, Unit>>(),
-            Substitute.For<IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>>>(),
-            Substitute.For<IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>>>(),
-            // Phase 35 — Admin management
-            Substitute.For<IQueryHandler<GetPaginatedAdministratorsQuery, PaginatedResult<AdminUserDto>>>(),
-            Substitute.For<ICommandHandler<UpdateAdministratorCommand, Unit>>(),
-            Substitute.For<ICommandHandler<ResetAdministratorPasswordCommand, ResetAdministratorPasswordResult>>(),
-            Substitute.For<ICommandHandler<ToggleAdministratorStatusCommand, Unit>>(),
-            Substitute.For<IKeycloakUserService>(),
-            _createAdminValidator,
-            Substitute.For<IValidator<ForcePasswordChangeCommand>>(),
-            Substitute.For<IValidator<UpdateAdministratorCommand>>(),
-            Substitute.For<IValidator<ResetAdministratorPasswordCommand>>(),
-            Substitute.For<IValidator<ToggleAdministratorStatusCommand>>(),
-            logger
-        );
+            _commands,
+            _queries,
+            _validation,
+            _keycloakUserService,
+            _logger);
 
         var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
@@ -76,11 +60,7 @@ public class AdminUserControllerTests
         // Arrange
         var request = new CreateAdminRequest("New Admin", "new@test.com");
         var result = new CreateAdminResult(Guid.NewGuid(), "temp-pwd");
-
-        _createAdminValidator.ValidateAsync(Arg.Any<CreateAdminCommand>(), Arg.Any<CancellationToken>())
-            .Returns(new FluentValidation.Results.ValidationResult());
-
-        _createAdminHandler.HandleAsync(Arg.Any<CreateAdminCommand>(), Arg.Any<CancellationToken>())
+        _commands.Send<CreateAdminResult>(Arg.Any<CreateAdminCommand>(), Arg.Any<CancellationToken>())
             .Returns(result);
 
         // Act
@@ -96,7 +76,7 @@ public class AdminUserControllerTests
     {
         // Arrange
         var expected = new PaginatedResult<CompanySummaryDto>(new List<CompanySummaryDto>(), 0, 1, 20);
-        _paginatedCompaniesHandler.HandleAsync(Arg.Any<GetPaginatedCompaniesQuery>(), Arg.Any<CancellationToken>())
+        _queries.Query<PaginatedResult<CompanySummaryDto>>(Arg.Any<GetPaginatedCompaniesQuery>(), Arg.Any<CancellationToken>())
             .Returns(expected);
 
         // Act

@@ -1,4 +1,3 @@
-using FluentValidation;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Onboarding.API.Extensions;
@@ -8,7 +7,7 @@ using Onboarding.Application.Admin.DTOs;
 using Onboarding.Application.Admin.Queries;
 using Onboarding.Application.Common;
 using Onboarding.Domain.Aggregates.Audit;
-using Onboarding.Domain.Repositories;
+using AdminDeleteEmployeeCommand = Onboarding.Application.Admin.Commands.DeleteEmployeeCommand;
 
 namespace Onboarding.API.Controllers;
 
@@ -16,92 +15,31 @@ namespace Onboarding.API.Controllers;
 /// Admin management endpoints — requires admin role.
 /// Operates on Company/Employee (Phase 37 — D-19).
 /// Phase 35 admin management (administrators) kept as-is.
+/// D-62: 5 ctor deps (was 23): ICommandDispatcher + IQueryDispatcher + IValidationRunner
+///       + IKeycloakUserService (Keycloak admin calls — non-CQRS) + ILogger.
 /// </summary>
 [ApiController]
 [Route("api/admin")]
 [Authorize(AuthenticationSchemes = "BearerBackoffice", Policy = PermissionPolicies.CrossCompanyAccess)]
 public sealed class AdminUserController : ControllerBase
 {
-    // Company/Employee handlers (Phase 37 — D-19)
-    private readonly IQueryHandler<GetPaginatedCompaniesQuery, PaginatedResult<CompanySummaryDto>> _paginatedCompaniesHandler;
-    private readonly IQueryHandler<GetCompanyDetailsQuery, CompanySummaryDto> _companyDetailsHandler;
-    private readonly IQueryHandler<GetPaginatedEmployeesQuery, PaginatedResult<EmployeeSummaryDto>> _paginatedEmployeesHandler;
-    private readonly IQueryHandler<GetEmployeeDetailsQuery, EmployeeSummaryDto> _employeeDetailsHandler;
-    private readonly ICommandHandler<UpdateCompanyCommand, Unit> _updateCompanyHandler;
-    private readonly ICommandHandler<DeleteEmployeeCommand, Unit> _deleteEmployeeHandler;
-    private readonly ICommandHandler<BlockEmployeeCommand, Unit> _blockEmployeeHandler;
-    private readonly ICommandHandler<UnblockEmployeeCommand, Unit> _unblockEmployeeHandler;
-
-    // Phase 29 — Admin management
-    private readonly ICommandHandler<CreateAdminCommand, CreateAdminResult> _createAdminHandler;
-    private readonly ICommandHandler<ForcePasswordChangeCommand, Unit> _forcePasswordChangeHandler;
-    private readonly IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>> _auditLogQueryHandler;
-    private readonly IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>> _administratorsHandler;
-
-    // Phase 35 — Admin management
-    private readonly IQueryHandler<GetPaginatedAdministratorsQuery, PaginatedResult<AdminUserDto>> _paginatedAdministratorsHandler;
-    private readonly ICommandHandler<UpdateAdministratorCommand, Unit> _updateAdministratorHandler;
-    private readonly ICommandHandler<ResetAdministratorPasswordCommand, ResetAdministratorPasswordResult> _resetAdminPasswordHandler;
-    private readonly ICommandHandler<ToggleAdministratorStatusCommand, Unit> _toggleAdminStatusHandler;
-
+    private readonly ICommandDispatcher _commands;
+    private readonly IQueryDispatcher _queries;
+    private readonly IValidationRunner _validation;
     private readonly IKeycloakUserService _keycloakUserService;
-    private readonly IValidator<CreateAdminCommand> _createAdminValidator;
-    private readonly IValidator<ForcePasswordChangeCommand> _forcePasswordChangeValidator;
-    private readonly IValidator<UpdateAdministratorCommand> _updateAdministratorValidator;
-    private readonly IValidator<ResetAdministratorPasswordCommand> _resetAdminPasswordValidator;
-    private readonly IValidator<ToggleAdministratorStatusCommand> _toggleAdminStatusValidator;
     private readonly ILogger<AdminUserController> _logger;
 
     public AdminUserController(
-        // Company/Employee handlers (Phase 37)
-        IQueryHandler<GetPaginatedCompaniesQuery, PaginatedResult<CompanySummaryDto>> paginatedCompaniesHandler,
-        IQueryHandler<GetCompanyDetailsQuery, CompanySummaryDto> companyDetailsHandler,
-        IQueryHandler<GetPaginatedEmployeesQuery, PaginatedResult<EmployeeSummaryDto>> paginatedEmployeesHandler,
-        IQueryHandler<GetEmployeeDetailsQuery, EmployeeSummaryDto> employeeDetailsHandler,
-        ICommandHandler<UpdateCompanyCommand, Unit> updateCompanyHandler,
-        ICommandHandler<DeleteEmployeeCommand, Unit> deleteEmployeeHandler,
-        ICommandHandler<BlockEmployeeCommand, Unit> blockEmployeeHandler,
-        ICommandHandler<UnblockEmployeeCommand, Unit> unblockEmployeeHandler,
-        // Phase 29 — Admin management
-        ICommandHandler<CreateAdminCommand, CreateAdminResult> createAdminHandler,
-        ICommandHandler<ForcePasswordChangeCommand, Unit> forcePasswordChangeHandler,
-        IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>> auditLogQueryHandler,
-        IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>> administratorsHandler,
-        // Phase 35 — Admin management
-        IQueryHandler<GetPaginatedAdministratorsQuery, PaginatedResult<AdminUserDto>> paginatedAdministratorsHandler,
-        ICommandHandler<UpdateAdministratorCommand, Unit> updateAdministratorHandler,
-        ICommandHandler<ResetAdministratorPasswordCommand, ResetAdministratorPasswordResult> resetAdminPasswordHandler,
-        ICommandHandler<ToggleAdministratorStatusCommand, Unit> toggleAdminStatusHandler,
+        ICommandDispatcher commands,
+        IQueryDispatcher queries,
+        IValidationRunner validation,
         IKeycloakUserService keycloakUserService,
-        IValidator<CreateAdminCommand> createAdminValidator,
-        IValidator<ForcePasswordChangeCommand> forcePasswordChangeValidator,
-        IValidator<UpdateAdministratorCommand> updateAdministratorValidator,
-        IValidator<ResetAdministratorPasswordCommand> resetAdminPasswordValidator,
-        IValidator<ToggleAdministratorStatusCommand> toggleAdminStatusValidator,
         ILogger<AdminUserController> logger)
     {
-        _paginatedCompaniesHandler = paginatedCompaniesHandler;
-        _companyDetailsHandler = companyDetailsHandler;
-        _paginatedEmployeesHandler = paginatedEmployeesHandler;
-        _employeeDetailsHandler = employeeDetailsHandler;
-        _updateCompanyHandler = updateCompanyHandler;
-        _deleteEmployeeHandler = deleteEmployeeHandler;
-        _blockEmployeeHandler = blockEmployeeHandler;
-        _unblockEmployeeHandler = unblockEmployeeHandler;
-        _createAdminHandler = createAdminHandler;
-        _forcePasswordChangeHandler = forcePasswordChangeHandler;
-        _auditLogQueryHandler = auditLogQueryHandler;
-        _administratorsHandler = administratorsHandler;
-        _paginatedAdministratorsHandler = paginatedAdministratorsHandler;
-        _updateAdministratorHandler = updateAdministratorHandler;
-        _resetAdminPasswordHandler = resetAdminPasswordHandler;
-        _toggleAdminStatusHandler = toggleAdminStatusHandler;
+        _commands = commands;
+        _queries = queries;
+        _validation = validation;
         _keycloakUserService = keycloakUserService;
-        _createAdminValidator = createAdminValidator;
-        _forcePasswordChangeValidator = forcePasswordChangeValidator;
-        _updateAdministratorValidator = updateAdministratorValidator;
-        _resetAdminPasswordValidator = resetAdminPasswordValidator;
-        _toggleAdminStatusValidator = toggleAdminStatusValidator;
         _logger = logger;
     }
 
@@ -118,7 +56,7 @@ public sealed class AdminUserController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new GetPaginatedCompaniesQuery(page, pageSize, search, status);
-        var result = await _paginatedCompaniesHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<CompanySummaryDto>>(query, ct);
         return Ok(result);
     }
 
@@ -131,7 +69,7 @@ public sealed class AdminUserController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new GetCompanyDetailsQuery(id);
-        var result = await _companyDetailsHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<CompanySummaryDto>(query, ct);
         return Ok(result);
     }
 
@@ -145,7 +83,7 @@ public sealed class AdminUserController : ControllerBase
         CancellationToken ct = default)
     {
         var command = new UpdateCompanyCommand(id, request.RazaoSocial ?? string.Empty, request.Email ?? string.Empty, request.Phone ?? string.Empty);
-        await _updateCompanyHandler.HandleAsync(command, ct);
+        await _commands.Send<Unit>(command, ct);
         return NoContent();
     }
 
@@ -163,7 +101,7 @@ public sealed class AdminUserController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new GetPaginatedEmployeesQuery(page, pageSize, search, status, companyId);
-        var result = await _paginatedEmployeesHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<EmployeeSummaryDto>>(query, ct);
         return Ok(result);
     }
 
@@ -176,7 +114,7 @@ public sealed class AdminUserController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new GetEmployeeDetailsQuery(id);
-        var result = await _employeeDetailsHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<EmployeeSummaryDto>(query, ct);
         return Ok(result);
     }
 
@@ -190,7 +128,7 @@ public sealed class AdminUserController : ControllerBase
     {
         var auditContext = GetAuditContext();
         var command = new BlockEmployeeCommand(id, auditContext.Sub);
-        await _blockEmployeeHandler.HandleAsync(command, ct);
+        await _commands.Send<Unit>(command, ct);
         return NoContent();
     }
 
@@ -204,7 +142,7 @@ public sealed class AdminUserController : ControllerBase
     {
         var auditContext = GetAuditContext();
         var command = new UnblockEmployeeCommand(id, auditContext.Sub);
-        await _unblockEmployeeHandler.HandleAsync(command, ct);
+        await _commands.Send<Unit>(command, ct);
         return NoContent();
     }
 
@@ -217,8 +155,8 @@ public sealed class AdminUserController : ControllerBase
         CancellationToken ct = default)
     {
         var auditContext = GetAuditContext();
-        var command = new DeleteEmployeeCommand(id, auditContext.Sub);
-        await _deleteEmployeeHandler.HandleAsync(command, ct);
+        var command = new AdminDeleteEmployeeCommand(id, auditContext.Sub);
+        await _commands.Send<Unit>(command, ct);
         return NoContent();
     }
 
@@ -238,13 +176,13 @@ public sealed class AdminUserController : ControllerBase
 
         var command = new CreateAdminCommand(request.FullName, request.Email, auditContext.Sub, auditContext.Email, ipAddress);
 
-        var validation = await _createAdminValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
-            return UnprocessableEntity(validation.ToValidationProblem());
+            return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            var result = await _createAdminHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<CreateAdminResult>(command, ct);
             return CreatedAtAction(nameof(CreateAdmin), new { id = result.AdminId }, result);
         }
         catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
@@ -266,7 +204,7 @@ public sealed class AdminUserController : ControllerBase
     {
         try
         {
-            var result = await _administratorsHandler.HandleAsync(new GetAdministratorsQuery(), ct);
+            var result = await _queries.Query<IReadOnlyList<AdminUserDto>>(new GetAdministratorsQuery(), ct);
             return Ok(result);
         }
         catch (HttpRequestException ex)
@@ -296,7 +234,7 @@ public sealed class AdminUserController : ControllerBase
         try
         {
             var query = new GetPaginatedAdministratorsQuery(page, pageSize, name, email, status);
-            var result = await _paginatedAdministratorsHandler.HandleAsync(query, ct);
+            var result = await _queries.Query<PaginatedResult<AdminUserDto>>(query, ct);
             return Ok(result);
         }
         catch (HttpRequestException ex)
@@ -327,13 +265,13 @@ public sealed class AdminUserController : ControllerBase
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         var command = new UpdateAdministratorCommand(id, request.FullName ?? string.Empty, request.Email ?? string.Empty, audit.Sub, audit.Email, ip);
 
-        var validation = await _updateAdministratorValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            await _updateAdministratorHandler.HandleAsync(command, ct);
+            await _commands.Send<Unit>(command, ct);
             return NoContent();
         }
         catch (KeyNotFoundException)
@@ -365,13 +303,13 @@ public sealed class AdminUserController : ControllerBase
         var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
         var command = new ResetAdministratorPasswordCommand(id, request.TargetUserName ?? string.Empty, audit.Sub, audit.Email, ip);
 
-        var validation = await _resetAdminPasswordValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            var result = await _resetAdminPasswordHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<ResetAdministratorPasswordResult>(command, ct);
             return Ok(result);
         }
         catch (KeyNotFoundException)
@@ -402,13 +340,13 @@ public sealed class AdminUserController : ControllerBase
             request.Activate, request.Reason,
             audit.Sub, audit.Email, ip);
 
-        var validation = await _toggleAdminStatusValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            await _toggleAdminStatusHandler.HandleAsync(command, ct);
+            await _commands.Send<Unit>(command, ct);
             return NoContent();
         }
         catch (KeyNotFoundException)
@@ -435,11 +373,11 @@ public sealed class AdminUserController : ControllerBase
 
         var command = new ForcePasswordChangeCommand(keycloakUserId, adminEmail, request.NewPassword, ipAddress);
 
-        var validation = await _forcePasswordChangeValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(validation.ToValidationProblem());
 
-        await _forcePasswordChangeHandler.HandleAsync(command, ct);
+        await _commands.Send<Unit>(command, ct);
         return NoContent();
     }
 
@@ -476,7 +414,7 @@ public sealed class AdminUserController : ControllerBase
             parsedActionType = parsed;
 
         var query = new GetAuditLogQuery(page, pageSize, startDate, endDate, parsedActionType, adminUserName, entityType, entityId);
-        var result = await _auditLogQueryHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<AdminAuditLogDto>>(query, ct);
         return Ok(result);
     }
 

@@ -1,11 +1,10 @@
 using System.Security.Claims;
-using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using Onboarding.API.Controllers;
-using Onboarding.Application.Admin.Commands;
 using Onboarding.Application.Admin.DTOs;
 using Onboarding.Application.Admin.Queries;
 using Onboarding.Application.Common;
@@ -15,49 +14,31 @@ namespace Onboarding.API.Tests.Controllers;
 
 /// <summary>
 /// Controller-level tests for the audit-log endpoint entityType+entityId query params (Phase 52, T-1).
-/// Verifies that new query params wire through to GetAuditLogQuery correctly.
+/// Refactored for Phase 55 (D-60..D-63): uses IQueryDispatcher.
 /// </summary>
 [Trait("Category", "Unit")]
 public sealed class AdminUserControllerAuditLogTests
 {
-    private readonly IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>> _auditLogHandler;
+    private readonly IQueryDispatcher _queries = Substitute.For<IQueryDispatcher>();
     private readonly AdminUserController _sut;
 
     public AdminUserControllerAuditLogTests()
     {
-        _auditLogHandler = Substitute.For<IQueryHandler<GetAuditLogQuery, PaginatedResult<AdminAuditLogDto>>>();
-
-        _auditLogHandler
-            .HandleAsync(Arg.Any<GetAuditLogQuery>(), Arg.Any<CancellationToken>())
+        _queries.Query<PaginatedResult<AdminAuditLogDto>>(Arg.Any<GetAuditLogQuery>(), Arg.Any<CancellationToken>())
             .Returns(new PaginatedResult<AdminAuditLogDto>([], 0, 1, 20));
 
         _sut = new AdminUserController(
-            Substitute.For<IQueryHandler<GetPaginatedCompaniesQuery, PaginatedResult<CompanySummaryDto>>>(),
-            Substitute.For<IQueryHandler<GetCompanyDetailsQuery, CompanySummaryDto>>(),
-            Substitute.For<IQueryHandler<GetPaginatedEmployeesQuery, PaginatedResult<EmployeeSummaryDto>>>(),
-            Substitute.For<IQueryHandler<GetEmployeeDetailsQuery, EmployeeSummaryDto>>(),
-            Substitute.For<ICommandHandler<UpdateCompanyCommand, Unit>>(),
-            Substitute.For<ICommandHandler<DeleteEmployeeCommand, Unit>>(),
-            Substitute.For<ICommandHandler<BlockEmployeeCommand, Unit>>(),
-            Substitute.For<ICommandHandler<UnblockEmployeeCommand, Unit>>(),
-            Substitute.For<ICommandHandler<CreateAdminCommand, CreateAdminResult>>(),
-            Substitute.For<ICommandHandler<ForcePasswordChangeCommand, Unit>>(),
-            _auditLogHandler,
-            Substitute.For<IQueryHandler<GetAdministratorsQuery, IReadOnlyList<AdminUserDto>>>(),
-            Substitute.For<IQueryHandler<GetPaginatedAdministratorsQuery, PaginatedResult<AdminUserDto>>>(),
-            Substitute.For<ICommandHandler<UpdateAdministratorCommand, Unit>>(),
-            Substitute.For<ICommandHandler<ResetAdministratorPasswordCommand, ResetAdministratorPasswordResult>>(),
-            Substitute.For<ICommandHandler<ToggleAdministratorStatusCommand, Unit>>(),
+            Substitute.For<ICommandDispatcher>(),
+            _queries,
+            Substitute.For<IValidationRunner>(),
             Substitute.For<IKeycloakUserService>(),
-            Substitute.For<IValidator<CreateAdminCommand>>(),
-            Substitute.For<IValidator<ForcePasswordChangeCommand>>(),
-            Substitute.For<IValidator<UpdateAdministratorCommand>>(),
-            Substitute.For<IValidator<ResetAdministratorPasswordCommand>>(),
-            Substitute.For<IValidator<ToggleAdministratorStatusCommand>>(),
-            Substitute.For<ILogger<AdminUserController>>()
-        );
+            Substitute.For<ILogger<AdminUserController>>());
 
-        // Wire authenticated user
+        // Default: validation passes
+        var validation = Substitute.For<IValidationRunner>();
+        validation.Validate(Arg.Any<object>(), Arg.Any<CancellationToken>())
+            .Returns(new ValidationResult());
+
         var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
             new Claim("sub", "admin-sub-001"),
@@ -72,33 +53,50 @@ public sealed class AdminUserControllerAuditLogTests
     [Fact]
     public async Task GetAuditLog_WithNoEntityParams_PassesNullEntityTypeAndId()
     {
+        GetAuditLogQuery? captured = null;
+        _queries.Query<PaginatedResult<AdminAuditLogDto>>(
+            Arg.Do<object>(q => captured = q as GetAuditLogQuery),
+            Arg.Any<CancellationToken>())
+            .Returns(new PaginatedResult<AdminAuditLogDto>([], 0, 1, 20));
+
         await _sut.GetAuditLog(page: 1, pageSize: 20);
 
-        await _auditLogHandler.Received(1).HandleAsync(
-            Arg.Is<GetAuditLogQuery>(q => q.EntityType == null && q.EntityId == null),
-            Arg.Any<CancellationToken>());
+        captured.ShouldNotBeNull();
+        captured!.EntityType.ShouldBeNull();
+        captured.EntityId.ShouldBeNull();
     }
 
     [Fact]
     public async Task GetAuditLog_WithEntityTypeParam_PassesEntityTypeToQuery()
     {
+        GetAuditLogQuery? captured = null;
+        _queries.Query<PaginatedResult<AdminAuditLogDto>>(
+            Arg.Do<object>(q => captured = q as GetAuditLogQuery),
+            Arg.Any<CancellationToken>())
+            .Returns(new PaginatedResult<AdminAuditLogDto>([], 0, 1, 20));
+
         await _sut.GetAuditLog(entityType: "Fundo");
 
-        await _auditLogHandler.Received(1).HandleAsync(
-            Arg.Is<GetAuditLogQuery>(q => q.EntityType == "Fundo" && q.EntityId == null),
-            Arg.Any<CancellationToken>());
+        captured.ShouldNotBeNull();
+        captured!.EntityType.ShouldBe("Fundo");
+        captured.EntityId.ShouldBeNull();
     }
 
     [Fact]
     public async Task GetAuditLog_WithEntityTypeAndEntityId_PassesBothToQuery()
     {
         var entityId = Guid.NewGuid();
+        GetAuditLogQuery? captured = null;
+        _queries.Query<PaginatedResult<AdminAuditLogDto>>(
+            Arg.Do<object>(q => captured = q as GetAuditLogQuery),
+            Arg.Any<CancellationToken>())
+            .Returns(new PaginatedResult<AdminAuditLogDto>([], 0, 1, 20));
 
         await _sut.GetAuditLog(entityType: "Fundo", entityId: entityId);
 
-        await _auditLogHandler.Received(1).HandleAsync(
-            Arg.Is<GetAuditLogQuery>(q => q.EntityType == "Fundo" && q.EntityId == entityId),
-            Arg.Any<CancellationToken>());
+        captured.ShouldNotBeNull();
+        captured!.EntityType.ShouldBe("Fundo");
+        captured.EntityId.ShouldBe(entityId);
     }
 
     [Fact]
@@ -125,6 +123,12 @@ public sealed class AdminUserControllerAuditLogTests
         var endDate = DateTimeOffset.UtcNow;
         var entityId = Guid.NewGuid();
 
+        GetAuditLogQuery? captured = null;
+        _queries.Query<PaginatedResult<AdminAuditLogDto>>(
+            Arg.Do<object>(q => captured = q as GetAuditLogQuery),
+            Arg.Any<CancellationToken>())
+            .Returns(new PaginatedResult<AdminAuditLogDto>([], 0, 1, 20));
+
         await _sut.GetAuditLog(
             page: 2,
             pageSize: 10,
@@ -133,14 +137,12 @@ public sealed class AdminUserControllerAuditLogTests
             entityType: "FundoTipoAtivo",
             entityId: entityId);
 
-        await _auditLogHandler.Received(1).HandleAsync(
-            Arg.Is<GetAuditLogQuery>(q =>
-                q.Page == 2 &&
-                q.PageSize == 10 &&
-                q.StartDate == startDate &&
-                q.EndDate == endDate &&
-                q.EntityType == "FundoTipoAtivo" &&
-                q.EntityId == entityId),
-            Arg.Any<CancellationToken>());
+        captured.ShouldNotBeNull();
+        captured!.Page.ShouldBe(2);
+        captured.PageSize.ShouldBe(10);
+        captured.StartDate.ShouldBe(startDate);
+        captured.EndDate.ShouldBe(endDate);
+        captured.EntityType.ShouldBe("FundoTipoAtivo");
+        captured.EntityId.ShouldBe(entityId);
     }
 }

@@ -1,4 +1,4 @@
-using FluentValidation;
+using FluentValidation.Results;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Onboarding.API.Extensions;
@@ -48,138 +48,23 @@ namespace Onboarding.API.Controllers;
 [Authorize(AuthenticationSchemes = "BearerClient")]
 public sealed class FundosController : ControllerBase
 {
-    // ConsultoriaFundo
-    private readonly ICommandHandler<RegisterConsultoriaFundoCommand, ConsultoriaFundoDto> _registerConsultoriaHandler;
-    private readonly IValidator<RegisterConsultoriaFundoCommand> _registerConsultoriaValidator;
-    private readonly ICommandHandler<UpdateConsultoriaFundoCommand, ConsultoriaFundoDto> _updateConsultoriaHandler;
-    private readonly IValidator<UpdateConsultoriaFundoCommand> _updateConsultoriaValidator;
-    private readonly IQueryHandler<ListConsultoriaFundoQuery, PaginatedResult<ConsultoriaFundoDto>> _listConsultoriaHandler;
-    private readonly IConsultoriaFundoRepository _consultoriaRepository;
-
-    // Custodiante
-    private readonly ICommandHandler<RegisterCustodianteCommand, CustodianteDto> _registerCustodianteHandler;
-    private readonly IValidator<RegisterCustodianteCommand> _registerCustodianteValidator;
-    private readonly ICommandHandler<UpdateCustodianteCommand, CustodianteDto> _updateCustodianteHandler;
-    private readonly IValidator<UpdateCustodianteCommand> _updateCustodianteValidator;
-    private readonly IQueryHandler<ListCustodianteQuery, PaginatedResult<CustodianteDto>> _listCustodianteHandler;
-    private readonly ICustodianteRepository _custodianteRepository;
-
-    // TipoAtivo (global — no company scope per D-5/TEN-03)
-    private readonly ICommandHandler<CreateTipoAtivoCommand, TipoAtivoDto> _createTipoAtivoHandler;
-    private readonly IValidator<CreateTipoAtivoCommand> _createTipoAtivoValidator;
-    private readonly ICommandHandler<UpdateTipoAtivoCommand, TipoAtivoDto> _updateTipoAtivoHandler;
-    private readonly IValidator<UpdateTipoAtivoCommand> _updateTipoAtivoValidator;
-    private readonly IQueryHandler<ListTipoAtivoQuery, PaginatedResult<TipoAtivoDto>> _listTipoAtivoHandler;
-    private readonly ITipoAtivoRepository _tipoAtivoRepository;
-
-    // Fundo — company-scoped (D-5, HasQueryFilter)
-    private readonly ICommandHandler<RegisterFundoCommand, FundoDto> _registerFundoHandler;
-    private readonly IValidator<RegisterFundoCommand> _registerFundoValidator;
-    private readonly ICommandHandler<UpdateFundoCommand, FundoDto> _updateFundoHandler;
-    private readonly IValidator<UpdateFundoCommand> _updateFundoValidator;
-    private readonly ICommandHandler<TransitionFundoStatusCommand, FundoDto> _transitionFundoStatusHandler;
-    private readonly IValidator<TransitionFundoStatusCommand> _transitionFundoStatusValidator;
-    private readonly IQueryHandler<ListFundoQuery, PaginatedResult<FundoDto>> _listFundoHandler;
-    private readonly IFundoRepository _fundoRepository;
-
-    // Cedente — company-scoped (D-5, D-10: composite unique index (ClientId, Cpf/Cnpj))
-    private readonly ICommandHandler<RegisterCedentePfCommand, CedenteDto> _registerCedentePfHandler;
-    private readonly IValidator<RegisterCedentePfCommand> _registerCedentePfValidator;
-    private readonly ICommandHandler<RegisterCedentePjCommand, CedenteDto> _registerCedentePjHandler;
-    private readonly IValidator<RegisterCedentePjCommand> _registerCedentePjValidator;
-    private readonly ICommandHandler<UpdateCedenteCommand, CedenteDto> _updateCedenteHandler;
-    private readonly IValidator<UpdateCedenteCommand> _updateCedenteValidator;
-    private readonly IQueryHandler<ListCedenteQuery, PaginatedResult<CedenteDto>> _listCedenteHandler;
-    private readonly ICedenteRepository _cedenteRepository;
-
-    // Allowed transitions query (D-25)
-    private readonly IQueryHandler<GetFundoAllowedTransitionsQuery, IReadOnlyList<string>?> _allowedTransitionsHandler;
-
-    // Cross-cutting
+    // D-60/D-61/D-62: 4 ctor deps (was 37). Repos used only for GetById tenant guards
+    // are injected via [FromServices] on the specific action methods.
+    private readonly ICommandDispatcher _commands;
+    private readonly IQueryDispatcher _queries;
+    private readonly IValidationRunner _validation;
     private readonly ICurrentCompanyService _currentCompanyService;
-    private readonly ILogger<FundosController> _logger;
 
     public FundosController(
-        ICommandHandler<RegisterConsultoriaFundoCommand, ConsultoriaFundoDto> registerConsultoriaHandler,
-        IValidator<RegisterConsultoriaFundoCommand> registerConsultoriaValidator,
-        ICommandHandler<UpdateConsultoriaFundoCommand, ConsultoriaFundoDto> updateConsultoriaHandler,
-        IValidator<UpdateConsultoriaFundoCommand> updateConsultoriaValidator,
-        IQueryHandler<ListConsultoriaFundoQuery, PaginatedResult<ConsultoriaFundoDto>> listConsultoriaHandler,
-        IConsultoriaFundoRepository consultoriaRepository,
-        ICommandHandler<RegisterCustodianteCommand, CustodianteDto> registerCustodianteHandler,
-        IValidator<RegisterCustodianteCommand> registerCustodianteValidator,
-        ICommandHandler<UpdateCustodianteCommand, CustodianteDto> updateCustodianteHandler,
-        IValidator<UpdateCustodianteCommand> updateCustodianteValidator,
-        IQueryHandler<ListCustodianteQuery, PaginatedResult<CustodianteDto>> listCustodianteHandler,
-        ICustodianteRepository custodianteRepository,
-        ICommandHandler<CreateTipoAtivoCommand, TipoAtivoDto> createTipoAtivoHandler,
-        IValidator<CreateTipoAtivoCommand> createTipoAtivoValidator,
-        ICommandHandler<UpdateTipoAtivoCommand, TipoAtivoDto> updateTipoAtivoHandler,
-        IValidator<UpdateTipoAtivoCommand> updateTipoAtivoValidator,
-        IQueryHandler<ListTipoAtivoQuery, PaginatedResult<TipoAtivoDto>> listTipoAtivoHandler,
-        ITipoAtivoRepository tipoAtivoRepository,
-        ICommandHandler<RegisterFundoCommand, FundoDto> registerFundoHandler,
-        IValidator<RegisterFundoCommand> registerFundoValidator,
-        ICommandHandler<UpdateFundoCommand, FundoDto> updateFundoHandler,
-        IValidator<UpdateFundoCommand> updateFundoValidator,
-        ICommandHandler<TransitionFundoStatusCommand, FundoDto> transitionFundoStatusHandler,
-        IValidator<TransitionFundoStatusCommand> transitionFundoStatusValidator,
-        IQueryHandler<ListFundoQuery, PaginatedResult<FundoDto>> listFundoHandler,
-        IFundoRepository fundoRepository,
-        ICommandHandler<RegisterCedentePfCommand, CedenteDto> registerCedentePfHandler,
-        IValidator<RegisterCedentePfCommand> registerCedentePfValidator,
-        ICommandHandler<RegisterCedentePjCommand, CedenteDto> registerCedentePjHandler,
-        IValidator<RegisterCedentePjCommand> registerCedentePjValidator,
-        ICommandHandler<UpdateCedenteCommand, CedenteDto> updateCedenteHandler,
-        IValidator<UpdateCedenteCommand> updateCedenteValidator,
-        IQueryHandler<ListCedenteQuery, PaginatedResult<CedenteDto>> listCedenteHandler,
-        ICedenteRepository cedenteRepository,
-        IQueryHandler<GetFundoAllowedTransitionsQuery, IReadOnlyList<string>?> allowedTransitionsHandler,
-        ICurrentCompanyService currentCompanyService,
-        ILogger<FundosController> logger)
+        ICommandDispatcher commands,
+        IQueryDispatcher queries,
+        IValidationRunner validation,
+        ICurrentCompanyService currentCompanyService)
     {
-        _registerConsultoriaHandler = registerConsultoriaHandler;
-        _registerConsultoriaValidator = registerConsultoriaValidator;
-        _updateConsultoriaHandler = updateConsultoriaHandler;
-        _updateConsultoriaValidator = updateConsultoriaValidator;
-        _listConsultoriaHandler = listConsultoriaHandler;
-        _consultoriaRepository = consultoriaRepository;
-
-        _registerCustodianteHandler = registerCustodianteHandler;
-        _registerCustodianteValidator = registerCustodianteValidator;
-        _updateCustodianteHandler = updateCustodianteHandler;
-        _updateCustodianteValidator = updateCustodianteValidator;
-        _listCustodianteHandler = listCustodianteHandler;
-        _custodianteRepository = custodianteRepository;
-
-        _createTipoAtivoHandler = createTipoAtivoHandler;
-        _createTipoAtivoValidator = createTipoAtivoValidator;
-        _updateTipoAtivoHandler = updateTipoAtivoHandler;
-        _updateTipoAtivoValidator = updateTipoAtivoValidator;
-        _listTipoAtivoHandler = listTipoAtivoHandler;
-        _tipoAtivoRepository = tipoAtivoRepository;
-
-        _registerFundoHandler = registerFundoHandler;
-        _registerFundoValidator = registerFundoValidator;
-        _updateFundoHandler = updateFundoHandler;
-        _updateFundoValidator = updateFundoValidator;
-        _transitionFundoStatusHandler = transitionFundoStatusHandler;
-        _transitionFundoStatusValidator = transitionFundoStatusValidator;
-        _listFundoHandler = listFundoHandler;
-        _fundoRepository = fundoRepository;
-
-        _registerCedentePfHandler = registerCedentePfHandler;
-        _registerCedentePfValidator = registerCedentePfValidator;
-        _registerCedentePjHandler = registerCedentePjHandler;
-        _registerCedentePjValidator = registerCedentePjValidator;
-        _updateCedenteHandler = updateCedenteHandler;
-        _updateCedenteValidator = updateCedenteValidator;
-        _listCedenteHandler = listCedenteHandler;
-        _cedenteRepository = cedenteRepository;
-
-        _allowedTransitionsHandler = allowedTransitionsHandler;
+        _commands = commands;
+        _queries = queries;
+        _validation = validation;
         _currentCompanyService = currentCompanyService;
-        _logger = logger;
     }
 
     // =========================================================================
@@ -212,13 +97,13 @@ public sealed class FundosController : ControllerBase
             ActorSub: actorSub,
             ActorEmail: actorEmail);
 
-        var validation = await _registerConsultoriaValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            var result = await _registerConsultoriaHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<ConsultoriaFundoDto>(command, ct);
             return CreatedAtAction(nameof(GetConsultoriaById), new { id = result.Id }, result);
         }
         catch (DuplicateEntityException ex)
@@ -244,7 +129,7 @@ public sealed class FundosController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new ListConsultoriaFundoQuery(page, pageSize, search);
-        var result = await _listConsultoriaHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<ConsultoriaFundoDto>>(query, ct);
         return Ok(result);
     }
 
@@ -255,9 +140,12 @@ public sealed class FundosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetConsultoriaById(Guid id, CancellationToken ct)
+    public async Task<IActionResult> GetConsultoriaById(
+        Guid id,
+        [FromServices] IConsultoriaFundoRepository consultoriaRepository,
+        CancellationToken ct)
     {
-        var consultoria = await _consultoriaRepository.GetByIdAsync(id, ct);
+        var consultoria = await consultoriaRepository.GetByIdAsync(id, ct);
         // Security: IgnoreQueryFilters in repo returns cross-tenant rows; enforce tenant boundary
         // here. Return NotFound (not Forbid) — do not leak entity existence to other tenants.
         if (consultoria is null || consultoria.ClienteId != _currentCompanyService.CompanyId)
@@ -302,13 +190,13 @@ public sealed class FundosController : ControllerBase
             ActorSub: actorSub,
             ActorEmail: actorEmail);
 
-        var validation = await _updateConsultoriaValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            var result = await _updateConsultoriaHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<ConsultoriaFundoDto>(command, ct);
             return Ok(result);
         }
         catch (DuplicateEntityException ex)
@@ -351,13 +239,13 @@ public sealed class FundosController : ControllerBase
             ActorSub: actorSub,
             ActorEmail: actorEmail);
 
-        var validation = await _registerCustodianteValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            var result = await _registerCustodianteHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<CustodianteDto>(command, ct);
             return CreatedAtAction(nameof(GetCustodianteById), new { id = result.Id }, result);
         }
         catch (DuplicateEntityException ex)
@@ -383,7 +271,7 @@ public sealed class FundosController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new ListCustodianteQuery(page, pageSize, search);
-        var result = await _listCustodianteHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<CustodianteDto>>(query, ct);
         return Ok(result);
     }
 
@@ -394,9 +282,12 @@ public sealed class FundosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCustodianteById(Guid id, CancellationToken ct)
+    public async Task<IActionResult> GetCustodianteById(
+        Guid id,
+        [FromServices] ICustodianteRepository custodianteRepository,
+        CancellationToken ct)
     {
-        var custodiante = await _custodianteRepository.GetByIdAsync(id, ct);
+        var custodiante = await custodianteRepository.GetByIdAsync(id, ct);
         // Security: IgnoreQueryFilters in repo returns cross-tenant rows; enforce tenant boundary
         // here. Return NotFound (not Forbid) — do not leak entity existence to other tenants.
         if (custodiante is null || custodiante.ClienteId != _currentCompanyService.CompanyId)
@@ -441,13 +332,13 @@ public sealed class FundosController : ControllerBase
             ActorSub: actorSub,
             ActorEmail: actorEmail);
 
-        var validation = await _updateCustodianteValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            var result = await _updateCustodianteHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<CustodianteDto>(command, ct);
             return Ok(result);
         }
         catch (DuplicateEntityException ex)
@@ -491,13 +382,13 @@ public sealed class FundosController : ControllerBase
             ActorSub: actorSub,
             ActorEmail: actorEmail);
 
-        var validation = await _createTipoAtivoValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            var result = await _createTipoAtivoHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<TipoAtivoDto>(command, ct);
             return CreatedAtAction(nameof(GetTipoAtivoById), new { id = result.Id }, result);
         }
         catch (DuplicateEntityException ex)
@@ -523,7 +414,7 @@ public sealed class FundosController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new ListTipoAtivoQuery(page, pageSize, search);
-        var result = await _listTipoAtivoHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<TipoAtivoDto>>(query, ct);
         return Ok(result);
     }
 
@@ -534,9 +425,12 @@ public sealed class FundosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetTipoAtivoById(Guid id, CancellationToken ct)
+    public async Task<IActionResult> GetTipoAtivoById(
+        Guid id,
+        [FromServices] ITipoAtivoRepository tipoAtivoRepository,
+        CancellationToken ct)
     {
-        var tipoAtivo = await _tipoAtivoRepository.GetByIdAsync(id, ct);
+        var tipoAtivo = await tipoAtivoRepository.GetByIdAsync(id, ct);
         if (tipoAtivo is null)
             return NotFound();
 
@@ -576,13 +470,13 @@ public sealed class FundosController : ControllerBase
             ActorSub: actorSub,
             ActorEmail: actorEmail);
 
-        var validation = await _updateTipoAtivoValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            var result = await _updateTipoAtivoHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<TipoAtivoDto>(command, ct);
             return Ok(result);
         }
         catch (KeyNotFoundException ex)
@@ -624,13 +518,13 @@ public sealed class FundosController : ControllerBase
             ActorSub: actorSub,
             ActorEmail: actorEmail);
 
-        var validation = await _registerFundoValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            var result = await _registerFundoHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<FundoDto>(command, ct);
             return CreatedAtAction(nameof(GetFundoById), new { id = result.Id }, result);
         }
         catch (DuplicateEntityException ex)
@@ -656,7 +550,7 @@ public sealed class FundosController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new ListFundoQuery(page, pageSize, search);
-        var result = await _listFundoHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<FundoDto>>(query, ct);
         return Ok(result);
     }
 
@@ -667,9 +561,12 @@ public sealed class FundosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetFundoById(Guid id, CancellationToken ct)
+    public async Task<IActionResult> GetFundoById(
+        Guid id,
+        [FromServices] IFundoRepository fundoRepository,
+        CancellationToken ct)
     {
-        var fundo = await _fundoRepository.GetByIdAsync(id, ct);
+        var fundo = await fundoRepository.GetByIdAsync(id, ct);
         // Security: IgnoreQueryFilters in repo returns cross-tenant rows; enforce tenant boundary
         // here. Return NotFound (not Forbid) — do not leak entity existence to other tenants.
         if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
@@ -715,13 +612,13 @@ public sealed class FundosController : ControllerBase
             ActorSub: actorSub,
             ActorEmail: actorEmail);
 
-        var validation = await _updateFundoValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            var result = await _updateFundoHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<FundoDto>(command, ct);
             return Ok(result);
         }
         catch (KeyNotFoundException ex)
@@ -742,14 +639,17 @@ public sealed class FundosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> TransitionFundoStatus(
-        Guid id, [FromBody] TransitionFundoStatusRequest? request, CancellationToken ct)
+        Guid id,
+        [FromBody] TransitionFundoStatusRequest? request,
+        [FromServices] IFundoRepository fundoRepository,
+        CancellationToken ct)
     {
         if (request is null)
             return BadRequest(new ProblemDetails { Title = "Bad request", Status = 400, Detail = "Request body is required." });
 
         // Security: IgnoreQueryFilters in repo returns cross-tenant rows; enforce tenant boundary
         // here. Return NotFound (not Forbid) — do not leak entity existence to other tenants.
-        var fundo = await _fundoRepository.GetByIdAsync(id, ct);
+        var fundo = await fundoRepository.GetByIdAsync(id, ct);
         if (fundo is null || fundo.ClienteId != _currentCompanyService.CompanyId)
             return NotFound();
 
@@ -761,13 +661,13 @@ public sealed class FundosController : ControllerBase
             ActorSub: actorSub,
             ActorEmail: actorEmail);
 
-        var validation = await _transitionFundoStatusValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            var result = await _transitionFundoStatusHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<FundoDto>(command, ct);
             return Ok(result);
         }
         catch (InvalidStateTransitionException ex)
@@ -799,7 +699,7 @@ public sealed class FundosController : ControllerBase
     public async Task<IActionResult> GetFundoAllowedTransitions(Guid id, CancellationToken ct)
     {
         var query = new GetFundoAllowedTransitionsQuery(id);
-        var result = await _allowedTransitionsHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<IReadOnlyList<string>?>(query, ct);
         if (result is null)
             return NotFound();
         return Ok(result);
@@ -835,13 +735,13 @@ public sealed class FundosController : ControllerBase
             ActorSub: actorSub,
             ActorEmail: actorEmail);
 
-        var validation = await _registerCedentePfValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            var result = await _registerCedentePfHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<CedenteDto>(command, ct);
             return CreatedAtAction(nameof(GetCedenteById), new { id = result.Id }, result);
         }
         catch (DuplicateEntityException ex)
@@ -876,13 +776,13 @@ public sealed class FundosController : ControllerBase
             ActorSub: actorSub,
             ActorEmail: actorEmail);
 
-        var validation = await _registerCedentePjValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            var result = await _registerCedentePjHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<CedenteDto>(command, ct);
             return CreatedAtAction(nameof(GetCedenteById), new { id = result.Id }, result);
         }
         catch (DuplicateEntityException ex)
@@ -904,7 +804,7 @@ public sealed class FundosController : ControllerBase
         CancellationToken ct = default)
     {
         var query = new ListCedenteQuery(page, pageSize, search);
-        var result = await _listCedenteHandler.HandleAsync(query, ct);
+        var result = await _queries.Query<PaginatedResult<CedenteDto>>(query, ct);
         return Ok(result);
     }
 
@@ -915,9 +815,12 @@ public sealed class FundosController : ControllerBase
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetCedenteById(Guid id, CancellationToken ct)
+    public async Task<IActionResult> GetCedenteById(
+        Guid id,
+        [FromServices] ICedenteRepository cedenteRepository,
+        CancellationToken ct)
     {
-        var cedente = await _cedenteRepository.GetByIdAsync(id, ct);
+        var cedente = await cedenteRepository.GetByIdAsync(id, ct);
         // Security: IgnoreQueryFilters in repo returns cross-tenant rows; enforce tenant boundary
         // here. Return NotFound (not Forbid) — do not leak entity existence to other tenants.
         if (cedente is null || cedente.ClienteId != _currentCompanyService.CompanyId)
@@ -964,13 +867,13 @@ public sealed class FundosController : ControllerBase
             ActorSub: actorSub,
             ActorEmail: actorEmail);
 
-        var validation = await _updateCedenteValidator.ValidateAsync(command, ct);
+        var validation = await _validation.Validate(command, ct);
         if (!validation.IsValid)
             return UnprocessableEntity(ToValidationProblem(validation));
 
         try
         {
-            var result = await _updateCedenteHandler.HandleAsync(command, ct);
+            var result = await _commands.Send<CedenteDto>(command, ct);
             return Ok(result);
         }
         catch (KeyNotFoundException ex)

@@ -80,7 +80,7 @@ Numeracao preservada pra alinhar com `.planning/` historico. Phases pre-48 nao s
 
 ### Phase 55: Controller Dependency Reduction
 - **Slug:** controller-di-reduction
-- **Status:** pending
+- **Status:** done
 - **Goal:** Eliminar a explosão de parâmetros de construtor nos controllers — `FundosController` **37** deps injetadas, `AdminUserController` **23**, `CompaniesController` **17** (god class / violação SRP-SOLID). Passou no Phase 54 porque o gate D-52 (`params ≤ 3`) só mediu parâmetros de **método**, nunca **injeção de construtor**. Reduzir cada controller a um número saudável de deps **SEM** mudar rotas / contrato HTTP / fluxo de auth (constraint herdado de D-54).
 - **Scope:** `Onboarding.API/Controllers/*` + infra de dispatch (Application/Infrastructure) se necessário. **Subsume o `W-FUNDOS-SPLIT` diferido** do Phase 54.
 - **Aberto pro /jdi-discuss:**

@@ -33,9 +33,10 @@
       "position": 51,
       "slug": "frontend-client-fundos",
       "raw_slug": "50-frontend-client-fundos",
-      "folder": ".jdi/phases/50-frontend-client-fundos",
+      "folder": ".jdi/archive/50-frontend-client-fundos",
       "status": "done",
-      "legacy": true
+      "legacy": true,
+      "archived": true
     },
     {
       "position": 52,
@@ -66,7 +67,7 @@
       "slug": "controller-di-reduction",
       "raw_slug": "controller-di-reduction",
       "folder": ".jdi/phases/controller-di-reduction",
-      "status": "pending",
+      "status": "done",
       "legacy": false
     }
   ]

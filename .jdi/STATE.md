@@ -9,8 +9,8 @@ specialists:
   - jdi-doer-onboarding-keycloak-security + jdi-reviewer-onboarding-keycloak-security
 current_phase: 55
 current_phase_slug: controller-di-reduction
-phase_status: planned
-phase_verdict: n/a
+phase_status: verified
+phase_verdict: APPROVED_WITH_WARNINGS
 pending_ship: backend-csharp-quality-audit (Phase 54 — verified APPROVED_WITH_WARNINGS 2026-05-30, NOT yet shipped; run /jdi-ship to finalize)
 prior_phase_slug: integration-tests-fundos
 prior_phase_verdict: APPROVED_WITH_WARNINGS
@@ -18,4 +18,5 @@ prior_phase_shipped_at: 2026-05-24
 removed_phase: vinxi-to-vinext-migration (REMOVED 2026-05-24 via /jdi-remove-phase; artifacts archived in .jdi/archive/removed-vinxi-to-vinext-migration/; decisions D-38..D-47 retained in DECISIONS.md as history)
 plan_tasks: 4
 plan_waves: 4
-next_step: /jdi-do controller-di-reduction
+mainthread_verify: controller-di-reduction (W3) — Integration 248/248 + Playwright ACF+PKCE regression PASS 2026-05-30; MAINTHREAD-VERIFY.md
+next_step: /jdi-ship controller-di-reduction
